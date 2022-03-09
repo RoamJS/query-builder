@@ -354,7 +354,7 @@ const QueryEditor = ({
           )
         ),
       ]).then(([, conditionNodesWithUids, selections]) => {
-        setReturnNode(value);
+        // setReturnNode(value);
         setConditions(conditionNodesWithUids);
         setSelections(selections);
       });
@@ -483,7 +483,7 @@ const QueryEditor = ({
                   })
                 )
                 .then(() => {
-                  setReturnNode("");
+                  setReturnNode('');
                   setConditions([]);
                   setSelections([]);
                 });
