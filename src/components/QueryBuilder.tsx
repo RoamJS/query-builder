@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button, MenuItem, Popover } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
-import { getUidsFromId, getTextByBlockUid } from "roam-client";
+import getUidsFromId from "roamjs-components/dom/getUidsFromId";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import { Icon } from "@blueprintjs/core";
-import { isControl } from "../entry-helpers";
+import isControl from "roamjs-components/util/isControl";
 import ReactDOM from "react-dom";
-import DemoPopoverWrapper from "./DemoPopoverWrapper";
-import PageInput from "./PageInput";
+import PageInput from "roamjs-components/components/PageInput";
 
 enum NODES {
   OR = "OR",
@@ -431,25 +431,5 @@ export const renderQueryBuilder = ({
     />,
     parent
   );
-
-export const DemoQueryBuilder = (): JSX.Element => {
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.roamAlphaAPI = {
-      q: () => [
-        [{ title: "David" }],
-        [{ title: "Anthony" }],
-        [{ title: "Vargas" }],
-      ],
-    };
-  }, []);
-  return (
-    <DemoPopoverWrapper
-      WrappedComponent={QueryBuilder}
-      placeholder={"Saved query text outputted here!"}
-    />
-  );
-};
 
 export default QueryBuilder;

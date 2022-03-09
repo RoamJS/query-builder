@@ -4,13 +4,127 @@ import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import getUidsFromId from "roamjs-components/dom/getUidsFromId";
 import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
+import addStyle from "roamjs-components/dom/addStyle";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
+import toConfigPageName from "roamjs-components/util/toConfigPageName";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getSubTree from "roamjs-components/util/getSubTree";
+import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import {render as renderQueryPage} from "./components/QueryPage";
 
-runExtension("query-builder", () => {
-  const css = document.createElement("style");
-  css.textContent = `.bp3-button:focus {
+const ID = "query-builder";
+
+runExtension(ID, async () => {
+  addStyle(`.bp3-button:focus {
     outline-width: 2px;
-}`;
-  document.getElementsByTagName("head")[0].appendChild(css);
+}
+
+.roamjs-query-condition-source, 
+.roamjs-query-condition-relation,
+.roamjs-query-return-node {
+  min-width: 144px;
+  max-width: 144px;
+}
+
+.roamjs-query-condition-relation,
+.roamjs-query-return-node {
+  padding-right: 8px;
+}
+
+.roamjs-query-condition-target { 
+  flex-grow: 1; 
+  display: flex; 
+  min-width: 300px;
+}
+
+.roamjs-query-condition-relation .bp3-popover-target,
+.roamjs-query-condition-target .roamjs-page-input-target { 
+  width: 100%
+}
+
+.roamjs-query-hightlighted-result {
+  background: #FFFF00;
+}
+
+/* width */
+.roamjs-query-results-view ul::-webkit-scrollbar {
+  width: 6px;
+}
+
+/* Handle */
+.roamjs-query-results-view ul::-webkit-scrollbar-thumb {
+  background: #888;
+}`);
+
+  const { pageUid } = await createConfigObserver({
+    title: toConfigPageName(ID),
+    config: {
+      tabs: [
+        {
+          id: "Home",
+          fields: [
+            {
+              title: "Query Pages",
+              type: "multitext",
+              description:
+                "The title formats of pages that you would like to serve as pages that generate queries",
+              defaultValue: ["queries/*"],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const getQueryPages = () => {
+    const configTree = getBasicTreeByParentUid(pageUid);
+    return getSubTree({
+      tree: configTree,
+      key: "Query Pages",
+    }).children.map(
+      (t) =>
+        new RegExp(
+          `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+        )
+    );
+  };
+
+  const queryPages = {
+    current: getQueryPages(),
+  };
+  window.addEventListener("hashchange", (e) => {
+    if (e.oldURL.endsWith(pageUid)) {
+      queryPages.current = getQueryPages();
+    }
+  });
+
+  createHTMLObserver({
+    tag: "H1",
+    className: "rm-title-display",
+    callback: (h1: HTMLHeadingElement) => {
+      const title = getPageTitleValueByHtmlElement(h1);
+      if (queryPages.current.some(r => r.test(title))) {
+        const uid = getPageUidByPageTitle(title);
+        const attribute = `data-roamjs-${uid}`;
+        const containerParent = h1.parentElement?.parentElement;
+        if (containerParent && !containerParent.hasAttribute(attribute)) {
+          containerParent.setAttribute(attribute, "true");
+          const parent = document.createElement("div");
+          const configPageId = title.split("/").slice(-1)[0];
+          parent.id = `${configPageId}-config`;
+          containerParent.insertBefore(
+            parent,
+            h1.parentElement?.nextElementSibling || null
+          );
+          renderQueryPage({
+            pageUid: uid,
+            parent,
+          })
+        }
+      }
+    },
+  });
 
   createButtonObserver({
     shortcut: "qb",
@@ -23,7 +137,6 @@ runExtension("query-builder", () => {
   });
 
   const dataAttribute = "data-roamjs-edit-query";
-
   createHTMLObserver({
     callback: (b) => {
       if (!b.getAttribute(dataAttribute)) {
