@@ -2,15 +2,8 @@ import {
   Button,
   H6,
   InputGroup,
-  Menu,
-  MenuItem,
-  Popover,
-  PopoverPosition,
 } from "@blueprintjs/core";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RoamBasicNode } from "roamjs-components/types";
-import useArrowKeyDown from "roamjs-components/hooks/useArrowKeyDown";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -22,7 +15,7 @@ import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildU
 import PageInput from "roamjs-components/components/PageInput";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { conditionLabels } from "../utils/conditionToDatalog";
-import { getBasicTreeByParentUid } from "roamjs-components";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 
 const QueryCondition = ({
   con,

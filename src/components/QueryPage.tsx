@@ -1,6 +1,5 @@
 import { Card, Button, Tooltip } from "@blueprintjs/core";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import useSubTree from "roamjs-components/hooks/useSubTree";
+import React, { useEffect, useMemo, useState } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
