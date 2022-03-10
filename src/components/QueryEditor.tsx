@@ -220,7 +220,7 @@ const QueryEditor = ({
     selections: Selection[];
   }) => Promise<void>;
 }) => {
-  const tree = getBasicTreeByParentUid(parentUid);
+  const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const scratchNode = useMemo(
     () => tree.find((t) => toFlexRegex("scratch").test(t.text)),
     [tree]
