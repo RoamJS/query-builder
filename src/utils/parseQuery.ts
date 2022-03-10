@@ -6,9 +6,8 @@ const parseQuery = (q: string[]) => {
   const conditionNodes = conditions
     .filter((s) => !s.startsWith("Select"))
     .map((c) => {
-      const [source, rest] = c.split(/ (.+)/);
-      const relation = conditionLabels.find((l) => rest.startsWith(l)) || "";
-      const target = rest.substring(relation.length + 1);
+      const relation = conditionLabels.find((l) => c.includes(` ${l} `)) || "";
+      const [source, target] = c.split(` ${relation} `);
       return {
         source,
         relation,
