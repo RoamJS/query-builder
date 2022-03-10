@@ -16,6 +16,7 @@ import PageInput from "roamjs-components/components/PageInput";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { conditionLabels } from "../utils/conditionToDatalog";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 
 const QueryCondition = ({
   con,
@@ -369,6 +370,14 @@ const QueryEditor = ({
       scratchNodeUid,
     ]
   );
+  useEffect(() => {
+    if (!window.roamAlphaAPI.data.fast?.q)
+      renderSimpleAlert({
+        content:
+          'This feature depends on using the latest version of Roam.\n\nPlease click "Check for Updates" from the top right menu to update Roam!',
+        onConfirm: () => {},
+      });
+  }, []);
   return (
     <>
       <H6

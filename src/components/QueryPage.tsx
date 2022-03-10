@@ -105,9 +105,8 @@ const QueryPage = ({ pageUid }: Props) => {
       )}
       <ResultsView
         header={
-          <>
-            <div>
-              {/*<Tooltip content={"Export"}>
+          <div>
+            {/*<Tooltip content={"Export"}>
                 <Button
                   icon={"export"}
                   disabled
@@ -139,8 +138,7 @@ const QueryPage = ({ pageUid }: Props) => {
                   }}
                 />
                 </Tooltip>*/}
-            </div>
-          </>
+          </div>
         }
         results={results.map(({ id, ...a }) => a)}
         resultContent={
