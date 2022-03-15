@@ -23,18 +23,23 @@ const QueryPage = ({ pageUid }: Props) => {
     () => queryNode.children.map((s) => s.text),
     [queryNode]
   );
+  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const { returnNode, conditionNodes, selectionNodes } = useMemo(
     () => parseQuery(query),
     [parseQuery, query]
   );
   useEffect(() => {
-    const results = fireQuery({
-      returnNode,
-      conditions: conditionNodes,
-      selections: selectionNodes,
-    });
-    setResults(results);
+    setLoading(true);
+    setTimeout(() => {
+      const results = fireQuery({
+        returnNode,
+        conditions: conditionNodes,
+        selections: selectionNodes,
+      });
+      setResults(results);
+      setLoading(false);
+    }, 1);
   }, [setResults]);
   return (
     <Card
@@ -103,10 +108,14 @@ const QueryPage = ({ pageUid }: Props) => {
           />
         </Tooltip>
       )}
-      <ResultsView
-        header={
-          <div>
-            {/*<Tooltip content={"Export"}>
+      {loading ? (
+        <p>Loading results...</p>
+      ) : (
+        <ResultsView
+          parentUid={pageUid}
+          header={
+            <div>
+              {/*<Tooltip content={"Export"}>
                 <Button
                   icon={"export"}
                   disabled
@@ -138,19 +147,20 @@ const QueryPage = ({ pageUid }: Props) => {
                   }}
                 />
                 </Tooltip>*/}
-          </div>
-        }
-        results={results.map(({ id, ...a }) => a)}
-        resultContent={
-          <div style={{ fontSize: 10, position: "relative" }}>
-            {query.map((q, i) => (
-              <p key={i} style={{ margin: 0 }}>
-                {q}
-              </p>
-            ))}
-          </div>
-        }
-      />
+            </div>
+          }
+          results={results.map(({ id, ...a }) => a)}
+          resultContent={
+            <div style={{ fontSize: 10, position: "relative" }}>
+              {query.map((q, i) => (
+                <p key={i} style={{ margin: 0 }}>
+                  {q}
+                </p>
+              ))}
+            </div>
+          }
+        />
+      )}
     </Card>
   );
 };

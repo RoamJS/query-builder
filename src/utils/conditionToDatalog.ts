@@ -8,6 +8,12 @@ const DatalogTranslator: Record<string, (s: string, t: string) => string> = {
   "is in page": (src, tar) => `[${freeVar(src)} :block/page ${freeVar(tar)}]`,
   "has title": (src, tar) =>
     `[${freeVar(src)} :node/title "${normalizePageTitle(tar)}"]`,
+  "with text in title": (src, tar) =>
+    `[${freeVar(src)} :node/title ${freeVar(
+      src
+    )}-Title] [(clojure.string/includes? ${freeVar(
+      src
+    )}-Title "${normalizePageTitle(tar)}")]`,
   "has attribute": (src, tar) =>
     `[${freeVar(tar)}-Attribute :node/title "${tar}"] [${freeVar(
       tar

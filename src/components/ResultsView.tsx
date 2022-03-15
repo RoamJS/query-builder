@@ -8,10 +8,19 @@ import {
   Tooltip,
   HTMLTable,
   InputGroup,
+  Popover,
+  Intent,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import toRoamDate from "roamjs-components/date/toRoamDate";
+import Filter from "roamjs-components/components/Filter";
+import getSubTree from "roamjs-components/util/getSubTree";
+import deleteBlock from "roamjs-components/writes/deleteBlock";
+import createBlock from "roamjs-components/writes/createBlock";
+import { render as renderToast } from "roamjs-components/components/Toast";
+import toFlexRegex from "roamjs-components/util/toFlexRegex";
+import useSubTree from "roamjs-components/hooks/useSubTree";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -19,6 +28,14 @@ export type Result = { text: string; uid: string } & Record<
 >;
 
 type MappedResult = { uid: string } & Record<string, string>;
+type Sorts = { key: string; descending: boolean }[];
+type Filters = Record<
+  string,
+  {
+    includes: Record<string, Set<string>>;
+    excludes: Record<string, Set<string>>;
+  }
+>;
 
 const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
@@ -38,6 +55,84 @@ const sortFunction =
       return 0;
     }
   };
+
+const ResultHeader = ({
+  c,
+  results,
+  activeSort,
+  setActiveSort,
+  filters,
+  setFilters,
+}: {
+  c: string;
+  results: Result[];
+  activeSort: Sorts;
+  setActiveSort: (s: Sorts) => void;
+  filters: Filters;
+  setFilters: (f: Filters) => void;
+}) => {
+  const filterData = useMemo(
+    () => ({
+      values: Array.from(new Set(results.map((r) => toCellValue(r[c])))),
+    }),
+    [results, c]
+  );
+  const sortIndex = activeSort.findIndex((s) => s.key === c);
+  return (
+    <td
+      style={{
+        cursor: "pointer",
+        textTransform: "capitalize",
+      }}
+      key={c}
+      onClick={() => {
+        if (sortIndex >= 0) {
+          if (activeSort[sortIndex].descending) {
+            setActiveSort(activeSort.filter((s) => s.key !== c));
+          } else {
+            setActiveSort(
+              activeSort.map((s) =>
+                s.key === c ? { key: c, descending: true } : s
+              )
+            );
+          }
+        } else {
+          setActiveSort([...activeSort, { key: c, descending: false }]);
+        }
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>{c}</span>
+        <span>
+          {sortIndex >= 0 && (
+            <span>
+              <Icon
+                icon={
+                  activeSort[sortIndex].descending ? "sort-desc" : "sort-asc"
+                }
+              />
+              ({sortIndex + 1})
+            </span>
+          )}
+          <Filter
+            data={filterData}
+            onChange={(newFilters) =>
+              setFilters({ ...filters, [c]: newFilters })
+            }
+            renderButtonText={(s) =>
+              s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
+            }
+          />
+        </span>
+      </div>
+    </td>
+  );
+};
 
 const ResultView = ({ r, colSpan }: { r: MappedResult; colSpan: number }) => {
   const rowCells = Object.keys(r).filter((k) => !defaultFields.includes(k));
@@ -191,54 +286,16 @@ const ResultView = ({ r, colSpan }: { r: MappedResult; colSpan: number }) => {
 };
 
 const defaultFields = ["text", "uid", "context"];
+const toCellValue = (v: number | Date | string) =>
+  v instanceof Date
+    ? toRoamDate(v)
+    : typeof v === "undefined"
+    ? ""
+    : v.toString();
 
-const ResultsView = ({
-  header = "Results",
-  hideResults = false,
-  results,
-  ResultIcon = () => <span />,
-  resultFilter = () => true,
-  resultContent = <div />,
-}: {
-  header?: React.ReactNode;
-  hideResults?: boolean;
-  results: Result[];
-  ResultIcon?: (props: { result: MappedResult }) => React.ReactElement;
-  resultFilter?: (r: Result) => boolean;
-  resultContent?: React.ReactElement;
-}) => {
-  const columns = useMemo(
-    () =>
-      results.length
-        ? [
-            "text",
-            ...Object.keys(results[0]).filter(
-              (k) => !defaultFields.includes(k)
-            ),
-            ...(results.some((r) => !!r.context) ? ["context"] : []),
-          ]
-        : ["text"],
-    [results]
-  );
-  const [activeSort, setActiveSort] = useState({
-    key: columns[0],
-    descending: false,
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-  const sortedResults = useMemo(() => {
-    const sorted = results
-      .filter(resultFilter)
-      .map((r) => ({
-        uid: r.uid,
-        text: r.text,
-        ...Object.fromEntries(
-          Object.entries(r)
-            .filter(([k]) => k !== "uid" && k !== "text")
-            .map(([k, v]) => [k, v instanceof Date ? toRoamDate(v) : v])
-        ),
-      }))
-      .sort(sortFunction(activeSort.key, activeSort.descending));
-    return searchTerm
+/**
+ * FUZZY MATHCING LOGIC:
+ * searchTerm
       ? sorted
           .filter((s) =>
             Object.values(s).some((v) => fuzzy.test(searchTerm, v.toString()))
@@ -260,8 +317,109 @@ const ResultsView = ({
                 ),
               } as MappedResult)
           )
-      : sorted;
-  }, [results, activeSort, searchTerm, resultFilter]);
+      : sorted 
+ */
+
+const ResultsView = ({
+  parentUid,
+  header = "Results",
+  results,
+  resultContent = <div />,
+}: {
+  parentUid: string;
+  header?: React.ReactNode;
+  results: Result[];
+  resultContent?: React.ReactElement;
+}) => {
+  const resultNode = useSubTree({ parentUid, key: "results" });
+  const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
+  const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
+  const columns = useMemo(
+    () =>
+      results.length
+        ? [
+            "text",
+            ...Object.keys(results[0]).filter(
+              (k) => !defaultFields.includes(k)
+            ),
+            ...(results.some((r) => !!r.context) ? ["context"] : []),
+          ]
+        : ["text"],
+    [results]
+  );
+  const [activeSort, setActiveSort] = useState<Sorts>(() =>
+    sortsNode.children.map((s) => ({
+      key: s.text,
+      descending: toFlexRegex("true").test(s.children[0]?.text || ""),
+    }))
+  );
+  const savedFiltedData = useMemo(
+    () =>
+      Object.fromEntries(
+        filtersNode.children.map((c) => [
+          c.text,
+          {
+            includes: {
+              values: new Set(
+                getSubTree({ tree: c.children, key: "includes" }).children.map(
+                  (t) => t.text
+                )
+              ),
+            },
+            excludes: {
+              values: new Set(
+                getSubTree({ tree: c.children, key: "excludes" }).children.map(
+                  (t) => t.text
+                )
+              ),
+            },
+          },
+        ])
+      ),
+    [filtersNode]
+  );
+  const [filters, setFilters] = useState<Filters>(() =>
+    Object.fromEntries(
+      columns.map((key) => [
+        key,
+        savedFiltedData[key] || {
+          includes: { values: new Set() },
+          excludes: { values: new Set() },
+        },
+      ])
+    )
+  );
+  const sortedResults = useMemo(() => {
+    return results
+      .filter((r) => {
+        return (
+          Object.keys(filters).every(
+            (filterKey) =>
+              filters[filterKey].includes.values.size === 0 &&
+              !filters[filterKey].excludes.values.has(toCellValue(r[filterKey]))
+          ) ||
+          Object.keys(filters).some((filterKey) =>
+            filters[filterKey].includes.values.has(toCellValue(r[filterKey]))
+          )
+        );
+      })
+      .sort((a, b) => {
+        for (const sort of activeSort) {
+          const cmpResult = sortFunction(sort.key, sort.descending)(a, b);
+          if (cmpResult !== 0) return cmpResult;
+        }
+        return 0;
+      })
+      .map((r) => ({
+        uid: r.uid,
+        text: r.text,
+        ...Object.fromEntries(
+          Object.entries(r)
+            .filter(([k]) => k !== "uid" && k !== "text")
+            .map(([k, v]) => [k, toCellValue(v)])
+        ),
+      }));
+  }, [results, activeSort, filters]);
   return (
     <div
       className="roamjs-query-results-view"
@@ -279,74 +437,112 @@ const ResultsView = ({
       >
         {header}
       </h4>
-      {!hideResults && (
-        <div tabIndex={-1} style={{ position: "relative", outline: "none" }}>
-          {resultContent}
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <i style={{ opacity: 0.8 }}>
-              Showing {sortedResults.length} of {results.length} results
-            </i>
-            <InputGroup
-              placeholder="Filter results..."
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {sortedResults.length ? (
-            <HTMLTable
-              style={{
-                maxHeight: "400px",
-                overflowY: "scroll",
-                width: "100%",
-                tableLayout: "fixed",
+      <div tabIndex={-1} style={{ position: "relative", outline: "none" }}>
+        {resultContent}
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <i style={{ opacity: 0.8 }}>
+            Showing {sortedResults.length} of {results.length} results
+          </i>
+          <Tooltip content={"Save filters and sorts"}>
+            <Button
+              icon={"saved"}
+              onClick={() => {
+                const resultNode = getSubTree({ key: "results", parentUid });
+                return (
+                  resultNode.uid
+                    ? Promise.all(
+                        resultNode.children.map((c) => deleteBlock(c.uid))
+                      ).then(() => resultNode.uid)
+                    : createBlock({ parentUid, node: { text: "results" } })
+                )
+                  .then((uid) =>
+                    Promise.all([
+                      createBlock({
+                        parentUid: uid,
+                        node: {
+                          text: "filters",
+                          children: Object.entries(filters).map(
+                            ([column, data]) => ({
+                              text: column,
+                              children: [
+                                {
+                                  text: "includes",
+                                  children: Array.from(
+                                    data.includes.values
+                                  ).map((text) => ({ text })),
+                                },
+                                {
+                                  text: "exludes",
+                                  children: Array.from(
+                                    data.excludes.values
+                                  ).map((text) => ({ text })),
+                                },
+                              ],
+                            })
+                          ),
+                        },
+                      }),
+                      createBlock({
+                        parentUid: uid,
+                        node: {
+                          text: "sorts",
+                          children: activeSort.map((a) => ({
+                            text: a.key,
+                            children: [{ text: `${a.descending}` }],
+                          })),
+                        },
+                        order: 1,
+                      }),
+                    ])
+                  )
+                  .then(() =>
+                    renderToast({
+                      id: "query-results-success",
+                      content: "Successfully saved query's filters and sorts!",
+                      intent: Intent.SUCCESS,
+                    })
+                  );
               }}
-              striped
-              interactive
-              bordered
-            >
-              <thead>
-                <tr>
-                  {columns.map((c) => (
-                    <td
-                      style={{ cursor: "pointer" }}
-                      key={c}
-                      onClick={() => {
-                        if (activeSort.key === c) {
-                          setActiveSort({
-                            key: c,
-                            descending: !activeSort.descending,
-                          });
-                        } else {
-                          setActiveSort({
-                            key: c,
-                            descending: false,
-                          });
-                        }
-                      }}
-                    >
-                      {c.slice(0, 1).toUpperCase()}
-                      {c.slice(1)}{" "}
-                      {activeSort.key === c && (
-                        <Icon
-                          icon={
-                            activeSort.descending ? "sort-desc" : "sort-asc"
-                          }
-                        />
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedResults.map((r) => (
-                  <ResultView key={r.uid} r={r} colSpan={columns.length} />
-                ))}
-              </tbody>
-            </HTMLTable>
-          ) : (
-            <div>No Results</div>
-          )}
+            />
+          </Tooltip>
         </div>
-      )}
+        {sortedResults.length ? (
+          <HTMLTable
+            style={{
+              maxHeight: "400px",
+              overflowY: "scroll",
+              width: "100%",
+              tableLayout: "fixed",
+            }}
+            striped
+            interactive
+            bordered
+          >
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <ResultHeader
+                    key={c}
+                    c={c}
+                    results={results}
+                    activeSort={activeSort}
+                    setActiveSort={setActiveSort}
+                    filters={filters}
+                    setFilters={setFilters}
+                  />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedResults.map((r) => (
+                <ResultView key={r.uid} r={r} colSpan={columns.length} />
+              ))}
+            </tbody>
+          </HTMLTable>
+        ) : (
+          <div>No Results</div>
+        )}
+      </div>
     </div>
   );
 };
