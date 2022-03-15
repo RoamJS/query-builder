@@ -63,6 +63,7 @@ const ResultHeader = ({
   setActiveSort,
   filters,
   setFilters,
+  initialFilter,
 }: {
   c: string;
   results: Result[];
@@ -70,6 +71,7 @@ const ResultHeader = ({
   setActiveSort: (s: Sorts) => void;
   filters: Filters;
   setFilters: (f: Filters) => void;
+  initialFilter: Filters[string];
 }) => {
   const filterData = useMemo(
     () => ({
@@ -121,6 +123,7 @@ const ResultHeader = ({
           )}
           <Filter
             data={filterData}
+            initialValue={initialFilter}
             onChange={(newFilters) =>
               setFilters({ ...filters, [c]: newFilters })
             }
@@ -506,42 +509,39 @@ const ResultsView = ({
             />
           </Tooltip>
         </div>
-        {sortedResults.length ? (
-          <HTMLTable
-            style={{
-              maxHeight: "400px",
-              overflowY: "scroll",
-              width: "100%",
-              tableLayout: "fixed",
-            }}
-            striped
-            interactive
-            bordered
-          >
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <ResultHeader
-                    key={c}
-                    c={c}
-                    results={results}
-                    activeSort={activeSort}
-                    setActiveSort={setActiveSort}
-                    filters={filters}
-                    setFilters={setFilters}
-                  />
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedResults.map((r) => (
-                <ResultView key={r.uid} r={r} colSpan={columns.length} />
+        <HTMLTable
+          style={{
+            maxHeight: "400px",
+            overflowY: "scroll",
+            width: "100%",
+            tableLayout: "fixed",
+          }}
+          striped
+          interactive
+          bordered
+        >
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <ResultHeader
+                  key={c}
+                  c={c}
+                  results={results}
+                  activeSort={activeSort}
+                  setActiveSort={setActiveSort}
+                  filters={filters}
+                  setFilters={setFilters}
+                  initialFilter={savedFiltedData[c]}
+                />
               ))}
-            </tbody>
-          </HTMLTable>
-        ) : (
-          <div>No Results</div>
-        )}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedResults.map((r) => (
+              <ResultView key={r.uid} r={r} colSpan={columns.length} />
+            ))}
+          </tbody>
+        </HTMLTable>
       </div>
     </div>
   );
