@@ -11,9 +11,15 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import { render as renderQueryPage } from "./components/QueryPage";
+import QueryPage, { render as renderQueryPage } from "./components/QueryPage";
+import QueryEditor from "./components/QueryEditor";
+import ResultsView from "./components/ResultsView";
+import fireQuery from "./utils/fireQuery";
+import parseQuery from "./utils/parseQuery";
+import conditionToDatalog from "./utils/conditionToDatalog";
 
 const ID = "query-builder";
+const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
 
 runExtension(ID, async () => {
   addStyle(`.bp3-button:focus {
@@ -56,113 +62,126 @@ runExtension(ID, async () => {
   background: #888;
 }`);
 
-  const { pageUid } = await createConfigObserver({
-    title: toConfigPageName(ID),
-    config: {
-      tabs: [
-        {
-          id: "Home",
-          fields: [
-            {
-              title: "Query Pages",
-              type: "multitext",
-              description:
-                "The title formats of pages that you would like to serve as pages that generate queries",
-              defaultValue: ["queries/*"],
-            },
-            {
-              title: "Hide Metadata",
-              description:
-                "Hide the Roam blocks that are used to power each query",
-              type: "flag",
-            },
-          ],
-        },
-      ],
-    },
-  });
+  if (!loadedElsewhere) {
+    const { pageUid } = await createConfigObserver({
+      title: toConfigPageName(ID),
+      config: {
+        tabs: [
+          {
+            id: "Home",
+            fields: [
+              {
+                title: "Query Pages",
+                type: "multitext",
+                description:
+                  "The title formats of pages that you would like to serve as pages that generate queries",
+                defaultValue: ["queries/*"],
+              },
+              {
+                title: "Hide Metadata",
+                description:
+                  "Hide the Roam blocks that are used to power each query",
+                type: "flag",
+              },
+            ],
+          },
+        ],
+      },
+    });
 
-  const getQueryPages = () => {
-    const configTree = getBasicTreeByParentUid(pageUid);
-    return getSubTree({
-      tree: configTree,
-      key: "Query Pages",
-    }).children.map(
-      (t) =>
-        new RegExp(
-          `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
-        )
-    );
-  };
+    const getQueryPages = () => {
+      const configTree = getBasicTreeByParentUid(pageUid);
+      return getSubTree({
+        tree: configTree,
+        key: "Query Pages",
+      }).children.map(
+        (t) =>
+          new RegExp(
+            `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+          )
+      );
+    };
 
-  const queryPages = {
-    current: getQueryPages(),
-  };
-  window.addEventListener("hashchange", (e) => {
-    if (e.oldURL.endsWith(pageUid)) {
-      queryPages.current = getQueryPages();
-    }
-  });
+    const queryPages = {
+      current: getQueryPages(),
+    };
+    window.addEventListener("hashchange", (e) => {
+      if (e.oldURL.endsWith(pageUid)) {
+        queryPages.current = getQueryPages();
+      }
+    });
 
-  createHTMLObserver({
-    tag: "H1",
-    className: "rm-title-display",
-    callback: (h1: HTMLHeadingElement) => {
-      const title = getPageTitleValueByHtmlElement(h1);
-      if (queryPages.current.some((r) => r.test(title))) {
-        const uid = getPageUidByPageTitle(title);
-        const attribute = `data-roamjs-${uid}`;
-        const containerParent = h1.parentElement?.parentElement;
-        if (containerParent && !containerParent.hasAttribute(attribute)) {
-          containerParent.setAttribute(attribute, "true");
-          const parent = document.createElement("div");
-          const configPageId = title.split("/").slice(-1)[0];
-          parent.id = `${configPageId}-config`;
-          containerParent.insertBefore(
-            parent,
-            h1.parentElement?.nextElementSibling || null
-          );
-          renderQueryPage({
-            configUid: pageUid,
-            pageUid: uid,
-            parent,
-          });
+    createHTMLObserver({
+      tag: "H1",
+      className: "rm-title-display",
+      callback: (h1: HTMLHeadingElement) => {
+        const title = getPageTitleValueByHtmlElement(h1);
+        if (queryPages.current.some((r) => r.test(title))) {
+          const uid = getPageUidByPageTitle(title);
+          const attribute = `data-roamjs-${uid}`;
+          const containerParent = h1.parentElement?.parentElement;
+          if (containerParent && !containerParent.hasAttribute(attribute)) {
+            containerParent.setAttribute(attribute, "true");
+            const parent = document.createElement("div");
+            const configPageId = title.split("/").slice(-1)[0];
+            parent.id = `${configPageId}-config`;
+            containerParent.insertBefore(
+              parent,
+              h1.parentElement?.nextElementSibling || null
+            );
+            renderQueryPage({
+              configUid: pageUid,
+              pageUid: uid,
+              parent,
+            });
+          }
         }
-      }
-    },
-  });
+      },
+    });
 
-  createButtonObserver({
-    shortcut: "qb",
-    attribute: "query-builder",
-    render: (b: HTMLButtonElement) =>
-      renderQueryBuilder({
-        blockId: b.closest(".roam-block").id,
-        parent: b.parentElement,
-      }),
-  });
-
-  const dataAttribute = "data-roamjs-edit-query";
-  createHTMLObserver({
-    callback: (b) => {
-      if (!b.getAttribute(dataAttribute)) {
-        b.setAttribute(dataAttribute, "true");
-        const editButtonRoot = document.createElement("div");
-        b.appendChild(editButtonRoot);
-        const blockId = b.closest(".roam-block").id;
-        const initialValue = getTextByBlockUid(getUidsFromId(blockId).blockUid);
+    createButtonObserver({
+      shortcut: "qb",
+      attribute: "query-builder",
+      render: (b: HTMLButtonElement) =>
         renderQueryBuilder({
-          blockId,
-          parent: editButtonRoot,
-          initialValue,
-        });
-        const editButton = document.getElementById(
-          `roamjs-query-builder-button-${blockId}`
-        );
-        editButton.addEventListener("mousedown", (e) => e.stopPropagation());
-      }
-    },
-    tag: "DIV",
-    className: "rm-query-title",
-  });
+          blockId: b.closest(".roam-block").id,
+          parent: b.parentElement,
+        }),
+    });
+
+    const dataAttribute = "data-roamjs-edit-query";
+    createHTMLObserver({
+      callback: (b) => {
+        if (!b.getAttribute(dataAttribute)) {
+          b.setAttribute(dataAttribute, "true");
+          const editButtonRoot = document.createElement("div");
+          b.appendChild(editButtonRoot);
+          const blockId = b.closest(".roam-block").id;
+          const initialValue = getTextByBlockUid(
+            getUidsFromId(blockId).blockUid
+          );
+          renderQueryBuilder({
+            blockId,
+            parent: editButtonRoot,
+            initialValue,
+          });
+          const editButton = document.getElementById(
+            `roamjs-query-builder-button-${blockId}`
+          );
+          editButton.addEventListener("mousedown", (e) => e.stopPropagation());
+        }
+      },
+      tag: "DIV",
+      className: "rm-query-title",
+    });
+  }
+
+  window.roamjs.extension.queryBuilder = {
+    QueryEditor,
+    QueryPage,
+    ResultsView,
+    fireQuery,
+    parseQuery,
+    conditionToDatalog,
+  };
 });
