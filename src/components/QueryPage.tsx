@@ -10,27 +10,29 @@ import QueryEditor from "./QueryEditor";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
+import useSubTree from "roamjs-components/hooks/useSubTree";
 
-type Props = { pageUid: string };
+type Props = { pageUid: string; configUid: string };
 
-const QueryPage = ({ pageUid }: Props) => {
-  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), []);
-  const [queryNode, setQueryNode] = useState(() =>
-    getSubTree({ tree, key: "query" })
+const QueryPage = ({ pageUid, configUid }: Props) => {
+  const queryNode = useMemo(
+    () => getSubTree({ parentUid: pageUid, key: "query" }),
+    [pageUid]
   );
+  const tree = useMemo(() => getBasicTreeByParentUid(configUid), [configUid]);
+  const hideMetadata = !!useSubTree({
+    key: "Hide Metadata",
+    tree,
+  }).uid;
   const [isEdit, setIsEdit] = useState(!queryNode.uid);
-  const query = useMemo(
-    () => queryNode.children.map((s) => s.text),
-    [queryNode]
+  const [query, setQuery] = useState(() =>
+    queryNode.children.map((s) => s.text)
   );
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const { returnNode, conditionNodes, selectionNodes } = useMemo(
-    () => parseQuery(query),
-    [parseQuery, query]
-  );
   useEffect(() => {
     setLoading(true);
+    const { returnNode, conditionNodes, selectionNodes } = parseQuery(query);
     setTimeout(() => {
       const results = fireQuery({
         returnNode,
@@ -40,20 +42,30 @@ const QueryPage = ({ pageUid }: Props) => {
       setResults(results);
       setLoading(false);
     }, 1);
-  }, [setResults]);
+  }, [setResults, query]);
   return (
     <Card
       style={{
         padding: 16,
       }}
     >
+      {hideMetadata && (
+        <style>
+          {`.roam-article .rm-block-children {
+          display: none;
+        }`}
+        </style>
+      )}
       {isEdit ? (
         <>
           <QueryEditor
             parentUid={pageUid}
             defaultQuery={query}
             onQuery={({ returnNode, conditions, selections }) => {
-              const results = fireQuery({ returnNode, conditions, selections });
+              const queryNode = getSubTree({
+                parentUid: pageUid,
+                key: "query",
+              });
               return (
                 queryNode.uid
                   ? Promise.all(
@@ -68,7 +80,9 @@ const QueryPage = ({ pageUid }: Props) => {
                   const nodes = [
                     { text: `Find ${returnNode} Where` },
                     ...conditions.map((c) => ({
-                      text: `${c.source} ${c.relation} ${c.target}`,
+                      text: `${c.not ? "NOT " : ""}${c.source} ${c.relation} ${
+                        c.target
+                      }`,
                     })),
                     ...selections.map((s) => ({
                       text: `Select ${s.text} AS ${s.label}`,
@@ -78,7 +92,10 @@ const QueryPage = ({ pageUid }: Props) => {
                     nodes.map((node, order) =>
                       createBlock({ node, order, parentUid })
                     )
-                  );
+                  ).then(() => {
+                    setIsEdit(false);
+                    setQuery(nodes.map((t) => t.text));
+                  });
                 })
                 .then(() =>
                   Promise.all(
@@ -87,10 +104,7 @@ const QueryPage = ({ pageUid }: Props) => {
                       .concat(selections.map((s) => deleteBlock(s.uid)))
                   )
                 )
-                .then(() => {
-                  setResults(results);
-                  setIsEdit(false);
-                });
+                .then(() => Promise.resolve());
             }}
           />
           <hr style={{ borderColor: "#333333" }} />
@@ -101,8 +115,6 @@ const QueryPage = ({ pageUid }: Props) => {
             icon={"edit"}
             minimal
             onClick={() => {
-              const tree = getBasicTreeByParentUid(pageUid);
-              setQueryNode(getSubTree({ tree, key: "query" }));
               setIsEdit(true);
             }}
           />

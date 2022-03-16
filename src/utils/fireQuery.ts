@@ -6,42 +6,46 @@ import type { PullBlock } from "roamjs-components/types";
 
 const predefinedSelections: {
   test: RegExp;
-  text: string;
+  pull: (a: { returnNode: string; match: RegExpExecArray }) => string;
   mapper: (r: SearchResult & PullBlock, key: string) => SearchResult[string];
 }[] = [
   {
     test: /created?\s*date/i,
-    text: ":create/time",
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:create/time])`,
     mapper: (r) => {
-      const value = new Date(r[":create/time"]);
-      delete r[":create/time"];
-      return value;
+      return new Date(r?.[":create/time"] || 0);
     },
   },
   {
     test: /edit(ed)?\s*date/i,
-    text: ":edit/time",
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/time])`,
     mapper: (r) => {
-      const value = new Date(r["edit/time"]);
-      delete r["edit/time"];
-      return value;
+      return new Date(r?.[":edit/time"] || 0);
     },
   },
   {
     test: /author/i,
-    text: ":create/user",
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:create/user])`,
     mapper: (r) => {
-      const value = window.roamAlphaAPI.pull(
-        "[:user/display-name]",
-        r[":create/user"][":db/id"]
-      )[":user/display-name"];
-      delete r.author;
-      return value;
+      return (
+        window.roamAlphaAPI.pull(
+          "[:user/display-name]",
+          r?.[":create/user"]?.[":db/id"]
+        )?.[":user/display-name"] || "Anonymous User"
+      );
+    },
+  },
+  {
+    test: /^node:(\s*.*\s*)$/i,
+    pull: ({ match, returnNode }) =>
+      `(pull ?${(match[1] || returnNode)?.trim()} [:node/title :block/uid])`,
+    mapper: (r) => {
+      return r?.[":node/title"] || r?.[":block/string"] || '';
     },
   },
   {
     test: /.*/,
-    text: "",
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
     mapper: (r, key) => {
       return (
         (
@@ -49,30 +53,14 @@ const predefinedSelections: {
             `[:find (pull ?b [:block/string]) :where [?a :node/title "${normalizePageTitle(
               key
             )}"] [?p :block/uid "${
-              r.uid
-            }"] [?b :block/refs ?a] [?b :block/page ?p]]`
+              r[":block/uid"]
+            }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
           )?.[0]?.[0] as PullBlock
         )?.[":block/string"] || ""
       )
         .slice(key.length + 2)
         .trim();
     },
-  },
-];
-
-const DEFAULT_SELECTIONS = [
-  {
-    mapper: (r: PullBlock & SearchResult, _: string): SearchResult[string] => {
-      r.uid = r[":block/uid"];
-      const value = r[":node/title"] || r[":block/string"];
-      delete r[":block/uid"];
-      delete r[":block/string"];
-      delete r[":node/title"];
-      return value;
-    },
-    pull: `:block/string\n:node/title\n:block/uid`,
-    label: "text",
-    key: "",
   },
 ];
 
@@ -87,7 +75,24 @@ const fireQuery = ({
 }) => {
   const where = conditions.map(conditionToDatalog).join("\n");
 
-  const definedSelections = DEFAULT_SELECTIONS.concat(
+  const definedSelections = [
+    {
+      mapper: (r: PullBlock, _: string): SearchResult[string] => {
+        return r?.[":node/title"] || r?.[":block/string"] || '';
+      },
+      pull: `(pull ?${returnNode} [:block/string :node/title])`,
+      label: "text",
+      key: "",
+    },
+    {
+      mapper: (r: PullBlock, _: string): SearchResult[string] => {
+        return r?.[":block/uid"] || '';
+      },
+      pull: `(pull ?${returnNode} [:block/uid])`,
+      label: "uid",
+      key: "",
+    },
+  ].concat(
     selections
       .map((s) => ({
         defined: predefinedSelections.find((p) => p.test.test(s.text)),
@@ -96,28 +101,27 @@ const fireQuery = ({
       .filter((p) => !!p.defined)
       .map((p) => ({
         mapper: p.defined.mapper,
-        pull: p.defined.text,
+        pull: p.defined.pull({
+          returnNode,
+          match: p.defined.test.exec(p.s.text),
+        }),
         label: p.s.label || p.s.text,
         key: p.s.text,
       }))
   );
-  const pullSelections = definedSelections.map((p) => p.pull).join("\n");
-  const query = `[:find (pull ?${returnNode} [
-    ${pullSelections}
-  ]) :where ${where}]`;
+  const find = definedSelections.map((p) => p.pull).join("\n");
+  const query = `[:find\n${find}\n:where\n${where}\n]`;
   try {
     const results = where
-      ? window.roamAlphaAPI.data.fast.q(query).map(
-          (a) =>
-            JSON.parse(JSON.stringify(a[0])) as PullBlock
-        )
+      ? window.roamAlphaAPI.data.fast
+          .q(query)
+          .map((a) => JSON.parse(JSON.stringify(a)) as PullBlock[])
       : [];
-    return results.map(
-      (r) =>
-        definedSelections.reduce((p, c) => {
-          p[c.label] = c.mapper(p, c.key);
-          return p;
-        }, r as SearchResult & PullBlock) as SearchResult
+    return results.map((r) =>
+      definedSelections.reduce((p, c, i) => {
+        p[c.label] = c.mapper(r[i], c.key);
+        return p;
+      }, {} as SearchResult)
     );
   } catch (e) {
     console.error("Error from Roam:");

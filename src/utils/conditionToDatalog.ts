@@ -43,12 +43,13 @@ const DatalogTranslator: Record<string, (s: string, t: string) => string> = {
 export const conditionLabels = Object.keys(DatalogTranslator);
 
 const conditionToDatalog = (condition: Condition): string => {
-  return (
+  const datalog =
     DatalogTranslator[condition.relation]?.(
       condition.source,
       condition.target
-    ) || ""
-  );
+    ) || "";
+  if (datalog && condition.not) return `(not ${datalog})`;
+  return datalog;
 };
 
 export default conditionToDatalog;

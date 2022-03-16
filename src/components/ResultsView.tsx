@@ -21,6 +21,9 @@ import createBlock from "roamjs-components/writes/createBlock";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import useSubTree from "roamjs-components/hooks/useSubTree";
+import extractTag from "roamjs-components/util/extractTag";
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import { parseRoamDate } from "roamjs-components";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -39,8 +42,18 @@ type Filters = Record<
 
 const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
-    const aVal = a[key];
-    const bVal = b[key];
+    const _aVal = a[key];
+    const _bVal = b[key];
+    const aVal =
+      typeof _aVal === "string" &&
+      DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_aVal))
+        ? parseRoamDate(extractTag(_aVal))
+        : _aVal;
+    const bVal =
+      typeof _bVal === "string" &&
+      DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_bVal))
+        ? parseRoamDate(extractTag(_bVal))
+        : _bVal;
     if (aVal instanceof Date && bVal instanceof Date) {
       return descending
         ? bVal.valueOf() - aVal.valueOf()
@@ -294,7 +307,7 @@ const toCellValue = (v: number | Date | string) =>
     ? toRoamDate(v)
     : typeof v === "undefined"
     ? ""
-    : v.toString();
+    : extractTag(v.toString());
 
 /**
  * FUZZY MATHCING LOGIC:
@@ -538,7 +551,11 @@ const ResultsView = ({
           </thead>
           <tbody>
             {sortedResults.map((r) => (
-              <ResultView key={r.uid} r={r} colSpan={columns.length} />
+              <ResultView
+                key={Object.values(r).join("-")}
+                r={r}
+                colSpan={columns.length}
+              />
             ))}
           </tbody>
         </HTMLTable>

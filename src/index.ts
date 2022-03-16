@@ -11,7 +11,7 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import {render as renderQueryPage} from "./components/QueryPage";
+import { render as renderQueryPage } from "./components/QueryPage";
 
 const ID = "query-builder";
 
@@ -33,8 +33,7 @@ runExtension(ID, async () => {
 }
 
 .roamjs-query-condition-target { 
-  flex-grow: 1; 
-  display: flex; 
+  flex-grow: 1;
   min-width: 300px;
 }
 
@@ -71,6 +70,12 @@ runExtension(ID, async () => {
                 "The title formats of pages that you would like to serve as pages that generate queries",
               defaultValue: ["queries/*"],
             },
+            {
+              title: "Hide Metadata",
+              description:
+                "Hide the Roam blocks that are used to power each query",
+              type: "flag",
+            },
           ],
         },
       ],
@@ -104,7 +109,7 @@ runExtension(ID, async () => {
     className: "rm-title-display",
     callback: (h1: HTMLHeadingElement) => {
       const title = getPageTitleValueByHtmlElement(h1);
-      if (queryPages.current.some(r => r.test(title))) {
+      if (queryPages.current.some((r) => r.test(title))) {
         const uid = getPageUidByPageTitle(title);
         const attribute = `data-roamjs-${uid}`;
         const containerParent = h1.parentElement?.parentElement;
@@ -118,9 +123,10 @@ runExtension(ID, async () => {
             h1.parentElement?.nextElementSibling || null
           );
           renderQueryPage({
+            configUid: pageUid,
             pageUid: uid,
             parent,
-          })
+          });
         }
       }
     },

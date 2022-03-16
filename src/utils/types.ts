@@ -3,6 +3,7 @@ export type Condition = {
   source: string;
   target: string;
   uid: string;
+  not: boolean;
 };
 
 export type Selection = {

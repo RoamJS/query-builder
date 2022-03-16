@@ -6,12 +6,16 @@ const parseQuery = (q: string[]) => {
   const conditionNodes = conditions
     .filter((s) => !s.startsWith("Select"))
     .map((c) => {
-      const relation = conditionLabels.find((l) => c.includes(` ${l} `)) || "";
-      const [source, target] = c.split(` ${relation} `);
+      const not = /^NOT /.test(c);
+      const condition = c.replace(/^NOT /, "");
+      const relation =
+        conditionLabels.find((l) => condition.includes(` ${l} `)) || "";
+      const [source, target] = condition.split(` ${relation} `);
       return {
         source,
         relation,
         target,
+        not,
         uid: window.roamAlphaAPI.util.generateUID(),
       };
     })

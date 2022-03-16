@@ -1,8 +1,4 @@
-import {
-  Button,
-  H6,
-  InputGroup,
-} from "@blueprintjs/core";
+import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -17,6 +13,8 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { conditionLabels } from "../utils/conditionToDatalog";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 const QueryCondition = ({
   con,
@@ -83,38 +81,58 @@ const QueryCondition = ({
           },
         }}
       />
+      <Switch
+        label="NOT"
+        style={{
+          marginBottom: 0,
+          color: con.not ? "#000000" : "#ffffff",
+          minWidth: 72,
+        }}
+        checked={con.not}
+        onChange={(e) => {
+          const not = (e.target as HTMLInputElement).checked;
+          setConditions(
+            conditions.map((c) => (c.uid === con.uid ? { ...con, not } : c))
+          );
+          if (not)
+            createBlock({
+              parentUid: con.uid,
+              node: { text: "not" },
+              order: 4,
+            });
+          else deleteBlock(getSubTree({ key: "not", parentUid: con.uid }).uid);
+        }}
+      />
       <div className="roamjs-query-condition-target">
-        <span style={{ flexGrow: 1 }}>
-          <PageInput
-            value={con.target}
-            setValue={(e) => {
-              window.clearTimeout(debounceRef.current);
-              setConditions(
-                conditions.map((c) =>
-                  c.uid === con.uid ? { ...con, target: e } : c
-                )
-              );
-              debounceRef.current = window.setTimeout(() => {
-                setInputSetting({
-                  blockUid: con.uid,
-                  value: e,
-                  key: "target",
-                  index: 2,
-                });
-              }, 1000);
-            }}
-          />
-        </span>
-        <Button
-          icon={"trash"}
-          onClick={() => {
-            deleteBlock(con.uid);
-            setConditions(conditions.filter((c) => c.uid !== con.uid));
+        <PageInput
+          value={con.target}
+          setValue={(e) => {
+            window.clearTimeout(debounceRef.current);
+            setConditions(
+              conditions.map((c) =>
+                c.uid === con.uid ? { ...con, target: e } : c
+              )
+            );
+            debounceRef.current = window.setTimeout(() => {
+              setInputSetting({
+                blockUid: con.uid,
+                value: e,
+                key: "target",
+                index: 2,
+              });
+            }, 1000);
           }}
-          minimal
-          style={{ alignSelf: "end", minWidth: 30 }}
         />
       </div>
+      <Button
+        icon={"trash"}
+        onClick={() => {
+          deleteBlock(con.uid);
+          setConditions(conditions.filter((c) => c.uid !== con.uid));
+        }}
+        minimal
+        style={{ alignSelf: "end", minWidth: 30 }}
+      />
     </div>
   );
 };
@@ -159,51 +177,47 @@ const QuerySelection = ({
           }}
         />
       </div>
+      <span
+        style={{
+          minWidth: 72,
+          display: "inline-block",
+          fontWeight: 600,
+        }}
+      >
+        Select
+      </span>
       <div
         style={{
           flexGrow: 1,
-          display: "flex",
           minWidth: 300,
-          alignItems: "center",
         }}
       >
-        <span
-          style={{
-            minWidth: 56,
-            display: "inline-block",
-            fontWeight: 600,
-          }}
-        >
-          Select
-        </span>
-        <div style={{ flexGrow: 1 }}>
-          <InputGroup
-            value={sel.text}
-            style={{ width: "100%" }}
-            onChange={(e) => {
-              window.clearTimeout(debounceRef.current);
-              setSelections(
-                selections.map((c) =>
-                  c.uid === sel.uid ? { ...sel, text: e.target.value } : c
-                )
-              );
-              debounceRef.current = window.setTimeout(() => {
-                updateBlock({ uid: sel.uid, text: sel.text });
-              }, 1000);
-            }}
-          />
-        </div>
-        <Button
-          icon={"trash"}
-          onClick={() => {
-            deleteBlock(sel.uid).then(() =>
-              setSelections(selections.filter((c) => c.uid !== sel.uid))
+        <InputGroup
+          value={sel.text}
+          style={{ width: "100%" }}
+          onChange={(e) => {
+            window.clearTimeout(debounceRef.current);
+            setSelections(
+              selections.map((c) =>
+                c.uid === sel.uid ? { ...sel, text: e.target.value } : c
+              )
             );
+            debounceRef.current = window.setTimeout(() => {
+              updateBlock({ uid: sel.uid, text: sel.text });
+            }, 1000);
           }}
-          minimal
-          style={{ alignSelf: "end", minWidth: 30 }}
         />
       </div>
+      <Button
+        icon={"trash"}
+        onClick={() => {
+          deleteBlock(sel.uid).then(() =>
+            setSelections(selections.filter((c) => c.uid !== sel.uid))
+          );
+        }}
+        minimal
+        style={{ alignSelf: "end", minWidth: 30 }}
+      />
     </div>
   );
 };
@@ -273,12 +287,10 @@ const QueryEditor = ({
   const [conditions, setConditions] = useState<Condition[]>(() => {
     return conditionsNodeChildren.map(({ uid, children }) => ({
       uid,
-      source: "",
-      target: "",
-      relation: "",
-      ...Object.fromEntries(
-        children.map((c) => [c.text.toLowerCase(), c.children?.[0]?.text])
-      ),
+      source: getSettingValueFromTree({ tree: children, key: "source" }),
+      target: getSettingValueFromTree({ tree: children, key: "target" }),
+      relation: getSettingValueFromTree({ tree: children, key: "relation" }),
+      not: !!getSubTree({ tree: children, key: "not" }).uid,
     }));
   });
 
@@ -307,69 +319,68 @@ const QueryEditor = ({
       label: children?.[0]?.text || "",
     }));
   });
-  useEffect(
-    () => {
-      const {
-        returnNode: value,
-        conditionNodes,
-        selectionNodes,
-      } = parseQuery(defaultQuery);
-      Promise.all([
-        setInputSetting({
-          blockUid: scratchNodeUid,
-          value,
-          key: "return",
-        }),
-        Promise.all(
-          conditionNodes.map(({ source, relation, target }, order) =>
-            createBlock({
-              parentUid: conditionsNodeUid,
-              order,
-              node: {
-                text: `${order}`,
-                children: [
-                  { text: "source", children: [{ text: source }] },
-                  { text: "relation", children: [{ text: relation }] },
-                  { text: "target", children: [{ text: target }] },
-                ],
-              },
-            }).then((uid) => ({
-              source,
-              relation,
-              target,
-              uid,
-            }))
-          )
-        ),
-        Promise.all(
-          selectionNodes.map((sel, order) =>
-            createBlock({
-              parentUid: selectionsNodeUid,
-              order,
-              node: {
-                text: sel.text,
-                uid: sel.uid,
-                children: [{ text: sel.label }],
-              },
-            }).then(() => sel)
-          )
-        ),
-      ]).then(([, conditionNodesWithUids, selections]) => {
-        // setReturnNode(value);
-        setConditions(conditionNodesWithUids);
-        setSelections(selections);
-      });
-    },
-    [
-      defaultQuery,
-      setReturnNode,
-      setConditions,
-      conditionsNodeUid,
-      selectionsNodeUid,
-      setSelections,
-      scratchNodeUid,
-    ]
-  );
+  useEffect(() => {
+    const {
+      returnNode: value,
+      conditionNodes,
+      selectionNodes,
+    } = parseQuery(defaultQuery);
+    Promise.all([
+      setInputSetting({
+        blockUid: scratchNodeUid,
+        value,
+        key: "return",
+      }),
+      Promise.all(
+        conditionNodes.map(({ source, relation, target, not }, order) =>
+          createBlock({
+            parentUid: conditionsNodeUid,
+            order,
+            node: {
+              text: `${order}`,
+              children: [
+                { text: "source", children: [{ text: source }] },
+                { text: "relation", children: [{ text: relation }] },
+                { text: "target", children: [{ text: target }] },
+                ...(not ? [{ text: "not" }] : []),
+              ],
+            },
+          }).then((uid) => ({
+            source,
+            relation,
+            target,
+            uid,
+            not,
+          }))
+        )
+      ),
+      Promise.all(
+        selectionNodes.map((sel, order) =>
+          createBlock({
+            parentUid: selectionsNodeUid,
+            order,
+            node: {
+              text: sel.text,
+              uid: sel.uid,
+              children: [{ text: sel.label }],
+            },
+          }).then(() => sel)
+        )
+      ),
+    ]).then(([, conditionNodesWithUids, selections]) => {
+      // setReturnNode(value);
+      setConditions(conditionNodesWithUids);
+      setSelections(selections);
+    });
+  }, [
+    defaultQuery,
+    setReturnNode,
+    setConditions,
+    conditionsNodeUid,
+    selectionsNodeUid,
+    setSelections,
+    scratchNodeUid,
+  ]);
   useEffect(() => {
     if (!window.roamAlphaAPI.data.fast?.q)
       renderSimpleAlert({
@@ -449,7 +460,7 @@ const QueryEditor = ({
               }).then((uid) =>
                 setConditions([
                   ...conditions,
-                  { uid, source: "", relation: "", target: "" },
+                  { uid, source: "", relation: "", target: "", not: false },
                 ])
               );
             }}
@@ -492,7 +503,7 @@ const QueryEditor = ({
                   })
                 )
                 .then(() => {
-                  setReturnNode('');
+                  setReturnNode("");
                   setConditions([]);
                   setSelections([]);
                 });
