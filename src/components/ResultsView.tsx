@@ -23,7 +23,7 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import useSubTree from "roamjs-components/hooks/useSubTree";
 import extractTag from "roamjs-components/util/extractTag";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
-import { parseRoamDate } from "roamjs-components";
+import parseRoamDate from "roamjs-components/date/parseRoamDate";
 
 export type Result = { text: string; uid: string } & Record<
   string,
