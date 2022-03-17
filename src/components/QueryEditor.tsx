@@ -10,11 +10,12 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import PageInput from "roamjs-components/components/PageInput";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import { conditionLabels } from "../utils/conditionToDatalog";
+import { getConditionLabels } from "../utils/conditionToDatalog";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
+import useSubTree from "roamjs-components/hooks/useSubTree";
 
 const QueryCondition = ({
   con,
@@ -30,6 +31,7 @@ const QueryCondition = ({
   returnNode: string;
 }) => {
   const debounceRef = useRef(0);
+  const conditionLabels = useMemo(getConditionLabels, []);
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
       <MenuItemSelect
@@ -226,6 +228,7 @@ const QueryEditor = ({
   parentUid,
   defaultQuery,
   onQuery,
+  defaultReturnNode,
 }: {
   parentUid: string;
   defaultQuery: string[];
@@ -234,6 +237,7 @@ const QueryEditor = ({
     conditions: Condition[];
     selections: Selection[];
   }) => Promise<void>;
+  defaultReturnNode?: string;
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const scratchNode = useMemo(
@@ -253,7 +257,11 @@ const QueryEditor = ({
     () => scratchNode?.children || [],
     [scratchNode]
   );
-  const [returnNode, setReturnNode] = useState("block");
+  const [returnNode, setReturnNode] = useState(
+    () =>
+      defaultReturnNode ||
+      getSettingValueFromTree({ tree: scratchNodeChildren, key: "return" })
+  );
   const debounceRef = useRef(0);
   const returnNodeOnChange = (value: string) => {
     window.clearTimeout(debounceRef.current);
@@ -266,11 +274,10 @@ const QueryEditor = ({
       });
     }, 1000);
   };
-  const conditionsNode = useMemo(
-    () =>
-      scratchNodeChildren.find((t) => toFlexRegex("conditions").test(t.text)),
-    [scratchNodeChildren]
-  );
+  const conditionsNode = useSubTree({
+    tree: scratchNodeChildren,
+    key: "conditions",
+  });
   const conditionsNodeUid = useMemo(() => {
     if (conditionsNode?.uid) return conditionsNode?.uid;
     const newUid = window.roamAlphaAPI.util.generateUID();
@@ -368,11 +375,12 @@ const QueryEditor = ({
         )
       ),
     ]).then(([, conditionNodesWithUids, selections]) => {
-      // setReturnNode(value);
+      if (!defaultReturnNode) setReturnNode(value);
       setConditions(conditionNodesWithUids);
       setSelections(selections);
     });
   }, [
+    defaultReturnNode,
     defaultQuery,
     setReturnNode,
     setConditions,
@@ -409,7 +417,7 @@ const QueryEditor = ({
         <InputGroup
           autoFocus
           value={returnNode}
-          disabled={true}
+          disabled={!!defaultReturnNode}
           onChange={(e) => {
             returnNodeOnChange(e.target.value);
           }}

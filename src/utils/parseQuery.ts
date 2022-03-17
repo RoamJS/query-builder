@@ -1,8 +1,9 @@
-import { conditionLabels } from "./conditionToDatalog";
+import { getConditionLabels } from "./conditionToDatalog";
 
 const parseQuery = (q: string[]) => {
   const [findWhere = "", ...conditions] = q;
   const returnNode = findWhere.split(" ")[1];
+  const conditionLabels = getConditionLabels();
   const conditionNodes = conditions
     .filter((s) => !s.startsWith("Select"))
     .map((c) => {

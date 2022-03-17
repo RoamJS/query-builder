@@ -1,6 +1,5 @@
 import { Card, Button, Tooltip } from "@blueprintjs/core";
-import React, { useEffect, useMemo, useState } from "react";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import { useEffect, useMemo, useState } from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import ResultsView, { Result as SearchResult } from "./ResultsView";
@@ -10,20 +9,22 @@ import QueryEditor from "./QueryEditor";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
-import useSubTree from "roamjs-components/hooks/useSubTree";
 
-type Props = { pageUid: string; configUid: string };
+type Props = {
+  pageUid: string;
+  hideMetadata?: boolean;
+  defaultReturnNode?: string;
+};
 
-const QueryPage = ({ pageUid, configUid }: Props) => {
+const QueryPage = ({
+  pageUid,
+  hideMetadata = false,
+  defaultReturnNode,
+}: Props) => {
   const queryNode = useMemo(
     () => getSubTree({ parentUid: pageUid, key: "query" }),
     [pageUid]
   );
-  const tree = useMemo(() => getBasicTreeByParentUid(configUid), [configUid]);
-  const hideMetadata = !!useSubTree({
-    key: "Hide Metadata",
-    tree,
-  }).uid;
   const [isEdit, setIsEdit] = useState(!queryNode.uid);
   const [query, setQuery] = useState(() =>
     queryNode.children.map((s) => s.text)
@@ -106,6 +107,7 @@ const QueryPage = ({ pageUid, configUid }: Props) => {
                 )
                 .then(() => Promise.resolve());
             }}
+            defaultReturnNode={defaultReturnNode}
           />
           <hr style={{ borderColor: "#333333" }} />
         </>

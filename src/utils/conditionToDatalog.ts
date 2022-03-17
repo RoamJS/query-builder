@@ -1,54 +1,84 @@
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import { Condition } from "./types";
 
-const freeVar = (v: string) => `?${v.replace(/ /g, "")}`;
-
-const DatalogTranslator: Record<string, (s: string, t: string) => string> = {
-  references: (src, tar) => `[${freeVar(src)} :block/refs ${freeVar(tar)}]`,
-  "is in page": (src, tar) => `[${freeVar(src)} :block/page ${freeVar(tar)}]`,
-  "has title": (src, tar) =>
-    `[${freeVar(src)} :node/title "${normalizePageTitle(tar)}"]`,
-  "with text in title": (src, tar) =>
-    `[${freeVar(src)} :node/title ${freeVar(
-      src
+const DatalogTranslator: Record<
+  string,
+  (args: {
+    freeVar: (s: string) => string;
+    source: string;
+    target: string;
+    uid: string;
+  }) => string
+> = {
+  references: ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :block/refs ${freeVar(target)}]`,
+  "is in page": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :block/page ${freeVar(target)}]`,
+  "has title": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :node/title "${normalizePageTitle(target)}"]`,
+  "with text in title": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :node/title ${freeVar(
+      source
     )}-Title] [(clojure.string/includes? ${freeVar(
-      src
-    )}-Title "${normalizePageTitle(tar)}")]`,
-  "has attribute": (src, tar) =>
-    `[${freeVar(tar)}-Attribute :node/title "${tar}"] [${freeVar(
-      tar
-    )} :block/refs ${freeVar(tar)}-Attribute] [${freeVar(
-      tar
-    )} :block/parents ${freeVar(src)}]`,
-  "has child": (src, tar) =>
-    `[${freeVar(src)} :block/children ${freeVar(tar)}]`,
-  "has ancestor": (src, tar) =>
-    `[${freeVar(src)} :block/parents ${freeVar(tar)}]`,
-  "has descendant": (src, tar) =>
-    `[${freeVar(tar)} :block/parents ${freeVar(src)}]`,
-  "with text": (src, tar) =>
-    `(or [${freeVar(src)} :block/string ${freeVar(src)}-String] [${freeVar(
-      src
-    )} :node/title ${freeVar(
-      src
+      source
+    )}-Title "${normalizePageTitle(target)}")]`,
+  "has attribute": ({ source, target, freeVar }) =>
+    `[${freeVar(target)}-Attribute :node/title "${target}"] [${freeVar(
+      target
+    )} :block/refs ${freeVar(target)}-Attribute] [${freeVar(
+      target
+    )} :block/parents ${freeVar(source)}]`,
+  "has child": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :block/children ${freeVar(target)}]`,
+  "has ancestor": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :block/parents ${freeVar(target)}]`,
+  "has descendant": ({ source, target, freeVar }) =>
+    `[${freeVar(target)} :block/parents ${freeVar(source)}]`,
+  "with text": ({ source, target, freeVar }) =>
+    `(or [${freeVar(source)} :block/string ${freeVar(
+      source
+    )}-String] [${freeVar(source)} :node/title ${freeVar(
+      source
     )}-String]) [(clojure.string/includes? ${freeVar(
-      src
-    )}-String "${normalizePageTitle(tar)}")]`,
-  "created by": (src, tar) =>
-    `[${freeVar(src)} :create/user ${freeVar(src)}-User] [${freeVar(
-      src
-    )}-User :user/display-name "${normalizePageTitle(tar)}"]`,
-} as const;
+      source
+    )}-String "${normalizePageTitle(target)}")]`,
+  "created by": ({ source, target, freeVar }) =>
+    `[${freeVar(source)} :create/user ${freeVar(source)}-User] [${freeVar(
+      source
+    )}-User :user/display-name "${normalizePageTitle(target)}"]`,
+};
 
-export const conditionLabels = Object.keys(DatalogTranslator);
+export const registerDatalogTranslator = ({
+  key,
+  callback,
+}: {
+  key: string;
+  callback: (args: {
+    source: string;
+    target: string;
+    freeVar: (s: string) => string;
+    uid: string;
+  }) => string;
+}) => {
+  DatalogTranslator[key] = callback;
+};
 
-const conditionToDatalog = (condition: Condition): string => {
+export const unregisterDatalogTranslator = ({ key }: { key: string }) =>
+  delete DatalogTranslator[key];
+
+export const getConditionLabels = () => Object.keys(DatalogTranslator);
+
+const conditionToDatalog = ({
+  not,
+  relation,
+  ...condition
+}: Condition): string => {
   const datalog =
-    DatalogTranslator[condition.relation]?.(
-      condition.source,
-      condition.target
-    ) || "";
-  if (datalog && condition.not) return `(not ${datalog})`;
+    DatalogTranslator[relation]?.({
+      freeVar: (v: string) => `?${v.replace(/ /g, "")}`,
+      ...condition,
+    }) || "";
+  if (datalog && not) return `(not ${datalog})`;
   return datalog;
 };
 

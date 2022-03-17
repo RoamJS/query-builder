@@ -4,11 +4,13 @@ import type { Result as SearchResult } from "../components/ResultsView";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type { PullBlock } from "roamjs-components/types";
 
-const predefinedSelections: {
+type PredefinedSelection = {
   test: RegExp;
   pull: (a: { returnNode: string; match: RegExpExecArray }) => string;
-  mapper: (r: SearchResult & PullBlock, key: string) => SearchResult[string];
-}[] = [
+  mapper: (r: PullBlock, key: string) => SearchResult[string];
+};
+
+const predefinedSelections: PredefinedSelection[] = [
   {
     test: /created?\s*date/i,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/time])`,
@@ -40,7 +42,7 @@ const predefinedSelections: {
     pull: ({ match, returnNode }) =>
       `(pull ?${(match[1] || returnNode)?.trim()} [:node/title :block/uid])`,
     mapper: (r) => {
-      return r?.[":node/title"] || r?.[":block/string"] || '';
+      return r?.[":node/title"] || r?.[":block/string"] || "";
     },
   },
   {
@@ -64,6 +66,10 @@ const predefinedSelections: {
   },
 ];
 
+export const registerSelection = (args: PredefinedSelection) => {
+  predefinedSelections.unshift(args);
+};
+
 const fireQuery = ({
   conditions,
   returnNode,
@@ -78,7 +84,7 @@ const fireQuery = ({
   const definedSelections = [
     {
       mapper: (r: PullBlock, _: string): SearchResult[string] => {
-        return r?.[":node/title"] || r?.[":block/string"] || '';
+        return r?.[":node/title"] || r?.[":block/string"] || "";
       },
       pull: `(pull ?${returnNode} [:block/string :node/title])`,
       label: "text",
@@ -86,7 +92,7 @@ const fireQuery = ({
     },
     {
       mapper: (r: PullBlock, _: string): SearchResult[string] => {
-        return r?.[":block/uid"] || '';
+        return r?.[":block/uid"] || "";
       },
       pull: `(pull ?${returnNode} [:block/uid])`,
       label: "uid",

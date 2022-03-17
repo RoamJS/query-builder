@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import fuzzy from "fuzzy";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import {
@@ -7,8 +6,6 @@ import {
   Icon,
   Tooltip,
   HTMLTable,
-  InputGroup,
-  Popover,
   Intent,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
@@ -30,7 +27,6 @@ export type Result = { text: string; uid: string } & Record<
   string | number | Date
 >;
 
-type MappedResult = { uid: string } & Record<string, string>;
 type Sorts = { key: string; descending: boolean }[];
 type Filters = Record<
   string,
@@ -150,7 +146,15 @@ const ResultHeader = ({
   );
 };
 
-const ResultView = ({ r, colSpan }: { r: MappedResult; colSpan: number }) => {
+const ResultView = ({
+  r,
+  colSpan,
+  ctrlClick,
+}: {
+  r: Result;
+  colSpan: number;
+  ctrlClick?: (e: Result) => void;
+}) => {
   const rowCells = Object.keys(r).filter((k) => !defaultFields.includes(k));
   const [contextOpen, setContextOpen] = useState(false);
   const contextPageTitle = useMemo(
@@ -220,10 +224,12 @@ const ResultView = ({ r, colSpan }: { r: MappedResult; colSpan: number }) => {
             className={"rm-page-ref"}
             href={getRoamUrl(r.uid)}
             onClick={(e) => {
-              if (e.ctrlKey || e.shiftKey) {
+              if (e.shiftKey) {
                 openBlockInSidebar(r.uid);
                 e.preventDefault();
                 e.stopPropagation();
+              } else if (e.ctrlKey) {
+                ctrlClick?.(r);
               }
             }}
           >
@@ -341,11 +347,17 @@ const ResultsView = ({
   header = "Results",
   results,
   resultContent = <div />,
+  hideResults = false,
+  resultFilter,
+  ctrlClick,
 }: {
   parentUid: string;
   header?: React.ReactNode;
   results: Result[];
   resultContent?: React.ReactElement;
+  hideResults?: boolean;
+  resultFilter?: (r: Result) => void;
+  ctrlClick?: (e: Result) => void;
 }) => {
   const resultNode = useSubTree({ parentUid, key: "results" });
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
@@ -406,7 +418,8 @@ const ResultsView = ({
     )
   );
   const sortedResults = useMemo(() => {
-    return results
+    const resultsToSort = resultFilter ? results.filter(resultFilter) : results;
+    return resultsToSort
       .filter((r) => {
         return (
           Object.keys(filters).every(
@@ -435,7 +448,7 @@ const ResultsView = ({
             .map(([k, v]) => [k, toCellValue(v)])
         ),
       }));
-  }, [results, activeSort, filters]);
+  }, [results, activeSort, filters, resultFilter]);
   return (
     <div
       className="roamjs-query-results-view"
@@ -453,113 +466,117 @@ const ResultsView = ({
       >
         {header}
       </h4>
-      <div tabIndex={-1} style={{ position: "relative", outline: "none" }}>
-        {resultContent}
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <i style={{ opacity: 0.8 }}>
-            Showing {sortedResults.length} of {results.length} results
-          </i>
-          <Tooltip content={"Save filters and sorts"}>
-            <Button
-              icon={"saved"}
-              onClick={() => {
-                const resultNode = getSubTree({ key: "results", parentUid });
-                return (
-                  resultNode.uid
-                    ? Promise.all(
-                        resultNode.children.map((c) => deleteBlock(c.uid))
-                      ).then(() => resultNode.uid)
-                    : createBlock({ parentUid, node: { text: "results" } })
-                )
-                  .then((uid) =>
-                    Promise.all([
-                      createBlock({
-                        parentUid: uid,
-                        node: {
-                          text: "filters",
-                          children: Object.entries(filters).map(
-                            ([column, data]) => ({
-                              text: column,
-                              children: [
-                                {
-                                  text: "includes",
-                                  children: Array.from(
-                                    data.includes.values
-                                  ).map((text) => ({ text })),
-                                },
-                                {
-                                  text: "exludes",
-                                  children: Array.from(
-                                    data.excludes.values
-                                  ).map((text) => ({ text })),
-                                },
-                              ],
-                            })
-                          ),
-                        },
-                      }),
-                      createBlock({
-                        parentUid: uid,
-                        node: {
-                          text: "sorts",
-                          children: activeSort.map((a) => ({
-                            text: a.key,
-                            children: [{ text: `${a.descending}` }],
-                          })),
-                        },
-                        order: 1,
-                      }),
-                    ])
+      {!hideResults && (
+        <div tabIndex={-1} style={{ position: "relative", outline: "none" }}>
+          {resultContent}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <i style={{ opacity: 0.8 }}>
+              Showing {sortedResults.length} of {results.length} results
+            </i>
+            <Tooltip content={"Save filters and sorts"}>
+              <Button
+                icon={"saved"}
+                onClick={() => {
+                  const resultNode = getSubTree({ key: "results", parentUid });
+                  return (
+                    resultNode.uid
+                      ? Promise.all(
+                          resultNode.children.map((c) => deleteBlock(c.uid))
+                        ).then(() => resultNode.uid)
+                      : createBlock({ parentUid, node: { text: "results" } })
                   )
-                  .then(() =>
-                    renderToast({
-                      id: "query-results-success",
-                      content: "Successfully saved query's filters and sorts!",
-                      intent: Intent.SUCCESS,
-                    })
-                  );
-              }}
-            />
-          </Tooltip>
-        </div>
-        <HTMLTable
-          style={{
-            maxHeight: "400px",
-            overflowY: "scroll",
-            width: "100%",
-            tableLayout: "fixed",
-          }}
-          striped
-          interactive
-          bordered
-        >
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <ResultHeader
-                  key={c}
-                  c={c}
-                  results={results}
-                  activeSort={activeSort}
-                  setActiveSort={setActiveSort}
-                  filters={filters}
-                  setFilters={setFilters}
-                  initialFilter={savedFiltedData[c]}
+                    .then((uid) =>
+                      Promise.all([
+                        createBlock({
+                          parentUid: uid,
+                          node: {
+                            text: "filters",
+                            children: Object.entries(filters).map(
+                              ([column, data]) => ({
+                                text: column,
+                                children: [
+                                  {
+                                    text: "includes",
+                                    children: Array.from(
+                                      data.includes.values
+                                    ).map((text) => ({ text })),
+                                  },
+                                  {
+                                    text: "exludes",
+                                    children: Array.from(
+                                      data.excludes.values
+                                    ).map((text) => ({ text })),
+                                  },
+                                ],
+                              })
+                            ),
+                          },
+                        }),
+                        createBlock({
+                          parentUid: uid,
+                          node: {
+                            text: "sorts",
+                            children: activeSort.map((a) => ({
+                              text: a.key,
+                              children: [{ text: `${a.descending}` }],
+                            })),
+                          },
+                          order: 1,
+                        }),
+                      ])
+                    )
+                    .then(() =>
+                      renderToast({
+                        id: "query-results-success",
+                        content:
+                          "Successfully saved query's filters and sorts!",
+                        intent: Intent.SUCCESS,
+                      })
+                    );
+                }}
+              />
+            </Tooltip>
+          </div>
+          <HTMLTable
+            style={{
+              maxHeight: "400px",
+              overflowY: "scroll",
+              width: "100%",
+              tableLayout: "fixed",
+            }}
+            striped
+            interactive
+            bordered
+          >
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <ResultHeader
+                    key={c}
+                    c={c}
+                    results={results}
+                    activeSort={activeSort}
+                    setActiveSort={setActiveSort}
+                    filters={filters}
+                    setFilters={setFilters}
+                    initialFilter={savedFiltedData[c]}
+                  />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedResults.map((r) => (
+                <ResultView
+                  key={Object.values(r).join("-")}
+                  r={r}
+                  colSpan={columns.length}
+                  ctrlClick={ctrlClick}
                 />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedResults.map((r) => (
-              <ResultView
-                key={Object.values(r).join("-")}
-                r={r}
-                colSpan={columns.length}
-              />
-            ))}
-          </tbody>
-        </HTMLTable>
-      </div>
+            </tbody>
+          </HTMLTable>
+        </div>
+      )}
     </div>
   );
 };

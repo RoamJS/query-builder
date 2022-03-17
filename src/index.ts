@@ -14,9 +14,12 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import QueryPage, { render as renderQueryPage } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
 import ResultsView from "./components/ResultsView";
-import fireQuery from "./utils/fireQuery";
+import fireQuery, { registerSelection } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
-import conditionToDatalog from "./utils/conditionToDatalog";
+import conditionToDatalog, {
+  registerDatalogTranslator,
+  unregisterDatalogTranslator,
+} from "./utils/conditionToDatalog";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -129,10 +132,16 @@ runExtension(ID, async () => {
               parent,
               h1.parentElement?.nextElementSibling || null
             );
+            const tree = getBasicTreeByParentUid(pageUid);
+            const hideMetadata = !!getSubTree({
+              key: "Hide Metadata",
+              tree,
+            }).uid;
             renderQueryPage({
-              configUid: pageUid,
+              hideMetadata,
               pageUid: uid,
               parent,
+              defaultReturnNode: "block",
             });
           }
         }
@@ -183,5 +192,8 @@ runExtension(ID, async () => {
     fireQuery,
     parseQuery,
     conditionToDatalog,
+    registerSelection,
+    registerDatalogTranslator,
+    unregisterDatalogTranslator,
   };
 });
