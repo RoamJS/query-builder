@@ -16,7 +16,7 @@ const DatalogTranslator: Record<
   "is in page": ({ source, target, freeVar }) =>
     `[${freeVar(source)} :block/page ${freeVar(target)}]`,
   "has title": ({ source, target, freeVar }) =>
-   /^\s*{date}\s*$/i.test(target) ? `[${freeVar(source)} :node/title ?${freeVar(source)}-Title] [(re-matches ?date-regex ?${freeVar(source)}-Title)]` : `[${freeVar(source)} :node/title "${normalizePageTitle(target)}"]`,
+   /^\s*{date}\s*$/i.test(target) ? `[${freeVar(source)} :node/title ${freeVar(source)}-Title] [(re-matches ?date-regex ${freeVar(source)}-Title)]` : `[${freeVar(source)} :node/title "${normalizePageTitle(target)}"]`,
   "with text in title": ({ source, target, freeVar }) =>
     `[${freeVar(source)} :node/title ${freeVar(
       source
