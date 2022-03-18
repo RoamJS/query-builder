@@ -7,6 +7,9 @@ import {
   Tooltip,
   HTMLTable,
   Intent,
+  Popover,
+  Menu,
+  MenuItem,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
@@ -65,6 +68,8 @@ const sortFunction =
     }
   };
 
+const VIEWS = ["link", "plain", "embed"];
+
 const ResultHeader = ({
   c,
   results,
@@ -73,6 +78,8 @@ const ResultHeader = ({
   filters,
   setFilters,
   initialFilter,
+  view,
+  onViewChange,
 }: {
   c: string;
   results: Result[];
@@ -81,6 +88,8 @@ const ResultHeader = ({
   filters: Filters;
   setFilters: (f: Filters) => void;
   initialFilter: Filters[string];
+  view: string;
+  onViewChange: (s: string) => void;
 }) => {
   const filterData = useMemo(
     () => ({
@@ -140,22 +149,55 @@ const ResultHeader = ({
               s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
             }
           />
+          <span onClick={(e) => e.stopPropagation()}>
+            <Tooltip content={"Switch View"}>
+              <Popover
+                target={<Button icon={"eye-open"} minimal />}
+                content={
+                  <Menu style={{ padding: 16 }}>
+                    {VIEWS.map((c) => (
+                      <MenuItem
+                        active={c === view}
+                        onClick={() => onViewChange(c)}
+                        text={c}
+                      />
+                    ))}
+                  </Menu>
+                }
+              />
+            </Tooltip>
+          </span>
         </span>
       </div>
     </td>
   );
 };
 
+const CellEmbed = ({ uid }: { uid: string }) => {
+  const contentRef = useRef(null);
+  useEffect(() => {
+    window.roamAlphaAPI.ui.components.renderBlock({
+      uid,
+      el: contentRef.current,
+    });
+  }, [contentRef]);
+  return <div ref={contentRef} className="roamjs-query-embed" />;
+};
+
 const ResultView = ({
   r,
   colSpan,
   ctrlClick,
+  views,
 }: {
   r: Result;
   colSpan: number;
   ctrlClick?: (e: Result) => void;
+  views: Record<string, string>;
 }) => {
-  const rowCells = Object.keys(r).filter((k) => !defaultFields.includes(k));
+  const rowCells = Object.keys(r).filter(
+    (k) => !defaultFields.some((r) => r.test(k))
+  );
   const [contextOpen, setContextOpen] = useState(false);
   const contextPageTitle = useMemo(
     () => r.context && getPageTitleByPageUid(r.context.toString()),
@@ -214,37 +256,40 @@ const ResultView = ({
   return (
     <>
       <tr>
-        <td
-          style={{
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-          }}
-        >
-          <a
-            className={"rm-page-ref"}
-            href={getRoamUrl(r.uid)}
-            onClick={(e) => {
-              if (e.shiftKey) {
-                openBlockInSidebar(r.uid);
-                e.preventDefault();
-                e.stopPropagation();
-              } else if (e.ctrlKey) {
-                ctrlClick?.(r);
-              }
-            }}
-          >
-            {cell("text")}
-          </a>
-        </td>
         {rowCells.map((k) => {
+          const uid = (r[`${k}-uid`] || "").toString();
           return (
             <td
               style={{
                 textOverflow: "ellipsis",
+                overflow: "hidden",
               }}
               key={k}
             >
-              {cell(k)}
+              {views[k] === "link" ? (
+                <a
+                  className={"rm-page-ref"}
+                  href={getRoamUrl(uid)}
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      openBlockInSidebar(uid);
+                      e.preventDefault();
+                      e.stopPropagation();
+                    } else if (e.ctrlKey) {
+                      ctrlClick?.({
+                        text: toCellValue(r[k] || ""),
+                        uid,
+                      });
+                    }
+                  }}
+                >
+                  {cell(k)}
+                </a>
+              ) : views[k] === "embed" ? (
+                <CellEmbed uid={uid} />
+              ) : (
+                cell(k)
+              )}
             </td>
           );
         })}
@@ -307,7 +352,7 @@ const ResultView = ({
   );
 };
 
-const defaultFields = ["text", "uid", "context"];
+const defaultFields = [/uid/, /context/];
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? toRoamDate(v)
@@ -362,13 +407,13 @@ const ResultsView = ({
   const resultNode = useSubTree({ parentUid, key: "results" });
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
+  const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
   const columns = useMemo(
     () =>
       results.length
         ? [
-            "text",
             ...Object.keys(results[0]).filter(
-              (k) => !defaultFields.includes(k)
+              (k) => !defaultFields.some((r) => r.test(k))
             ),
             ...(results.some((r) => !!r.context) ? ["context"] : []),
           ]
@@ -403,6 +448,13 @@ const ResultsView = ({
             },
           },
         ])
+      ),
+    [filtersNode]
+  );
+  const savedViewData = useMemo(
+    () =>
+      Object.fromEntries(
+        viewsNode.children.map((c) => [c.text, c.children[0]?.text])
       ),
     [filtersNode]
   );
@@ -449,6 +501,14 @@ const ResultsView = ({
         ),
       }));
   }, [results, activeSort, filters, resultFilter]);
+  const [views, setViews] = useState(
+    Object.fromEntries(
+      columns.map((key) => [
+        key,
+        savedViewData[key] || (key === "text" ? "link" : "plain"),
+      ])
+    )
+  );
   return (
     <div
       className="roamjs-query-results-view"
@@ -473,7 +533,7 @@ const ResultsView = ({
             <i style={{ opacity: 0.8 }}>
               Showing {sortedResults.length} of {results.length} results
             </i>
-            <Tooltip content={"Save filters and sorts"}>
+            <Tooltip content={"Save filters, sorts, & views"}>
               <Button
                 icon={"saved"}
                 onClick={() => {
@@ -523,6 +583,19 @@ const ResultsView = ({
                           },
                           order: 1,
                         }),
+                        createBlock({
+                          parentUid: uid,
+                          node: {
+                            text: "views",
+                            children: Object.entries(views).map(
+                              ([key, value]) => ({
+                                text: key,
+                                children: [{ text: value }],
+                              })
+                            ),
+                          },
+                          order: 1,
+                        }),
                       ])
                     )
                     .then(() =>
@@ -560,6 +633,8 @@ const ResultsView = ({
                     filters={filters}
                     setFilters={setFilters}
                     initialFilter={savedFiltedData[c]}
+                    view={views[c]}
+                    onViewChange={(v) => setViews({ ...views, [c]: v })}
                   />
                 ))}
               </tr>
@@ -571,6 +646,7 @@ const ResultsView = ({
                   r={r}
                   colSpan={columns.length}
                   ctrlClick={ctrlClick}
+                  views={views}
                 />
               ))}
             </tbody>

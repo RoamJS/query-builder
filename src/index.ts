@@ -55,6 +55,10 @@ runExtension(ID, async () => {
   background: #FFFF00;
 }
 
+.roamjs-query-embed .rm-block-separator {
+  display: none;
+}
+
 /* width */
 .roamjs-query-results-view ul::-webkit-scrollbar {
   width: 6px;

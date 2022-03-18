@@ -10,12 +10,13 @@ const DatalogTranslator: Record<
     uid: string;
   }) => string
 > = {
+  self: ({ source, freeVar }) => `[${freeVar(source)} :block/uid "${source}"]`,
   references: ({ source, target, freeVar }) =>
     `[${freeVar(source)} :block/refs ${freeVar(target)}]`,
   "is in page": ({ source, target, freeVar }) =>
     `[${freeVar(source)} :block/page ${freeVar(target)}]`,
   "has title": ({ source, target, freeVar }) =>
-    `[${freeVar(source)} :node/title "${normalizePageTitle(target)}"]`,
+   /^\s*{date}\s*$/i.test(target) ? `[${freeVar(source)} :node/title ?${freeVar(source)}-Title] [(re-matches ?date-regex ?${freeVar(source)}-Title)]` : `[${freeVar(source)} :node/title "${normalizePageTitle(target)}"]`,
   "with text in title": ({ source, target, freeVar }) =>
     `[${freeVar(source)} :node/title ${freeVar(
       source
@@ -66,7 +67,7 @@ export const registerDatalogTranslator = ({
 export const unregisterDatalogTranslator = ({ key }: { key: string }) =>
   delete DatalogTranslator[key];
 
-export const getConditionLabels = () => Object.keys(DatalogTranslator);
+export const getConditionLabels = () => Object.keys(DatalogTranslator).filter(k => k !== 'self');
 
 const conditionToDatalog = ({
   not,
@@ -75,7 +76,7 @@ const conditionToDatalog = ({
 }: Condition): string => {
   const datalog =
     DatalogTranslator[relation]?.({
-      freeVar: (v: string) => `?${v.replace(/ /g, "")}`,
+      freeVar: (v: string) => `?${v.replace(/[\s-]/g, "")}`,
       ...condition,
     }) || "";
   if (datalog && not) return `(not ${datalog})`;

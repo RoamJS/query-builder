@@ -25,24 +25,33 @@ const QueryPage = ({
     () => getSubTree({ parentUid: pageUid, key: "query" }),
     [pageUid]
   );
-  const [isEdit, setIsEdit] = useState(!queryNode.uid);
+  const [isEdit, setIsEdit] = useState(
+    !queryNode.children.length &&
+      (!defaultReturnNode || defaultReturnNode === "block")
+  );
   const [query, setQuery] = useState(() =>
-    queryNode.children.map((s) => s.text)
+    queryNode.children.length
+      ? queryNode.children.map((s) => s.text)
+      : defaultReturnNode
+      ? [`Find ${defaultReturnNode} Where`]
+      : []
   );
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   useEffect(() => {
-    setLoading(true);
-    const { returnNode, conditionNodes, selectionNodes } = parseQuery(query);
-    setTimeout(() => {
-      const results = fireQuery({
-        returnNode,
-        conditions: conditionNodes,
-        selections: selectionNodes,
-      });
-      setResults(results);
-      setLoading(false);
-    }, 1);
+    if (query.length) {
+      setLoading(true);
+      const { returnNode, conditionNodes, selectionNodes } = parseQuery(query);
+      setTimeout(() => {
+        const results = fireQuery({
+          returnNode,
+          conditions: conditionNodes,
+          selections: selectionNodes,
+        });
+        setResults(results);
+        setLoading(false);
+      }, 1);
+    }
   }, [setResults, query]);
   return (
     <Card

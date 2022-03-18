@@ -3,11 +3,15 @@ import { Condition, Selection } from "./types";
 import type { Result as SearchResult } from "../components/ResultsView";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type { PullBlock } from "roamjs-components/types";
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 
 type PredefinedSelection = {
   test: RegExp;
   pull: (a: { returnNode: string; match: RegExpExecArray }) => string;
-  mapper: (r: PullBlock, key: string) => SearchResult[string];
+  mapper: (
+    r: PullBlock,
+    key: string
+  ) => SearchResult[string] | Record<string, SearchResult[string]>;
 };
 
 const predefinedSelections: PredefinedSelection[] = [
@@ -42,7 +46,10 @@ const predefinedSelections: PredefinedSelection[] = [
     pull: ({ match, returnNode }) =>
       `(pull ?${(match[1] || returnNode)?.trim()} [:node/title :block/uid])`,
     mapper: (r) => {
-      return r?.[":node/title"] || r?.[":block/string"] || "";
+      return {
+        "": r?.[":node/title"] || "",
+        "-uid": r[":block/uid"],
+      };
     },
   },
   {
@@ -79,26 +86,43 @@ const fireQuery = ({
   conditions: Condition[];
   selections: Selection[];
 }) => {
-  const where = conditions.map(conditionToDatalog).join("\n");
+  const where = conditions.length
+    ? conditions.map(conditionToDatalog).join("\n")
+    : conditionToDatalog({
+        relation: "self",
+        source: returnNode,
+        target: returnNode,
+        uid: "",
+        not: false,
+      });
 
-  const definedSelections = [
+  const defaultSelections: {
+    mapper: PredefinedSelection["mapper"];
+    pull: string;
+    label: string;
+    key: string;
+  }[] = [
     {
-      mapper: (r: PullBlock, _: string): SearchResult[string] => {
-        return r?.[":node/title"] || r?.[":block/string"] || "";
+      mapper: (r) => {
+        return {
+          "": r?.[":node/title"] || r?.[":block/string"] || "",
+          "-uid": r[":block/uid"],
+        };
       },
-      pull: `(pull ?${returnNode} [:block/string :node/title])`,
+      pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
       label: "text",
       key: "",
     },
     {
-      mapper: (r: PullBlock, _: string): SearchResult[string] => {
+      mapper: (r) => {
         return r?.[":block/uid"] || "";
       },
       pull: `(pull ?${returnNode} [:block/uid])`,
       label: "uid",
       key: "",
     },
-  ].concat(
+  ];
+  const definedSelections = defaultSelections.concat(
     selections
       .map((s) => ({
         defined: predefinedSelections.find((p) => p.test.test(s.text)),
@@ -116,19 +140,24 @@ const fireQuery = ({
       }))
   );
   const find = definedSelections.map((p) => p.pull).join("\n");
-  const query = `[:find\n${find}\n:where\n${where}\n]`;
+  const query = `[:find\n${find}\n:in $ ?date-regex\n:where\n${where}\n]`;
   try {
-    const results = where
-      ? window.roamAlphaAPI.data.fast
-          .q(query)
-          .map((a) => JSON.parse(JSON.stringify(a)) as PullBlock[])
-      : [];
-    return results.map((r) =>
-      definedSelections.reduce((p, c, i) => {
-        p[c.label] = c.mapper(r[i], c.key);
-        return p;
-      }, {} as SearchResult)
-    );
+    return window.roamAlphaAPI.data.fast
+      .q(query, DAILY_NOTE_PAGE_TITLE_REGEX)
+      .map((a) => a as PullBlock[])
+      .map((r) =>
+        definedSelections.reduce((p, c, i) => {
+          const output = c.mapper(r[i], c.key);
+          if (typeof output === "object" && !(output instanceof Date)) {
+            Object.entries(output).forEach(([k, v]) => {
+              p[c.label + k] = v;
+            });
+          } else {
+            p[c.label] = output;
+          }
+          return p;
+        }, {} as SearchResult)
+      );
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);
