@@ -519,7 +519,6 @@ const QueryEditor = ({
             style={{ maxHeight: 32 }}
             intent={"primary"}
             disabled={
-              !conditions.length ||
               !conditions.every((c) => !!c.relation && !!c.target) ||
               !returnNode ||
               selections.some((s) => !s.text)

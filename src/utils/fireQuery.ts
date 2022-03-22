@@ -7,7 +7,11 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 
 type PredefinedSelection = {
   test: RegExp;
-  pull: (a: { returnNode: string; match: RegExpExecArray }) => string;
+  pull: (a: {
+    returnNode: string;
+    match: RegExpExecArray;
+    where: string;
+  }) => string;
   mapper: (
     r: PullBlock,
     key: string
@@ -43,8 +47,12 @@ const predefinedSelections: PredefinedSelection[] = [
   },
   {
     test: /^node:(\s*.*\s*)$/i,
-    pull: ({ match, returnNode }) =>
-      `(pull ?${(match[1] || returnNode)?.trim()} [:node/title :block/uid])`,
+    pull: ({ match, returnNode, where }) => {
+      const node = (match[1] || returnNode)?.trim();
+      return where.includes(`?${node}`)
+        ? `(pull ?${node} [:node/title :block/uid])`
+        : "";
+    },
     mapper: (r) => {
       return {
         "": r?.[":node/title"] || "",
@@ -132,12 +140,14 @@ const fireQuery = ({
       .map((p) => ({
         mapper: p.defined.mapper,
         pull: p.defined.pull({
+          where,
           returnNode,
           match: p.defined.test.exec(p.s.text),
         }),
         label: p.s.label || p.s.text,
         key: p.s.text,
       }))
+      .filter((p) => !!p.pull)
   );
   const find = definedSelections.map((p) => p.pull).join("\n");
   const query = `[:find\n${find}\n:in $ ?date-regex\n:where\n${where}\n]`;
