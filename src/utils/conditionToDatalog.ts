@@ -89,7 +89,7 @@ const DatalogTranslator: Record<
       arguments: [
         { type: "variable", value: `${target}-Attribute` },
         { type: "constant", value: ":node/title" },
-        { type: "variable", value: `"${target}"` },
+        { type: "constant", value: `"${target}"` },
       ],
     },
     {
