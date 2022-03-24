@@ -97,6 +97,7 @@ runExtension(ID, async () => {
             ],
           },
         ],
+        versioning: true,
       },
     });
 
