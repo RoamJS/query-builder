@@ -5,7 +5,8 @@
   "main": "./build/main.js",
   "scripts": {
     "build": "roamjs-scripts build",
-    "dev": "roamjs-scripts dev"
+    "dev": "roamjs-scripts dev",
+    "dev:dep": "roamjs-scripts dev -- --port 3100"
   },
   "license": "MIT",
   "devDependencies": {

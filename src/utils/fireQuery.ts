@@ -4,12 +4,10 @@ import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
   PullBlock,
   DatalogAndClause,
-  DatalogArgument,
-  DatalogBinding,
   DatalogClause,
-  DatalogFnArg,
 } from "roamjs-components/types";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import compileDatalog from "roamjs-components/queries/compileDatalog";
 
 type PredefinedSelection = {
   test: RegExp;
@@ -47,64 +45,149 @@ const isVariableExposed = (
     }
   });
 
-const compileDatalog = (
-  d:
-    | DatalogClause
-    | DatalogAndClause
-    | DatalogArgument
-    | DatalogFnArg
-    | DatalogBinding,
-  level: number
-): string => {
-  switch (d.type) {
-    case "data-pattern":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }${d.arguments.map((a) => compileDatalog(a, level)).join(" ")}]`;
-    case "srcvar":
-      return `$${d.value.replace(/\s/g, "")}`;
-    case "constant":
-    case "underscore":
-      return d.value;
-    case "variable":
-      return `?${d.value.replace(/\s/g, "")}`;
-    case "fn-expr":
-      return `[(${d.fn} ${d.arguments
-        .map((a) => compileDatalog(a, level))
-        .join(" ")}) ${compileDatalog(d.binding, level)}]`;
-    case "pred-expr":
-      return `[(${d.pred} ${d.arguments
-        .map((a) => compileDatalog(a, level))
-        .join(" ")})]`;
-    case "rule-expr":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }${d.arguments.map((a) => compileDatalog(a, level)).join(" ")}]`;
-    case "not-clause":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }not ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
-    case "or-clause":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }or ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
-    case "and-clause":
-      return `(and ${d.clauses.map((c) => compileDatalog(c, level + 1))})`;
-    case "not-join-clause":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }not-join [${d.variables.map((v) =>
-        compileDatalog(v, level)
-      )}] ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
-    case "or-join-clause":
-      return `[${
-        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
-      }or-join [${d.variables.map((v) => compileDatalog(v, level))}] ${d.clauses
-        .map((a) => compileDatalog(a, level + 1))
-        .join(" ")}]`;
-    default:
-      return "";
+const firstVariable = (clause: DatalogClause | DatalogAndClause): string => {
+  if (
+    clause.type === "data-pattern" ||
+    clause.type === "fn-expr" ||
+    clause.type === "pred-expr" ||
+    clause.type === "rule-expr"
+  ) {
+    return [...clause.arguments].find((v) => v.type === "variable")?.value;
+  } else if (
+    clause.type === "not-clause" ||
+    clause.type === "or-clause" ||
+    clause.type === "and-clause"
+  ) {
+    return firstVariable(clause.clauses[0]);
+  } else if (
+    clause.type === "not-join-clause" ||
+    clause.type === "or-join-clause"
+  ) {
+    return clause.variables[0]?.value;
   }
+};
+
+const getVariables = (
+  clause: DatalogClause | DatalogAndClause
+): Set<string> => {
+  if (
+    clause.type === "data-pattern" ||
+    clause.type === "fn-expr" ||
+    clause.type === "pred-expr" ||
+    clause.type === "rule-expr"
+  ) {
+    return new Set(
+      [...clause.arguments]
+        .filter((v) => v.type === "variable")
+        .map((v) => v.value)
+    );
+  } else if (
+    clause.type === "not-clause" ||
+    clause.type === "or-clause" ||
+    clause.type === "and-clause"
+  ) {
+    return new Set(clause.clauses.flatMap((c) => Array.from(getVariables(c))));
+  } else if (
+    clause.type === "not-join-clause" ||
+    clause.type === "or-join-clause"
+  ) {
+    return new Set(clause.variables.map((c) => c.value));
+  }
+};
+
+const optimizeQuery = (
+  clauses: (DatalogClause | DatalogAndClause)[],
+  capturedVariables: Set<string>
+): (DatalogClause | DatalogAndClause)[] => {
+  const marked = clauses.map(() => false);
+  const orderedClauses: (DatalogClause | DatalogAndClause)[] = [];
+  const variablesByIndex: Record<number, Set<string>> = {};
+  for (let i = 0; i < clauses.length; i++) {
+    let bestClauseIndex = clauses.length;
+    let bestClauseScore = Number.MAX_VALUE;
+    clauses.forEach((c, j) => {
+      if (marked[j]) return;
+      let score = bestClauseScore;
+      if (c.type === "data-pattern") {
+        if (
+          c.arguments[0]?.type === "variable" &&
+          c.arguments[1]?.type === "constant"
+        ) {
+          if (c.arguments[2]?.type === "constant") {
+            score = 1;
+          } else if (
+            c.arguments[2]?.type === "variable" &&
+            (capturedVariables.has(c.arguments[0].value) ||
+              capturedVariables.has(c.arguments[2].value))
+          ) {
+            score = 2;
+          } else {
+            score = 100000;
+          }
+        } else {
+          score = 100001;
+        }
+      } else if (
+        c.type === "fn-expr" ||
+        c.type === "pred-expr" ||
+        c.type === "rule-expr"
+      ) {
+        if (
+          [...c.arguments].every(
+            (a) => a.type !== "variable" || capturedVariables.has(a.value)
+          )
+        ) {
+          score = 10;
+        } else {
+          score = 100002;
+        }
+      } else if (
+        c.type === "not-clause" ||
+        c.type === "or-clause" ||
+        c.type === "and-clause"
+      ) {
+        const allVars =
+          variablesByIndex[j] || (variablesByIndex[j] = getVariables(c));
+        if (Array.from(allVars).every((v) => capturedVariables.has(v))) {
+          score = 100;
+        } else {
+          score = 100003;
+        }
+      } else if (c.type === "not-join-clause" || c.type === "or-join-clause") {
+        if (c.variables.every((v) => capturedVariables.has(v.value))) {
+          score = 1000;
+        } else {
+          score = 100004
+        }
+      } else {
+        score = 100005
+      }
+      if (score < bestClauseScore) {
+        bestClauseScore = score;
+        bestClauseIndex = j;
+      }
+    });
+    marked[bestClauseIndex] = true;
+    const bestClause = clauses[bestClauseIndex];
+    orderedClauses.push(clauses[bestClauseIndex]);
+    if (
+      bestClause.type === "not-join-clause" ||
+      bestClause.type === "or-join-clause" ||
+      bestClause.type === "not-clause" ||
+      bestClause.type === "or-clause" ||
+      bestClause.type === "and-clause"
+    ) {
+      bestClause.clauses = optimizeQuery(
+        bestClause.clauses,
+        new Set(capturedVariables)
+      );
+    } else if (bestClause.type === "data-pattern") {
+      bestClause.arguments
+        .filter((v) => v.type === "variable")
+        .forEach((v) => capturedVariables.add(v.value));
+    }
+  }
+  return orderedClauses;
 };
 
 const predefinedSelections: PredefinedSelection[] = [
@@ -236,7 +319,10 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = ({
       .filter((p) => !!p.pull)
   );
   const find = definedSelections.map((p) => p.pull).join("\n  ");
-  const query = `[:find\n  ${find}\n:in $ ?date-regex\n:where\n${where
+  const query = `[:find\n  ${find}\n:in $ ?date-regex\n:where\n${optimizeQuery(
+    where,
+    new Set(["date-regex"])
+  )
     .map((c) => compileDatalog(c, 0))
     .join("\n")}\n]`;
   try {
