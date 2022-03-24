@@ -11,7 +11,10 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import QueryPage, { render as renderQueryPage } from "./components/QueryPage";
+import QueryPage, {
+  render as renderQueryPage,
+  renderQueryBlock,
+} from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
 import ResultsView from "./components/ResultsView";
 import fireQuery, { registerSelection } from "./utils/fireQuery";
@@ -151,6 +154,11 @@ runExtension(ID, async () => {
           }
         }
       },
+    });
+
+    createButtonObserver({
+      attribute: "query-block",
+      render: renderQueryBlock,
     });
 
     createButtonObserver({
