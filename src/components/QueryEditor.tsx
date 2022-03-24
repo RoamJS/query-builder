@@ -4,7 +4,6 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import parseQuery from "../utils/parseQuery";
-import { Condition, Selection } from "../utils/types";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
@@ -16,6 +15,7 @@ import { render as renderSimpleAlert } from "roamjs-components/components/Simple
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
+import { Condition, Selection } from "roamjs-components/types/query-builder";
 
 const QueryCondition = ({
   con,

@@ -17,6 +17,7 @@ import ResultsView from "./components/ResultsView";
 import fireQuery, { registerSelection } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import conditionToDatalog, {
+  getConditionLabels,
   registerDatalogTranslator,
   unregisterDatalogTranslator,
 } from "./utils/conditionToDatalog";
@@ -196,6 +197,7 @@ runExtension(ID, async () => {
     fireQuery,
     parseQuery,
     conditionToDatalog,
+    getConditionLabels,
     registerSelection,
     registerDatalogTranslator,
     unregisterDatalogTranslator,

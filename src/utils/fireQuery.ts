@@ -1,8 +1,14 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
-import { Condition, Selection } from "./types";
 import type { Result as SearchResult } from "../components/ResultsView";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
-import type { PullBlock } from "roamjs-components/types";
+import type {
+  PullBlock,
+  DatalogAndClause,
+  DatalogArgument,
+  DatalogBinding,
+  DatalogClause,
+  DatalogFnArg,
+} from "roamjs-components/types";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 
 type PredefinedSelection = {
@@ -10,12 +16,95 @@ type PredefinedSelection = {
   pull: (a: {
     returnNode: string;
     match: RegExpExecArray;
-    where: string;
+    where: DatalogClause[];
   }) => string;
   mapper: (
     r: PullBlock,
     key: string
   ) => SearchResult[string] | Record<string, SearchResult[string]>;
+};
+
+const isVariableExposed = (
+  clauses: (DatalogClause | DatalogAndClause)[],
+  variable: string
+): boolean =>
+  clauses.some((c) => {
+    switch (c.type) {
+      case "data-pattern":
+      case "fn-expr":
+      case "pred-expr":
+      case "rule-expr":
+        return c.arguments.some((a) => a.value === variable);
+      case "not-clause":
+      case "or-clause":
+      case "and-clause":
+        return isVariableExposed(c.clauses, variable);
+      case "not-join-clause":
+      case "or-join-clause":
+        return c.variables.some((v) => v.value === variable);
+      default:
+        return false;
+    }
+  });
+
+const compileDatalog = (
+  d:
+    | DatalogClause
+    | DatalogAndClause
+    | DatalogArgument
+    | DatalogFnArg
+    | DatalogBinding,
+  level: number
+): string => {
+  switch (d.type) {
+    case "data-pattern":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }${d.arguments.map((a) => compileDatalog(a, level)).join(" ")}]`;
+    case "srcvar":
+      return `$${d.value.replace(/\s/g, "")}`;
+    case "constant":
+    case "underscore":
+      return d.value;
+    case "variable":
+      return `?${d.value.replace(/\s/g, "")}`;
+    case "fn-expr":
+      return `[(${d.fn} ${d.arguments
+        .map((a) => compileDatalog(a, level))
+        .join(" ")}) ${compileDatalog(d.binding, level)}]`;
+    case "pred-expr":
+      return `[(${d.pred} ${d.arguments
+        .map((a) => compileDatalog(a, level))
+        .join(" ")})]`;
+    case "rule-expr":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }${d.arguments.map((a) => compileDatalog(a, level)).join(" ")}]`;
+    case "not-clause":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }not ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
+    case "or-clause":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }or ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
+    case "and-clause":
+      return `(and ${d.clauses.map((c) => compileDatalog(c, level + 1))})`;
+    case "not-join-clause":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }not-join [${d.variables.map((v) =>
+        compileDatalog(v, level)
+      )}] ${d.clauses.map((a) => compileDatalog(a, level + 1)).join(" ")}]`;
+    case "or-join-clause":
+      return `[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }or-join [${d.variables.map((v) => compileDatalog(v, level))}] ${d.clauses
+        .map((a) => compileDatalog(a, level + 1))
+        .join(" ")}]`;
+    default:
+      return "";
+  }
 };
 
 const predefinedSelections: PredefinedSelection[] = [
@@ -49,7 +138,8 @@ const predefinedSelections: PredefinedSelection[] = [
     test: /^node:(\s*.*\s*)$/i,
     pull: ({ match, returnNode, where }) => {
       const node = (match[1] || returnNode)?.trim();
-      return where.includes(`?${node}`)
+
+      return isVariableExposed(where, node)
         ? `(pull ?${node} [:node/title :block/uid])`
         : "";
     },
@@ -82,20 +172,16 @@ const predefinedSelections: PredefinedSelection[] = [
 ];
 
 export const registerSelection = (args: PredefinedSelection) => {
-  predefinedSelections.unshift(args);
+  predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
 };
 
-const fireQuery = ({
+const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = ({
   conditions,
   returnNode,
   selections,
-}: {
-  returnNode: string;
-  conditions: Condition[];
-  selections: Selection[];
 }) => {
   const where = conditions.length
-    ? conditions.map(conditionToDatalog).join("\n")
+    ? conditions.flatMap(conditionToDatalog)
     : conditionToDatalog({
         relation: "self",
         source: returnNode,
@@ -149,8 +235,10 @@ const fireQuery = ({
       }))
       .filter((p) => !!p.pull)
   );
-  const find = definedSelections.map((p) => p.pull).join("\n");
-  const query = `[:find\n${find}\n:in $ ?date-regex\n:where\n${where}\n]`;
+  const find = definedSelections.map((p) => p.pull).join("\n  ");
+  const query = `[:find\n  ${find}\n:in $ ?date-regex\n:where\n${where
+    .map((c) => compileDatalog(c, 0))
+    .join("\n")}\n]`;
   try {
     return window.roamAlphaAPI.data.fast
       .q(query, DAILY_NOTE_PAGE_TITLE_REGEX)
