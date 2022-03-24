@@ -51,7 +51,7 @@ const DatalogTranslator: Record<
             pred: "re-matches",
             arguments: [
               { type: "variable", value: "date-regex" },
-              { type: "constant", value: `${source}-Title` },
+              { type: "variable", value: `${source}-Title` },
             ],
           },
         ]
