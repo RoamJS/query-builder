@@ -128,6 +128,24 @@ const optimizeQuery = (
           score = 100001;
         }
       } else if (
+        c.type === "not-clause" ||
+        c.type === "or-clause" ||
+        c.type === "and-clause"
+      ) {
+        const allVars =
+          variablesByIndex[j] || (variablesByIndex[j] = getVariables(c));
+        if (Array.from(allVars).every((v) => capturedVariables.has(v))) {
+          score = 10;
+        } else {
+          score = 100003;
+        }
+      } else if (c.type === "not-join-clause" || c.type === "or-join-clause") {
+        if (c.variables.every((v) => capturedVariables.has(v.value))) {
+          score = 100;
+        } else {
+          score = 100004
+        }
+      } else if (
         c.type === "fn-expr" ||
         c.type === "pred-expr" ||
         c.type === "rule-expr"
@@ -137,27 +155,9 @@ const optimizeQuery = (
             (a) => a.type !== "variable" || capturedVariables.has(a.value)
           )
         ) {
-          score = 10;
-        } else {
-          score = 100002;
-        }
-      } else if (
-        c.type === "not-clause" ||
-        c.type === "or-clause" ||
-        c.type === "and-clause"
-      ) {
-        const allVars =
-          variablesByIndex[j] || (variablesByIndex[j] = getVariables(c));
-        if (Array.from(allVars).every((v) => capturedVariables.has(v))) {
-          score = 100;
-        } else {
-          score = 100003;
-        }
-      } else if (c.type === "not-join-clause" || c.type === "or-join-clause") {
-        if (c.variables.every((v) => capturedVariables.has(v.value))) {
           score = 1000;
         } else {
-          score = 100004
+          score = 100002;
         }
       } else {
         score = 100005
