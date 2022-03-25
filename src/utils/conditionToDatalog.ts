@@ -166,7 +166,7 @@ const DatalogTranslator: Record<
       pred: "clojure.string/includes?",
       arguments: [
         { type: "variable", value: `${source}-String` },
-        { type: "variable", value: `"${normalizePageTitle(target)}"` },
+        { type: "constant", value: `"${normalizePageTitle(target)}"` },
       ],
     },
   ],
