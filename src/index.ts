@@ -51,7 +51,7 @@ runExtension(ID, async () => {
 }
 
 .roamjs-query-condition-relation .bp3-popover-target,
-.roamjs-query-condition-target .roamjs-page-input-target { 
+.roamjs-query-condition-target .roamjs-autocomplete-input-target { 
   width: 100%
 }
 

@@ -1,5 +1,20 @@
-import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Button,
+  H6,
+  InputGroup,
+  Menu,
+  MenuItem,
+  Popover,
+  PopoverPosition,
+  Switch,
+} from "@blueprintjs/core";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -7,15 +22,167 @@ import parseQuery from "../utils/parseQuery";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
-import PageInput from "roamjs-components/components/PageInput";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import { getConditionLabels } from "../utils/conditionToDatalog";
+import {
+  getConditionLabels,
+  sourceToTargetOptions,
+} from "../utils/conditionToDatalog";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
 import { Condition, Selection } from "roamjs-components/types/query-builder";
+import fuzzy from "fuzzy";
+import useArrowKeyDown from "roamjs-components/hooks/useArrowKeyDown";
+
+type QClauseData = {
+  relation: string;
+  source: string;
+  target: string;
+  uid: string;
+};
+
+type QClause = QClauseData & { type: "clause" };
+type QNot = QClauseData & { type: "not" };
+
+type QNested = { conditions: QCondition[] };
+
+type QOr = QNested & {
+  type: "or";
+};
+
+type QNor = QNested & {
+  type: "not";
+};
+
+// dropdown Edit button => (number of clauses)
+type QCondition = QClause | QNot | QOr | QNor;
+
+const AutocompleteInput = ({
+  value,
+  setValue,
+  onBlur,
+  onConfirm,
+  showButton,
+  options = [],
+  placeholder = "Enter value",
+}: {
+  value: string;
+  setValue: (q: string) => void;
+  showButton?: boolean;
+  onBlur?: (v: string) => void;
+  onConfirm?: () => void;
+  options?: string[];
+  placeholder?: string;
+}): React.ReactElement => {
+  const [isOpen, setIsOpen] = useState(false);
+  const open = useCallback(() => setIsOpen(true), [setIsOpen]);
+  const close = useCallback(() => setIsOpen(false), [setIsOpen]);
+  const [isTyping, setIsTyping] = useState(false);
+  const items = useMemo(
+    () =>
+      value
+        ? fuzzy
+            .filter(value, options)
+            .slice(0, 9)
+            .map((e) => e.string)
+        : [],
+    [value, options]
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+  const onEnter = useCallback(
+    (value) => {
+      if (isOpen) {
+        setValue(value);
+        setIsTyping(false);
+      } else if (onConfirm) {
+        onConfirm();
+      }
+    },
+    [setValue, close, onConfirm, isOpen]
+  );
+  const { activeIndex, onKeyDown } = useArrowKeyDown({
+    onEnter,
+    results: items,
+  });
+  useEffect(() => {
+    if (!items.length || !isTyping) close();
+    else open();
+  }, [items, close, isTyping]);
+  return (
+    <Popover
+      portalClassName={"roamjs-autocomplete-input"}
+      targetClassName={"roamjs-autocomplete-input-target"}
+      captureDismiss={true}
+      isOpen={isOpen}
+      onOpened={open}
+      minimal
+      autoFocus={false}
+      enforceFocus={false}
+      position={PopoverPosition.BOTTOM_LEFT}
+      modifiers={{
+        flip: { enabled: false },
+        preventOverflow: { enabled: false },
+      }}
+      content={
+        <Menu style={{ maxWidth: 400 }}>
+          {items.map((t, i) => (
+            <MenuItem
+              text={t}
+              active={activeIndex === i}
+              key={i}
+              multiline
+              onClick={() => {
+                setIsTyping(false);
+                setValue(items[i]);
+                inputRef.current?.focus();
+              }}
+            />
+          ))}
+        </Menu>
+      }
+      target={
+        <InputGroup
+          value={value || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setIsTyping(true);
+            setValue(e.target.value);
+          }}
+          placeholder={placeholder}
+          autoFocus={true}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              close();
+            } else {
+              onKeyDown(e);
+            }
+          }}
+          onBlur={(e) => {
+            if (
+              e.relatedTarget &&
+              !(e.relatedTarget as HTMLElement).closest?.(
+                ".roamjs-autocomplete-input"
+              )
+            ) {
+              close();
+            }
+            if (onBlur) {
+              onBlur(e.target.value);
+            }
+          }}
+          inputRef={inputRef}
+          {...(showButton
+            ? {
+                rightElement: <Button icon={"add"} minimal onClick={onEnter} />,
+              }
+            : {})}
+        />
+      }
+    />
+  );
+};
 
 const QueryCondition = ({
   con,
@@ -32,6 +199,10 @@ const QueryCondition = ({
 }) => {
   const debounceRef = useRef(0);
   const conditionLabels = useMemo(getConditionLabels, []);
+  const targetOptions = useMemo(
+    () => sourceToTargetOptions({ source: con.source, relation: con.relation }),
+    [con.source, con.relation]
+  );
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
       <MenuItemSelect
@@ -106,7 +277,7 @@ const QueryCondition = ({
         }}
       />
       <div className="roamjs-query-condition-target">
-        <PageInput
+        <AutocompleteInput
           value={con.target}
           setValue={(e) => {
             window.clearTimeout(debounceRef.current);
@@ -124,6 +295,7 @@ const QueryCondition = ({
               });
             }, 1000);
           }}
+          options={targetOptions}
         />
       </div>
       <Button
@@ -398,7 +570,11 @@ const QueryEditor = ({
       });
   }, []);
   return (
-    <>
+    <div
+      style={{
+        padding: 16,
+      }}
+    >
       <H6
         style={{
           display: "flex",
@@ -526,7 +702,7 @@ const QueryEditor = ({
           />
         </span>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -68,10 +68,9 @@ const QueryPage = ({
   }, []);
   return (
     <Card
-      style={{
-        padding: 16,
-      }}
       id={`roamjs-query-page-${pageUid}`}
+      style={{ padding: 0 }}
+      className={"roamjs-query-page"}
     >
       <div ref={containerRef}>
         {hideMetadata && (
@@ -81,7 +80,7 @@ const QueryPage = ({
         }`}
           </style>
         )}
-        {isEdit ? (
+        {isEdit && (
           <>
             <QueryEditor
               parentUid={pageUid}
@@ -135,22 +134,13 @@ const QueryPage = ({
             />
             <hr style={{ borderColor: "#333333" }} />
           </>
-        ) : (
-          <Tooltip content={"Edit Query"}>
-            <Button
-              icon={"edit"}
-              minimal
-              onClick={() => {
-                setIsEdit(true);
-              }}
-            />
-          </Tooltip>
         )}
         {loading ? (
           <p>Loading results...</p>
         ) : (
           <ResultsView
             parentUid={pageUid}
+            onEdit={() => setIsEdit(true)}
             header={
               <div>
                 {/*<Tooltip content={"Export"}>
