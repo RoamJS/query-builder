@@ -724,67 +724,77 @@ const ResultsView = ({
               />
             ))}
           </tbody>
-          <tfoot
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              opacity: 0.8,
-              background: "#eeeeee80",
-              padding: "8px 4px",
-            }}
-          >
-            <span>
-              <InputGroup
-                defaultValue={defaultRandomValue.toString()}
-                onChange={(e) => (randomRef.current = Number(e.target.value))}
-                rightElement={
-                  <Tooltip content={"Select Random Results"}>
-                    <Button
-                      icon={"random"}
-                      onClick={() => setRandom({ count: randomRef.current })}
-                      minimal
+          <tfoot>
+            <tr>
+              <td colSpan={columns.length} style={{ padding: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    opacity: 0.8,
+                    background: "#eeeeee80",
+                    padding: "8px 4px",
+                  }}
+                >
+                  <span>
+                    <InputGroup
+                      defaultValue={defaultRandomValue.toString()}
+                      onChange={(e) =>
+                        (randomRef.current = Number(e.target.value))
+                      }
+                      rightElement={
+                        <Tooltip content={"Select Random Results"}>
+                          <Button
+                            icon={"random"}
+                            onClick={() =>
+                              setRandom({ count: randomRef.current })
+                            }
+                            minimal
+                          />
+                        </Tooltip>
+                      }
+                      type={"number"}
+                      style={{ width: 80 }}
                     />
-                  </Tooltip>
-                }
-                type={"number"}
-                style={{ width: 80 }}
-              />
-            </span>
-            <span>
-              <Button
-                minimal
-                icon={"double-chevron-left"}
-                onClick={() => setPage(1)}
-                disabled={page === 1}
-              />
-              <Button
-                minimal
-                icon={"chevron-left"}
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              />
-              <span style={{ margin: "4px 0" }}>{pageSize}</span>
-              <Button
-                minimal
-                icon={"chevron-right"}
-                onClick={() => setPage(page + 1)}
-                disabled={
-                  page === Math.ceil(sortedResults.length / pageSize) ||
-                  sortedResults.length === 0
-                }
-              />
-              <Button
-                minimal
-                icon={"double-chevron-right"}
-                disabled={
-                  page === Math.ceil(sortedResults.length / pageSize) ||
-                  sortedResults.length === 0
-                }
-                onClick={() =>
-                  setPage(Math.ceil(sortedResults.length / pageSize))
-                }
-              />
-            </span>
+                  </span>
+                  <span>
+                    <Button
+                      minimal
+                      icon={"double-chevron-left"}
+                      onClick={() => setPage(1)}
+                      disabled={page === 1}
+                    />
+                    <Button
+                      minimal
+                      icon={"chevron-left"}
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                    />
+                    <span style={{ margin: "4px 0" }}>{pageSize}</span>
+                    <Button
+                      minimal
+                      icon={"chevron-right"}
+                      onClick={() => setPage(page + 1)}
+                      disabled={
+                        page === Math.ceil(sortedResults.length / pageSize) ||
+                        sortedResults.length === 0
+                      }
+                    />
+                    <Button
+                      minimal
+                      icon={"double-chevron-right"}
+                      disabled={
+                        page === Math.ceil(sortedResults.length / pageSize) ||
+                        sortedResults.length === 0
+                      }
+                      onClick={() =>
+                        setPage(Math.ceil(sortedResults.length / pageSize))
+                      }
+                    />
+                  </span>
+                </div>
+              </td>
+            </tr>
           </tfoot>
         </HTMLTable>
       )}
