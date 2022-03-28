@@ -536,6 +536,7 @@ const ResultsView = ({
       ])
     )
   );
+  const [showContent, setShowContent] = useState(false);
   return (
     <div
       className="roamjs-query-results-view"
@@ -559,7 +560,6 @@ const ResultsView = ({
         </h4>
         {!hideResults && (
           <>
-            {resultContent}
             <div
               style={{
                 display: "flex",
@@ -568,7 +568,17 @@ const ResultsView = ({
               }}
             >
               <i style={{ opacity: 0.8 }}>
-                Found {sortedResults.length} of {results.length} results
+                {!!resultContent && (
+                  <Button
+                    icon={showContent ? "caret-down" : "caret-right"}
+                    minimal
+                    onClick={() => setShowContent(!showContent)}
+                    style={{
+                      marginRight: 16,
+                    }}
+                  />
+                )}
+                Showing {paginatedResults.length} of {results.length} results
               </i>
               <span>
                 {!preventSavingSettings && (
@@ -675,6 +685,7 @@ const ResultsView = ({
                 )}
               </span>
             </div>
+            {showContent && <div>{resultContent}</div>}
           </>
         )}
       </div>
@@ -776,19 +787,21 @@ const ResultsView = ({
                       icon={"chevron-right"}
                       onClick={() => setPage(page + 1)}
                       disabled={
-                        page === Math.ceil(sortedResults.length / pageSize) ||
-                        sortedResults.length === 0
+                        page ===
+                          Math.ceil(randomizedResults.length / pageSize) ||
+                        randomizedResults.length === 0
                       }
                     />
                     <Button
                       minimal
                       icon={"double-chevron-right"}
                       disabled={
-                        page === Math.ceil(sortedResults.length / pageSize) ||
-                        sortedResults.length === 0
+                        page ===
+                          Math.ceil(randomizedResults.length / pageSize) ||
+                        randomizedResults.length === 0
                       }
                       onClick={() =>
-                        setPage(Math.ceil(sortedResults.length / pageSize))
+                        setPage(Math.ceil(randomizedResults.length / pageSize))
                       }
                     />
                   </span>

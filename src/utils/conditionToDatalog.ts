@@ -226,6 +226,96 @@ const translator: Translator = {
         .q(`[:find ?n :where [?u :user/display-name ?n]]`)
         .map((a) => a[0] as string),
   },
+  "references title": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":block/refs" },
+          { type: "variable", value: target },
+        ],
+      },
+      ...(/^\s*{date}\s*$/i.test(target)
+        ? [
+            {
+              type: "data-pattern" as const,
+              arguments: [
+                { type: "variable" as const, value: target },
+                { type: "constant" as const, value: ":node/title" },
+                { type: "variable" as const, value: `${target}-Title` },
+              ],
+            },
+            {
+              type: "pred-expr" as const,
+              pred: "re-matches" as const,
+              arguments: [
+                { type: "variable" as const, value: "date-regex" },
+                { type: "variable" as const, value: `${target}-Title` },
+              ],
+            },
+          ]
+        : [
+            {
+              type: "data-pattern" as const,
+              arguments: [
+                { type: "variable" as const, value: target },
+                { type: "constant" as const, value: ":node/title" },
+                {
+                  type: "constant" as const,
+                  value: `"${normalizePageTitle(target)}"`,
+                },
+              ],
+            },
+          ]),
+    ],
+    targetOptions: getAllPageNames,
+  },
+  "is in page with title": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":block/page" },
+          { type: "variable", value: target },
+        ],
+      },
+      ...(/^\s*{date}\s*$/i.test(target)
+        ? [
+            {
+              type: "data-pattern" as const,
+              arguments: [
+                { type: "variable" as const, value: target },
+                { type: "constant" as const, value: ":node/title" },
+                { type: "variable" as const, value: `${target}-Title` },
+              ],
+            },
+            {
+              type: "pred-expr" as const,
+              pred: "re-matches" as const,
+              arguments: [
+                { type: "variable" as const, value: "date-regex" },
+                { type: "variable" as const, value: `${target}-Title` },
+              ],
+            },
+          ]
+        : [
+            {
+              type: "data-pattern" as const,
+              arguments: [
+                { type: "variable" as const, value: target },
+                { type: "constant" as const, value: ":node/title" },
+                {
+                  type: "constant" as const,
+                  value: `"${normalizePageTitle(target)}"`,
+                },
+              ],
+            },
+          ]),
+    ],
+    targetOptions: getAllPageNames,
+  },
 };
 
 export const registerDatalogTranslator = ({
