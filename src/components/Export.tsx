@@ -1,0 +1,246 @@
+import {
+  Button,
+  Classes,
+  Dialog,
+  InputGroup,
+  Intent,
+  Label,
+  Spinner,
+  SpinnerSize,
+  Tooltip,
+} from "@blueprintjs/core";
+import React, { useMemo, useState } from "react";
+import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
+import getGraph from "roamjs-components/util/getGraph";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import format from "date-fns/format";
+import download from "downloadjs";
+import JSZip from "jszip";
+import type { Result } from "./ResultsView";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
+import getRoamUrl from "roamjs-components/dom/getRoamUrl";
+
+type Props = {
+  isOpen?: boolean;
+  exportTypes?: {
+    name: string;
+    callback: (args: { zip: JSZip; filename: string }) => void;
+  }[];
+  results?: Result[];
+};
+
+const viewTypeToPrefix = {
+  bullet: "- ",
+  document: "",
+  numbered: "1. ",
+};
+
+const collectUids = (t: TreeNode): string[] => [
+  t.uid,
+  ...t.children.flatMap(collectUids),
+];
+
+const normalize = (t: string) => `${t.replace(/[<>:"/\\|?*[]]/g, "")}.md`;
+
+const titleToFilename = (t: string) => {
+  const name = normalize(t);
+  return name.length > 64
+    ? `${name.substring(0, 31)}...${name.slice(-30)}`
+    : name;
+};
+
+const toMarkdown = ({
+  c,
+  i = 0,
+  v = "bullet",
+}: {
+  c: TreeNode;
+  i?: number;
+  v?: ViewType;
+}): string =>
+  `${"".padStart(i * 4, " ")}${viewTypeToPrefix[v]}${
+    c.heading ? `${"".padStart(c.heading, "#")} ` : ""
+  }${c.text
+    .replace(BLOCK_REF_REGEX, (_, blockUid) => {
+      const reference = getTextByBlockUid(blockUid);
+      return reference || blockUid;
+    })
+    .trim()}${(c.children || [])
+    .filter((nested) => !!nested.text || !!nested.children?.length)
+    .map(
+      (nested) =>
+        `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v })}`
+    )
+    .join("")}`;
+
+const ExportDialog = ({
+  onClose,
+  isOpen = true,
+  exportTypes,
+  results = [],
+}: {
+  onClose: () => void;
+} & Props) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [filename, setFilename] = useState(
+    `${getGraph()}_discourse-graph_${format(new Date(), "yyyyMMddhhmm")}`
+  );
+  const [activeExportType, setActiveExportType] = useState<string>(
+    exportTypes[0].name
+  );
+  const graphs = useMemo(
+    () => window.roamjs.extension?.multiplayer?.getConnectedGraphs?.() || [],
+    []
+  );
+  const [graph, setGraph] = useState<string>(graphs[0]);
+  return (
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      canEscapeKeyClose
+      canOutsideClickClose
+      title={`Export Discourse Graph`}
+    >
+      <div className={Classes.DIALOG_BODY}>
+        <Label>
+          Export Type
+          <MenuItemSelect
+            items={[
+              ...exportTypes
+                .map((e) => e.name)
+                .filter((t) => graphs.length || t !== "graph"),
+            ]}
+            activeItem={activeExportType}
+            onItemSelect={(et) => setActiveExportType(et)}
+          />
+        </Label>
+        {activeExportType === "graph" && (
+          <Label>
+            Graph
+            <MenuItemSelect
+              items={graphs}
+              activeItem={graph}
+              onItemSelect={(et) => setGraph(et)}
+            />
+          </Label>
+        )}
+        <Label>
+          Filename
+          <InputGroup
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+          />
+        </Label>
+        <span>Exporting {results.length} Results</span>
+      </div>
+      <div className={Classes.DIALOG_FOOTER}>
+        <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+          <span style={{ color: "darkred" }}>{error}</span>
+          {loading && <Spinner size={SpinnerSize.SMALL} />}
+          <Button
+            text={"Export"}
+            intent={Intent.PRIMARY}
+            onClick={() => {
+              setLoading(true);
+              setError("");
+              setTimeout(async () => {
+                try {
+                  const zip = new JSZip();
+                  exportTypes
+                    .find((e) => e.name === activeExportType)
+                    ?.callback({ zip, filename });
+                  if (activeExportType === "graph") {
+                    onClose();
+                  } else {
+                    zip.generateAsync({ type: "blob" }).then((content) => {
+                      download(content, `${filename}.zip`, "application/zip");
+                      onClose();
+                    });
+                  }
+                } catch (e) {
+                  setError(e.message);
+                  setLoading(false);
+                }
+              }, 1);
+            }}
+            style={{ minWidth: 64 }}
+            disabled={loading}
+          />
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export const Export = ({ results }: { results: Result[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      <Tooltip content={"Export Results"}>
+        <Button icon={"export"} onClick={() => setIsOpen(true)} minimal />
+      </Tooltip>
+      <ExportDialog
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        results={results}
+        exportTypes={[
+          {
+            name: "CSV",
+            callback: ({ zip, filename }) => {
+              const keys = Object.keys(results[0]).filter(
+                (u) => !/uid/i.test(u)
+              );
+              const header = `${keys.join(",")}\n`;
+              const data = results
+                .map((r) =>
+                  keys
+                    .map((k) => r[k].toString())
+                    .map((v) => (v.includes(",") ? `"${v}"` : v))
+                )
+                .join("\n");
+              zip.file(
+                `${filename.replace(/\.csv/, "")}.csv`,
+                `${header}${data}`
+              );
+            },
+          },
+          {
+            name: "Markdown",
+            callback: ({ zip }) => {
+              results
+                .map(({ uid, ...rest }) => {
+                  const v =
+                    ((
+                      window.roamAlphaAPI.data.fast.q(
+                        `[:find ?b (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
+                      )[0]?.[0] as PullBlock
+                    )?.[":children/view-type"].slice(1) as ViewType) ||
+                    "bullet";
+                  const treeNode = getFullTreeByParentUid(uid);
+
+                  const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(
+                    rest
+                  )
+                    .filter((k) => !/uid/i.test(k))
+                    .map(
+                      (k) => `${k}: ${rest[k].toString()}`
+                    )}---\n\n${treeNode.children
+                    .map((c) => toMarkdown({ c, v, i: 0 }))
+                    .join("\n")}\n`;
+                  return { title: rest.text, content };
+                })
+                .forEach(({ title, content }) =>
+                  zip.file(titleToFilename(title), content)
+                );
+            },
+          },
+        ]}
+      />
+    </>
+  );
+};
+
+export default Export;

@@ -90,7 +90,7 @@ const translator: Translator = {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
-          { type: "constant", value: ":block/page" },
+          { type: "constant", value: ":node/title" },
           { type: "variable", value: `${source}-Title` },
         ],
       },

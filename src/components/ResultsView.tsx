@@ -27,6 +27,7 @@ import extractTag from "roamjs-components/util/extractTag";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import parseRoamDate from "roamjs-components/date/parseRoamDate";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
+import Export from "./Export";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -515,7 +516,7 @@ const ResultsView = ({
   );
   const randomRef = useRef(defaultRandomValue);
   const [random, setRandom] = useState({ count: defaultRandomValue });
-  const randomizedResults = useMemo(
+  const resultsInView = useMemo(
     () =>
       random.count > 0
         ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, random.count)
@@ -525,8 +526,8 @@ const ResultsView = ({
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const paginatedResults = useMemo(
-    () => randomizedResults.slice((page - 1) * pageSize, page * pageSize),
-    [page, pageSize, randomizedResults]
+    () => resultsInView.slice((page - 1) * pageSize, page * pageSize),
+    [page, pageSize, resultsInView]
   );
   const [views, setViews] = useState(
     Object.fromEntries(
@@ -678,6 +679,7 @@ const ResultsView = ({
                     />
                   </Tooltip>
                 )}
+                <Export results={resultsInView} />
                 {onEdit && (
                   <Tooltip content={"Edit Query"}>
                     <Button icon={"edit"} minimal onClick={onEdit} />
@@ -788,8 +790,8 @@ const ResultsView = ({
                       onClick={() => setPage(page + 1)}
                       disabled={
                         page ===
-                          Math.ceil(randomizedResults.length / pageSize) ||
-                        randomizedResults.length === 0
+                          Math.ceil(resultsInView.length / pageSize) ||
+                        resultsInView.length === 0
                       }
                     />
                     <Button
@@ -797,11 +799,11 @@ const ResultsView = ({
                       icon={"double-chevron-right"}
                       disabled={
                         page ===
-                          Math.ceil(randomizedResults.length / pageSize) ||
-                        randomizedResults.length === 0
+                          Math.ceil(resultsInView.length / pageSize) ||
+                        resultsInView.length === 0
                       }
                       onClick={() =>
-                        setPage(Math.ceil(randomizedResults.length / pageSize))
+                        setPage(Math.ceil(resultsInView.length / pageSize))
                       }
                     />
                   </span>
