@@ -86,7 +86,7 @@ const ExportDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filename, setFilename] = useState(
-    `${getGraph()}_discourse-graph_${format(new Date(), "yyyyMMddhhmm")}`
+    `${getGraph()}_query-results_${format(new Date(), "yyyyMMddhhmm")}`
   );
   const [activeExportType, setActiveExportType] = useState<string>(
     exportTypes[0].name
@@ -102,7 +102,7 @@ const ExportDialog = ({
       onClose={onClose}
       canEscapeKeyClose
       canOutsideClickClose
-      title={`Export Discourse Graph`}
+      title={`Export Query Results`}
     >
       <div className={Classes.DIALOG_BODY}>
         <Label>
