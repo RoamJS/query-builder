@@ -683,7 +683,7 @@ const ResultsView = ({
                     />
                   </Tooltip>
                 )}
-                {preventExport && (
+                {!preventExport && (
                   <Export
                     results={resultsInView}
                     exportTypes={getExportTypes?.(resultsInView)}
