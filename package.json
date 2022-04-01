@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Description for query-builder.",
   "main": "./build/main.js",
   "scripts": {
