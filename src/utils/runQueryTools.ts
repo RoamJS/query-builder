@@ -81,7 +81,10 @@ const runQueryTools = (configUid: string) => {
       const blockConfig = getBasicTreeByParentUid(
         getUids(sortContainer as HTMLDivElement).blockUid
       );
-      const pageConfig = getBasicTreeByParentUid(configUid);
+      const pageConfig = getSubTree({
+        tree: getBasicTreeByParentUid(configUid),
+        key: "Native Queries",
+      }).children;
       isSortByBlocks =
         !!getSubTree({ tree: blockConfig, key: "Sort Blocks" }).uid ||
         !!getSubTree({ tree: pageConfig, key: "Sort Blocks" }).uid;
@@ -228,7 +231,10 @@ const runQueryTools = (configUid: string) => {
 
   const onCreateSortIcons = (container: HTMLDivElement) => {
     const blockConfig = getBasicTreeByParentUid(getUids(container).blockUid);
-    const pageConfig = getBasicTreeByParentUid(configUid);
+    const pageConfig = getSubTree({
+      tree: getBasicTreeByParentUid(configUid),
+      key: "Native Queries",
+    }).children;
 
     const defaultSort = (getSettingValueFromTree({
       tree: blockConfig,
@@ -463,7 +469,10 @@ const runQueryTools = (configUid: string) => {
       (e) => !e.getAttribute("data-is-contexted-results")
     ) as HTMLDivElement[];
     if (unContextedQueries.length) {
-      const pageConfig = getBasicTreeByParentUid(configUid);
+        const pageConfig = getSubTree({
+          tree: getBasicTreeByParentUid(configUid),
+          key: "Native Queries",
+        }).children;
       unContextedQueries.forEach((q) => {
         const config = getBasicTreeByParentUid(getUids(q).blockUid);
         const configContext =

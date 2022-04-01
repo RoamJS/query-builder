@@ -106,6 +106,32 @@ runExtension(ID, async () => {
                 description:
                   "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
               },
+              {
+                title: "Context",
+                type: "number",
+                description:
+                  "How many levels of context to include with each query result for all queries by default",
+              },
+              {
+                title: "Default Sort",
+                type: "select",
+                description:
+                  "The default sorting all native queries in your graph should use",
+                options: {
+                  items: [
+                    "Alphabetically",
+                    "Alphabetically Descending",
+                    "Word Count",
+                    "Word Count Descending",
+                    "Created Date",
+                    "Created Date Descending",
+                    "Edited Date",
+                    "Edited Date Descending",
+                    "Daily Note",
+                    "Daily Note Descending",
+                  ],
+                },
+              },
             ],
           },
         ],
