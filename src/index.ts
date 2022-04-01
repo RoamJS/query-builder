@@ -24,6 +24,7 @@ import conditionToDatalog, {
   registerDatalogTranslator,
   unregisterDatalogTranslator,
 } from "./utils/conditionToDatalog";
+import runQueryTools from "./utils/runQueryTools";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -93,6 +94,17 @@ runExtension(ID, async () => {
                 description:
                   "Hide the Roam blocks that are used to power each query",
                 type: "flag",
+              },
+            ],
+          },
+          {
+            id: "Native Queries",
+            fields: [
+              {
+                title: "Sort Blocks",
+                type: "flag",
+                description:
+                  "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
               },
             ],
           },
@@ -197,6 +209,8 @@ runExtension(ID, async () => {
       tag: "DIV",
       className: "rm-query-title",
     });
+
+    runQueryTools(pageUid);
   }
 
   window.roamjs.extension.queryBuilder = {
