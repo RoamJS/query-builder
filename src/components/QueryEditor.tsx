@@ -1,4 +1,4 @@
-import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
+import { Button, H6, InputGroup, Switch, Tabs, Tab } from "@blueprintjs/core";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -14,53 +14,39 @@ import {
   sourceToTargetOptions,
   sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
 import {
   Condition,
-  QBClauseData,
   Selection,
+  QBClauseData,
+  QBNestedData,
 } from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 
-type QClauseData = {
-  relation: string;
-  source: string;
-  target: string;
-  uid: string;
-};
+const getSourceCandidates = (cs: Condition[]): string[] =>
+  cs.flatMap((c) =>
+    c.type === "clause" || c.type === "not"
+      ? isTargetVariable({relation: c.relation}) ? [c.target] : []
+      : getSourceCandidates(c.conditions.flat())
+  );
 
-type QClause = QClauseData & { type: "clause" };
-type QNot = QClauseData & { type: "not" };
-
-type QNested = { conditions: QCondition[] };
-
-type QOr = QNested & {
-  type: "or";
-};
-
-type QNor = QNested & {
-  type: "not";
-};
-
-// dropdown Edit button => (number of clauses)
-type QCondition = QClause | QNot | QOr | QNor;
-
-const QueryCondition = ({
+const QueryClauseData = ({
   con,
   index,
   setConditions,
   conditions,
-  returnNode,
+  availableSources,
 }: {
   con: QBClauseData;
   index: number;
-  setConditions: (cons: QBClauseData[]) => void;
-  conditions: QBClauseData[];
-  returnNode: string;
+  setConditions: (cons: Condition[]) => void;
+  conditions: Condition[];
+  availableSources: string[];
 }) => {
   const debounceRef = useRef(0);
   const conditionLabels = useMemo(getConditionLabels, []);
@@ -73,7 +59,7 @@ const QueryCondition = ({
     [con.source, con.relation]
   );
   return (
-    <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
+    <>
       <MenuItemSelect
         popoverProps={{
           className: "roamjs-query-condition-source",
@@ -81,12 +67,10 @@ const QueryCondition = ({
         activeItem={con.source}
         items={Array.from(
           new Set(
-            conditions
-              .slice(0, index)
-              .filter((c) => isTargetVariable({ relation: c.relation }))
-              .map((c) => c.target)
+            getSourceCandidates(conditions
+              .slice(0, index))
           )
-        ).concat(returnNode)}
+        ).concat(availableSources)}
         onItemSelect={(value) => {
           setInputSetting({
             blockUid: con.uid,
@@ -95,7 +79,7 @@ const QueryCondition = ({
           });
           setConditions(
             conditions.map((c) =>
-              c.uid === con.uid ? { ...con, source: value } : c
+              c.uid === con.uid ? ({ ...con, source: value } as Condition) : c
             )
           );
         }}
@@ -107,7 +91,7 @@ const QueryCondition = ({
             window.clearTimeout(debounceRef.current);
             setConditions(
               conditions.map((c) =>
-                c.uid === con.uid ? { ...con, relation: e } : c
+                c.uid === con.uid ? { ...con, relation: e, type: "clause" } : c
               )
             );
             debounceRef.current = window.setTimeout(() => {
@@ -134,7 +118,7 @@ const QueryCondition = ({
         onChange={(e) => {
           const not = (e.target as HTMLInputElement).checked;
           setConditions(
-            conditions.map((c) => (c.uid === con.uid ? { ...con, not } : c))
+            conditions.map((c) => (c.uid === con.uid ? { ...con, not, type: "not" } : c))
           );
           if (not)
             createBlock({
@@ -152,7 +136,7 @@ const QueryCondition = ({
             window.clearTimeout(debounceRef.current);
             setConditions(
               conditions.map((c) =>
-                c.uid === con.uid ? { ...con, target: e } : c
+                c.uid === con.uid ? ({ ...con, target: e } as Condition) : c
               )
             );
             debounceRef.current = window.setTimeout(() => {
@@ -168,6 +152,122 @@ const QueryCondition = ({
           placeholder={targetPlaceholder}
         />
       </div>
+    </>
+  );
+};
+
+const QueryNestedData = ({
+  con,
+  setView,
+}: {
+  con: QBNestedData;
+  setView: (s: { uid: string; branch: number }) => void;
+}) => {
+  return (
+    <>
+      <Button
+        rightIcon={"arrow-right"}
+        text={"Edit"}
+        onClick={() => setView({ uid: con.uid, branch: 0 })}
+        style={{
+          minWidth: 144,
+          maxWidth: 144,
+          paddingRight: 8,
+        }}
+      />
+      <span
+        style={{
+          minWidth: 144,
+          display: "inline-block",
+          fontWeight: 600,
+        }}
+      >
+        ({con.conditions.length}) Branches
+      </span>
+      <span
+        style={{
+          flexGrow: 1,
+          minWidth: 300,
+          width: "100%",
+          display: "inline-block",
+        }}
+      ></span>
+    </>
+  );
+};
+
+const QueryCondition = ({
+  con,
+  index,
+  setConditions,
+  conditions,
+  availableSources,
+  setView,
+}: {
+  con: Condition;
+  index: number;
+  setConditions: (cons: Condition[]) => void;
+  conditions: Condition[];
+  availableSources: string[];
+  setView: (s: { uid: string; branch: number }) => void;
+}) => {
+  return (
+    <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
+      <MenuItemSelect
+        popoverProps={{
+          className: "roamjs-query-condition-type",
+        }}
+        activeItem={con.type}
+        items={["or", "not or", "clause", "not"]}
+        onItemSelect={(value) => {
+          (((con.type === "or" || con.type === "not or") &&
+            (value === "clause" || value === "not")) ||
+          ((value === "or" || value === "not or") &&
+            (con.type === "clause" || con.type === "not"))
+            ? Promise.all(
+                getShallowTreeByParentUid(con.uid).map((c) =>
+                  deleteBlock(c.uid)
+                )
+              ).then(() => updateBlock({ uid: con.uid, text: value }))
+            : updateBlock({
+                uid: con.uid,
+                text: value,
+              })
+          ).then(() => {
+            setConditions(
+              conditions.map((c) =>
+                c.uid === con.uid
+                  ? value === "clause" || value === "not"
+                    ? {
+                        uid: c.uid,
+                        type: value,
+                        source: (c as QBClauseData).source || "",
+                        target: (c as QBClauseData).target || "",
+                        relation: (c as QBClauseData).relation || "",
+                      }
+                    : {
+                        uid: c.uid,
+                        type: value,
+                        conditions: (c as QBNestedData).conditions || [],
+                      }
+                  : c
+              )
+            );
+          });
+        }}
+      />
+      {(con.type === "clause" || con.type === "not") && (
+        <QueryClauseData
+          con={con}
+          index={index}
+          setConditions={setConditions}
+          conditions={conditions}
+          availableSources={availableSources}
+        />
+      )}
+      {(con.type === "not or" || con.type === "or") && (
+        <QueryNestedData con={con} setView={setView} />
+      )}
       <Button
         icon={"trash"}
         onClick={() => {
@@ -223,7 +323,7 @@ const QuerySelection = ({
       </div>
       <span
         style={{
-          minWidth: 72,
+          minWidth: 144,
           display: "inline-block",
           fontWeight: 600,
         }}
@@ -266,183 +366,61 @@ const QuerySelection = ({
   );
 };
 
-const QueryEditor = ({
+const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
+  for (const con of conditions) {
+    if (con.uid === uid) return con;
+    if (con.type === "or" || con.type === "not or") {
+      const c = getConditionByUid(uid, con.conditions.flat());
+      if (c) return c;
+    }
+  }
+  return undefined;
+};
+
+const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   parentUid,
-  defaultQuery,
   onQuery,
   defaultReturnNode,
-}: {
-  parentUid: string;
-  defaultQuery: string[];
-  onQuery: (query: {
-    returnNode: string;
-    conditions: Condition[];
-    selections: Selection[];
-  }) => Promise<void>;
-  defaultReturnNode?: string;
 }) => {
-  const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
-  const scratchNode = useMemo(
-    () => tree.find((t) => toFlexRegex("scratch").test(t.text)),
-    [tree]
-  );
-  const scratchNodeUid = useMemo(() => {
-    if (scratchNode?.uid) return scratchNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "scratch", uid: newUid },
-      parentUid,
-    });
-    return newUid;
-  }, [scratchNode, parentUid]);
-  const scratchNodeChildren = useMemo(
-    () => scratchNode?.children || [],
-    [scratchNode]
-  );
-  const [returnNode, setReturnNode] = useState(
-    () =>
-      defaultReturnNode ||
-      getSettingValueFromTree({ tree: scratchNodeChildren, key: "return" })
-  );
   const debounceRef = useRef(0);
+  const scratchNode = useSubTree({
+    parentUid,
+    key: "scratch",
+  });
   const returnNodeOnChange = (value: string) => {
     window.clearTimeout(debounceRef.current);
     setReturnNode(value);
     debounceRef.current = window.setTimeout(() => {
       setInputSetting({
-        blockUid: scratchNodeUid,
+        blockUid: scratchNode.uid,
         value,
         key: "return",
       });
     }, 1000);
   };
-  const conditionsNode = useSubTree({
-    tree: scratchNodeChildren,
-    key: "conditions",
-  });
-  const conditionsNodeUid = useMemo(() => {
-    if (conditionsNode?.uid) return conditionsNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "conditions", uid: newUid },
-      parentUid: scratchNodeUid,
-    });
-    return newUid;
-  }, [conditionsNode, scratchNodeUid]);
-  const conditionsNodeChildren = useMemo(
-    () => conditionsNode?.children || [],
-    [conditionsNode]
+  const parsedQuery = useMemo(() => parseQuery(scratchNode), [scratchNode]);
+  const [returnNode, setReturnNode] = useState(
+    () => defaultReturnNode || parsedQuery.returnNode
   );
-  const [conditions, setConditions] = useState<Condition[]>(() => {
-    return conditionsNodeChildren.map(({ uid, children }) => ({
-      uid,
-      source: getSettingValueFromTree({ tree: children, key: "source" }),
-      target: getSettingValueFromTree({ tree: children, key: "target" }),
-      relation: getSettingValueFromTree({ tree: children, key: "relation" }),
-      not: !!getSubTree({ tree: children, key: "not" }).uid,
-      type: "clause",
-    }));
-  });
-
-  const selectionsNode = useMemo(
+  const [conditions, setConditions] = useState(parsedQuery.conditions);
+  const [selections, setSelections] = useState(parsedQuery.selections);
+  const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);
+  const view = useMemo(() => views.slice(-1)[0], [views]);
+  const viewCondition = useMemo(
     () =>
-      scratchNodeChildren.find((t) => toFlexRegex("selections").test(t.text)),
-    [scratchNodeChildren]
+      view.uid === parentUid
+        ? undefined
+        : (getConditionByUid(view.uid, conditions) as QBNestedData),
+    [view, conditions]
   );
-  const selectionsNodeUid = useMemo(() => {
-    if (selectionsNode?.uid) return selectionsNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "selections", uid: newUid },
-      parentUid: scratchNodeUid,
-    });
-    return newUid;
-  }, [selectionsNode, scratchNodeUid]);
-  const selectionsNodeChildren = useMemo(
-    () => selectionsNode?.children || [],
-    [selectionsNode]
+  const viewConditions = useMemo(
+    () =>
+      view.uid === parentUid
+        ? conditions
+        : viewCondition?.conditions?.[view.branch] || [],
+    [view, viewCondition, conditions]
   );
-  const [selections, setSelections] = useState<Selection[]>(() => {
-    return selectionsNodeChildren.map(({ uid, text, children }) => ({
-      uid,
-      text,
-      label: children?.[0]?.text || "",
-    }));
-  });
-  useEffect(() => {
-    const {
-      returnNode: value,
-      conditions,
-      selections,
-    } = parseQuery({
-      uid: "",
-      text: "",
-      children: defaultQuery.map((text) => ({ text, uid: "", children: [] })),
-    });
-    Promise.all([
-      setInputSetting({
-        blockUid: scratchNodeUid,
-        value,
-        key: "return",
-      }),
-      Promise.all(
-        conditions.map((condition, order) =>
-          condition.type === "clause" || condition.type === "not"
-            ? createBlock({
-                parentUid: conditionsNodeUid,
-                order,
-                node: {
-                  text: `${order}`,
-                  children: [
-                    { text: "source", children: [{ text: condition.source }] },
-                    {
-                      text: "relation",
-                      children: [{ text: condition.relation }],
-                    },
-                    { text: "target", children: [{ text: condition.target }] },
-                    ...(condition.type === "not" ? [{ text: "not" }] : []),
-                  ],
-                },
-              }).then((uid) => ({
-                source: condition.source,
-                relation: condition.relation,
-                target: condition.target,
-                uid,
-                not: condition.not,
-                type: "clause" as const,
-              }))
-            : Promise.resolve(condition)
-        )
-      ),
-      Promise.all(
-        selections.map((sel, order) =>
-          createBlock({
-            parentUid: selectionsNodeUid,
-            order,
-            node: {
-              text: sel.text,
-              uid: sel.uid,
-              children: [{ text: sel.label }],
-            },
-          }).then(() => sel)
-        )
-      ),
-    ]).then(([, conditionNodesWithUids, selections]) => {
-      if (!defaultReturnNode) setReturnNode(value);
-      setConditions(conditionNodesWithUids);
-      setSelections(selections);
-    });
-  }, [
-    defaultReturnNode,
-    defaultQuery,
-    setReturnNode,
-    setConditions,
-    conditionsNodeUid,
-    selectionsNodeUid,
-    setSelections,
-    scratchNodeUid,
-  ]);
   useEffect(() => {
     if (!window.roamAlphaAPI.data.fast?.q)
       renderSimpleAlert({
@@ -451,7 +429,15 @@ const QueryEditor = ({
         onConfirm: () => {},
       });
   }, []);
-  return (
+  useEffect(() => {
+    if (defaultReturnNode)
+      setInputSetting({
+        blockUid: scratchNode.uid,
+        value: defaultReturnNode,
+        key: "return",
+      });
+  }, [defaultReturnNode, scratchNode]);
+  return view.uid === parentUid ? (
     <div
       style={{
         padding: 16,
@@ -495,11 +481,12 @@ const QueryEditor = ({
       {conditions.map((con, index) => (
         <QueryCondition
           key={con.uid}
-          con={con as QBClauseData}
+          con={con}
           index={index}
-          conditions={conditions as QBClauseData[]}
-          returnNode={returnNode}
-          setConditions={setConditions as (cs: QBClauseData[]) => void}
+          conditions={conditions}
+          availableSources={[returnNode]}
+          setConditions={setConditions}
+          setView={(v) => setViews([...views, v])}
         />
       ))}
       {selections.map((sel) => (
@@ -518,10 +505,10 @@ const QueryEditor = ({
             style={{ maxHeight: 32 }}
             onClick={() => {
               createBlock({
-                parentUid: conditionsNodeUid,
+                parentUid: parsedQuery.conditionsNodesUid,
                 order: conditions.length,
                 node: {
-                  text: `${conditions.length}`,
+                  text: "clause",
                 },
               }).then((uid) =>
                 setConditions([
@@ -546,7 +533,7 @@ const QueryEditor = ({
             style={{ maxHeight: 32 }}
             onClick={() => {
               createBlock({
-                parentUid: selectionsNodeUid,
+                parentUid: parsedQuery.selectionsNodesUid,
                 order: selections.length,
                 node: {
                   text: ``,
@@ -563,39 +550,172 @@ const QueryEditor = ({
           <Button
             text={"Query"}
             onClick={() => {
-              onQuery({
-                conditions,
-                returnNode,
-                selections,
-              })
-                .then(() =>
-                  setInputSetting({
-                    blockUid: scratchNodeUid,
-                    value: "",
-                    key: "return",
-                  })
-                )
-                .then(() => {
-                  setReturnNode("");
-                  setConditions([]);
-                  setSelections([]);
-                });
+              const resultNode = getSubTree({ parentUid, key: "results" });
+              const queryNode = getSubTree({
+                parentUid: resultNode.uid,
+                key: "query",
+              });
+              Promise.all([
+                queryNode.children.map((q) => deleteBlock(q.uid)),
+                window.roamAlphaAPI.moveBlock({
+                  location: { "parent-uid": queryNode.uid, order: 0 },
+                  block: { uid: parsedQuery.returnNodeUid },
+                }),
+                window.roamAlphaAPI.moveBlock({
+                  location: { "parent-uid": queryNode.uid, order: 1 },
+                  block: { uid: parsedQuery.conditionsNodesUid },
+                }),
+                window.roamAlphaAPI.moveBlock({
+                  location: { "parent-uid": queryNode.uid, order: 2 },
+                  block: { uid: parsedQuery.selectionsNodesUid },
+                }),
+              ]).then(() => {
+                setReturnNode("");
+                setConditions([]);
+                setSelections([]);
+                onQuery?.();
+              });
             }}
             style={{ maxHeight: 32 }}
             intent={"primary"}
             disabled={
-              !conditions.every(
-                (c) =>
-                  c.type !== "or" &&
-                  c.type !== "not or" &&
-                  conditionLabels.has(c.relation) &&
-                  !!c.target
+              !conditions.every((c) =>
+                c.type === "not" || c.type == "clause"
+                  ? conditionLabels.has(c.relation) && !!c.target
+                  : c.conditions.length
               ) ||
               !returnNode ||
               selections.some((s) => !s.text)
             }
           />
         </span>
+      </div>
+    </div>
+  ) : (
+    <div
+      style={{
+        padding: 16,
+      }}
+    >
+      <div>
+        <h4>OR Branches</h4>
+        <Tabs
+          selectedTabId={view.branch}
+          onChange={(e) =>
+            setViews(
+              views.slice(0, -1).concat([{ uid: view.uid, branch: Number(e) }])
+            )
+          }
+        >
+          {Array(viewCondition.conditions.length)
+            .fill(null)
+            .map((_, j) => (
+              <Tab
+                key={j}
+                id={j}
+                title={`${j + 1}`}
+                panel={
+                  <>
+                    {viewConditions.map((con, index) => (
+                      <QueryCondition
+                        key={con.uid}
+                        con={con}
+                        index={index}
+                        conditions={viewConditions}
+                        availableSources={[
+                          returnNode,
+                          ...conditions
+                            .filter(
+                              (c) => c.type === "clause" || c.type === "not"
+                            )
+                            .map((c) => (c as QBClauseData).target),
+                        ]}
+                        setConditions={(cons) => {
+                          viewCondition.conditions[view.branch] = cons;
+                          setConditions([...conditions]);
+                        }}
+                        setView={(v) => setViews([...views, v])}
+                      />
+                    ))}
+                  </>
+                }
+              />
+            ))}
+        </Tabs>
+        <div style={{ display: "flex" }}>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              icon={"arrow-left"}
+              text={"Back"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                setViews(views.slice(0, -1));
+              }}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              rightIcon={"plus"}
+              text={"Add Branch"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                createBlock({
+                  parentUid: view.uid,
+                  order: viewConditions.length,
+                  node: {
+                    text: `AND`,
+                  },
+                }).then(() => {
+                  viewCondition.conditions.push([]);
+                  setConditions([...conditions]);
+                });
+              }}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              rightIcon={"plus"}
+              text={"Add Condition"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                const branchUid = getNthChildUidByBlockUid({
+                  blockUid: view.uid,
+                  order: view.branch,
+                });
+                (branchUid
+                  ? Promise.resolve(branchUid)
+                  : createBlock({
+                      parentUid: view.uid,
+                      order: view.branch,
+                      node: { text: "AND" },
+                    })
+                )
+                  .then((branchUid) =>
+                    createBlock({
+                      parentUid: branchUid,
+                      order: getChildrenLengthByPageUid(branchUid),
+                      node: {
+                        text: `clause`,
+                      },
+                    })
+                  )
+                  .then((uid) => {
+                    viewCondition.conditions[view.branch] = [
+                      ...viewConditions,
+                      {
+                        uid,
+                        source: "",
+                        relation: "",
+                        target: "",
+                        type: "clause",
+                      },
+                    ];
+                    setConditions([...conditions]);
+                  });
+              }}
+            />
+          </span>
+        </div>
       </div>
     </div>
   );

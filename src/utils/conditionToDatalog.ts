@@ -552,12 +552,26 @@ export const getConditionLabels = () =>
     .sort((a, b) => b.length - a.length);
 
 const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
-  (con) => {
-    const { not, relation, ...condition } = con as QBClauseData;
+  (condition) => {
+    const not = condition.type === "not" || condition.type === "not or";
+    if (condition.type === "or" || condition.type === "not or") {
+      const datalog = [
+        {
+          type: "or-join-clause",
+          clauses: condition.conditions.map((branch) => ({
+            type: "and-clause",
+            clauses: branch.flatMap((c) => conditionToDatalog(c)),
+          })),
+          variables: [],
+        },
+      ] as DatalogClause[];
+      if (not) return [{ type: "not-clause", clauses: datalog }];
+      return datalog;
+    }
     const datalogTranslator =
-      translator[relation] ||
+      translator[condition.relation] ||
       Object.entries(translator).find(([k]) =>
-        new RegExp(relation, "i").test(k)
+        new RegExp(condition.relation, "i").test(k)
       )?.[1];
     const datalog = datalogTranslator?.callback?.(condition) || [];
     if (datalog.length && not)

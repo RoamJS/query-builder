@@ -85,6 +85,24 @@ const getVariables = (
   }
 };
 
+const joinVariables = (
+  clauses: (DatalogClause | DatalogAndClause)[]
+) => {
+  clauses.forEach(clause => {
+    if (
+      clause.type === "not-clause" ||
+      clause.type === "or-clause" ||
+      clause.type === "and-clause" ||
+      clause.type === "not-join-clause" ||
+      clause.type === "or-join-clause"
+    ) {
+      joinVariables(clause.clauses);
+      const allVariables = new Set();
+      
+    }
+  })
+}
+
 const optimizeQuery = (
   clauses: (DatalogClause | DatalogAndClause)[],
   capturedVariables: Set<string>

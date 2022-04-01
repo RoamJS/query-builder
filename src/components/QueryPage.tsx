@@ -1,15 +1,13 @@
-import { Card, Button, Tooltip } from "@blueprintjs/core";
+import { Card } from "@blueprintjs/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import ResultsView, { Result as SearchResult } from "./ResultsView";
 import ReactDOM from "react-dom";
 import QueryEditor from "./QueryEditor";
-import createBlock from "roamjs-components/writes/createBlock";
-import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { createComponentRender } from "roamjs-components/components/ComponentContainer";
-import type { QBClauseData } from "roamjs-components/types/query-builder";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 
 type Props = {
   pageUid: string;
@@ -18,50 +16,37 @@ type Props = {
   getExportTypes?: Parameters<typeof ResultsView>[0]["getExportTypes"];
 };
 
+const getQueryNode = (parentUid: string) => {
+  const tree = getBasicTreeByParentUid(parentUid);
+  const resultsNode = getSubTree({ tree, key: "results" });
+  return getSubTree({ tree: resultsNode.children, key: "query" });
+};
+
 const QueryPage = ({
   pageUid,
   hideMetadata = false,
   defaultReturnNode,
   getExportTypes,
 }: Props) => {
-  const queryNode = useMemo(
-    () => getSubTree({ parentUid: pageUid, key: "query" }),
-    [pageUid]
-  );
   const [isEdit, setIsEdit] = useState(
-    !queryNode.children.length &&
+    () =>
+      !getQueryNode(pageUid).children.length &&
       (!defaultReturnNode || defaultReturnNode === "block")
-  );
-  const [query, setQuery] = useState(() =>
-    queryNode.children.length
-      ? queryNode.children.map((s) => s.text)
-      : !isEdit
-      ? [`Find ${defaultReturnNode} Where`]
-      : []
   );
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (query.length) {
+    if (!isEdit) {
       setLoading(true);
-      const { returnNode, conditions, selections } = parseQuery({
-        uid: "",
-        text: "",
-        children: query.map((text) => ({ text, uid: "", children: [] })),
-      });
       setTimeout(() => {
-        fireQuery({
-          returnNode,
-          conditions,
-          selections,
-        }).then((results) => {
+        fireQuery(parseQuery(getQueryNode(pageUid))).then((results) => {
           setResults(results);
           setLoading(false);
         });
       }, 1);
     }
-  }, [setResults, query]);
+  }, [setResults, pageUid, isEdit, setLoading]);
   useEffect(() => {
     const roamBlock = containerRef.current.closest(".rm-block-main");
     if (roamBlock) {
@@ -91,51 +76,8 @@ const QueryPage = ({
           <>
             <QueryEditor
               parentUid={pageUid}
-              defaultQuery={query}
-              onQuery={({ returnNode, conditions, selections }) => {
-                const queryNode = getSubTree({
-                  parentUid: pageUid,
-                  key: "query",
-                });
-                return (
-                  queryNode.uid
-                    ? Promise.all(
-                        queryNode.children.map((c) => deleteBlock(c.uid))
-                      ).then(() => queryNode.uid)
-                    : createBlock({
-                        parentUid: pageUid,
-                        node: { text: "query" },
-                      })
-                )
-                  .then((parentUid) => {
-                    const nodes = [
-                      { text: `Find ${returnNode} Where` },
-                      ...(conditions as QBClauseData[]).map((c) => ({
-                        text: `${c.not ? "NOT " : ""}${c.source} ${
-                          c.relation
-                        } ${c.target}`,
-                      })),
-                      ...selections.map((s) => ({
-                        text: `Select ${s.text} AS ${s.label}`,
-                      })),
-                    ];
-                    return Promise.all(
-                      nodes.map((node, order) =>
-                        createBlock({ node, order, parentUid })
-                      )
-                    ).then(() => {
-                      setIsEdit(false);
-                      setQuery(nodes.map((t) => t.text));
-                    });
-                  })
-                  .then(() =>
-                    Promise.all(
-                      conditions
-                        .map((c) => deleteBlock(c.uid))
-                        .concat(selections.map((s) => deleteBlock(s.uid)))
-                    )
-                  )
-                  .then(() => Promise.resolve());
+              onQuery={() => {
+                setIsEdit(false);
               }}
               defaultReturnNode={defaultReturnNode}
             />

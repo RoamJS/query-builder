@@ -56,13 +56,15 @@ export default runExtension({
     outline-width: 2px;
 }
 
-.roamjs-query-condition-source, 
+.roamjs-query-condition-type, 
+.roamjs-query-condition-source,
 .roamjs-query-condition-relation,
 .roamjs-query-return-node {
   min-width: 144px;
   max-width: 144px;
 }
 
+.roamjs-query-condition-source,
 .roamjs-query-condition-relation,
 .roamjs-query-return-node {
   padding-right: 8px;
@@ -73,7 +75,7 @@ export default runExtension({
   min-width: 300px;
 }
 
-.roamjs-query-condition-relation .bp3-popover-target,
+.roamjs-query-condition-source .bp3-popover-target,
 .roamjs-query-condition-target .roamjs-autocomplete-input-target { 
   width: 100%
 }

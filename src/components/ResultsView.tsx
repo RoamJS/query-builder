@@ -33,6 +33,7 @@ import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
+import { Condition } from "roamjs-components/types/query-builder";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -459,6 +460,24 @@ const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
     </div>
   );
 };
+const flattenConditions = (cs: Condition[], tab = 0): string[] =>
+  cs
+    .flatMap((c) => [
+      `${c.type === "not" ? "NOT" : ""}${c.type === "clause" ? "AND" : ""}${
+        c.type === "not or" ? "NOT OR" : ""
+      }${c.type === "or" ? "OR" : ""} ${
+        c.type === "clause" || c.type === "not"
+          ? `${c.source} ${c.relation} ${c.target}`
+          : ""
+      }`,
+      ...(c.type === "not or" || c.type === "or"
+        ? c.conditions.flatMap((branch) => [
+            "  AND",
+            ...flattenConditions(branch, tab + 2),
+          ])
+        : []),
+    ])
+    .map((s) => `${"".padStart(tab * 2, " ")}${s}`);
 
 const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   parentUid,
@@ -484,6 +503,18 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
   const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
   const queryNode = useSubTree({ tree, key: "query" });
+  const resultContent = useMemo(() => {
+    const tree = getBasicTreeByParentUid(parentUid);
+    const resultNode = getSubTree({ tree, key: "results" });
+    const queryNode = getSubTree({ tree: resultNode.children, key: "query" });
+    if (!queryNode.children.length) return [];
+    const { returnNode, conditions, selections } = parseQuery(queryNode);
+    return [
+      `Find ${returnNode} Where`,
+      ...flattenConditions(conditions),
+      ...selections.map((s) => `Select ${s.text} AS ${s.label}`),
+    ];
+  }, [results, parentUid]);
   const columns = useMemo(
     () =>
       results.length
@@ -761,12 +792,53 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 )}
                 {onEdit && (
                   <Tooltip content={"Edit Query"}>
-                    <Button icon={"edit"} minimal onClick={onEdit} />
+                    <Button
+                      icon={"edit"}
+                      minimal
+                      onClick={() => {
+                        const scratchNode = getSubTree({
+                          parentUid,
+                          key: "scratch",
+                        });
+                        const resultNode = getSubTree({
+                          parentUid,
+                          key: "results",
+                        });
+                        const queryNode = getSubTree({
+                          tree: resultNode.children,
+                          key: "query",
+                        });
+                        Promise.all(
+                          queryNode.children
+                            .map((qn, order) =>
+                              window.roamAlphaAPI.moveBlock({
+                                location: {
+                                  "parent-uid": scratchNode.uid,
+                                  order,
+                                },
+                                block: { uid: qn.uid },
+                              })
+                            )
+                            .concat(
+                              scratchNode.children.map((s) =>
+                                deleteBlock(s.uid).then(() => Promise.resolve())
+                              )
+                            )
+                        ).then(onEdit);
+                      }}
+                    />
                   </Tooltip>
                 )}
               </span>
             </div>
             {showContent && <QueryUsed queryNode={queryNode} />}
+            {showContent && (
+              <div style={{ fontSize: 8 }}>
+                {resultContent.map((r, i) => (
+                  <div key={i}>{r}</div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
