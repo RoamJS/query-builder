@@ -10,17 +10,20 @@ import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { createComponentRender } from "roamjs-components/components/ComponentContainer";
+import type { QBClauseData } from "roamjs-components/types/query-builder";
 
 type Props = {
   pageUid: string;
   hideMetadata?: boolean;
   defaultReturnNode?: string;
+  getExportTypes?: Parameters<typeof ResultsView>[0]["getExportTypes"];
 };
 
 const QueryPage = ({
   pageUid,
   hideMetadata = false,
   defaultReturnNode,
+  getExportTypes,
 }: Props) => {
   const queryNode = useMemo(
     () => getSubTree({ parentUid: pageUid, key: "query" }),
@@ -103,7 +106,7 @@ const QueryPage = ({
                   .then((parentUid) => {
                     const nodes = [
                       { text: `Find ${returnNode} Where` },
-                      ...conditions.map((c) => ({
+                      ...(conditions as QBClauseData[]).map((c) => ({
                         text: `${c.not ? "NOT " : ""}${c.source} ${
                           c.relation
                         } ${c.target}`,
@@ -141,6 +144,7 @@ const QueryPage = ({
           <ResultsView
             parentUid={pageUid}
             onEdit={() => setIsEdit(true)}
+            getExportTypes={getExportTypes}
             header={
               <div>
                 {/*<Tooltip content={"Export"}>

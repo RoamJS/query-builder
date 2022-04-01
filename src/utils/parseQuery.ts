@@ -18,6 +18,7 @@ const parseQuery = (q: string[]) => {
         target,
         not,
         uid: window.roamAlphaAPI.util.generateUID(),
+        type: "clause" as const,
       };
     })
     .filter((r) => !!r.relation);

@@ -25,6 +25,7 @@ import conditionToDatalog, {
   unregisterDatalogTranslator,
 } from "./utils/conditionToDatalog";
 import runQueryTools from "./utils/runQueryTools";
+import { ExportDialog } from "./components/Export";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -241,10 +242,12 @@ runExtension(ID, async () => {
 
   window.roamjs.extension.queryBuilder = {
     ExportDialog,
+    //@ts-ignore
     QueryEditor,
     QueryPage,
     ResultsView,
     fireQuery,
+    //@ts-ignore
     parseQuery,
     conditionToDatalog,
     getConditionLabels,

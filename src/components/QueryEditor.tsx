@@ -32,7 +32,7 @@ import { render as renderSimpleAlert } from "roamjs-components/components/Simple
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
-import { Condition, Selection } from "roamjs-components/types/query-builder";
+import { Condition, QBClauseData, Selection } from "roamjs-components/types/query-builder";
 import fuzzy from "fuzzy";
 import useArrowKeyDown from "roamjs-components/hooks/useArrowKeyDown";
 
@@ -191,10 +191,10 @@ const QueryCondition = ({
   conditions,
   returnNode,
 }: {
-  con: Condition;
+  con: QBClauseData;
   index: number;
-  setConditions: (cons: Condition[]) => void;
-  conditions: Condition[];
+  setConditions: (cons: QBClauseData[]) => void;
+  conditions: QBClauseData[];
   returnNode: string;
 }) => {
   const debounceRef = useRef(0);
@@ -470,6 +470,7 @@ const QueryEditor = ({
       target: getSettingValueFromTree({ tree: children, key: "target" }),
       relation: getSettingValueFromTree({ tree: children, key: "relation" }),
       not: !!getSubTree({ tree: children, key: "not" }).uid,
+      type: "clause"
     }));
   });
 
@@ -530,6 +531,7 @@ const QueryEditor = ({
             target,
             uid,
             not,
+            type: 'clause' as const,
           }))
         )
       ),
@@ -613,11 +615,11 @@ const QueryEditor = ({
       {conditions.map((con, index) => (
         <QueryCondition
           key={con.uid}
-          con={con}
+          con={con as QBClauseData}
           index={index}
-          conditions={conditions}
+          conditions={conditions as QBClauseData[]}
           returnNode={returnNode}
-          setConditions={setConditions}
+          setConditions={setConditions as (cs: QBClauseData[]) => void}
         />
       ))}
       {selections.map((sel) => (
@@ -644,7 +646,7 @@ const QueryEditor = ({
               }).then((uid) =>
                 setConditions([
                   ...conditions,
-                  { uid, source: "", relation: "", target: "", not: false },
+                  { uid, source: "", relation: "", target: "", not: false, type: 'clause' },
                 ])
               );
             }}
@@ -695,7 +697,13 @@ const QueryEditor = ({
             style={{ maxHeight: 32 }}
             intent={"primary"}
             disabled={
-              !conditions.every((c) => !!c.relation && !!c.target) ||
+              !conditions.every(
+                (c) =>
+                  c.type !== "or" &&
+                  c.type !== "not or" &&
+                  !!c.relation &&
+                  !!c.target
+              ) ||
               !returnNode ||
               selections.some((s) => !s.text)
             }

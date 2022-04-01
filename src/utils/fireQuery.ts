@@ -143,7 +143,7 @@ const optimizeQuery = (
         if (c.variables.every((v) => capturedVariables.has(v.value))) {
           score = 100;
         } else {
-          score = 100003
+          score = 100003;
         }
       } else if (
         c.type === "fn-expr" ||
@@ -160,7 +160,7 @@ const optimizeQuery = (
           score = 100004;
         }
       } else {
-        score = 100005
+        score = 100005;
       }
       if (score < bestClauseScore) {
         bestClauseScore = score;
@@ -271,6 +271,7 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = ({
         target: returnNode,
         uid: "",
         not: false,
+        type: "clause",
       });
 
   const defaultSelections: {

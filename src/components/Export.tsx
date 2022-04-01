@@ -28,6 +28,7 @@ type Props = {
     name: string;
     callback: (args: {
       filename: string;
+      graph: string;
     }) => { title: string; content: string }[];
   }[];
   results?: Result[];
@@ -150,23 +151,23 @@ export const ExportDialog = ({
               setError("");
               setTimeout(async () => {
                 try {
-                  const zip = new JSZip();
                   const exportType = exportTypes.find(
                     (e) => e.name === activeExportType
                   );
-                  if (exportType)
-                    exportType
-                      .callback({ filename })
-                      .forEach(({ title, content }) =>
+                  if (exportType) {
+                    const zip = new JSZip();
+                    const files = exportType.callback({ filename, graph });
+                    if (!files.length) {
+                      onClose();
+                    } else {
+                      files.forEach(({ title, content }) =>
                         zip.file(title, content)
                       );
-                  if (activeExportType === "graph") {
-                    onClose();
-                  } else {
-                    zip.generateAsync({ type: "blob" }).then((content) => {
-                      download(content, `${filename}.zip`, "application/zip");
-                      onClose();
-                    });
+                      zip.generateAsync({ type: "blob" }).then((content) => {
+                        download(content, `${filename}.zip`, "application/zip");
+                        onClose();
+                      });
+                    }
                   }
                 } catch (e) {
                   setError(e.message);
@@ -183,7 +184,58 @@ export const ExportDialog = ({
   );
 };
 
-export const Export = ({ results }: { results: Result[] }) => {
+export const Export = ({
+  results,
+  exportTypes = [
+    {
+      name: "CSV",
+      callback: ({ filename }) => {
+        const keys = Object.keys(results[0]).filter((u) => !/uid/i.test(u));
+        const header = `${keys.join(",")}\n`;
+        const data = results
+          .map((r) =>
+            keys
+              .map((k) => r[k].toString())
+              .map((v) => (v.includes(",") ? `"${v}"` : v))
+          )
+          .join("\n");
+        return [
+          {
+            title: `${filename.replace(/\.csv/, "")}.csv`,
+            content: `${header}${data}`,
+          },
+        ];
+      },
+    },
+    {
+      name: "Markdown",
+      callback: () =>
+        results
+          .map(({ uid, ...rest }) => {
+            const v =
+              ((
+                window.roamAlphaAPI.data.fast.q(
+                  `[:find ?b (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
+                )[0]?.[0] as PullBlock
+              )?.[":children/view-type"].slice(1) as ViewType) || "bullet";
+            const treeNode = getFullTreeByParentUid(uid);
+
+            const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
+              .filter((k) => !/uid/i.test(k))
+              .map(
+                (k) => `${k}: ${rest[k].toString()}`
+              )}---\n\n${treeNode.children
+              .map((c) => toMarkdown({ c, v, i: 0 }))
+              .join("\n")}\n`;
+            return { title: rest.text, content };
+          })
+          .map(({ title, content }) => ({
+            title: titleToFilename(title),
+            content,
+          })),
+    },
+  ],
+}: Pick<Props, "exportTypes" | "results">) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>
@@ -194,60 +246,7 @@ export const Export = ({ results }: { results: Result[] }) => {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         results={results}
-        exportTypes={[
-          {
-            name: "CSV",
-            callback: ({ filename }) => {
-              const keys = Object.keys(results[0]).filter(
-                (u) => !/uid/i.test(u)
-              );
-              const header = `${keys.join(",")}\n`;
-              const data = results
-                .map((r) =>
-                  keys
-                    .map((k) => r[k].toString())
-                    .map((v) => (v.includes(",") ? `"${v}"` : v))
-                )
-                .join("\n");
-              return [
-                {
-                  title: `${filename.replace(/\.csv/, "")}.csv`,
-                  content: `${header}${data}`,
-                },
-              ];
-            },
-          },
-          {
-            name: "Markdown",
-            callback: () =>
-              results
-                .map(({ uid, ...rest }) => {
-                  const v =
-                    ((
-                      window.roamAlphaAPI.data.fast.q(
-                        `[:find ?b (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
-                      )[0]?.[0] as PullBlock
-                    )?.[":children/view-type"].slice(1) as ViewType) ||
-                    "bullet";
-                  const treeNode = getFullTreeByParentUid(uid);
-
-                  const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(
-                    rest
-                  )
-                    .filter((k) => !/uid/i.test(k))
-                    .map(
-                      (k) => `${k}: ${rest[k].toString()}`
-                    )}---\n\n${treeNode.children
-                    .map((c) => toMarkdown({ c, v, i: 0 }))
-                    .join("\n")}\n`;
-                  return { title: rest.text, content };
-                })
-                .map(({ title, content }) => ({
-                  title: titleToFilename(title),
-                  content,
-                })),
-          },
-        ]}
+        exportTypes={exportTypes}
       />
     </>
   );

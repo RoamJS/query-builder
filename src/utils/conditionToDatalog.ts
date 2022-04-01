@@ -1,6 +1,7 @@
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import { DatalogClause } from "roamjs-components/types";
+import { QBClauseData } from "roamjs-components/types/query-builder";
 
 type Translator = Record<
   string,
@@ -334,7 +335,8 @@ export const getConditionLabels = () =>
   Object.keys(translator).filter((k) => k !== "self");
 
 const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
-  ({ not, relation, ...condition }) => {
+  (con) => {
+    const { not, relation, ...condition } = con as QBClauseData;
     const datalog = translator[relation]?.callback?.(condition) || [];
     if (datalog.length && not)
       return [{ type: "not-clause", clauses: datalog }];

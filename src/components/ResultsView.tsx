@@ -400,7 +400,9 @@ const ResultsView = ({
   resultFilter,
   ctrlClick,
   preventSavingSettings = false,
+  preventExport,
   onEdit,
+  getExportTypes,
 }: {
   parentUid: string;
   header?: React.ReactNode;
@@ -410,7 +412,9 @@ const ResultsView = ({
   resultFilter?: (r: Result) => void;
   ctrlClick?: (e: Result) => void;
   preventSavingSettings?: boolean;
+  preventExport?: boolean;
   onEdit?: () => void;
+  getExportTypes?: (r: Result[]) => Parameters<typeof Export>[0]["exportTypes"];
 }) => {
   const tree = getBasicTreeByParentUid(parentUid);
   const resultNode = useSubTree({ tree, key: "results" });
@@ -679,7 +683,12 @@ const ResultsView = ({
                     />
                   </Tooltip>
                 )}
-                <Export results={resultsInView} />
+                {preventExport && (
+                  <Export
+                    results={resultsInView}
+                    exportTypes={getExportTypes?.(resultsInView)}
+                  />
+                )}
                 {onEdit && (
                   <Tooltip content={"Edit Query"}>
                     <Button icon={"edit"} minimal onClick={onEdit} />
@@ -789,8 +798,7 @@ const ResultsView = ({
                       icon={"chevron-right"}
                       onClick={() => setPage(page + 1)}
                       disabled={
-                        page ===
-                          Math.ceil(resultsInView.length / pageSize) ||
+                        page === Math.ceil(resultsInView.length / pageSize) ||
                         resultsInView.length === 0
                       }
                     />
@@ -798,8 +806,7 @@ const ResultsView = ({
                       minimal
                       icon={"double-chevron-right"}
                       disabled={
-                        page ===
-                          Math.ceil(resultsInView.length / pageSize) ||
+                        page === Math.ceil(resultsInView.length / pageSize) ||
                         resultsInView.length === 0
                       }
                       onClick={() =>
