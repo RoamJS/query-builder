@@ -240,6 +240,7 @@ runExtension(ID, async () => {
   }
 
   window.roamjs.extension.queryBuilder = {
+    ExportDialog,
     QueryEditor,
     QueryPage,
     ResultsView,

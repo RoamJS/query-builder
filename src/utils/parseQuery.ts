@@ -34,7 +34,7 @@ const parseQuery = (q: string[]) => {
       text,
       label,
     }));
-  return { returnNode, conditionNodes, selectionNodes };
+  return { returnNode, conditionNodes, selectionNodes, };
 };
 
 export default parseQuery;

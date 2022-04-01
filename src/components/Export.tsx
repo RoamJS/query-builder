@@ -26,7 +26,9 @@ type Props = {
   isOpen?: boolean;
   exportTypes?: {
     name: string;
-    callback: (args: { zip: JSZip; filename: string }) => void;
+    callback: (args: {
+      filename: string;
+    }) => { title: string; content: string }[];
   }[];
   results?: Result[];
 };
@@ -75,7 +77,7 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-const ExportDialog = ({
+export const ExportDialog = ({
   onClose,
   isOpen = true,
   exportTypes,
@@ -149,9 +151,15 @@ const ExportDialog = ({
               setTimeout(async () => {
                 try {
                   const zip = new JSZip();
-                  exportTypes
-                    .find((e) => e.name === activeExportType)
-                    ?.callback({ zip, filename });
+                  const exportType = exportTypes.find(
+                    (e) => e.name === activeExportType
+                  );
+                  if (exportType)
+                    exportType
+                      .callback({ filename })
+                      .forEach(({ title, content }) =>
+                        zip.file(title, content)
+                      );
                   if (activeExportType === "graph") {
                     onClose();
                   } else {
@@ -189,7 +197,7 @@ export const Export = ({ results }: { results: Result[] }) => {
         exportTypes={[
           {
             name: "CSV",
-            callback: ({ zip, filename }) => {
+            callback: ({ filename }) => {
               const keys = Object.keys(results[0]).filter(
                 (u) => !/uid/i.test(u)
               );
@@ -201,15 +209,17 @@ export const Export = ({ results }: { results: Result[] }) => {
                     .map((v) => (v.includes(",") ? `"${v}"` : v))
                 )
                 .join("\n");
-              zip.file(
-                `${filename.replace(/\.csv/, "")}.csv`,
-                `${header}${data}`
-              );
+              return [
+                {
+                  title: `${filename.replace(/\.csv/, "")}.csv`,
+                  content: `${header}${data}`,
+                },
+              ];
             },
           },
           {
             name: "Markdown",
-            callback: ({ zip }) => {
+            callback: () =>
               results
                 .map(({ uid, ...rest }) => {
                   const v =
@@ -232,10 +242,10 @@ export const Export = ({ results }: { results: Result[] }) => {
                     .join("\n")}\n`;
                   return { title: rest.text, content };
                 })
-                .forEach(({ title, content }) =>
-                  zip.file(titleToFilename(title), content)
-                );
-            },
+                .map(({ title, content }) => ({
+                  title: titleToFilename(title),
+                  content,
+                })),
           },
         ]}
       />
