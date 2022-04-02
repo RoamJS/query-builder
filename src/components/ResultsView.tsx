@@ -284,6 +284,7 @@ const ResultView = ({
                         text: toCellValue(r[k] || ""),
                         uid,
                       });
+                      e.preventDefault();
                     }
                   }}
                 >
