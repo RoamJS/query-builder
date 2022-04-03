@@ -288,6 +288,12 @@ const ResultView = ({
                       e.stopPropagation();
                     }
                   }}
+                  onMouseDown={e => {
+                    if (e.ctrlKey) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
                 >
                   {cell(k)}
                 </a>
