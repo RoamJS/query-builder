@@ -454,11 +454,14 @@ const runQueryTools = (configUid: string) => {
       (e) => !e.getAttribute("data-roamjs-query-alias")
     ) as HTMLDivElement[];
     queryTitles.forEach((q) => {
-      const config = getBasicTreeByParentUid(getUids(q).blockUid);
-      const alias = getSettingValueFromTree({ tree: config, key: "Alias" });
-      if (alias) {
-        q.setAttribute("data-roamjs-query-alias", "true");
-        q.innerText = alias;
+      const block = q.closest<HTMLDivElement>(".roam-block");
+      if (block) {
+        const config = getBasicTreeByParentUid(getUids(block).blockUid);
+        const alias = getSettingValueFromTree({ tree: config, key: "Alias" });
+        if (alias) {
+          q.setAttribute("data-roamjs-query-alias", "true");
+          q.innerText = alias;
+        }
       }
     });
 
@@ -469,10 +472,10 @@ const runQueryTools = (configUid: string) => {
       (e) => !e.getAttribute("data-is-contexted-results")
     ) as HTMLDivElement[];
     if (unContextedQueries.length) {
-        const pageConfig = getSubTree({
-          tree: getBasicTreeByParentUid(configUid),
-          key: "Native Queries",
-        }).children;
+      const pageConfig = getSubTree({
+        tree: getBasicTreeByParentUid(configUid),
+        key: "Native Queries",
+      }).children;
       unContextedQueries.forEach((q) => {
         const config = getBasicTreeByParentUid(getUids(q).blockUid);
         const configContext =
