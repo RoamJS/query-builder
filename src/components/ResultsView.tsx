@@ -285,6 +285,7 @@ const ResultView = ({
                         uid,
                       });
                       e.preventDefault();
+                      e.stopPropagation();
                     }
                   }}
                 >
