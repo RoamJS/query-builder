@@ -274,7 +274,7 @@ const ResultView = ({
                 <a
                   className={"rm-page-ref"}
                   href={getRoamUrl(uid)}
-                  onClick={(e) => {
+                  onMouseDown={(e) => {
                     if (e.shiftKey) {
                       openBlockInSidebar(uid);
                       e.preventDefault();
@@ -288,7 +288,7 @@ const ResultView = ({
                       e.stopPropagation();
                     }
                   }}
-                  onMouseDown={e => {
+                  onContextMenu={(e) => {
                     if (e.ctrlKey) {
                       e.preventDefault();
                       e.stopPropagation();
