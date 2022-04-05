@@ -28,6 +28,9 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import parseRoamDate from "roamjs-components/date/parseRoamDate";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import Export from "./Export";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import { RoamBasicNode } from "roamjs-components";
+import { getFilterEntries } from "./DefaultFilters";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -372,33 +375,6 @@ const toCellValue = (v: number | Date | string) =>
     ? ""
     : extractTag(v.toString());
 
-/**
- * FUZZY MATHCING LOGIC:
- * searchTerm
-      ? sorted
-          .filter((s) =>
-            Object.values(s).some((v) => fuzzy.test(searchTerm, v.toString()))
-          )
-          .map(
-            (s) =>
-              ({
-                uid: s.uid,
-                ...Object.fromEntries(
-                  Object.entries(s)
-                    .filter(([k]) => k !== "uid" && k !== "context")
-                    .map(([k, v]) => [
-                      k,
-                      fuzzy.match(searchTerm, v.toString(), {
-                        pre: "<span>",
-                        post: "<span>",
-                      })?.rendered || v,
-                    ])
-                ),
-              } as MappedResult)
-          )
-      : sorted 
- */
-
 const ResultsView = ({
   parentUid,
   header = "Results",
@@ -424,7 +400,12 @@ const ResultsView = ({
   onEdit?: () => void;
   getExportTypes?: (r: Result[]) => Parameters<typeof Export>[0]["exportTypes"];
 }) => {
-  const tree = getBasicTreeByParentUid(parentUid);
+  const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
+  const configTree = useMemo(
+    () =>
+      getBasicTreeByParentUid(getPageUidByPageTitle("roam/js/query-builder")),
+    []
+  );
   const resultNode = useSubTree({ tree, key: "results" });
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
@@ -447,31 +428,16 @@ const ResultsView = ({
       descending: toFlexRegex("true").test(s.children[0]?.text || ""),
     }))
   );
-  const savedFiltedData = useMemo(
-    () =>
-      Object.fromEntries(
-        filtersNode.children.map((c) => [
-          c.text,
-          {
-            includes: {
-              values: new Set(
-                getSubTree({ tree: c.children, key: "includes" }).children.map(
-                  (t) => t.text
-                )
-              ),
-            },
-            excludes: {
-              values: new Set(
-                getSubTree({ tree: c.children, key: "excludes" }).children.map(
-                  (t) => t.text
-                )
-              ),
-            },
-          },
-        ])
-      ),
-    [filtersNode]
-  );
+  const savedFilterData = useMemo(() => {
+    const globalFilterData = getSubTree({
+      key: "Default Filters",
+      tree: configTree,
+    });
+    const filterEntries = getFilterEntries(filtersNode);
+    return filterEntries.length
+      ? Object.fromEntries(filterEntries)
+      : Object.fromEntries(getFilterEntries(globalFilterData));
+  }, [filtersNode, configTree]);
   const savedViewData = useMemo(
     () =>
       Object.fromEntries(
@@ -483,7 +449,7 @@ const ResultsView = ({
     Object.fromEntries(
       columns.map((key) => [
         key,
-        savedFiltedData[key] || {
+        savedFilterData[key] || {
           includes: { values: new Set() },
           excludes: { values: new Set() },
         },
@@ -536,7 +502,16 @@ const ResultsView = ({
     [random, sortedResults]
   );
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(
+    () =>
+      getSettingIntFromTree({ tree: resultNode.children, key: "size" }) ||
+      getSettingIntFromTree({
+        tree: configTree,
+        key: "Default page size",
+        defaultValue: 10,
+      })
+  );
+  const pageSizeTimeoutRef = useRef(0);
   const paginatedResults = useMemo(
     () => resultsInView.slice((page - 1) * pageSize, page * pageSize),
     [page, pageSize, resultsInView]
@@ -595,9 +570,7 @@ const ResultsView = ({
               </i>
               <span>
                 {!preventSavingSettings && (
-                  <Tooltip
-                    content={"Save filters, sorts, views, and random settings"}
-                  >
+                  <Tooltip content={"Save settings"}>
                     <Button
                       icon={"saved"}
                       minimal
@@ -624,8 +597,13 @@ const ResultsView = ({
                                 parentUid: uid,
                                 node: {
                                   text: "filters",
-                                  children: Object.entries(filters).map(
-                                    ([column, data]) => ({
+                                  children: Object.entries(filters)
+                                    .filter(
+                                      ([, data]) =>
+                                        data.includes.values.size ||
+                                        data.excludes.values.size
+                                    )
+                                    .map(([column, data]) => ({
                                       text: column,
                                       children: [
                                         {
@@ -641,8 +619,7 @@ const ResultsView = ({
                                           ).map((text) => ({ text })),
                                         },
                                       ],
-                                    })
-                                  ),
+                                    })),
                                 },
                               }),
                               createBlock({
@@ -677,13 +654,21 @@ const ResultsView = ({
                                 },
                                 order: 4,
                               }),
+                              createBlock({
+                                parentUid: uid,
+                                node: {
+                                  text: "size",
+                                  children: [{ text: pageSize.toString() }],
+                                },
+                                order: 5,
+                              }),
                             ])
                           )
                           .then(() =>
                             renderToast({
                               id: "query-results-success",
                               content:
-                                "Successfully saved query's filters and sorts!",
+                                "Successfully saved query results' settings!",
                               intent: Intent.SUCCESS,
                             })
                           );
@@ -736,7 +721,7 @@ const ResultsView = ({
                   setActiveSort={setActiveSort}
                   filters={filters}
                   setFilters={setFilters}
-                  initialFilter={savedFiltedData[c]}
+                  initialFilter={savedFilterData[c]}
                   view={views[c]}
                   onViewChange={(v) => setViews({ ...views, [c]: v })}
                 />
@@ -787,7 +772,24 @@ const ResultsView = ({
                       style={{ width: 80 }}
                     />
                   </span>
-                  <span>
+                  <span style={{ display: "flex", alignItems: "center" }}>
+                    <span>Rows per page:</span>
+                    <InputGroup
+                      defaultValue={pageSize.toString()}
+                      onChange={(e) => {
+                        clearTimeout(pageSizeTimeoutRef.current);
+                        pageSizeTimeoutRef.current = window.setTimeout(() => {
+                          setPageSize(Number(e.target.value));
+                        }, 1000);
+                      }}
+                      type="number"
+                      style={{
+                        width: 60,
+                        maxWidth: 60,
+                        marginRight: 32,
+                        marginLeft: 16,
+                      }}
+                    />
                     <Button
                       minimal
                       icon={"double-chevron-left"}

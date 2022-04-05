@@ -26,6 +26,7 @@ import conditionToDatalog, {
 } from "./utils/conditionToDatalog";
 import runQueryTools from "./utils/runQueryTools";
 import { ExportDialog } from "./components/Export";
+import DefaultFilters from "./components/DefaultFilters";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -95,6 +96,21 @@ runExtension(ID, async () => {
                 description:
                   "Hide the Roam blocks that are used to power each query",
                 type: "flag",
+              },
+              {
+                title: "Default Filters",
+                description:
+                  "Any filters that should be applied to your results by default",
+                type: "custom",
+                options: {
+                  component: DefaultFilters,
+                },
+              },
+              {
+                title: "Default Page Size",
+                description: "The default page size used for query results",
+                type: "number",
+                defaultValue: 10,
               },
             ],
           },
