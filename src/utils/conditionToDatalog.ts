@@ -337,7 +337,8 @@ export const getConditionLabels = () =>
 const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
   (con) => {
     const { not, relation, ...condition } = con as QBClauseData;
-    const datalog = translator[relation]?.callback?.(condition) || [];
+    const datalogTranslator = translator[relation] || Object.entries(translator).find(([k]) => new RegExp(relation, 'i').test(k))?.[1];
+    const datalog = datalogTranslator?.callback?.(condition) || [];
     if (datalog.length && not)
       return [{ type: "not-clause", clauses: datalog }];
     return datalog;
