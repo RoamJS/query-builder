@@ -1,7 +1,8 @@
+import { InputTextNode } from "roamjs-components";
 import { getConditionLabels } from "./conditionToDatalog";
 
-const parseQuery = (q: string[]) => {
-  const [findWhere = "", ...conditions] = q;
+const parseQuery = (q: string[] | InputTextNode) => {
+  const [findWhere = "", ...conditions] = Array.isArray(q) ? q : q.children.map(t => t.text);
   const returnNode = findWhere.split(" ")[1] || "";
   const conditionLabels = getConditionLabels();
   const conditionNodes = conditions

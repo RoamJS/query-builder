@@ -182,15 +182,6 @@ const QueryPage = ({
               </div>
             }
             results={results.map(({ id, ...a }) => a)}
-            resultContent={
-              <div style={{ fontSize: 10, position: "relative" }}>
-                {query.map((q, i) => (
-                  <p key={i} style={{ margin: 0 }}>
-                    {q}
-                  </p>
-                ))}
-              </div>
-            }
           />
         )}
       </div>

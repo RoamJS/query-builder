@@ -11,6 +11,7 @@ import {
   Popover,
   Menu,
   MenuItem,
+  Switch,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
@@ -29,8 +30,10 @@ import parseRoamDate from "roamjs-components/date/parseRoamDate";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import Export from "./Export";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import { RoamBasicNode } from "roamjs-components";
 import { getFilterEntries } from "./DefaultFilters";
+import parseQuery from "../utils/parseQuery";
+import { getDatalogQuery } from "../utils/fireQuery";
+import { RoamBasicNode } from "roamjs-components/types";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -375,30 +378,70 @@ const toCellValue = (v: number | Date | string) =>
     ? ""
     : extractTag(v.toString());
 
-const ResultsView = ({
+const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
+  const { datalogQuery, englishQuery } = useMemo(() => {
+    const parsed = parseQuery(queryNode);
+    const rawDatalogQuery = getDatalogQuery({
+      conditions: parsed.conditionNodes,
+      selections: parsed.selectionNodes,
+      returnNode: parsed.returnNode,
+    }).query;
+    const englishQuery = queryNode.children.map((t) => t.text);
+    const datalogQuery =
+      Array.from(rawDatalogQuery.matchAll(/\?date-regex/g)).length > 1
+        ? `${rawDatalogQuery}\n(Add a date regex at the end as input)`
+        : rawDatalogQuery.replace(":in $ ?date-regex\n", "");
+    return { datalogQuery, englishQuery };
+  }, [queryNode]);
+  const [isEnglish, setIsEnglish] = useState(true);
+  return (
+    <div
+      style={{
+        fontSize: 10,
+        position: "relative",
+        display: "flex",
+      }}
+    >
+      <div
+        style={{
+          width: 240,
+          marginRight: 16,
+        }}
+      >
+        {isEnglish
+          ? englishQuery.map((q, i) => (
+              <p key={i} style={{ margin: 0 }}>
+                {q}
+              </p>
+            ))
+          : datalogQuery.split("\n").map((q, i) => (
+              <p key={i} style={{ margin: 0 }}>
+                {q}
+              </p>
+            ))}
+      </div>
+      <div>
+        <Switch
+          checked={isEnglish}
+          onChange={(e) => setIsEnglish((e.target as HTMLInputElement).checked)}
+        />
+      </div>
+    </div>
+  );
+};
+
+const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   parentUid,
   header = "Results",
   results,
-  resultContent = <div />,
   hideResults = false,
   resultFilter,
   ctrlClick,
   preventSavingSettings = false,
+  // @ts-ignore
   preventExport,
   onEdit,
   getExportTypes,
-}: {
-  parentUid: string;
-  header?: React.ReactNode;
-  results: Result[];
-  resultContent?: React.ReactElement;
-  hideResults?: boolean;
-  resultFilter?: (r: Result) => void;
-  ctrlClick?: (e: Result) => void;
-  preventSavingSettings?: boolean;
-  preventExport?: boolean;
-  onEdit?: () => void;
-  getExportTypes?: (r: Result[]) => Parameters<typeof Export>[0]["exportTypes"];
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const configTree = useMemo(
@@ -410,6 +453,7 @@ const ResultsView = ({
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
   const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
+  const queryNode = useSubTree({ tree, key: "query" });
   const columns = useMemo(
     () =>
       results.length
@@ -556,7 +600,7 @@ const ResultsView = ({
               }}
             >
               <i style={{ opacity: 0.8 }}>
-                {!!resultContent && (
+                {!!queryNode.uid && (
                   <Button
                     icon={showContent ? "caret-down" : "caret-right"}
                     minimal
@@ -689,7 +733,7 @@ const ResultsView = ({
                 )}
               </span>
             </div>
-            {showContent && <div>{resultContent}</div>}
+            {showContent && <QueryUsed queryNode={queryNode} />}
           </>
         )}
       </div>

@@ -258,11 +258,19 @@ export const registerSelection = (args: PredefinedSelection) => {
   predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
 };
 
-const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = ({
+export const getDatalogQuery = ({
   conditions,
   returnNode,
   selections,
-}) => {
+}: Parameters<typeof window.roamjs.extension.queryBuilder.fireQuery>[0]): {
+  query: string;
+  definedSelections: {
+    mapper: PredefinedSelection["mapper"];
+    pull: string;
+    label: string;
+    key: string;
+  }[];
+} => {
   const where = conditions.length
     ? conditions.flatMap(conditionToDatalog)
     : conditionToDatalog({
@@ -326,6 +334,13 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = ({
   )
     .map((c) => compileDatalog(c, 0))
     .join("\n")}\n]`;
+  return { query, definedSelections };
+};
+
+const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = (
+  args
+) => {
+  const { query, definedSelections } = getDatalogQuery(args);
   try {
     return window.roamAlphaAPI.data.fast
       .q(query, DAILY_NOTE_PAGE_TITLE_REGEX)
