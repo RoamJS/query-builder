@@ -332,12 +332,18 @@ export const unregisterDatalogTranslator = ({ key }: { key: string }) =>
   delete translator[key];
 
 export const getConditionLabels = () =>
-  Object.keys(translator).filter((k) => k !== "self");
+  Object.keys(translator)
+    .filter((k) => k !== "self")
+    .sort((a, b) => b.length - a.length);
 
 const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
   (con) => {
     const { not, relation, ...condition } = con as QBClauseData;
-    const datalogTranslator = translator[relation] || Object.entries(translator).find(([k]) => new RegExp(relation, 'i').test(k))?.[1];
+    const datalogTranslator =
+      translator[relation] ||
+      Object.entries(translator).find(([k]) =>
+        new RegExp(relation, "i").test(k)
+      )?.[1];
     const datalog = datalogTranslator?.callback?.(condition) || [];
     if (datalog.length && not)
       return [{ type: "not-clause", clauses: datalog }];
