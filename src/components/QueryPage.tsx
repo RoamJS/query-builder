@@ -36,7 +36,7 @@ const QueryPage = ({
   const [query, setQuery] = useState(() =>
     queryNode.children.length
       ? queryNode.children.map((s) => s.text)
-      : defaultReturnNode
+      : !isEdit
       ? [`Find ${defaultReturnNode} Where`]
       : []
   );
