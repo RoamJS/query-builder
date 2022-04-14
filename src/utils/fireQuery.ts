@@ -237,19 +237,17 @@ const predefinedSelections: PredefinedSelection[] = [
     test: /.*/,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
     mapper: (r, key) => {
-      return (
-        (
-          window.roamAlphaAPI.data.fast.q(
-            `[:find (pull ?b [:block/string]) :where [?a :node/title "${normalizePageTitle(
-              key
-            )}"] [?p :block/uid "${
-              r[":block/uid"]
-            }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
-          )?.[0]?.[0] as PullBlock
-        )?.[":block/string"] || ""
-      )
-        .slice(key.length + 2)
-        .trim();
+      const block = window.roamAlphaAPI.data.fast.q(
+        `[:find (pull ?b [:block/string :block/uid]) :where [?a :node/title "${normalizePageTitle(
+          key
+        )}"] [?p :block/uid "${
+          r[":block/uid"]
+        }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
+      )?.[0]?.[0] as PullBlock;
+      return {
+        "": (block[":block/string"] || "").slice(key.length + 2).trim(),
+        "-uid": block[":block/uid"],
+      };
     },
   },
 ];
