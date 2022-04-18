@@ -294,6 +294,12 @@ const ResultView = ({
                       e.stopPropagation();
                     }
                   }}
+                  onClick={(e) => {
+                    if (e.shiftKey || e.ctrlKey) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
                   onContextMenu={(e) => {
                     if (e.ctrlKey) {
                       e.preventDefault();
