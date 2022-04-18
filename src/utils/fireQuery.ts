@@ -245,8 +245,8 @@ const predefinedSelections: PredefinedSelection[] = [
         }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
       )?.[0]?.[0] as PullBlock;
       return {
-        "": (block[":block/string"] || "").slice(key.length + 2).trim(),
-        "-uid": block[":block/uid"],
+        "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
+        "-uid": block?.[":block/uid"],
       };
     },
   },
