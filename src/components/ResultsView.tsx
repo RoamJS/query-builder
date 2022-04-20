@@ -663,7 +663,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                                           ).map((text) => ({ text })),
                                         },
                                         {
-                                          text: "exludes",
+                                          text: "excludes",
                                           children: Array.from(
                                             data.excludes.values
                                           ).map((text) => ({ text })),
