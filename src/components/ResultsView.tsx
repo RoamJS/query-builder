@@ -213,6 +213,19 @@ const ResultView = ({
     () => r.context && getPageTitleByPageUid(r.context.toString()),
     [r.context]
   );
+  const namespaceSetting = useMemo(
+    () =>
+      (
+        window.roamAlphaAPI.data.fast.q(
+          `[:find [pull ?u [:user/settings]] :where [?u :user/uid "gxCw10dD79O6yRGXFYiqBvd1doo1"]]`
+        )?.[0]?.[0] as {
+          ":user/settings": {
+            ":namespace-options": { name: "partial" | "none" | "full" }[];
+          };
+        }
+      )[":user/settings"][":namespace-options"][0].name,
+    []
+  );
   const contextBreadCrumbs = useMemo(
     () =>
       r.context
@@ -251,8 +264,22 @@ const ResultView = ({
       }, 1);
     }
   }, [contextOpen, contextElement, r.uid, contextPageTitle]);
-  const cell = (key: string) =>
-    (r[key] || "")
+  const cell = (key: string) => {
+    const value = r[key] || "";
+    const formattedValue =
+      typeof value === "string" &&
+      r[`${key}-uid`] &&
+      !!getPageTitleByPageUid((r[`${key}-uid`] || "").toString())
+        ? namespaceSetting === "full"
+          ? value.split("/").slice(-1)[0]
+          : namespaceSetting === "partial"
+          ? value
+              .split("/")
+              .map((v, i, a) => (i === a.length - 1 ? v : v.slice(0, 1)))
+              .join("/")
+          : value
+        : value;
+    return formattedValue
       .toString()
       .split("<span>")
       .map((s, i) => (
@@ -263,6 +290,7 @@ const ResultView = ({
           {s}
         </span>
       ));
+  };
   return (
     <>
       <tr>
@@ -279,6 +307,7 @@ const ResultView = ({
               {views[k] === "link" ? (
                 <a
                   className={"rm-page-ref"}
+                  data-link-title={getPageTitleByPageUid(uid) || ""}
                   href={getRoamUrl(uid)}
                   onMouseDown={(e) => {
                     if (e.shiftKey) {
