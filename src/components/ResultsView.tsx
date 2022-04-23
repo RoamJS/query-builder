@@ -417,16 +417,12 @@ const toCellValue = (v: number | Date | string) =>
 const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
     const parsed = parseQuery(queryNode);
-    const rawDatalogQuery = getDatalogQuery({
+    const datalogQuery = getDatalogQuery({
       conditions: parsed.conditionNodes,
       selections: parsed.selectionNodes,
       returnNode: parsed.returnNode,
     }).query;
     const englishQuery = queryNode.children.map((t) => t.text);
-    const datalogQuery =
-      Array.from(rawDatalogQuery.matchAll(/\?date-regex/g)).length > 1
-        ? `${rawDatalogQuery}\n(Add a date regex at the end as input)`
-        : rawDatalogQuery.replace(":in $ ?date-regex\n", "");
     return { datalogQuery, englishQuery };
   }, [queryNode]);
   const [isEnglish, setIsEnglish] = useState(true);

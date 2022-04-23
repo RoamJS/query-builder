@@ -326,10 +326,7 @@ export const getDatalogQuery = ({
       .filter((p) => !!p.pull)
   );
   const find = definedSelections.map((p) => p.pull).join("\n  ");
-  const query = `[:find\n  ${find}\n:in $ ?date-regex\n:where\n${optimizeQuery(
-    where,
-    new Set(["date-regex"])
-  )
+  const query = `[:find\n  ${find}\n:where\n${optimizeQuery(where, new Set([]))
     .map((c) => compileDatalog(c, 0))
     .join("\n")}\n]`;
   return { query, definedSelections };
@@ -341,7 +338,7 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = (
   const { query, definedSelections } = getDatalogQuery(args);
   try {
     return window.roamAlphaAPI.data.fast
-      .q(query, DAILY_NOTE_PAGE_TITLE_REGEX)
+      .q(query)
       .map((a) => a as PullBlock[])
       .map((r) =>
         definedSelections.reduce((p, c, i) => {

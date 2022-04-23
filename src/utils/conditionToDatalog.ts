@@ -1,3 +1,4 @@
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import { DatalogClause } from "roamjs-components/types";
@@ -65,8 +66,19 @@ const translator: Translator = {
               ],
             },
             {
+              type: "fn-expr",
+              fn: "re-pattern",
+              arguments: [
+                { type: "constant", value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"` },
+              ],
+              binding: {
+                type: "bind-scalar",
+                variable: { type: "variable", value: `date-regex` },
+              },
+            },
+            {
               type: "pred-expr",
-              pred: "re-matches",
+              pred: "re-find",
               arguments: [
                 { type: "variable", value: "date-regex" },
                 { type: "variable", value: `${source}-Title` },
