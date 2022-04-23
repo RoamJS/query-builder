@@ -223,7 +223,7 @@ const ResultView = ({
             ":namespace-options": { name: "partial" | "none" | "full" }[];
           };
         }
-      )[":user/settings"][":namespace-options"][0].name,
+      )?.[":user/settings"]?.[":namespace-options"]?.[0]?.name,
     []
   );
   const contextBreadCrumbs = useMemo(
