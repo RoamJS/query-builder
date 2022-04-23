@@ -34,6 +34,7 @@ import { getFilterEntries } from "./DefaultFilters";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
 import { RoamBasicNode } from "roamjs-components/types";
+import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -217,7 +218,7 @@ const ResultView = ({
     () =>
       (
         window.roamAlphaAPI.data.fast.q(
-          `[:find [pull ?u [:user/settings]] :where [?u :user/uid "gxCw10dD79O6yRGXFYiqBvd1doo1"]]`
+          `[:find [pull ?u [:user/settings]] :where [?u :user/uid "${getCurrentUserUid()}"]]`
         )?.[0]?.[0] as {
           ":user/settings": {
             ":namespace-options": { name: "partial" | "none" | "full" }[];
