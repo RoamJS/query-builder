@@ -470,10 +470,10 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   resultFilter,
   ctrlClick,
   preventSavingSettings = false,
-  // @ts-ignore
   preventExport,
   onEdit,
   getExportTypes,
+  onResultsInViewChange,
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const configTree = useMemo(
@@ -601,6 +601,9 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     )
   );
   const [showContent, setShowContent] = useState(false);
+  useEffect(() => {
+    onResultsInViewChange?.(paginatedResults);
+  }, [paginatedResults]);
   return (
     <div
       className="roamjs-query-results-view"
