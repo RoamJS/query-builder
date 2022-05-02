@@ -69,7 +69,10 @@ const translator: Translator = {
               type: "fn-expr",
               fn: "re-pattern",
               arguments: [
-                { type: "constant", value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"` },
+                {
+                  type: "constant",
+                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
+                },
               ],
               binding: {
                 type: "bind-scalar",
@@ -283,6 +286,19 @@ const translator: Translator = {
           ]),
     ],
     targetOptions: getAllPageNames,
+  },
+  "has heading": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":block/heading" },
+          { type: "constant", value: target },
+        ],
+      },
+    ],
+    targetOptions: ["1", "2", "3", "0"],
   },
   "is in page with title": {
     callback: ({ source, target }) => [

@@ -250,7 +250,9 @@ const runQueryTools = (configUid: string) => {
   };
 
   const randomize = (q: HTMLDivElement) => {
-    const blockConfig = getBasicTreeByParentUid(getUids(q).blockUid);
+    const blockConfig = getBasicTreeByParentUid(
+      getUids(q.closest<HTMLDivElement>(".roam-block")).blockUid
+    );
     const numRandomResults = getSettingIntFromTree({
       key: "Random",
       tree: blockConfig,
@@ -429,7 +431,9 @@ const runQueryTools = (configUid: string) => {
       (e) => !e.getAttribute("data-is-random-results")
     ) as HTMLDivElement[];
     queries.forEach((q) => {
-      const config = getBasicTreeByParentUid(getUids(q).blockUid);
+      const config = getBasicTreeByParentUid(
+        getUids(q.closest<HTMLDivElement>(".roam-block")).blockUid
+      );
       if (getSettingIntFromTree({ tree: config, key: "Random" })) {
         q.setAttribute("data-is-random-results", "true");
         const randomIcon = createIconButton("reset");
@@ -477,7 +481,9 @@ const runQueryTools = (configUid: string) => {
         key: "Native Queries",
       }).children;
       unContextedQueries.forEach((q) => {
-        const config = getBasicTreeByParentUid(getUids(q).blockUid);
+        const config = getBasicTreeByParentUid(
+          getUids(q.closest<HTMLDivElement>(".roam-block")).blockUid
+        );
         const configContext =
           getSettingValueFromTree({ tree: config, key: "Context" }) ||
           getSettingValueFromTree({ tree: pageConfig, key: "Context" });
