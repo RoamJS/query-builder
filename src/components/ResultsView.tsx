@@ -305,7 +305,9 @@ const ResultView = ({
               }}
               key={k}
             >
-              {views[k] === "link" ? (
+              {!r[k] ? (
+                <i>[block is blank]</i>
+              ) : views[k] === "link" ? (
                 <a
                   className={"rm-page-ref"}
                   data-link-title={getPageTitleByPageUid(uid) || ""}

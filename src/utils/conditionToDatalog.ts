@@ -1,4 +1,5 @@
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import parseNlpDate from "roamjs-components/date/parseNlpDate";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import { DatalogClause } from "roamjs-components/types";
@@ -345,6 +346,86 @@ const translator: Translator = {
     ],
     targetOptions: getAllPageNames,
   },
+  "created after": {
+    callback: ({source, target}) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":create/time" },
+          { type: "variable", value: `${source}-CreateTime` },
+        ]
+      }, 
+      {
+        type: "pred-expr",
+        pred: "<",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-CreateTime` },
+        ]
+      }
+    ] 
+  },
+  "created before": {
+    callback: ({source, target}) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":create/time" },
+          { type: "variable", value: `${source}-CreateTime` },
+        ]
+      }, 
+      {
+        type: "pred-expr",
+        pred: ">",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-CreateTime` },
+        ]
+      }
+    ] 
+  },
+  "edited after": {
+    callback: ({source, target}) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":edit/time" },
+          { type: "variable", value: `${source}-EditTime` },
+        ]
+      }, 
+      {
+        type: "pred-expr",
+        pred: "<",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-EditTime` },
+        ]
+      }
+    ] 
+  },
+  "edited before": {
+    callback: ({source, target}) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":edit/time" },
+          { type: "variable", value: `${source}-EditTime` },
+        ]
+      }, 
+      {
+        type: "pred-expr",
+        pred: ">",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-EditTime` },
+        ]
+      }
+    ] 
+  }
 };
 
 export const registerDatalogTranslator = ({
