@@ -6,7 +6,6 @@ import type {
   DatalogAndClause,
   DatalogClause,
 } from "roamjs-components/types";
-import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 
 type PredefinedSelection = {
@@ -256,11 +255,31 @@ export const registerSelection = (args: PredefinedSelection) => {
   predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
 };
 
+type FireQueryArgs = Parameters<
+  typeof window.roamjs.extension.queryBuilder.fireQuery
+>[0];
+
+export const getWhereClauses = ({
+  conditions,
+  returnNode,
+}: Omit<FireQueryArgs, "selections">) => {
+  return conditions.length
+    ? conditions.flatMap(conditionToDatalog)
+    : conditionToDatalog({
+        relation: "self",
+        source: returnNode,
+        target: returnNode,
+        uid: "",
+        not: false,
+        type: "clause",
+      });
+};
+
 export const getDatalogQuery = ({
   conditions,
   returnNode,
   selections,
-}: Parameters<typeof window.roamjs.extension.queryBuilder.fireQuery>[0]): {
+}: FireQueryArgs): {
   query: string;
   definedSelections: {
     mapper: PredefinedSelection["mapper"];

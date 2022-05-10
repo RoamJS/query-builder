@@ -32,9 +32,12 @@ import { render as renderSimpleAlert } from "roamjs-components/components/Simple
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
-import { Condition, QBClauseData, Selection } from "roamjs-components/types/query-builder";
-import fuzzy from "fuzzy";
-import useArrowKeyDown from "roamjs-components/hooks/useArrowKeyDown";
+import {
+  Condition,
+  QBClauseData,
+  Selection,
+} from "roamjs-components/types/query-builder";
+import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 
 type QClauseData = {
   relation: string;
@@ -58,131 +61,6 @@ type QNor = QNested & {
 
 // dropdown Edit button => (number of clauses)
 type QCondition = QClause | QNot | QOr | QNor;
-
-const AutocompleteInput = ({
-  value,
-  setValue,
-  onBlur,
-  onConfirm,
-  showButton,
-  options = [],
-  placeholder = "Enter value",
-}: {
-  value: string;
-  setValue: (q: string) => void;
-  showButton?: boolean;
-  onBlur?: (v: string) => void;
-  onConfirm?: () => void;
-  options?: string[];
-  placeholder?: string;
-}): React.ReactElement => {
-  const [isOpen, setIsOpen] = useState(false);
-  const open = useCallback(() => setIsOpen(true), [setIsOpen]);
-  const close = useCallback(() => setIsOpen(false), [setIsOpen]);
-  const [isTyping, setIsTyping] = useState(false);
-  const items = useMemo(
-    () =>
-      value
-        ? fuzzy
-            .filter(value, options)
-            .slice(0, 9)
-            .map((e) => e.string)
-        : [],
-    [value, options]
-  );
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onEnter = useCallback(
-    (value) => {
-      if (isOpen) {
-        setValue(value);
-        setIsTyping(false);
-      } else if (onConfirm) {
-        onConfirm();
-      }
-    },
-    [setValue, close, onConfirm, isOpen]
-  );
-  const { activeIndex, onKeyDown } = useArrowKeyDown({
-    onEnter,
-    results: items,
-  });
-  useEffect(() => {
-    if (!items.length || !isTyping) close();
-    else open();
-  }, [items, close, isTyping]);
-  return (
-    <Popover
-      portalClassName={"roamjs-autocomplete-input"}
-      targetClassName={"roamjs-autocomplete-input-target"}
-      captureDismiss={true}
-      isOpen={isOpen}
-      onOpened={open}
-      minimal
-      autoFocus={false}
-      enforceFocus={false}
-      position={PopoverPosition.BOTTOM_LEFT}
-      modifiers={{
-        flip: { enabled: false },
-        preventOverflow: { enabled: false },
-      }}
-      content={
-        <Menu style={{ maxWidth: 400 }}>
-          {items.map((t, i) => (
-            <MenuItem
-              text={t}
-              active={activeIndex === i}
-              key={i}
-              multiline
-              onClick={() => {
-                setIsTyping(false);
-                setValue(items[i]);
-                inputRef.current?.focus();
-              }}
-            />
-          ))}
-        </Menu>
-      }
-      target={
-        <InputGroup
-          value={value || ""}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            setIsTyping(true);
-            setValue(e.target.value);
-          }}
-          placeholder={placeholder}
-          autoFocus={true}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.stopPropagation();
-              close();
-            } else {
-              onKeyDown(e);
-            }
-          }}
-          onBlur={(e) => {
-            if (
-              e.relatedTarget &&
-              !(e.relatedTarget as HTMLElement).closest?.(
-                ".roamjs-autocomplete-input"
-              )
-            ) {
-              close();
-            }
-            if (onBlur) {
-              onBlur(e.target.value);
-            }
-          }}
-          inputRef={inputRef}
-          {...(showButton
-            ? {
-                rightElement: <Button icon={"add"} minimal onClick={onEnter} />,
-              }
-            : {})}
-        />
-      }
-    />
-  );
-};
 
 const QueryCondition = ({
   con,
@@ -226,6 +104,30 @@ const QueryCondition = ({
           );
         }}
       />
+      {/* I want options to appear on focus before using
+      <div className="roamjs-query-condition-relation">
+        <AutocompleteInput
+          value={con.relation}
+          setValue={(e) => {
+            window.clearTimeout(debounceRef.current);
+            setConditions(
+              conditions.map((c) =>
+                c.uid === con.uid ? { ...con, relation: e } : c
+              )
+            );
+            debounceRef.current = window.setTimeout(() => {
+              setInputSetting({
+                blockUid: con.uid,
+                key: "Relation",
+                value: e,
+                index: 1,
+              });
+            }, 1000);
+          }}
+          options={conditionLabels}
+          placeholder={"Choose relationship"}
+        />
+      </div> */}
       <MenuItemSelect
         popoverProps={{
           className: "roamjs-query-condition-relation",
@@ -412,6 +314,7 @@ const QueryEditor = ({
   defaultReturnNode?: string;
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
+  const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
   const scratchNode = useMemo(
     () => tree.find((t) => toFlexRegex("scratch").test(t.text)),
     [tree]
@@ -470,7 +373,7 @@ const QueryEditor = ({
       target: getSettingValueFromTree({ tree: children, key: "target" }),
       relation: getSettingValueFromTree({ tree: children, key: "relation" }),
       not: !!getSubTree({ tree: children, key: "not" }).uid,
-      type: "clause"
+      type: "clause",
     }));
   });
 
@@ -531,7 +434,7 @@ const QueryEditor = ({
             target,
             uid,
             not,
-            type: 'clause' as const,
+            type: "clause" as const,
           }))
         )
       ),
@@ -646,7 +549,14 @@ const QueryEditor = ({
               }).then((uid) =>
                 setConditions([
                   ...conditions,
-                  { uid, source: "", relation: "", target: "", not: false, type: 'clause' },
+                  {
+                    uid,
+                    source: "",
+                    relation: "",
+                    target: "",
+                    not: false,
+                    type: "clause",
+                  },
                 ])
               );
             }}
@@ -701,7 +611,7 @@ const QueryEditor = ({
                 (c) =>
                   c.type !== "or" &&
                   c.type !== "not or" &&
-                  !!c.relation &&
+                  conditionLabels.has(c.relation) &&
                   !!c.target
               ) ||
               !returnNode ||

@@ -2,7 +2,9 @@ import { InputTextNode } from "roamjs-components";
 import { getConditionLabels } from "./conditionToDatalog";
 
 const parseQuery = (q: string[] | InputTextNode) => {
-  const [findWhere = "", ...conditions] = Array.isArray(q) ? q : q.children.map(t => t.text);
+  const [findWhere = "", ...conditions] = Array.isArray(q)
+    ? q
+    : q.children.map((t) => t.text);
   const returnNode = findWhere.split(" ")[1] || "";
   const conditionLabels = getConditionLabels();
   const conditionNodes = conditions
@@ -36,7 +38,15 @@ const parseQuery = (q: string[] | InputTextNode) => {
       text,
       label,
     }));
-  return { returnNode, conditionNodes, selectionNodes, };
+  return {
+    returnNode,
+    conditions: conditionNodes,
+    selections: selectionNodes,
+
+    // @deprecated
+    conditionNodes,
+    selectionNodes,
+  };
 };
 
 export default parseQuery;

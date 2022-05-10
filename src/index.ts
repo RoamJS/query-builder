@@ -17,7 +17,7 @@ import QueryPage, {
 } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
 import ResultsView from "./components/ResultsView";
-import fireQuery, { registerSelection } from "./utils/fireQuery";
+import fireQuery, { registerSelection, getWhereClauses } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import conditionToDatalog, {
   getConditionLabels,
@@ -270,5 +270,8 @@ runExtension(ID, async () => {
     registerSelection,
     registerDatalogTranslator,
     unregisterDatalogTranslator,
+
+    // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
+    getWhereClauses,
   };
 });
