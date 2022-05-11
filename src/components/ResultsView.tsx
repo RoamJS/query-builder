@@ -297,6 +297,7 @@ const ResultView = ({
       <tr>
         {rowCells.map((k) => {
           const uid = (r[`${k}-uid`] || "").toString();
+          const val = r[k] || "";
           return (
             <td
               style={{
@@ -305,7 +306,7 @@ const ResultView = ({
               }}
               key={k}
             >
-              {!r[k] ? (
+              {val === "" ? (
                 <i>[block is blank]</i>
               ) : views[k] === "link" ? (
                 <a
@@ -319,7 +320,7 @@ const ResultView = ({
                       e.stopPropagation();
                     } else if (e.ctrlKey) {
                       ctrlClick?.({
-                        text: toCellValue(r[k] || ""),
+                        text: toCellValue(val),
                         uid,
                       });
                       e.preventDefault();
