@@ -205,13 +205,25 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
-    test: /author/i,
+    test: /(author|create(d)?\s*by)/i,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/user])`,
     mapper: (r) => {
       return (
         window.roamAlphaAPI.pull(
           "[:user/display-name]",
           r?.[":create/user"]?.[":db/id"]
+        )?.[":user/display-name"] || "Anonymous User"
+      );
+    },
+  },
+  {
+    test: /edit(ed)?\s*by/i,
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/user])`,
+    mapper: (r) => {
+      return (
+        window.roamAlphaAPI.pull(
+          "[:user/display-name]",
+          r?.[":edit/user"]?.[":db/id"]
         )?.[":user/display-name"] || "Anonymous User"
       );
     },
