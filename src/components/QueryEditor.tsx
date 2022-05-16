@@ -405,9 +405,13 @@ const QueryEditor = ({
   useEffect(() => {
     const {
       returnNode: value,
-      conditionNodes,
-      selectionNodes,
-    } = parseQuery(defaultQuery);
+      conditions,
+      selections,
+    } = parseQuery({
+      uid: "",
+      text: "",
+      children: defaultQuery.map((text) => ({ text, uid: "", children: [] })),
+    });
     Promise.all([
       setInputSetting({
         blockUid: scratchNodeUid,
@@ -415,31 +419,36 @@ const QueryEditor = ({
         key: "return",
       }),
       Promise.all(
-        conditionNodes.map(({ source, relation, target, not }, order) =>
-          createBlock({
-            parentUid: conditionsNodeUid,
-            order,
-            node: {
-              text: `${order}`,
-              children: [
-                { text: "source", children: [{ text: source }] },
-                { text: "relation", children: [{ text: relation }] },
-                { text: "target", children: [{ text: target }] },
-                ...(not ? [{ text: "not" }] : []),
-              ],
-            },
-          }).then((uid) => ({
-            source,
-            relation,
-            target,
-            uid,
-            not,
-            type: "clause" as const,
-          }))
+        conditions.map((condition, order) =>
+          condition.type === "clause" || condition.type === "not"
+            ? createBlock({
+                parentUid: conditionsNodeUid,
+                order,
+                node: {
+                  text: `${order}`,
+                  children: [
+                    { text: "source", children: [{ text: condition.source }] },
+                    {
+                      text: "relation",
+                      children: [{ text: condition.relation }],
+                    },
+                    { text: "target", children: [{ text: condition.target }] },
+                    ...(condition.type === "not" ? [{ text: "not" }] : []),
+                  ],
+                },
+              }).then((uid) => ({
+                source: condition.source,
+                relation: condition.relation,
+                target: condition.target,
+                uid,
+                not: condition.not,
+                type: "clause" as const,
+              }))
+            : Promise.resolve(condition)
         )
       ),
       Promise.all(
-        selectionNodes.map((sel, order) =>
+        selections.map((sel, order) =>
           createBlock({
             parentUid: selectionsNodeUid,
             order,

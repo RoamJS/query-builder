@@ -32,7 +32,7 @@ import Export from "./Export";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import { getFilterEntries } from "./DefaultFilters";
 import parseQuery from "../utils/parseQuery";
-import { getDatalogQuery } from "../utils/fireQuery";
+import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 
@@ -419,12 +419,9 @@ const toCellValue = (v: number | Date | string) =>
 
 const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
-    const parsed = parseQuery(queryNode);
-    const datalogQuery = getDatalogQuery({
-      conditions: parsed.conditionNodes,
-      selections: parsed.selectionNodes,
-      returnNode: parsed.returnNode,
-    }).query;
+    const datalogQuery = getDatalogQuery(
+      getDatalogQueryComponents(parseQuery(queryNode))
+    );
     const englishQuery = queryNode.children.map((t) => t.text);
     return { datalogQuery, englishQuery };
   }, [queryNode]);
@@ -750,7 +747,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                             renderToast({
                               id: "query-results-success",
                               content:
-                                "Successfully saved query results' settings!",
+                                "Successfully saved query results settings!",
                               intent: Intent.SUCCESS,
                             })
                           );

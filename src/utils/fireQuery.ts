@@ -287,12 +287,12 @@ export const getWhereClauses = ({
       });
 };
 
-export const getDatalogQuery = ({
+export const getDatalogQueryComponents = ({
   conditions,
   returnNode,
   selections,
 }: FireQueryArgs): {
-  query: string;
+  where: DatalogClause[];
   definedSelections: {
     mapper: PredefinedSelection["mapper"];
     pull: string;
@@ -300,16 +300,7 @@ export const getDatalogQuery = ({
     key: string;
   }[];
 } => {
-  const where = conditions.length
-    ? conditions.flatMap(conditionToDatalog)
-    : conditionToDatalog({
-        relation: "self",
-        source: returnNode,
-        target: returnNode,
-        uid: "",
-        not: false,
-        type: "clause",
-      });
+  const where = getWhereClauses({ conditions, returnNode });
 
   const defaultSelections: {
     mapper: PredefinedSelection["mapper"];
@@ -356,23 +347,33 @@ export const getDatalogQuery = ({
       }))
       .filter((p) => !!p.pull)
   );
-  const find = definedSelections.map((p) => p.pull).join("\n  ");
-  const query = `[:find\n  ${find}\n:where\n${optimizeQuery(where, new Set([]))
+  return { definedSelections, where };
+};
+
+export const getDatalogQuery = (
+  args: ReturnType<typeof getDatalogQueryComponents>
+) => {
+  const find = args.definedSelections.map((p) => p.pull).join("\n  ");
+  const query = `[:find\n  ${find}\n:where\n${optimizeQuery(
+    args.where,
+    new Set([])
+  )
     .map((c) => compileDatalog(c, 0))
     .join("\n")}\n]`;
-  return { query, definedSelections };
+  return query;
 };
 
 const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = (
   args
 ) => {
-  const { query, definedSelections } = getDatalogQuery(args);
+  const parts = getDatalogQueryComponents(args);
+  const query = getDatalogQuery(parts);
   try {
     return window.roamAlphaAPI.data.fast
       .q(query)
       .map((a) => a as PullBlock[])
       .map((r) =>
-        definedSelections.reduce((p, c, i) => {
+        parts.definedSelections.reduce((p, c, i) => {
           const output = c.mapper(r[i], c.key);
           if (typeof output === "object" && !(output instanceof Date)) {
             Object.entries(output).forEach(([k, v]) => {

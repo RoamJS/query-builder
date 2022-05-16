@@ -46,12 +46,16 @@ const QueryPage = ({
   useEffect(() => {
     if (query.length) {
       setLoading(true);
-      const { returnNode, conditionNodes, selectionNodes } = parseQuery(query);
+      const { returnNode, conditions, selections } = parseQuery({
+        uid: "",
+        text: "",
+        children: query.map((text) => ({ text, uid: "", children: [] })),
+      });
       setTimeout(() => {
         const results = fireQuery({
           returnNode,
-          conditions: conditionNodes,
-          selections: selectionNodes,
+          conditions,
+          selections,
         });
         setResults(results);
         setLoading(false);

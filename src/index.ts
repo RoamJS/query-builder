@@ -17,7 +17,7 @@ import QueryPage, {
 } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
 import ResultsView from "./components/ResultsView";
-import fireQuery, { registerSelection, getWhereClauses } from "./utils/fireQuery";
+import fireQuery, { registerSelection, getWhereClauses, getDatalogQueryComponents } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import conditionToDatalog, {
   getConditionLabels,
@@ -258,12 +258,11 @@ runExtension(ID, async () => {
 
   window.roamjs.extension.queryBuilder = {
     ExportDialog,
-    //@ts-ignore
+    // @ts-ignore
     QueryEditor,
     QueryPage,
     ResultsView,
     fireQuery,
-    //@ts-ignore
     parseQuery,
     conditionToDatalog,
     getConditionLabels,
@@ -273,5 +272,7 @@ runExtension(ID, async () => {
 
     // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
     getWhereClauses,
+    // @ts-ignore This is highly experimental - exposing this method for use in D-G. 
+    getDatalogQueryComponents,
   };
 });
