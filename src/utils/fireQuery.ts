@@ -363,7 +363,7 @@ export const getDatalogQuery = (
   return query;
 };
 
-const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = (
+const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   args
 ) => {
   const parts = getDatalogQueryComponents(args);
