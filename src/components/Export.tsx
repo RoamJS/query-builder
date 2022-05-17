@@ -18,21 +18,12 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import format from "date-fns/format";
 import download from "downloadjs";
 import JSZip from "jszip";
-import type { Result } from "./ResultsView";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 
-type Props = {
-  isOpen?: boolean;
-  exportTypes?: {
-    name: string;
-    callback: (args: {
-      filename: string;
-      graph: string;
-    }) => { title: string; content: string }[];
-  }[];
-  results?: Result[];
-};
+type ExportDialogType =
+  typeof window.roamjs.extension.queryBuilder.ExportDialog;
+type Props = Parameters<ExportDialogType>[0];
 
 const viewTypeToPrefix = {
   bullet: "- ",
@@ -78,14 +69,12 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-export const ExportDialog = ({
+export const ExportDialog: ExportDialogType = ({
   onClose,
   isOpen = true,
   exportTypes,
   results = [],
-}: {
-  onClose: () => void;
-} & Props) => {
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filename, setFilename] = useState(
@@ -156,7 +145,10 @@ export const ExportDialog = ({
                   );
                   if (exportType) {
                     const zip = new JSZip();
-                    const files = exportType.callback({ filename, graph });
+                    const files = await exportType.callback({
+                      filename,
+                      graph,
+                    });
                     if (!files.length) {
                       onClose();
                     } else {
@@ -189,7 +181,7 @@ export const Export = ({
   exportTypes = [
     {
       name: "CSV",
-      callback: ({ filename }) => {
+      callback: async ({ filename }) => {
         const keys = Object.keys(results[0]).filter((u) => !/uid/i.test(u));
         const header = `${keys.join(",")}\n`;
         const data = results
@@ -209,7 +201,7 @@ export const Export = ({
     },
     {
       name: "Markdown",
-      callback: () =>
+      callback: async () =>
         results
           .map(({ uid, ...rest }) => {
             const v =

@@ -17,7 +17,11 @@ import QueryPage, {
 } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
 import ResultsView from "./components/ResultsView";
-import fireQuery, { registerSelection, getWhereClauses, getDatalogQueryComponents } from "./utils/fireQuery";
+import fireQuery, {
+  registerSelection,
+  getWhereClauses,
+  getDatalogQueryComponents,
+} from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import conditionToDatalog, {
   getConditionLabels,
@@ -27,6 +31,9 @@ import conditionToDatalog, {
 import runQueryTools from "./utils/runQueryTools";
 import { ExportDialog } from "./components/Export";
 import DefaultFilters from "./components/DefaultFilters";
+import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
+import toRoamDate from "roamjs-components/date/toRoamDate";
+import extractRef from "roamjs-components/util/extractRef";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -256,6 +263,33 @@ runExtension(ID, async () => {
     runQueryTools(pageUid);
   }
 
+  registerSmartBlocksCommand({
+    text: "QUERYBUILDER",
+    delayArgs: true,
+    help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
+    handler:
+      () =>
+      (queryUid, format = "(({uid}))") => {
+        const parentUid = extractRef(queryUid);
+        return fireQuery(
+          parseQuery(getSubTree({ parentUid, key: "query" }))
+        ).then((results) =>
+          results.map((r) =>
+            format.replace(/{{([^}]+)}}/, (_, i) => {
+              const value = r[i];
+              return typeof value === "string"
+                ? value
+                : typeof value === "number"
+                ? value.toString()
+                : value instanceof Date
+                ? toRoamDate(value)
+                : "";
+            })
+          )
+        );
+      },
+  });
+
   window.roamjs.extension.queryBuilder = {
     ExportDialog,
     // @ts-ignore
@@ -272,7 +306,7 @@ runExtension(ID, async () => {
 
     // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
     getWhereClauses,
-    // @ts-ignore This is highly experimental - exposing this method for use in D-G. 
+    // @ts-ignore This is highly experimental - exposing this method for use in D-G.
     getDatalogQueryComponents,
   };
 });

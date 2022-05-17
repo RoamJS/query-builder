@@ -51,15 +51,14 @@ const QueryPage = ({
         text: "",
         children: query.map((text) => ({ text, uid: "", children: [] })),
       });
-      setTimeout(() => {
-        const results = fireQuery({
-          returnNode,
-          conditions,
-          selections,
-        });
+      fireQuery({
+        returnNode,
+        conditions,
+        selections,
+      }).then((results) => {
         setResults(results);
         setLoading(false);
-      }, 1);
+      });
     }
   }, [setResults, query]);
   useEffect(() => {
