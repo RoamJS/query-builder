@@ -8,18 +8,7 @@ import type {
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 
-type PredefinedSelection = {
-  test: RegExp;
-  pull: (a: {
-    returnNode: string;
-    match: RegExpExecArray;
-    where: DatalogClause[];
-  }) => string;
-  mapper: (
-    r: PullBlock,
-    key: string
-  ) => SearchResult[string] | Record<string, SearchResult[string]>;
-};
+type PredefinedSelection = Parameters<typeof window.roamjs.extension.queryBuilder.registerSelection>[0];
 
 const isVariableExposed = (
   clauses: (DatalogClause | DatalogAndClause)[],
@@ -263,9 +252,10 @@ const predefinedSelections: PredefinedSelection[] = [
   },
 ];
 
-export const registerSelection = (args: PredefinedSelection) => {
-  predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
-};
+export const registerSelection: typeof window.roamjs.extension.queryBuilder.registerSelection =
+  (args) => {
+    predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
+  };
 
 type FireQueryArgs = Parameters<
   typeof window.roamjs.extension.queryBuilder.fireQuery
@@ -369,22 +359,40 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   const parts = getDatalogQueryComponents(args);
   const query = getDatalogQuery(parts);
   try {
-    return window.roamAlphaAPI.data.fast
-      .q(query)
-      .map((a) => a as PullBlock[])
-      .map((r) =>
-        parts.definedSelections.reduce((p, c, i) => {
-          const output = c.mapper(r[i], c.key);
-          if (typeof output === "object" && !(output instanceof Date)) {
-            Object.entries(output).forEach(([k, v]) => {
-              p[c.label + k] = v;
-            });
-          } else {
-            p[c.label] = output;
-          }
-          return p;
-        }, {} as SearchResult)
-      );
+    return Promise.all(
+      window.roamAlphaAPI.data.fast
+        .q(query)
+        .map((a) => a as PullBlock[])
+        .map((r) =>
+          parts.definedSelections
+            .map(
+              (c, i) => () =>
+                Promise.resolve(c.mapper(r[i], c.key)).then((output) => ({
+                  output,
+                  label: c.label,
+                }))
+            )
+            .reduce(
+              (prev, c) =>
+                prev.then((p) =>
+                  c().then(({ output, label }) => {
+                    if (
+                      typeof output === "object" &&
+                      !(output instanceof Date)
+                    ) {
+                      Object.entries(output).forEach(([k, v]) => {
+                        p[label + k] = v;
+                      });
+                    } else {
+                      p[label] = output;
+                    }
+                    return p;
+                  })
+                ),
+              Promise.resolve({} as SearchResult)
+            )
+        )
+    );
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);

@@ -16,7 +16,7 @@ import QueryPage, {
   renderQueryBlock,
 } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
-import ResultsView from "./components/ResultsView";
+import ResultsView, { sortFunction } from "./components/ResultsView";
 import fireQuery, {
   registerSelection,
   getWhereClauses,
@@ -34,6 +34,7 @@ import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
 import toRoamDate from "roamjs-components/date/toRoamDate";
 import extractRef from "roamjs-components/util/extractRef";
+import toFlexRegex from "roamjs-components/util/toFlexRegex";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -271,10 +272,30 @@ runExtension(ID, async () => {
       ({ proccessBlockText }) =>
       (queryUid, format = "(({uid}))") => {
         const parentUid = extractRef(queryUid);
-        return fireQuery(parseQuery(getSubTree({ parentUid, key: "query" })))
+        const tree = getBasicTreeByParentUid(parentUid);
+        const resultNode = getSubTree({ tree, key: "results" });
+        const sortsNode = getSubTree({
+          tree: resultNode.children,
+          key: "sorts",
+        });
+        const activeSort = sortsNode.children.map((s) => ({
+          key: s.text,
+          descending: toFlexRegex("true").test(s.children[0]?.text || ""),
+        }));
+        return fireQuery(parseQuery(getSubTree({ tree, key: "query" })))
           .then((results) =>
             Promise.all(
               results
+                .sort((a, b) => {
+                  for (const sort of activeSort) {
+                    const cmpResult = sortFunction(sort.key, sort.descending)(
+                      a,
+                      b
+                    );
+                    if (cmpResult !== 0) return cmpResult;
+                  }
+                  return 0;
+                })
                 .map((r) =>
                   format.replace(/{([^}]+)}/, (_, i) => {
                     const value = r[i];

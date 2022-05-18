@@ -50,7 +50,7 @@ type Filters = Record<
   }
 >;
 
-const sortFunction =
+export const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
     const _aVal = a[key];
     const _bVal = b[key];
