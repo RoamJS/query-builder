@@ -35,6 +35,7 @@ import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBloc
 import toRoamDate from "roamjs-components/date/toRoamDate";
 import extractRef from "roamjs-components/util/extractRef";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
+import type { InputTextNode } from "roamjs-components/types/native";
 
 const ID = "query-builder";
 const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
@@ -282,36 +283,37 @@ runExtension(ID, async () => {
           key: s.text,
           descending: toFlexRegex("true").test(s.children[0]?.text || ""),
         }));
-        return fireQuery(parseQuery(getSubTree({ tree, key: "query" })))
-          .then((results) =>
-            Promise.all(
-              results
-                .sort((a, b) => {
-                  for (const sort of activeSort) {
-                    const cmpResult = sortFunction(sort.key, sort.descending)(
-                      a,
-                      b
-                    );
-                    if (cmpResult !== 0) return cmpResult;
-                  }
-                  return 0;
+        return fireQuery(parseQuery(getSubTree({ tree, key: "query" }))).then(
+          (results) =>
+            results
+              .sort((a, b) => {
+                for (const sort of activeSort) {
+                  const cmpResult = sortFunction(sort.key, sort.descending)(
+                    a,
+                    b
+                  );
+                  if (cmpResult !== 0) return cmpResult;
+                }
+                return 0;
+              })
+              .map((r) =>
+                format.replace(/{([^}]+)}/, (_, i) => {
+                  const value = r[i];
+                  return typeof value === "string"
+                    ? value
+                    : typeof value === "number"
+                    ? value.toString()
+                    : value instanceof Date
+                    ? toRoamDate(value)
+                    : "";
                 })
-                .map((r) =>
-                  format.replace(/{([^}]+)}/, (_, i) => {
-                    const value = r[i];
-                    return typeof value === "string"
-                      ? value
-                      : typeof value === "number"
-                      ? value.toString()
-                      : value instanceof Date
-                      ? toRoamDate(value)
-                      : "";
-                  })
-                )
-                .map(proccessBlockText)
-            )
-          )
-          .then((nodes) => nodes.flat());
+              )
+              .map((s) => () => proccessBlockText(s))
+              .reduce(
+                (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
+                Promise.resolve([] as InputTextNode[])
+              )
+        );
       },
   });
 
