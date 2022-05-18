@@ -268,25 +268,29 @@ runExtension(ID, async () => {
     delayArgs: true,
     help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
     handler:
-      () =>
+      ({ proccessBlockText }) =>
       (queryUid, format = "(({uid}))") => {
         const parentUid = extractRef(queryUid);
-        return fireQuery(
-          parseQuery(getSubTree({ parentUid, key: "query" }))
-        ).then((results) =>
-          results.map((r) =>
-            format.replace(/{{([^}]+)}}/, (_, i) => {
-              const value = r[i];
-              return typeof value === "string"
-                ? value
-                : typeof value === "number"
-                ? value.toString()
-                : value instanceof Date
-                ? toRoamDate(value)
-                : "";
-            })
+        return fireQuery(parseQuery(getSubTree({ parentUid, key: "query" })))
+          .then((results) =>
+            Promise.all(
+              results
+                .map((r) =>
+                  format.replace(/{([^}]+)}/, (_, i) => {
+                    const value = r[i];
+                    return typeof value === "string"
+                      ? value
+                      : typeof value === "number"
+                      ? value.toString()
+                      : value instanceof Date
+                      ? toRoamDate(value)
+                      : "";
+                  })
+                )
+                .map(proccessBlockText)
+            )
           )
-        );
+          .then((nodes) => nodes.flat());
       },
   });
 
