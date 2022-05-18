@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import ResultsView, { Result as SearchResult } from "./ResultsView";
-// import { render as exportRender } from "../ExportDialog";
 import ReactDOM from "react-dom";
 import QueryEditor from "./QueryEditor";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -51,14 +50,16 @@ const QueryPage = ({
         text: "",
         children: query.map((text) => ({ text, uid: "", children: [] })),
       });
-      fireQuery({
-        returnNode,
-        conditions,
-        selections,
-      }).then((results) => {
-        setResults(results);
-        setLoading(false);
-      });
+      setTimeout(() => {
+        fireQuery({
+          returnNode,
+          conditions,
+          selections,
+        }).then((results) => {
+          setResults(results);
+          setLoading(false);
+        });
+      }, 1);
     }
   }, [setResults, query]);
   useEffect(() => {
@@ -148,42 +149,7 @@ const QueryPage = ({
             parentUid={pageUid}
             onEdit={() => setIsEdit(true)}
             getExportTypes={getExportTypes}
-            header={
-              <div>
-                {/*<Tooltip content={"Export"}>
-                <Button
-                  icon={"export"}
-                  disabled
-                  minimal
-                  onClick={() => {
-                    const conditions = parseQuery(query).conditionNodes.map(
-                      (c) => ({
-                        predicate: {
-                          title: c.target,
-                          uid: getPageUidByPageTitle(c.target),
-                        },
-                        relation: c.relation,
-                      })
-                    );
-                    exportRender({
-                      fromQuery: {
-                        nodes: results
-                          .map(({ text, uid }) => ({
-                            title: text,
-                            uid,
-                          }))
-                          .concat(
-                            conditions
-                              .map((c) => c.predicate)
-                              .filter((c) => !!c.uid)
-                          ),
-                      },
-                    });
-                  }}
-                />
-                </Tooltip>*/}
-              </div>
-            }
+            header={<div />}
             results={results.map(({ id, ...a }) => a)}
           />
         )}
