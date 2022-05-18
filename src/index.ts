@@ -38,7 +38,6 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
 
 const ID = "query-builder";
-const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
 
 runExtension(ID, async () => {
   addStyle(`.bp3-button:focus {
@@ -85,185 +84,181 @@ runExtension(ID, async () => {
   background: #888;
 }`);
 
-  if (!loadedElsewhere) {
-    const { pageUid } = await createConfigObserver({
-      title: toConfigPageName(ID),
-      config: {
-        tabs: [
-          {
-            id: "Home",
-            fields: [
-              {
-                title: "Query Pages",
-                type: "multitext",
-                description:
-                  "The title formats of pages that you would like to serve as pages that generate queries",
-                defaultValue: ["queries/*"],
+  const { pageUid } = await createConfigObserver({
+    title: toConfigPageName(ID),
+    config: {
+      tabs: [
+        {
+          id: "Home",
+          fields: [
+            {
+              title: "Query Pages",
+              type: "multitext",
+              description:
+                "The title formats of pages that you would like to serve as pages that generate queries",
+              defaultValue: ["queries/*"],
+            },
+            {
+              title: "Hide Metadata",
+              description:
+                "Hide the Roam blocks that are used to power each query",
+              type: "flag",
+            },
+            {
+              title: "Default Filters",
+              description:
+                "Any filters that should be applied to your results by default",
+              type: "custom",
+              options: {
+                component: DefaultFilters,
               },
-              {
-                title: "Hide Metadata",
-                description:
-                  "Hide the Roam blocks that are used to power each query",
-                type: "flag",
+            },
+            {
+              title: "Default Page Size",
+              description: "The default page size used for query results",
+              type: "number",
+              defaultValue: 10,
+            },
+          ],
+        },
+        {
+          id: "Native Queries",
+          fields: [
+            {
+              title: "Sort Blocks",
+              type: "flag",
+              description:
+                "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
+            },
+            {
+              title: "Context",
+              type: "number",
+              description:
+                "How many levels of context to include with each query result for all queries by default",
+            },
+            {
+              title: "Default Sort",
+              type: "select",
+              description:
+                "The default sorting all native queries in your graph should use",
+              options: {
+                items: [
+                  "Alphabetically",
+                  "Alphabetically Descending",
+                  "Word Count",
+                  "Word Count Descending",
+                  "Created Date",
+                  "Created Date Descending",
+                  "Edited Date",
+                  "Edited Date Descending",
+                  "Daily Note",
+                  "Daily Note Descending",
+                ],
               },
-              {
-                title: "Default Filters",
-                description:
-                  "Any filters that should be applied to your results by default",
-                type: "custom",
-                options: {
-                  component: DefaultFilters,
-                },
-              },
-              {
-                title: "Default Page Size",
-                description: "The default page size used for query results",
-                type: "number",
-                defaultValue: 10,
-              },
-            ],
-          },
-          {
-            id: "Native Queries",
-            fields: [
-              {
-                title: "Sort Blocks",
-                type: "flag",
-                description:
-                  "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
-              },
-              {
-                title: "Context",
-                type: "number",
-                description:
-                  "How many levels of context to include with each query result for all queries by default",
-              },
-              {
-                title: "Default Sort",
-                type: "select",
-                description:
-                  "The default sorting all native queries in your graph should use",
-                options: {
-                  items: [
-                    "Alphabetically",
-                    "Alphabetically Descending",
-                    "Word Count",
-                    "Word Count Descending",
-                    "Created Date",
-                    "Created Date Descending",
-                    "Edited Date",
-                    "Edited Date Descending",
-                    "Daily Note",
-                    "Daily Note Descending",
-                  ],
-                },
-              },
-            ],
-          },
-        ],
-        versioning: true,
-      },
-    });
+            },
+          ],
+        },
+      ],
+      versioning: true,
+    },
+  });
 
-    const getQueryPages = () => {
-      const configTree = getBasicTreeByParentUid(pageUid);
-      return getSubTree({
-        tree: configTree,
-        key: "Query Pages",
-      }).children.map(
-        (t) =>
-          new RegExp(
-            `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
-          )
-      );
-    };
+  const getQueryPages = () => {
+    const configTree = getBasicTreeByParentUid(pageUid);
+    return getSubTree({
+      tree: configTree,
+      key: "Query Pages",
+    }).children.map(
+      (t) =>
+        new RegExp(
+          `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+        )
+    );
+  };
+  const queryPages = {
+    current: getQueryPages(),
+  };
 
-    const queryPages = {
-      current: getQueryPages(),
-    };
-    window.addEventListener("hashchange", (e) => {
-      if (e.oldURL.endsWith(pageUid)) {
-        queryPages.current = getQueryPages();
-      }
-    });
+  window.addEventListener("hashchange", (e) => {
+    if (e.oldURL.endsWith(pageUid)) {
+      queryPages.current = getQueryPages();
+    }
+  });
 
-    createHTMLObserver({
-      tag: "H1",
-      className: "rm-title-display",
-      callback: (h1: HTMLHeadingElement) => {
-        const title = getPageTitleValueByHtmlElement(h1);
-        if (queryPages.current.some((r) => r.test(title))) {
-          const uid = getPageUidByPageTitle(title);
-          const attribute = `data-roamjs-${uid}`;
-          const containerParent = h1.parentElement?.parentElement;
-          if (containerParent && !containerParent.hasAttribute(attribute)) {
-            containerParent.setAttribute(attribute, "true");
-            const parent = document.createElement("div");
-            const configPageId = title.split("/").slice(-1)[0];
-            parent.id = `${configPageId}-config`;
-            containerParent.insertBefore(
-              parent,
-              h1.parentElement?.nextElementSibling || null
-            );
-            const tree = getBasicTreeByParentUid(pageUid);
-            const hideMetadata = !!getSubTree({
-              key: "Hide Metadata",
-              tree,
-            }).uid;
-            renderQueryPage({
-              hideMetadata,
-              pageUid: uid,
-              parent,
-              defaultReturnNode: "block",
-            });
-          }
-        }
-      },
-    });
-
-    createButtonObserver({
-      attribute: "query-block",
-      render: renderQueryBlock,
-    });
-
-    createButtonObserver({
-      shortcut: "qb",
-      attribute: "query-builder",
-      render: (b: HTMLButtonElement) =>
-        renderQueryBuilder({
-          blockId: b.closest(".roam-block").id,
-          parent: b.parentElement,
-        }),
-    });
-
-    const dataAttribute = "data-roamjs-edit-query";
-    createHTMLObserver({
-      callback: (b) => {
-        if (!b.getAttribute(dataAttribute)) {
-          b.setAttribute(dataAttribute, "true");
-          const editButtonRoot = document.createElement("div");
-          b.appendChild(editButtonRoot);
-          const blockId = b.closest(".roam-block").id;
-          const initialValue = getTextByBlockUid(
-            getUidsFromId(blockId).blockUid
+  createHTMLObserver({
+    tag: "H1",
+    className: "rm-title-display",
+    callback: (h1: HTMLHeadingElement) => {
+      const title = getPageTitleValueByHtmlElement(h1);
+      if (queryPages.current.some((r) => r.test(title))) {
+        const uid = getPageUidByPageTitle(title);
+        const attribute = `data-roamjs-${uid}`;
+        const containerParent = h1.parentElement?.parentElement;
+        if (containerParent && !containerParent.hasAttribute(attribute)) {
+          containerParent.setAttribute(attribute, "true");
+          const parent = document.createElement("div");
+          const configPageId = title.split("/").slice(-1)[0];
+          parent.id = `${configPageId}-config`;
+          containerParent.insertBefore(
+            parent,
+            h1.parentElement?.nextElementSibling || null
           );
-          renderQueryBuilder({
-            blockId,
-            parent: editButtonRoot,
-            initialValue,
+          const tree = getBasicTreeByParentUid(pageUid);
+          const hideMetadata = !!getSubTree({
+            key: "Hide Metadata",
+            tree,
+          }).uid;
+          renderQueryPage({
+            hideMetadata,
+            pageUid: uid,
+            parent,
+            defaultReturnNode: "block",
           });
-          const editButton = document.getElementById(
-            `roamjs-query-builder-button-${blockId}`
-          );
-          editButton.addEventListener("mousedown", (e) => e.stopPropagation());
         }
-      },
-      tag: "DIV",
-      className: "rm-query-title",
-    });
+      }
+    },
+  });
 
-    runQueryTools(pageUid);
-  }
+  createButtonObserver({
+    attribute: "query-block",
+    render: renderQueryBlock,
+  });
+
+  createButtonObserver({
+    shortcut: "qb",
+    attribute: "query-builder",
+    render: (b: HTMLButtonElement) =>
+      renderQueryBuilder({
+        blockId: b.closest(".roam-block").id,
+        parent: b.parentElement,
+      }),
+  });
+
+  const dataAttribute = "data-roamjs-edit-query";
+  createHTMLObserver({
+    callback: (b) => {
+      if (!b.getAttribute(dataAttribute)) {
+        b.setAttribute(dataAttribute, "true");
+        const editButtonRoot = document.createElement("div");
+        b.appendChild(editButtonRoot);
+        const blockId = b.closest(".roam-block").id;
+        const initialValue = getTextByBlockUid(getUidsFromId(blockId).blockUid);
+        renderQueryBuilder({
+          blockId,
+          parent: editButtonRoot,
+          initialValue,
+        });
+        const editButton = document.getElementById(
+          `roamjs-query-builder-button-${blockId}`
+        );
+        editButton.addEventListener("mousedown", (e) => e.stopPropagation());
+      }
+    },
+    tag: "DIV",
+    className: "rm-query-title",
+  });
+
+  runQueryTools(pageUid);
 
   registerSmartBlocksCommand({
     text: "QUERYBUILDER",
