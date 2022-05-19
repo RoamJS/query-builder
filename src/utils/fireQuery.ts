@@ -8,7 +8,9 @@ import type {
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 
-type PredefinedSelection = Parameters<typeof window.roamjs.extension.queryBuilder.registerSelection>[0];
+type PredefinedSelection = Parameters<
+  typeof window.roamjs.extension.queryBuilder.registerSelection
+>[0];
 
 const isVariableExposed = (
   clauses: (DatalogClause | DatalogAndClause)[],
@@ -290,7 +292,10 @@ export const getDatalogQueryComponents = ({
     key: string;
   }[];
 } => {
-  const where = getWhereClauses({ conditions, returnNode });
+  const where = optimizeQuery(
+    getWhereClauses({ conditions, returnNode }),
+    new Set([])
+  ) as DatalogClause[];
 
   const defaultSelections: {
     mapper: PredefinedSelection["mapper"];
@@ -344,10 +349,7 @@ export const getDatalogQuery = (
   args: ReturnType<typeof getDatalogQueryComponents>
 ) => {
   const find = args.definedSelections.map((p) => p.pull).join("\n  ");
-  const query = `[:find\n  ${find}\n:where\n${optimizeQuery(
-    args.where,
-    new Set([])
-  )
+  const query = `[:find\n  ${find}\n:where\n${args.where
     .map((c) => compileDatalog(c, 0))
     .join("\n")}\n]`;
   return query;
