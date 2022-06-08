@@ -881,7 +881,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                       onClick={() => setPage(page - 1)}
                       disabled={page === 1}
                     />
-                    <span style={{ margin: "4px 0" }}>{pageSize}</span>
+                    <span style={{ margin: "4px 0" }}>{page}</span>
                     <Button
                       minimal
                       icon={"chevron-right"}

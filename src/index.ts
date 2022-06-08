@@ -37,10 +37,13 @@ import extractRef from "roamjs-components/util/extractRef";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
 
-const ID = "query-builder";
+const extensionId = "query-builder";
 
-runExtension(ID, async () => {
-  addStyle(`.bp3-button:focus {
+export default runExtension({
+  skipAnalytics: true,
+  extensionId,
+  run: async () => {
+    addStyle(`.bp3-button:focus {
     outline-width: 2px;
 }
 
@@ -84,251 +87,259 @@ runExtension(ID, async () => {
   background: #888;
 }`);
 
-  const { pageUid } = await createConfigObserver({
-    title: toConfigPageName(ID),
-    config: {
-      tabs: [
-        {
-          id: "Home",
-          fields: [
-            {
-              title: "Query Pages",
-              type: "multitext",
-              description:
-                "The title formats of pages that you would like to serve as pages that generate queries",
-              defaultValue: ["queries/*"],
-            },
-            {
-              title: "Hide Metadata",
-              description:
-                "Hide the Roam blocks that are used to power each query",
-              type: "flag",
-            },
-            {
-              title: "Default Filters",
-              description:
-                "Any filters that should be applied to your results by default",
-              type: "custom",
-              options: {
-                component: DefaultFilters,
+    const { pageUid } = await createConfigObserver({
+      title: toConfigPageName(extensionId),
+      config: {
+        tabs: [
+          {
+            id: "Home",
+            fields: [
+              {
+                title: "Query Pages",
+                type: "multitext",
+                description:
+                  "The title formats of pages that you would like to serve as pages that generate queries",
+                defaultValue: ["queries/*"],
               },
-            },
-            {
-              title: "Default Page Size",
-              description: "The default page size used for query results",
-              type: "number",
-              defaultValue: 10,
-            },
-          ],
-        },
-        {
-          id: "Native Queries",
-          fields: [
-            {
-              title: "Sort Blocks",
-              type: "flag",
-              description:
-                "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
-            },
-            {
-              title: "Context",
-              type: "number",
-              description:
-                "How many levels of context to include with each query result for all queries by default",
-            },
-            {
-              title: "Default Sort",
-              type: "select",
-              description:
-                "The default sorting all native queries in your graph should use",
-              options: {
-                items: [
-                  "Alphabetically",
-                  "Alphabetically Descending",
-                  "Word Count",
-                  "Word Count Descending",
-                  "Created Date",
-                  "Created Date Descending",
-                  "Edited Date",
-                  "Edited Date Descending",
-                  "Daily Note",
-                  "Daily Note Descending",
-                ],
+              {
+                title: "Hide Metadata",
+                description:
+                  "Hide the Roam blocks that are used to power each query",
+                type: "flag",
               },
-            },
-          ],
-        },
-      ],
-      versioning: true,
-    },
-  });
-
-  const getQueryPages = () => {
-    const configTree = getBasicTreeByParentUid(pageUid);
-    return getSubTree({
-      tree: configTree,
-      key: "Query Pages",
-    }).children.map(
-      (t) =>
-        new RegExp(
-          `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
-        )
-    );
-  };
-  const queryPages = {
-    current: getQueryPages(),
-  };
-
-  window.addEventListener("hashchange", (e) => {
-    if (e.oldURL.endsWith(pageUid)) {
-      queryPages.current = getQueryPages();
-    }
-  });
-
-  createHTMLObserver({
-    tag: "H1",
-    className: "rm-title-display",
-    callback: (h1: HTMLHeadingElement) => {
-      const title = getPageTitleValueByHtmlElement(h1);
-      if (queryPages.current.some((r) => r.test(title))) {
-        const uid = getPageUidByPageTitle(title);
-        const attribute = `data-roamjs-${uid}`;
-        const containerParent = h1.parentElement?.parentElement;
-        if (containerParent && !containerParent.hasAttribute(attribute)) {
-          containerParent.setAttribute(attribute, "true");
-          const parent = document.createElement("div");
-          const configPageId = title.split("/").slice(-1)[0];
-          parent.id = `${configPageId}-config`;
-          containerParent.insertBefore(
-            parent,
-            h1.parentElement?.nextElementSibling || null
-          );
-          const tree = getBasicTreeByParentUid(pageUid);
-          const hideMetadata = !!getSubTree({
-            key: "Hide Metadata",
-            tree,
-          }).uid;
-          renderQueryPage({
-            hideMetadata,
-            pageUid: uid,
-            parent,
-            defaultReturnNode: "block",
-          });
-        }
-      }
-    },
-  });
-
-  createButtonObserver({
-    attribute: "query-block",
-    render: renderQueryBlock,
-  });
-
-  createButtonObserver({
-    shortcut: "qb",
-    attribute: "query-builder",
-    render: (b: HTMLButtonElement) =>
-      renderQueryBuilder({
-        blockId: b.closest(".roam-block").id,
-        parent: b.parentElement,
-      }),
-  });
-
-  const dataAttribute = "data-roamjs-edit-query";
-  createHTMLObserver({
-    callback: (b) => {
-      if (!b.getAttribute(dataAttribute)) {
-        b.setAttribute(dataAttribute, "true");
-        const editButtonRoot = document.createElement("div");
-        b.appendChild(editButtonRoot);
-        const blockId = b.closest(".roam-block").id;
-        const initialValue = getTextByBlockUid(getUidsFromId(blockId).blockUid);
-        renderQueryBuilder({
-          blockId,
-          parent: editButtonRoot,
-          initialValue,
-        });
-        const editButton = document.getElementById(
-          `roamjs-query-builder-button-${blockId}`
-        );
-        editButton.addEventListener("mousedown", (e) => e.stopPropagation());
-      }
-    },
-    tag: "DIV",
-    className: "rm-query-title",
-  });
-
-  runQueryTools(pageUid);
-
-  registerSmartBlocksCommand({
-    text: "QUERYBUILDER",
-    delayArgs: true,
-    help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
-    handler:
-      ({ proccessBlockText }) =>
-      (queryUid, format = "(({uid}))") => {
-        const parentUid = extractRef(queryUid);
-        const tree = getBasicTreeByParentUid(parentUid);
-        const resultNode = getSubTree({ tree, key: "results" });
-        const sortsNode = getSubTree({
-          tree: resultNode.children,
-          key: "sorts",
-        });
-        const activeSort = sortsNode.children.map((s) => ({
-          key: s.text,
-          descending: toFlexRegex("true").test(s.children[0]?.text || ""),
-        }));
-        return fireQuery(parseQuery(getSubTree({ tree, key: "query" }))).then(
-          (results) =>
-            results
-              .sort((a, b) => {
-                for (const sort of activeSort) {
-                  const cmpResult = sortFunction(sort.key, sort.descending)(
-                    a,
-                    b
-                  );
-                  if (cmpResult !== 0) return cmpResult;
-                }
-                return 0;
-              })
-              .map((r) =>
-                format.replace(/{([^}]+)}/, (_, i) => {
-                  const value = r[i];
-                  return typeof value === "string"
-                    ? value
-                    : typeof value === "number"
-                    ? value.toString()
-                    : value instanceof Date
-                    ? toRoamDate(value)
-                    : "";
-                })
-              )
-              .map((s) => () => proccessBlockText(s))
-              .reduce(
-                (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
-                Promise.resolve([] as InputTextNode[])
-              )
-        );
+              {
+                title: "Default Filters",
+                description:
+                  "Any filters that should be applied to your results by default",
+                type: "custom",
+                options: {
+                  component: DefaultFilters,
+                },
+              },
+              {
+                title: "Default Page Size",
+                description: "The default page size used for query results",
+                type: "number",
+                defaultValue: 10,
+              },
+            ],
+          },
+          {
+            id: "Native Queries",
+            fields: [
+              {
+                title: "Sort Blocks",
+                type: "flag",
+                description:
+                  "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
+              },
+              {
+                title: "Context",
+                type: "number",
+                description:
+                  "How many levels of context to include with each query result for all queries by default",
+              },
+              {
+                title: "Default Sort",
+                type: "select",
+                description:
+                  "The default sorting all native queries in your graph should use",
+                options: {
+                  items: [
+                    "Alphabetically",
+                    "Alphabetically Descending",
+                    "Word Count",
+                    "Word Count Descending",
+                    "Created Date",
+                    "Created Date Descending",
+                    "Edited Date",
+                    "Edited Date Descending",
+                    "Daily Note",
+                    "Daily Note Descending",
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+        versioning: true,
       },
-  });
+    });
 
-  window.roamjs.extension.queryBuilder = {
-    ExportDialog,
-    // @ts-ignore
-    QueryEditor,
-    QueryPage,
-    ResultsView,
-    fireQuery,
-    parseQuery,
-    conditionToDatalog,
-    getConditionLabels,
-    registerSelection,
-    registerDatalogTranslator,
-    unregisterDatalogTranslator,
+    const getQueryPages = () => {
+      const configTree = getBasicTreeByParentUid(pageUid);
+      return getSubTree({
+        tree: configTree,
+        key: "Query Pages",
+      }).children.map(
+        (t) =>
+          new RegExp(
+            `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+          )
+      );
+    };
+    const queryPages = {
+      current: getQueryPages(),
+    };
 
-    // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
-    getWhereClauses,
-    // @ts-ignore This is highly experimental - exposing this method for use in D-G.
-    getDatalogQueryComponents,
-  };
+    window.addEventListener("hashchange", (e) => {
+      if (e.oldURL.endsWith(pageUid)) {
+        queryPages.current = getQueryPages();
+      }
+    });
+
+    createHTMLObserver({
+      tag: "H1",
+      className: "rm-title-display",
+      callback: (h1: HTMLHeadingElement) => {
+        const title = getPageTitleValueByHtmlElement(h1);
+        if (queryPages.current.some((r) => r.test(title))) {
+          const uid = getPageUidByPageTitle(title);
+          const attribute = `data-roamjs-${uid}`;
+          const containerParent = h1.parentElement?.parentElement;
+          if (containerParent && !containerParent.hasAttribute(attribute)) {
+            containerParent.setAttribute(attribute, "true");
+            const parent = document.createElement("div");
+            const configPageId = title.split("/").slice(-1)[0];
+            parent.id = `${configPageId}-config`;
+            containerParent.insertBefore(
+              parent,
+              h1.parentElement?.nextElementSibling || null
+            );
+            const tree = getBasicTreeByParentUid(pageUid);
+            const hideMetadata = !!getSubTree({
+              key: "Hide Metadata",
+              tree,
+            }).uid;
+            renderQueryPage({
+              hideMetadata,
+              pageUid: uid,
+              parent,
+              defaultReturnNode: "block",
+            });
+          }
+        }
+      },
+    });
+
+    createButtonObserver({
+      attribute: "query-block",
+      render: renderQueryBlock,
+    });
+
+    createButtonObserver({
+      shortcut: "qb",
+      attribute: "query-builder",
+      render: (b: HTMLButtonElement) =>
+        renderQueryBuilder({
+          blockId: b.closest(".roam-block").id,
+          parent: b.parentElement,
+        }),
+    });
+
+    const dataAttribute = "data-roamjs-edit-query";
+    createHTMLObserver({
+      callback: (b) => {
+        if (!b.getAttribute(dataAttribute)) {
+          b.setAttribute(dataAttribute, "true");
+          const editButtonRoot = document.createElement("div");
+          b.appendChild(editButtonRoot);
+          const blockId = b.closest(".roam-block").id;
+          const initialValue = getTextByBlockUid(
+            getUidsFromId(blockId).blockUid
+          );
+          renderQueryBuilder({
+            blockId,
+            parent: editButtonRoot,
+            initialValue,
+          });
+          const editButton = document.getElementById(
+            `roamjs-query-builder-button-${blockId}`
+          );
+          editButton.addEventListener("mousedown", (e) => e.stopPropagation());
+        }
+      },
+      tag: "DIV",
+      className: "rm-query-title",
+    });
+
+    runQueryTools(pageUid);
+
+    registerSmartBlocksCommand({
+      text: "QUERYBUILDER",
+      delayArgs: true,
+      help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
+      handler:
+        ({ proccessBlockText }) =>
+        (queryUid, format = "(({uid}))") => {
+          const parentUid = extractRef(queryUid);
+          const tree = getBasicTreeByParentUid(parentUid);
+          const resultNode = getSubTree({ tree, key: "results" });
+          const sortsNode = getSubTree({
+            tree: resultNode.children,
+            key: "sorts",
+          });
+          const activeSort = sortsNode.children.map((s) => ({
+            key: s.text,
+            descending: toFlexRegex("true").test(s.children[0]?.text || ""),
+          }));
+          return fireQuery(parseQuery(getSubTree({ tree, key: "query" }))).then(
+            (results) =>
+              results
+                .sort((a, b) => {
+                  for (const sort of activeSort) {
+                    const cmpResult = sortFunction(sort.key, sort.descending)(
+                      a,
+                      b
+                    );
+                    if (cmpResult !== 0) return cmpResult;
+                  }
+                  return 0;
+                })
+                .map((r) =>
+                  format.replace(/{([^}]+)}/, (_, i) => {
+                    const value = r[i];
+                    return typeof value === "string"
+                      ? value
+                      : typeof value === "number"
+                      ? value.toString()
+                      : value instanceof Date
+                      ? toRoamDate(value)
+                      : "";
+                  })
+                )
+                .map((s) => () => proccessBlockText(s))
+                .reduce(
+                  (prev, cur) =>
+                    prev.then((p) => cur().then((c) => p.concat(c))),
+                  Promise.resolve([] as InputTextNode[])
+                )
+          );
+        },
+    });
+
+    window.roamjs.extension.queryBuilder = {
+      ExportDialog,
+      // @ts-ignore
+      QueryEditor,
+      QueryPage,
+      ResultsView,
+      fireQuery,
+      parseQuery,
+      conditionToDatalog,
+      getConditionLabels,
+      registerSelection,
+      registerDatalogTranslator,
+      unregisterDatalogTranslator,
+
+      // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
+      getWhereClauses,
+      // @ts-ignore This is highly experimental - exposing this method for use in D-G.
+      getDatalogQueryComponents,
+    };
+  },
+  unload: () => {
+    // TODO kill observers, styles, event listeners, query tools
+    delete window.roamjs.extension.queryBuilder;
+  },
 });
