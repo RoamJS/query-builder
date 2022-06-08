@@ -16,7 +16,7 @@ import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import format from "date-fns/format";
-import download from "downloadjs";
+import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
@@ -156,7 +156,7 @@ export const ExportDialog: ExportDialogType = ({
                         zip.file(title, content)
                       );
                       zip.generateAsync({ type: "blob" }).then((content) => {
-                        download(content, `${filename}.zip`, "application/zip");
+                        saveAs(content, `${filename}.zip`);
                         onClose();
                       });
                     }

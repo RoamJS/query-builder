@@ -347,6 +347,7 @@ export default runExtension({
         qtObserver,
         originalQueryBuilderObserver,
         editQueryBuilderObserver,
+        queryBlockObserver,
       ],
       windowListeners: [{ type: "hashchange", listener }],
     };
