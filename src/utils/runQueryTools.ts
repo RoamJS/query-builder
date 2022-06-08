@@ -510,7 +510,7 @@ const runQueryTools = (configUid: string) => {
   };
 
   observerCallback();
-  createObserver(observerCallback);
+  return createObserver(observerCallback);
 };
 
 export default runQueryTools;

@@ -264,8 +264,22 @@ const translator: Translator = {
               ],
             },
             {
+              type: "fn-expr" as const,
+              fn: "re-pattern" as const,
+              arguments: [
+                {
+                  type: "constant" as const,
+                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
+                },
+              ],
+              binding: {
+                type: "bind-scalar" as const,
+                variable: { type: "variable" as const, value: `date-regex` },
+              },
+            },
+            {
               type: "pred-expr" as const,
-              pred: "re-matches" as const,
+              pred: "re-find" as const,
               arguments: [
                 { type: "variable" as const, value: "date-regex" },
                 { type: "variable" as const, value: `${target}-Title` },
@@ -322,8 +336,22 @@ const translator: Translator = {
               ],
             },
             {
+              type: "fn-expr" as const,
+              fn: "re-pattern" as const,
+              arguments: [
+                {
+                  type: "constant" as const,
+                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
+                },
+              ],
+              binding: {
+                type: "bind-scalar" as const,
+                variable: { type: "variable" as const, value: `date-regex` },
+              },
+            },
+            {
               type: "pred-expr" as const,
-              pred: "re-matches" as const,
+              pred: "re-find" as const,
               arguments: [
                 { type: "variable" as const, value: "date-regex" },
                 { type: "variable" as const, value: `${target}-Title` },
@@ -347,85 +375,85 @@ const translator: Translator = {
     targetOptions: getAllPageNames,
   },
   "created after": {
-    callback: ({source, target}) => [
+    callback: ({ source, target }) => [
       {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":create/time" },
           { type: "variable", value: `${source}-CreateTime` },
-        ]
-      }, 
+        ],
+      },
       {
         type: "pred-expr",
         pred: "<",
         arguments: [
           { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
           { type: "variable", value: `${source}-CreateTime` },
-        ]
-      }
-    ] 
+        ],
+      },
+    ],
   },
   "created before": {
-    callback: ({source, target}) => [
+    callback: ({ source, target }) => [
       {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":create/time" },
           { type: "variable", value: `${source}-CreateTime` },
-        ]
-      }, 
+        ],
+      },
       {
         type: "pred-expr",
         pred: ">",
         arguments: [
           { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
           { type: "variable", value: `${source}-CreateTime` },
-        ]
-      }
-    ] 
+        ],
+      },
+    ],
   },
   "edited after": {
-    callback: ({source, target}) => [
+    callback: ({ source, target }) => [
       {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":edit/time" },
           { type: "variable", value: `${source}-EditTime` },
-        ]
-      }, 
+        ],
+      },
       {
         type: "pred-expr",
         pred: "<",
         arguments: [
           { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
           { type: "variable", value: `${source}-EditTime` },
-        ]
-      }
-    ] 
+        ],
+      },
+    ],
   },
   "edited before": {
-    callback: ({source, target}) => [
+    callback: ({ source, target }) => [
       {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":edit/time" },
           { type: "variable", value: `${source}-EditTime` },
-        ]
-      }, 
+        ],
+      },
       {
         type: "pred-expr",
         pred: ">",
         arguments: [
           { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
           { type: "variable", value: `${source}-EditTime` },
-        ]
-      }
-    ] 
-  }
+        ],
+      },
+    ],
+  },
 };
 
 export const registerDatalogTranslator = ({

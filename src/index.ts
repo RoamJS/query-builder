@@ -43,7 +43,7 @@ export default runExtension({
   skipAnalytics: true,
   extensionId,
   run: async () => {
-    addStyle(`.bp3-button:focus {
+    const style = addStyle(`.bp3-button:focus {
     outline-width: 2px;
 }
 
@@ -87,7 +87,7 @@ export default runExtension({
   background: #888;
 }`);
 
-    const { pageUid } = await createConfigObserver({
+    const { pageUid, observer: configObserver } = await createConfigObserver({
       title: toConfigPageName(extensionId),
       config: {
         tabs: [
@@ -182,13 +182,14 @@ export default runExtension({
       current: getQueryPages(),
     };
 
-    window.addEventListener("hashchange", (e) => {
+    const listener = (e: HashChangeEvent) => {
       if (e.oldURL.endsWith(pageUid)) {
         queryPages.current = getQueryPages();
       }
-    });
+    };
+    window.addEventListener("hashchange", listener);
 
-    createHTMLObserver({
+    const h1Observer = createHTMLObserver({
       tag: "H1",
       className: "rm-title-display",
       callback: (h1: HTMLHeadingElement) => {
@@ -222,12 +223,12 @@ export default runExtension({
       },
     });
 
-    createButtonObserver({
+    const queryBlockObserver = createButtonObserver({
       attribute: "query-block",
       render: renderQueryBlock,
     });
 
-    createButtonObserver({
+    const originalQueryBuilderObserver = createButtonObserver({
       shortcut: "qb",
       attribute: "query-builder",
       render: (b: HTMLButtonElement) =>
@@ -238,7 +239,7 @@ export default runExtension({
     });
 
     const dataAttribute = "data-roamjs-edit-query";
-    createHTMLObserver({
+    const editQueryBuilderObserver = createHTMLObserver({
       callback: (b) => {
         if (!b.getAttribute(dataAttribute)) {
           b.setAttribute(dataAttribute, "true");
@@ -263,7 +264,7 @@ export default runExtension({
       className: "rm-query-title",
     });
 
-    runQueryTools(pageUid);
+    const qtObserver = runQueryTools(pageUid);
 
     registerSmartBlocksCommand({
       text: "QUERYBUILDER",
@@ -337,9 +338,21 @@ export default runExtension({
       // @ts-ignore This is highly experimental - exposing this method for use in D-G.
       getDatalogQueryComponents,
     };
+
+    return {
+      elements: [style],
+      observers: [
+        configObserver,
+        h1Observer,
+        qtObserver,
+        originalQueryBuilderObserver,
+        editQueryBuilderObserver,
+      ],
+      windowListeners: [{ type: "hashchange", listener }],
+    };
   },
   unload: () => {
-    // TODO kill observers, styles, event listeners, query tools
     delete window.roamjs.extension.queryBuilder;
+    window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
   },
 });
