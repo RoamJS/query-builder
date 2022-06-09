@@ -94,9 +94,7 @@ The above component is also available as a block component. This allows you to c
 
 Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
-### Demo
-
-{{[[video]]: https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072}}
+[Demo](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
 
 ## Creating Vanilla Roam Queries
 
@@ -114,9 +112,7 @@ The Overlay is fully keyboard accessible. Each input is focusable and you can `t
 On any deletable component, you could hit `ctrl+Backspace` or `cmd+Backspace` to delete the icon. Hitting `enter` on the save button will output the query into the block.
 There will also be an edit button rendered on any existing query. Clicking the builder will overlay the Query Builder to edit the existing query!
 
-### Demo
-
-{{[[video]]: https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2}}
+[Demo](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2)
 
 ---
 
