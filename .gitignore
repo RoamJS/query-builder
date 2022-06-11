@@ -2,7 +2,7 @@ node_modules
 build
 dist
 out
-.env.local
+.env
 extension.js
 report.html
 stats.json
