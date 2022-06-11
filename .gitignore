@@ -5,3 +5,4 @@ out
 .env.local
 extension.js
 report.html
+stats.json

@@ -13,7 +13,7 @@ import React, { useMemo, useState } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getGraph from "roamjs-components/util/getGraph";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
+import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import format from "date-fns/format";
 import { saveAs } from "file-saver";

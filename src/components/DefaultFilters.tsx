@@ -2,7 +2,7 @@ import { Button, Intent, InputGroup } from "@blueprintjs/core";
 import { useState } from "react";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import { RoamBasicNode } from "roamjs-components/types";
+import type { RoamBasicNode } from "roamjs-components/types";
 import getSubTree from "roamjs-components/util/getSubTree";
 import createBlock from "roamjs-components/writes/createBlock";
 

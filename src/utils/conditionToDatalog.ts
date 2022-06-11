@@ -2,8 +2,8 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import parseNlpDate from "roamjs-components/date/parseNlpDate";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
-import { DatalogClause } from "roamjs-components/types";
-import { QBClauseData } from "roamjs-components/types/query-builder";
+import type { DatalogClause } from "roamjs-components/types";
+import type { QBClauseData } from "roamjs-components/types/query-builder";
 
 type Translator = Record<
   string,

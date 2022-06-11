@@ -2,7 +2,7 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getUids from "roamjs-components/dom/getUids";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import { RoamBlock } from "roamjs-components/types";
+import type { RoamBlock } from "roamjs-components/types";
 import getCreateTimeByBlockUid from "roamjs-components/queries/getCreateTimeByBlockUid";
 import getEditTimeByBlockUid from "roamjs-components/queries/getEditTimeByBlockUid";
 import parseRoamDate from "roamjs-components/date/parseRoamDate";

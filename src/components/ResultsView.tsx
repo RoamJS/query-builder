@@ -33,7 +33,7 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import { getFilterEntries } from "./DefaultFilters";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
-import { RoamBasicNode } from "roamjs-components/types";
+import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 
 export type Result = { text: string; uid: string } & Record<
