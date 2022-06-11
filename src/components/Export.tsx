@@ -15,7 +15,6 @@ import getGraph from "roamjs-components/util/getGraph";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import format from "date-fns/format";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
@@ -76,8 +75,16 @@ export const ExportDialog: ExportDialogType = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const today = new Date();
   const [filename, setFilename] = useState(
-    `${getGraph()}_query-results_${format(new Date(), "yyyyMMddhhmm")}`
+    `${getGraph()}_query-results_${`${today.getFullYear()}${(
+      today.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}${today
+      .getHours()
+      .toString()
+      .padStart(2, "0")}${today.getMinutes().toString().padStart(2, "0")}`}`
   );
   const [activeExportType, setActiveExportType] = useState<string>(
     exportTypes[0].name
@@ -143,7 +150,9 @@ export const ExportDialog: ExportDialogType = ({
                     (e) => e.name === activeExportType
                   );
                   if (exportType) {
-                    const zip = await import("jszip").then(j => new j.default());
+                    const zip = await import("jszip").then(
+                      (j) => new j.default()
+                    );
                     const files = await exportType.callback({
                       filename,
                       graph,
