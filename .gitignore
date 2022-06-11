@@ -4,5 +4,6 @@ dist
 out
 .env
 extension.js
+extension.js.LICENSE.txt
 report.html
 stats.json
