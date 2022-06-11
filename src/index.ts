@@ -36,6 +36,16 @@ import toRoamDate from "roamjs-components/date/toRoamDate";
 import extractRef from "roamjs-components/util/extractRef";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
+import MultiTextPanel from "roamjs-components/components/ConfigPanels/MultiTextPanel";
+import FlagPanel from "roamjs-components/components/ConfigPanels/FlagPanel";
+import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
+import NumberPanel from "roamjs-components/components/ConfigPanels/NumberPanel";
+import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
+import type {
+  CustomField,
+  Field,
+  SelectField,
+} from "roamjs-components/components/ConfigPanels/types";
 
 const extensionId = "query-builder";
 
@@ -95,7 +105,7 @@ export default runExtension({
             fields: [
               {
                 title: "Query Pages",
-                type: "multitext",
+                Panel: MultiTextPanel,
                 description:
                   "The title formats of pages that you would like to serve as pages that generate queries",
                 defaultValue: ["queries/*"],
@@ -104,21 +114,21 @@ export default runExtension({
                 title: "Hide Metadata",
                 description:
                   "Hide the Roam blocks that are used to power each query",
-                type: "flag",
+                Panel: FlagPanel,
               },
               {
                 title: "Default Filters",
                 description:
                   "Any filters that should be applied to your results by default",
-                type: "custom",
+                Panel: CustomPanel,
                 options: {
                   component: DefaultFilters,
                 },
-              },
+              } as Field<CustomField>,
               {
                 title: "Default Page Size",
                 description: "The default page size used for query results",
-                type: "number",
+                Panel: NumberPanel,
                 defaultValue: 10,
               },
             ],
@@ -128,19 +138,19 @@ export default runExtension({
             fields: [
               {
                 title: "Sort Blocks",
-                type: "flag",
+                Panel: FlagPanel,
                 description:
                   "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
               },
               {
                 title: "Context",
-                type: "number",
+                Panel: NumberPanel,
                 description:
                   "How many levels of context to include with each query result for all queries by default",
               },
               {
                 title: "Default Sort",
-                type: "select",
+                Panel: SelectPanel,
                 description:
                   "The default sorting all native queries in your graph should use",
                 options: {
@@ -157,7 +167,7 @@ export default runExtension({
                     "Daily Note Descending",
                   ],
                 },
-              },
+              } as Field<SelectField>,
             ],
           },
         ],

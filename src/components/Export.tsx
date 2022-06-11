@@ -17,7 +17,6 @@ import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import format from "date-fns/format";
 import { saveAs } from "file-saver";
-import JSZip from "jszip";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 
@@ -144,7 +143,7 @@ export const ExportDialog: ExportDialogType = ({
                     (e) => e.name === activeExportType
                   );
                   if (exportType) {
-                    const zip = new JSZip();
+                    const zip = await import("jszip").then(j => new j.default());
                     const files = await exportType.callback({
                       filename,
                       graph,
