@@ -9,23 +9,17 @@
   },
   "scripts": {
     "dev": "roamjs-scripts dev",
-    "dev:dep": "roamjs-scripts dev -- --port 3100",
-    "dev:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts dev",
+    "dev:dep": "roamjs-scripts dev --port 3100",
+    "dev:roam": "roamjs-scripts dev --marketplace",
     "build": "roamjs-scripts build",
     "prebuild:roam": "npm install",
-    "build:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts build"
+    "build:roam": "roamjs-scripts build --marketplace"
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/file-saver": "^2.0.5",
-    "@types/jszip": "^3.1.7",
-    "@types/react": "^17.0.39",
-    "@types/react-dom": "^17.0.13",
-    "cross-env": "^7.0.3",
-    "roamjs-scripts": "^0.18.13",
-    "typescript": "^4.6.2"
+    "roamjs-scripts": "^0.18.15"
   },
   "dependencies": {
-    "roamjs-components": "^0.63.1"
+    "roamjs-components": "^0.64.2"
   }
 }

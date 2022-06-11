@@ -171,7 +171,6 @@ export default runExtension({
             ],
           },
         ],
-        versioning: true,
       },
     });
 
