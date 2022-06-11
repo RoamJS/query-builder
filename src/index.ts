@@ -40,7 +40,6 @@ import type { InputTextNode } from "roamjs-components/types/native";
 const extensionId = "query-builder";
 
 export default runExtension({
-  skipAnalytics: true,
   extensionId,
   run: async () => {
     const style = addStyle(`.bp3-button:focus {

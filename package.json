@@ -1,8 +1,12 @@
 {
   "name": "query-builder",
   "version": "1.0.1",
-  "description": "Description for query-builder.",
+  "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
+  "author": {
+    "name": "David Vargas",
+    "email": "support@roamjs.com"
+  },
   "scripts": {
     "dev": "roamjs-scripts dev",
     "dev:dep": "roamjs-scripts dev -- --port 3100",
@@ -18,12 +22,12 @@
     "@types/react-dom": "^17.0.13",
     "cross-env": "^7.0.3",
     "react": "^17.0.2",
-    "roamjs-scripts": "^0.18.4",
+    "roamjs-scripts": "^0.18.7",
     "typescript": "^4.6.2"
   },
   "dependencies": {
     "file-saver": "^2.0.5",
     "react-dom": "^17.0.2",
-    "roamjs-components": "^0.60.2"
+    "roamjs-components": "^0.62.1"
   }
 }

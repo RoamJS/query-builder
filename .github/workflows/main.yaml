@@ -7,7 +7,6 @@ on:
       - "package.json"
       - ".github/workflows/main.yaml"
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest

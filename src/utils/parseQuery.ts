@@ -1,4 +1,4 @@
-import { InputTextNode } from "roamjs-components";
+import type { InputTextNode } from "roamjs-components/types/native";
 import { getConditionLabels } from "./conditionToDatalog";
 
 const parseQuery: typeof window.roamjs.extension.queryBuilder.parseQuery = (
