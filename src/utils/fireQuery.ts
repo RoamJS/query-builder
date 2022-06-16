@@ -180,23 +180,28 @@ const optimizeQuery = (
   return orderedClauses;
 };
 
+const CREATE_DATE_TEST = /^\s*created?\s*date\s*$/i;
+const EDIT_DATE_TEST = /^\s*edit(ed)?\s*date\s*$/i;
+const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
+const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
+
 const predefinedSelections: PredefinedSelection[] = [
   {
-    test: /created?\s*date/i,
+    test: CREATE_DATE_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/time])`,
     mapper: (r) => {
       return new Date(r?.[":create/time"] || 0);
     },
   },
   {
-    test: /edit(ed)?\s*date/i,
+    test: EDIT_DATE_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/time])`,
     mapper: (r) => {
       return new Date(r?.[":edit/time"] || 0);
     },
   },
   {
-    test: /(author|create(d)?\s*by)/i,
+    test: CREATE_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/user])`,
     mapper: (r) => {
       return (
@@ -208,7 +213,7 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
-    test: /edit(ed)?\s*by/i,
+    test: EDIT_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/user])`,
     mapper: (r) => {
       return (
@@ -220,19 +225,42 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
-    test: /^node:(\s*.*\s*)$/i,
+    test: /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i,
     pull: ({ match, returnNode, where }) => {
       const node = (match[1] || returnNode)?.trim();
+      const field = (match[2] || "").trim();
+      const fields = CREATE_BY_TEST.test(field)
+        ? `[:create/user]`
+        : EDIT_BY_TEST.test(field)
+        ? `[:edit/user]`
+        : CREATE_DATE_TEST.test(field)
+        ? `[:create/time]`
+        : EDIT_DATE_TEST.test(field)
+        ? `[:edit/time]`
+        : `[:node/title :block/uid :block/string]`;
 
-      return isVariableExposed(where, node)
-        ? `(pull ?${node} [:node/title :block/uid])`
-        : "";
+      return isVariableExposed(where, node) ? `(pull ?${node} ${fields})` : "";
     },
     mapper: (r) => {
-      return {
-        "": r?.[":node/title"] || "",
-        "-uid": r[":block/uid"],
-      };
+      const key = Object.keys(r)[0];
+      return key === ":create/time"
+        ? new Date(r?.[":create/time"] || 0)
+        : key === ":edit/time"
+        ? new Date(r?.[":edit/time"] || 0)
+        : key === ":create/user"
+        ? window.roamAlphaAPI.pull(
+            "[:user/display-name]",
+            r?.[":create/user"]?.[":db/id"]
+          )?.[":user/display-name"] || "Anonymous User"
+        : key === ":edit/user"
+        ? window.roamAlphaAPI.pull(
+            "[:user/display-name]",
+            r?.[":edit/user"]?.[":db/id"]
+          )?.[":user/display-name"] || "Anonymous User"
+        : {
+            "": r?.[":node/title"] || r[":block/string"] || "",
+            "-uid": r[":block/uid"],
+          };
     },
   },
   {

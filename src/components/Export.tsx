@@ -11,7 +11,6 @@ import {
 } from "@blueprintjs/core";
 import React, { useMemo, useState } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
-import getGraph from "roamjs-components/util/getGraph";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
@@ -77,7 +76,7 @@ export const ExportDialog: ExportDialogType = ({
   const [error, setError] = useState("");
   const today = new Date();
   const [filename, setFilename] = useState(
-    `${getGraph()}_query-results_${`${today.getFullYear()}${(
+    `${window.roamAlphaAPI.graph.name}_query-results_${`${today.getFullYear()}${(
       today.getMonth() + 1
     )
       .toString()

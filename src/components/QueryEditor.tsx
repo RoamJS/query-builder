@@ -104,7 +104,7 @@ const QueryCondition = ({
           );
         }}
       />
-      {/* I want options to appear on focus before using
+      {/* I want options to appear on focus before using*/}
       <div className="roamjs-query-condition-relation">
         <AutocompleteInput
           value={con.relation}
@@ -127,8 +127,8 @@ const QueryCondition = ({
           options={conditionLabels}
           placeholder={"Choose relationship"}
         />
-      </div> */}
-      <MenuItemSelect
+      </div>
+     {/* <MenuItemSelect
         popoverProps={{
           className: "roamjs-query-condition-relation",
         }}
@@ -155,7 +155,7 @@ const QueryCondition = ({
             width: "100%",
           },
         }}
-      />
+      />*/}
       <Switch
         label="NOT"
         style={{

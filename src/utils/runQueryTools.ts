@@ -5,7 +5,6 @@ import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { RoamBlock } from "roamjs-components/types";
 import getCreateTimeByBlockUid from "roamjs-components/queries/getCreateTimeByBlockUid";
 import getEditTimeByBlockUid from "roamjs-components/queries/getEditTimeByBlockUid";
-import parseRoamDate from "roamjs-components/date/parseRoamDate";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import createObserver from "roamjs-components/dom/createObserver";
@@ -195,36 +194,36 @@ const runQueryTools = (configUid: string) => {
       menuItemCallback(refContainer, (a, b) => {
         const aText = isSortByBlocks ? getTextByBlockUid(a) : a;
         const bText = isSortByBlocks ? getTextByBlockUid(b) : b;
-        const aDate = parseRoamDate(aText).valueOf();
-        const bDate = parseRoamDate(bText).valueOf();
-        if (isNaN(aDate) && isNaN(bDate)) {
+        const aDate = window.roamAlphaAPI.util.pageTitleToDate(aText);
+        const bDate = window.roamAlphaAPI.util.pageTitleToDate(bText);
+        if (!aDate && !bDate) {
           return isSortByBlocks
             ? getCreateTimeByBlockUid(a) - getCreateTimeByBlockUid(b)
             : getCreatedTimeByTitle(a) - getCreatedTimeByTitle(b);
-        } else if (isNaN(aDate)) {
+        } else if (!aDate) {
           return 1;
-        } else if (isNaN(bDate)) {
+        } else if (!bDate) {
           return -1;
         } else {
-          return aDate - bDate;
+          return aDate.valueOf() - bDate.valueOf();
         }
       }),
     "Daily Note Descending": (refContainer: Element) =>
       menuItemCallback(refContainer, (a, b) => {
         const aText = isSortByBlocks ? getTextByBlockUid(a) : a;
         const bText = isSortByBlocks ? getTextByBlockUid(b) : b;
-        const aDate = parseRoamDate(aText).valueOf();
-        const bDate = parseRoamDate(bText).valueOf();
-        if (isNaN(aDate) && isNaN(bDate)) {
+        const aDate = window.roamAlphaAPI.util.pageTitleToDate(aText);
+        const bDate = window.roamAlphaAPI.util.pageTitleToDate(bText);
+        if (!aDate && !bDate) {
           return isSortByBlocks
             ? getCreateTimeByBlockUid(b) - getCreateTimeByBlockUid(a)
             : getCreatedTimeByTitle(b) - getCreatedTimeByTitle(a);
-        } else if (isNaN(aDate)) {
+        } else if (!aDate) {
           return 1;
-        } else if (isNaN(bDate)) {
+        } else if (!bDate) {
           return -1;
         } else {
-          return bDate - aDate;
+          return bDate.valueOf() - aDate.valueOf();
         }
       }),
   };

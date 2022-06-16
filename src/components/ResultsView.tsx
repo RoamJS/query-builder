@@ -16,7 +16,6 @@ import {
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import toRoamDate from "roamjs-components/date/toRoamDate";
 import Filter from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
@@ -26,7 +25,6 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import useSubTree from "roamjs-components/hooks/useSubTree";
 import extractTag from "roamjs-components/util/extractTag";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
-import parseRoamDate from "roamjs-components/date/parseRoamDate";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import Export from "./Export";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -57,12 +55,12 @@ export const sortFunction =
     const aVal =
       typeof _aVal === "string" &&
       DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_aVal))
-        ? parseRoamDate(extractTag(_aVal))
+        ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_aVal))
         : _aVal;
     const bVal =
       typeof _bVal === "string" &&
       DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_bVal))
-        ? parseRoamDate(extractTag(_bVal))
+        ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_bVal))
         : _bVal;
     if (aVal instanceof Date && bVal instanceof Date) {
       return descending
@@ -412,8 +410,8 @@ const ResultView = ({
 const defaultFields = [/uid/, /context/];
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
-    ? toRoamDate(v)
-    : typeof v === "undefined"
+    ? window.roamAlphaAPI.util.dateToPageTitle(v)
+    : typeof v === "undefined" || v === null
     ? ""
     : extractTag(v.toString());
 

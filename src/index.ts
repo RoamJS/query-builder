@@ -32,7 +32,6 @@ import runQueryTools from "./utils/runQueryTools";
 import { ExportDialog } from "./components/Export";
 import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
-import toRoamDate from "roamjs-components/date/toRoamDate";
 import extractRef from "roamjs-components/util/extractRef";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
@@ -313,7 +312,7 @@ export default runExtension({
                       : typeof value === "number"
                       ? value.toString()
                       : value instanceof Date
-                      ? toRoamDate(value)
+                      ? window.roamAlphaAPI.util.dateToPageTitle(value)
                       : "";
                   })
                 )

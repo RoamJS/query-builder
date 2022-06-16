@@ -42,6 +42,18 @@ const translator: Translator = {
       },
     ],
   },
+  "is referenced by": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: target },
+          { type: "constant", value: ":block/refs" },
+          { type: "variable", value: source },
+        ],
+      },
+    ],
+  },
   "is in page": {
     callback: ({ source, target }) => [
       {
@@ -234,7 +246,31 @@ const translator: Translator = {
         arguments: [
           { type: "variable", value: `${source}-User` },
           { type: "constant", value: ":user/display-name" },
-          { type: "variable", value: `"${normalizePageTitle(target)}"` },
+          { type: "constant", value: `"${normalizePageTitle(target)}"` },
+        ],
+      },
+    ],
+    targetOptions: () =>
+      window.roamAlphaAPI.data.fast
+        .q(`[:find ?n :where [?u :user/display-name ?n]]`)
+        .map((a) => a[0] as string),
+  },
+  "edited by": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":edit/user" },
+          { type: "variable", value: `${source}-User` },
+        ],
+      },
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${source}-User` },
+          { type: "constant", value: ":user/display-name" },
+          { type: "constant", value: `"${normalizePageTitle(target)}"` },
         ],
       },
     ],
