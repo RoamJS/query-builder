@@ -76,9 +76,9 @@ export const ExportDialog: ExportDialogType = ({
   const [error, setError] = useState("");
   const today = new Date();
   const [filename, setFilename] = useState(
-    `${window.roamAlphaAPI.graph.name}_query-results_${`${today.getFullYear()}${(
-      today.getMonth() + 1
-    )
+    `${
+      window.roamAlphaAPI.graph.name
+    }_query-results_${`${today.getFullYear()}${(today.getMonth() + 1)
       .toString()
       .padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}${today
       .getHours()
@@ -211,12 +211,13 @@ export const Export = ({
       callback: async () =>
         results
           .map(({ uid, ...rest }) => {
-            const v =
-              ((
+            const v = (
+              (
                 window.roamAlphaAPI.data.fast.q(
-                  `[:find ?b (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
+                  `[:find (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
                 )[0]?.[0] as PullBlock
-              )?.[":children/view-type"].slice(1) as ViewType) || "bullet";
+              )?.[":children/view-type"] || ":bullet"
+            ).slice(1) as ViewType;
             const treeNode = getFullTreeByParentUid(uid);
 
             const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
