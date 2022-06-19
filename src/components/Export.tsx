@@ -149,9 +149,7 @@ export const ExportDialog: ExportDialogType = ({
                     (e) => e.name === activeExportType
                   );
                   if (exportType) {
-                    const zip = await import("jszip").then(
-                      (j) => new j.default()
-                    );
+                    const zip = await window.RoamLazy.JSZip().then((j) => new j());
                     const files = await exportType.callback({
                       filename,
                       graph,
