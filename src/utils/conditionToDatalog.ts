@@ -174,6 +174,18 @@ const translator: Translator = {
       },
     ],
   },
+  "has parent": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: target },
+          { type: "constant", value: ":block/children" },
+          { type: "variable", value: source },
+        ],
+      },
+    ],
+  },
   "has ancestor": {
     callback: ({ source, target }) => [
       {
