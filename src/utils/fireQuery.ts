@@ -397,10 +397,12 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
           parts.definedSelections
             .map(
               (c, i) => () =>
-                Promise.resolve(c.mapper(r[i], c.key)).then((output) => ({
-                  output,
-                  label: c.label,
-                }))
+                !r[i]
+                  ? Promise.resolve({ output: "", label: c.label })
+                  : Promise.resolve(c.mapper(r[i], c.key)).then((output) => ({
+                      output,
+                      label: c.label,
+                    }))
             )
             .reduce(
               (prev, c) =>
