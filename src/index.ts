@@ -45,6 +45,7 @@ import type {
   Field,
   SelectField,
 } from "roamjs-components/components/ConfigPanels/types";
+import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 
 const extensionId = "query-builder";
 
@@ -287,23 +288,33 @@ export default runExtension({
             tree: resultNode.children,
             key: "sorts",
           });
+          const random = getSettingIntFromTree({
+            tree: resultNode.children,
+            key: "random",
+          });
           const activeSort = sortsNode.children.map((s) => ({
             key: s.text,
             descending: toFlexRegex("true").test(s.children[0]?.text || ""),
           }));
           return fireQuery(parseQuery(getSubTree({ tree, key: "query" }))).then(
-            (results) =>
-              results
-                .sort((a, b) => {
-                  for (const sort of activeSort) {
-                    const cmpResult = sortFunction(sort.key, sort.descending)(
-                      a,
-                      b
-                    );
-                    if (cmpResult !== 0) return cmpResult;
-                  }
-                  return 0;
-                })
+            (results) => {
+              const sortedResults = results.sort((a, b) => {
+                for (const sort of activeSort) {
+                  const cmpResult = sortFunction(sort.key, sort.descending)(
+                    a,
+                    b
+                  );
+                  if (cmpResult !== 0) return cmpResult;
+                }
+                return 0;
+              });
+              const returnedResults =
+                random > 0
+                  ? sortedResults
+                      .sort(() => 0.5 - Math.random())
+                      .slice(0, random)
+                  : sortedResults;
+              return returnedResults
                 .map((r) =>
                   format.replace(/{([^}]+)}/, (_, i) => {
                     const value = r[i];
@@ -321,7 +332,8 @@ export default runExtension({
                   (prev, cur) =>
                     prev.then((p) => cur().then((c) => p.concat(c))),
                   Promise.resolve([] as InputTextNode[])
-                )
+                );
+            }
           );
         },
     });
