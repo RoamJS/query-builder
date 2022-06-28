@@ -52,16 +52,16 @@ export const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
     const _aVal = a[key];
     const _bVal = b[key];
-    const aVal =
-      typeof _aVal === "string" &&
-      DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_aVal))
-        ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_aVal))
-        : _aVal;
-    const bVal =
-      typeof _bVal === "string" &&
-      DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_bVal))
-        ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_bVal))
-        : _bVal;
+    const transform = (_val: Result[string]) =>
+      typeof _val === "string"
+        ? DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_val))
+          ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val))
+          : /^(-)?\d+(\.\d*)?$/.test(_val)
+          ? Number(_val)
+          : _val
+        : _val;
+    const aVal = transform(_aVal);
+    const bVal = transform(_bVal);
     if (aVal instanceof Date && bVal instanceof Date) {
       return descending
         ? bVal.valueOf() - aVal.valueOf()
