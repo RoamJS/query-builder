@@ -23,29 +23,6 @@ import {
 } from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 
-type QClauseData = {
-  relation: string;
-  source: string;
-  target: string;
-  uid: string;
-};
-
-type QClause = QClauseData & { type: "clause" };
-type QNot = QClauseData & { type: "not" };
-
-type QNested = { conditions: QCondition[] };
-
-type QOr = QNested & {
-  type: "or";
-};
-
-type QNor = QNested & {
-  type: "not";
-};
-
-// dropdown Edit button => (number of clauses)
-type QCondition = QClause | QNot | QOr | QNor;
-
 const QueryCondition = ({
   con,
   index,
