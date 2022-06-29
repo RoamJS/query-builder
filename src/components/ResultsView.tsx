@@ -33,6 +33,7 @@ import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
+import { QBClauseData } from "roamjs-components/types/query-builder";
 
 export type Result = { text: string; uid: string } & Record<
   string,
@@ -417,10 +418,15 @@ const toCellValue = (v: number | Date | string) =>
 
 const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
-    const datalogQuery = getDatalogQuery(
-      getDatalogQueryComponents(parseQuery(queryNode))
-    );
-    const englishQuery = queryNode.children.map((t) => t.text);
+    const args = parseQuery(queryNode);
+    const datalogQuery = getDatalogQuery(getDatalogQueryComponents(args));
+    const englishQuery = [
+      `Find ${args.returnNode} Where`,
+      ...(args.conditions as QBClauseData[]).map(
+        (c) => `${c.not ? "NOT " : ""}${c.source} ${c.relation} ${c.target}`
+      ),
+      ...args.selections.map((s) => `Select ${s.text} AS ${s.label}`),
+    ];
     return { datalogQuery, englishQuery };
   }, [queryNode]);
   const [isEnglish, setIsEnglish] = useState(true);
@@ -483,7 +489,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
   const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
-  const queryNode = useSubTree({ tree, key: "query" });
+  const queryNode = useSubTree({ tree, key: "scratch" });
   const columns = useMemo(
     () =>
       results.length
@@ -633,16 +639,14 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
               }}
             >
               <i style={{ opacity: 0.8 }}>
-                {!!queryNode.uid && (
-                  <Button
-                    icon={showContent ? "caret-down" : "caret-right"}
-                    minimal
-                    onClick={() => setShowContent(!showContent)}
-                    style={{
-                      marginRight: 16,
-                    }}
-                  />
-                )}
+                <Button
+                  icon={showContent ? "caret-down" : "caret-right"}
+                  minimal
+                  onClick={() => setShowContent(!showContent)}
+                  style={{
+                    marginRight: 16,
+                  }}
+                />
                 Showing {paginatedResults.length} of {results.length} results
               </i>
               <span>

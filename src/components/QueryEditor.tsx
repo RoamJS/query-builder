@@ -1,9 +1,8 @@
 import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
-import parseQuery from "../utils/parseQuery";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
@@ -14,8 +13,6 @@ import {
   sourceToTargetOptions,
   sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
@@ -266,27 +263,13 @@ const QuerySelection = ({
   );
 };
 
-const QueryEditor = ({
+const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   parentUid,
-  defaultQuery,
   onQuery,
   defaultReturnNode,
-}: {
-  parentUid: string;
-  defaultQuery: string[];
-  onQuery: (query: {
-    returnNode: string;
-    conditions: Condition[];
-    selections: Selection[];
-  }) => Promise<void>;
-  defaultReturnNode?: string;
 }) => {
-  const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
-  const scratchNode = useMemo(
-    () => tree.find((t) => toFlexRegex("scratch").test(t.text)),
-    [tree]
-  );
+  const scratchNode = useSubTree({ parentUid, key: "scratch" });
   const scratchNodeUid = useMemo(() => {
     if (scratchNode?.uid) return scratchNode?.uid;
     const newUid = window.roamAlphaAPI.util.generateUID();
@@ -370,87 +353,6 @@ const QueryEditor = ({
       label: children?.[0]?.text || "",
     }));
   });
-  useEffect(() => {
-    const {
-      returnNode: value,
-      conditions,
-      selections,
-    } = parseQuery({
-      uid: "",
-      text: "",
-      children: defaultQuery.map((text) => ({ text, uid: "", children: [] })),
-    });
-    Promise.all([
-      setInputSetting({
-        blockUid: scratchNodeUid,
-        value,
-        key: "return",
-      }),
-      Promise.all(
-        conditions.map((condition, order) =>
-          condition.type === "clause" || condition.type === "not"
-            ? createBlock({
-                parentUid: conditionsNodeUid,
-                order,
-                node: {
-                  text: `${order}`,
-                  children: [
-                    { text: "source", children: [{ text: condition.source }] },
-                    {
-                      text: "relation",
-                      children: [{ text: condition.relation }],
-                    },
-                    { text: "target", children: [{ text: condition.target }] },
-                    ...(condition.type === "not" ? [{ text: "not" }] : []),
-                  ],
-                },
-              }).then((uid) => ({
-                source: condition.source,
-                relation: condition.relation,
-                target: condition.target,
-                uid,
-                not: condition.not,
-                type: "clause" as const,
-              }))
-            : Promise.resolve(condition)
-        )
-      ),
-      Promise.all(
-        selections.map((sel, order) =>
-          createBlock({
-            parentUid: selectionsNodeUid,
-            order,
-            node: {
-              text: sel.text,
-              uid: sel.uid,
-              children: [{ text: sel.label }],
-            },
-          }).then(() => sel)
-        )
-      ),
-    ]).then(([, conditionNodesWithUids, selections]) => {
-      if (!defaultReturnNode) setReturnNode(value);
-      setConditions(conditionNodesWithUids);
-      setSelections(selections);
-    });
-  }, [
-    defaultReturnNode,
-    defaultQuery,
-    setReturnNode,
-    setConditions,
-    conditionsNodeUid,
-    selectionsNodeUid,
-    setSelections,
-    scratchNodeUid,
-  ]);
-  useEffect(() => {
-    if (!window.roamAlphaAPI.data.fast?.q)
-      renderSimpleAlert({
-        content:
-          'This feature depends on using the latest version of Roam.\n\nPlease click "Check for Updates" from the top right menu to update Roam!',
-        onConfirm: () => {},
-      });
-  }, []);
   return (
     <div
       style={{
@@ -562,25 +464,7 @@ const QueryEditor = ({
         >
           <Button
             text={"Query"}
-            onClick={() => {
-              onQuery({
-                conditions,
-                returnNode,
-                selections,
-              })
-                .then(() =>
-                  setInputSetting({
-                    blockUid: scratchNodeUid,
-                    value: "",
-                    key: "return",
-                  })
-                )
-                .then(() => {
-                  setReturnNode("");
-                  setConditions([]);
-                  setSelections([]);
-                });
-            }}
+            onClick={onQuery}
             style={{ maxHeight: 32 }}
             intent={"primary"}
             disabled={
