@@ -14,6 +14,8 @@ type Translator = Record<
       uid: string;
     }) => DatalogClause[];
     targetOptions?: string[] | ((source: string) => string[]);
+    placeholder?: string;
+    isVariable?: true;
   }
 >;
 
@@ -41,6 +43,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "is referenced by": {
     callback: ({ source, target }) => [
@@ -53,6 +57,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "is in page": {
     callback: ({ source, target }) => [
@@ -65,6 +71,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "has title": {
     callback: ({ source, target }) =>
@@ -112,6 +120,7 @@ const translator: Translator = {
             },
           ],
     targetOptions: getAllPageNames,
+    placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
     callback: ({ source, target }) => [
@@ -132,6 +141,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any text",
   },
   "has attribute": {
     callback: ({ source, target }) => [
@@ -161,6 +171,8 @@ const translator: Translator = {
       },
     ],
     targetOptions: getAllPageNames,
+    placeholder: "Enter any attribute name",
+    isVariable: true,
   },
   "has child": {
     callback: ({ source, target }) => [
@@ -173,6 +185,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "has parent": {
     callback: ({ source, target }) => [
@@ -185,6 +199,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "has ancestor": {
     callback: ({ source, target }) => [
@@ -197,6 +213,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "has descendant": {
     callback: ({ source, target }) => [
@@ -209,6 +227,8 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any placeholder for the node",
+    isVariable: true,
   },
   "with text": {
     callback: ({ source, target }) => [
@@ -242,6 +262,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any text",
   },
   "created by": {
     callback: ({ source, target }) => [
@@ -266,6 +287,7 @@ const translator: Translator = {
       window.roamAlphaAPI.data.fast
         .q(`[:find ?n :where [?u :user/display-name ?n]]`)
         .map((a) => a[0] as string),
+    placeholder: "Enter the display name of any user with access to this graph",
   },
   "edited by": {
     callback: ({ source, target }) => [
@@ -290,6 +312,7 @@ const translator: Translator = {
       window.roamAlphaAPI.data.fast
         .q(`[:find ?n :where [?u :user/display-name ?n]]`)
         .map((a) => a[0] as string),
+    placeholder: "Enter the display name of any user with access to this graph",
   },
   "references title": {
     callback: ({ source, target }) => [
@@ -349,6 +372,7 @@ const translator: Translator = {
           ]),
     ],
     targetOptions: getAllPageNames,
+    placeholder: "Enter a page name or {date} for any DNP",
   },
   "has heading": {
     callback: ({ source, target }) => [
@@ -362,6 +386,7 @@ const translator: Translator = {
       },
     ],
     targetOptions: ["1", "2", "3", "0"],
+    placeholder: "Enter a heading value (0, 1, 2, 3)",
   },
   "is in page with title": {
     callback: ({ source, target }) => [
@@ -421,6 +446,7 @@ const translator: Translator = {
           ]),
     ],
     targetOptions: getAllPageNames,
+    placeholder: "Enter a page name or {date} for any DNP",
   },
   "created after": {
     callback: ({ source, target }) => [
@@ -441,6 +467,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any natural language date value",
   },
   "created before": {
     callback: ({ source, target }) => [
@@ -461,6 +488,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any natural language date value",
   },
   "edited after": {
     callback: ({ source, target }) => [
@@ -481,6 +509,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any natural language date value",
   },
   "edited before": {
     callback: ({ source, target }) => [
@@ -501,6 +530,7 @@ const translator: Translator = {
         ],
       },
     ],
+    placeholder: "Enter any natural language date value",
   },
 };
 
@@ -546,6 +576,22 @@ export const sourceToTargetOptions = ({
   if (!targetOptions) return [];
   if (typeof targetOptions === "function") return targetOptions(source);
   return targetOptions;
+};
+
+export const sourceToTargetPlaceholder = ({
+  relation,
+}: {
+  relation: string;
+}): string => {
+  return translator[relation]?.placeholder || "Enter Value";
+};
+
+export const isTargetVariable = ({
+  relation,
+}: {
+  relation: string;
+}): boolean => {
+  return translator[relation]?.isVariable || false;
 };
 
 export default conditionToDatalog;

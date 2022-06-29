@@ -1,20 +1,5 @@
-import {
-  Button,
-  H6,
-  InputGroup,
-  Menu,
-  MenuItem,
-  Popover,
-  PopoverPosition,
-  Switch,
-} from "@blueprintjs/core";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -25,7 +10,9 @@ import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildU
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import {
   getConditionLabels,
+  isTargetVariable,
   sourceToTargetOptions,
+  sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
@@ -81,6 +68,10 @@ const QueryCondition = ({
     () => sourceToTargetOptions({ source: con.source, relation: con.relation }),
     [con.source, con.relation]
   );
+  const targetPlaceholder = useMemo(
+    () => sourceToTargetPlaceholder({ relation: con.relation }),
+    [con.source, con.relation]
+  );
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
       <MenuItemSelect
@@ -89,7 +80,12 @@ const QueryCondition = ({
         }}
         activeItem={con.source}
         items={Array.from(
-          new Set(conditions.slice(0, index).map((c) => c.target))
+          new Set(
+            conditions
+              .slice(0, index)
+              .filter((c) => isTargetVariable({ relation: c.relation }))
+              .map((c) => c.target)
+          )
         ).concat(returnNode)}
         onItemSelect={(value) => {
           setInputSetting({
@@ -104,7 +100,6 @@ const QueryCondition = ({
           );
         }}
       />
-      {/* I want options to appear on focus before using*/}
       <div className="roamjs-query-condition-relation">
         <AutocompleteInput
           value={con.relation}
@@ -128,34 +123,6 @@ const QueryCondition = ({
           placeholder={"Choose relationship"}
         />
       </div>
-     {/* <MenuItemSelect
-        popoverProps={{
-          className: "roamjs-query-condition-relation",
-        }}
-        activeItem={con.relation}
-        onItemSelect={(relation) => {
-          setInputSetting({
-            blockUid: con.uid,
-            key: "Relation",
-            value: relation,
-            index: 1,
-          });
-          setConditions(
-            conditions.map((c) =>
-              c.uid === con.uid ? { ...con, relation } : c
-            )
-          );
-        }}
-        items={conditionLabels}
-        emptyValueText={"Choose relationship"}
-        ButtonProps={{
-          style: {
-            display: "flex",
-            justifyContent: "space-between",
-            width: "100%",
-          },
-        }}
-      />*/}
       <Switch
         label="NOT"
         style={{
@@ -198,6 +165,7 @@ const QueryCondition = ({
             }, 1000);
           }}
           options={targetOptions}
+          placeholder={targetPlaceholder}
         />
       </div>
       <Button
