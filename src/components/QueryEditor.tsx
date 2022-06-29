@@ -243,7 +243,7 @@ const QuerySelection = ({
 const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   parentUid,
   onQuery,
-  defaultReturnNode,
+  defaultReturnNode, // returnNodeDisabled
 }) => {
   const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
   const scratchNode = useSubTree({ parentUid, key: "scratch" });
@@ -260,10 +260,8 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     () => scratchNode?.children || [],
     [scratchNode]
   );
-  const [returnNode, setReturnNode] = useState(
-    () =>
-      defaultReturnNode ||
-      getSettingValueFromTree({ tree: scratchNodeChildren, key: "return" })
+  const [returnNode, setReturnNode] = useState(() =>
+    getSettingValueFromTree({ tree: scratchNodeChildren, key: "return" })
   );
   const debounceRef = useRef(0);
   const returnNodeOnChange = (value: string) => {

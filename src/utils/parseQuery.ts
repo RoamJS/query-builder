@@ -41,7 +41,7 @@ const parseQuery: typeof window.roamjs.extension.queryBuilder.parseQuery = (
 ) => {
   const { uid, children } = queryNode;
   const getOrCreateUid = (sub: RoamBasicNode, text: string) => {
-    if (sub?.uid) return sub?.uid;
+    if (sub.uid) return sub.uid;
     const newUid = window.roamAlphaAPI.util.generateUID();
     createBlock({
       node: { text, uid: newUid },

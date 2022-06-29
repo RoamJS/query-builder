@@ -1,4 +1,4 @@
-import { Card } from "@blueprintjs/core";
+import { Card, Spinner } from "@blueprintjs/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
@@ -10,6 +10,7 @@ import { createComponentRender } from "roamjs-components/components/ComponentCon
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
+import setInputSetting from "roamjs-components/util/setInputSetting";
 
 type Props = {
   pageUid: string;
@@ -21,6 +22,31 @@ type Props = {
 const getQueryNode = (parentUid: string) => {
   const tree = getBasicTreeByParentUid(parentUid);
   return getSubTree({ tree, key: "scratch" });
+};
+
+const ensureSetting = ({
+  parentUid,
+  key,
+  value,
+}: {
+  parentUid: string;
+  key: string;
+  value: string;
+}) => {
+  const [first, second] = key.split(".");
+  const tree = getBasicTreeByParentUid(parentUid);
+  const node = getSubTree({ tree, key: first });
+  return (
+    node.uid
+      ? Promise.resolve(node.uid)
+      : createBlock({ parentUid, node: { text: first } })
+  ).then((blockUid) =>
+    setInputSetting({
+      blockUid,
+      key: second,
+      value,
+    })
+  );
 };
 
 const QueryPage = ({
@@ -47,19 +73,38 @@ const QueryPage = ({
     [pageUid]
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isEdit) {
+      setError("");
       setLoading(true);
+      const args = parseQuery(getQueryNode(pageUid));
       setTimeout(() => {
-        fireQuery(parseQuery(getQueryNode(pageUid))).then((results) => {
-          setResults(results);
+        (args.returnNode
+          ? fireQuery(args)
+              .then((results) => {
+                setResults(results);
+              })
+              .catch(() => {
+                setError(
+                  `Query failed to run. Try running a new query from the editor.`
+                );
+              })
+          : defaultReturnNode
+          ? ensureSetting({
+              key: "scratch.return",
+              value: defaultReturnNode,
+              parentUid: pageUid,
+            }).then(() => setIsEdit(true))
+          : setIsEdit(true)
+        ).finally(() => {
           setLoading(false);
         });
       }, 1);
     }
-  }, [setResults, pageUid, isEdit, setLoading]);
+  }, [setResults, pageUid, isEdit, setLoading, defaultReturnNode]);
   useEffect(() => {
     const roamBlock = containerRef.current.closest(".rm-block-main");
     if (roamBlock) {
@@ -96,13 +141,17 @@ const QueryPage = ({
           </>
         )}
         {loading ? (
-          <p>Loading results...</p>
+          <p className="px-8 py-4">
+            <Spinner /> Loading Results...
+          </p>
         ) : (
           <ResultsView
             parentUid={pageUid}
             onEdit={() => setIsEdit(true)}
             getExportTypes={getExportTypes}
-            header={<div />}
+            header={
+              error ? <div className="text-red-700 mb-4">{error}</div> : <div />
+            }
             results={results.map(({ id, ...a }) => a)}
           />
         )}
