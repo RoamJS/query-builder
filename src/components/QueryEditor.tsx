@@ -22,6 +22,7 @@ import {
   Selection,
 } from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import parseQuery from "../utils/parseQuery";
 
 const QueryCondition = ({
   con,
@@ -275,59 +276,14 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
       });
     }, 1000);
   };
-  const conditionsNode = useSubTree({
-    tree: scratchNodeChildren,
-    key: "conditions",
-  });
-  const conditionsNodeUid = useMemo(() => {
-    if (conditionsNode?.uid) return conditionsNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "conditions", uid: newUid },
-      parentUid: scratchNodeUid,
-    });
-    return newUid;
-  }, [conditionsNode, scratchNodeUid]);
-  const conditionsNodeChildren = useMemo(
-    () => conditionsNode?.children || [],
-    [conditionsNode]
-  );
-  const [conditions, setConditions] = useState<Condition[]>(() => {
-    return conditionsNodeChildren.map(({ uid, children }) => ({
-      uid,
-      source: getSettingValueFromTree({ tree: children, key: "source" }),
-      target: getSettingValueFromTree({ tree: children, key: "target" }),
-      relation: getSettingValueFromTree({ tree: children, key: "relation" }),
-      not: !!getSubTree({ tree: children, key: "not" }).uid,
-      type: "clause",
-    }));
-  });
-
-  const selectionsNode = useMemo(
-    () =>
-      scratchNodeChildren.find((t) => toFlexRegex("selections").test(t.text)),
-    [scratchNodeChildren]
-  );
-  const selectionsNodeUid = useMemo(() => {
-    if (selectionsNode?.uid) return selectionsNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "selections", uid: newUid },
-      parentUid: scratchNodeUid,
-    });
-    return newUid;
-  }, [selectionsNode, scratchNodeUid]);
-  const selectionsNodeChildren = useMemo(
-    () => selectionsNode?.children || [],
-    [selectionsNode]
-  );
-  const [selections, setSelections] = useState<Selection[]>(() => {
-    return selectionsNodeChildren.map(({ uid, text, children }) => ({
-      uid,
-      text,
-      label: children?.[0]?.text || "",
-    }));
-  });
+  const {
+    conditionsNodesUid,
+    selectionsNodesUid,
+    conditions: initialConditions,
+    selections: initialSelections,
+  } = useMemo(() => parseQuery(scratchNode), [scratchNode]);
+  const [conditions, setConditions] = useState(initialConditions);
+  const [selections, setSelections] = useState(initialSelections);
   return (
     <div
       style={{
@@ -395,10 +351,10 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
             style={{ maxHeight: 32 }}
             onClick={() => {
               createBlock({
-                parentUid: conditionsNodeUid,
+                parentUid: conditionsNodesUid,
                 order: conditions.length,
                 node: {
-                  text: `${conditions.length}`,
+                  text: "clause",
                 },
               }).then((uid) =>
                 setConditions([
@@ -423,7 +379,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
             style={{ maxHeight: 32 }}
             onClick={() => {
               createBlock({
-                parentUid: selectionsNodeUid,
+                parentUid: selectionsNodesUid,
                 order: selections.length,
                 node: {
                   text: ``,
@@ -443,12 +399,10 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
             style={{ maxHeight: 32 }}
             intent={"primary"}
             disabled={
-              !conditions.every(
-                (c) =>
-                  c.type !== "or" &&
-                  c.type !== "not or" &&
-                  conditionLabels.has(c.relation) &&
-                  !!c.target
+              !conditions.every((c) =>
+                c.type == "clause" || c.type === "not"
+                  ? conditionLabels.has(c.relation) && !!c.target
+                  : c.conditions.length
               ) ||
               !returnNode ||
               selections.some((s) => !s.text)

@@ -296,7 +296,7 @@ export default runExtension({
             key: s.text,
             descending: toFlexRegex("true").test(s.children[0]?.text || ""),
           }));
-          return fireQuery(parseQuery(getSubTree({ tree, key: "query" }))).then(
+          return fireQuery(parseQuery(getSubTree({ tree, key: "scratch" }))).then(
             (results) => {
               const sortedResults = results.sort((a, b) => {
                 for (const sort of activeSort) {
@@ -340,7 +340,6 @@ export default runExtension({
 
     window.roamjs.extension.queryBuilder = {
       ExportDialog,
-      // @ts-ignore
       QueryEditor,
       QueryPage,
       ResultsView,
