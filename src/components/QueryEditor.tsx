@@ -18,7 +18,9 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import useSubTree from "roamjs-components/hooks/useSubTree";
 import {
   Condition,
+  QBClause,
   QBClauseData,
+  QBNot,
   Selection,
 } from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
@@ -33,18 +35,18 @@ const getSourceCandidates = (cs: Condition[]): string[] =>
       : getSourceCandidates(c.conditions.flat())
   );
 
-const QueryCondition = ({
+const QueryClause = ({
   con,
   index,
   setConditions,
   conditions,
-  returnNode,
+  availableSources,
 }: {
-  con: QBClauseData;
+  con: QBClause | QBNot;
   index: number;
-  setConditions: (cons: QBClauseData[]) => void;
-  conditions: QBClauseData[];
-  returnNode: string;
+  setConditions: (cons: Condition[]) => void;
+  conditions: Condition[];
+  availableSources: string[],
 }) => {
   const debounceRef = useRef(0);
   const conditionLabels = useMemo(getConditionLabels, []);
@@ -57,7 +59,7 @@ const QueryCondition = ({
     [con.source, con.relation]
   );
   return (
-    <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
+    <>
       <MenuItemSelect
         popoverProps={{
           className: "roamjs-query-condition-source",
@@ -67,7 +69,7 @@ const QueryCondition = ({
           new Set(
             getSourceCandidates(conditions.slice(0, index) as Condition[])
           )
-        ).concat(returnNode)}
+        ).concat(availableSources)}
         onItemSelect={(value) => {
           setInputSetting({
             blockUid: con.uid,
@@ -115,7 +117,11 @@ const QueryCondition = ({
         onChange={(e) => {
           const not = (e.target as HTMLInputElement).checked;
           setConditions(
-            conditions.map((c) => (c.uid === con.uid ? { ...con, not } : c))
+            conditions.map((c) =>
+              c.uid === con.uid
+                ? { ...con, not, type: not ? "not" : "clause" }
+                : c
+            )
           );
           if (not)
             createBlock({
@@ -149,6 +155,34 @@ const QueryCondition = ({
           placeholder={targetPlaceholder}
         />
       </div>
+    </>
+  );
+};
+
+const QueryCondition = ({
+  con,
+  index,
+  setConditions,
+  conditions,
+  availableSources,
+}: {
+  con: Condition;
+  index: number;
+  setConditions: (cons: Condition[]) => void;
+  conditions: Condition[];
+  availableSources: string[];
+}) => {
+  return (
+    <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
+      {(con.type === "clause" || con.type === "not") && (
+        <QueryClause
+          con={con}
+          index={index}
+          setConditions={setConditions}
+          conditions={conditions}
+          availableSources={availableSources}
+        />
+      )}
       <Button
         icon={"trash"}
         onClick={() => {
@@ -334,11 +368,11 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
       {conditions.map((con, index) => (
         <QueryCondition
           key={con.uid}
-          con={con as QBClauseData}
+          con={con}
           index={index}
-          conditions={conditions as QBClauseData[]}
-          returnNode={returnNode}
-          setConditions={setConditions as (cs: QBClauseData[]) => void}
+          conditions={conditions}
+          availableSources={[returnNode]}
+          setConditions={setConditions}
         />
       ))}
       {selections.map((sel) => (
