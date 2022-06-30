@@ -24,6 +24,15 @@ import {
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import parseQuery from "../utils/parseQuery";
 
+const getSourceCandidates = (cs: Condition[]): string[] =>
+  cs.flatMap((c) =>
+    c.type === "clause" || c.type === "not"
+      ? isTargetVariable({ relation: c.relation })
+        ? [c.target]
+        : []
+      : getSourceCandidates(c.conditions.flat())
+  );
+
 const QueryCondition = ({
   con,
   index,
@@ -56,10 +65,7 @@ const QueryCondition = ({
         activeItem={con.source}
         items={Array.from(
           new Set(
-            conditions
-              .slice(0, index)
-              .filter((c) => isTargetVariable({ relation: c.relation }))
-              .map((c) => c.target)
+            getSourceCandidates(conditions.slice(0, index) as Condition[])
           )
         ).concat(returnNode)}
         onItemSelect={(value) => {

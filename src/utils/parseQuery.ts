@@ -26,6 +26,9 @@ const roamNodeToCondition = ({
           key: "relation",
         }),
         type,
+        
+        // @deprecated
+        not: type === "not",
       }
     : {
         uid,

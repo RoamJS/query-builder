@@ -119,7 +119,7 @@ const translator: Translator = {
               ],
             },
           ],
-    targetOptions: getAllPageNames,
+    targetOptions: () => getAllPageNames().concat(["{date}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
@@ -371,7 +371,7 @@ const translator: Translator = {
             },
           ]),
     ],
-    targetOptions: getAllPageNames,
+    targetOptions: () => getAllPageNames().concat(["{date}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "has heading": {
@@ -553,14 +553,29 @@ export const getConditionLabels = () =>
 
 const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
   (con) => {
-    const { not, relation, ...condition } = con as QBClauseData;
+    if (con.type === "or" || con.type === "not or") {
+      const datalog = [
+        {
+          type: "or-join-clause",
+          clauses: con.conditions.map((branch) => ({
+            type: "and-clause",
+            clauses: branch.flatMap((c) => conditionToDatalog(c)),
+          })),
+          variables: [],
+        },
+      ] as DatalogClause[];
+      if (con.type === "not or")
+        return [{ type: "not-clause", clauses: datalog }];
+      return datalog;
+    }
+    const { relation, ...condition } = con;
     const datalogTranslator =
       translator[relation] ||
       Object.entries(translator).find(([k]) =>
         new RegExp(relation, "i").test(k)
       )?.[1];
     const datalog = datalogTranslator?.callback?.(condition) || [];
-    if (datalog.length && not)
+    if (datalog.length && con.type === "not")
       return [{ type: "not-clause", clauses: datalog }];
     return datalog;
   };
