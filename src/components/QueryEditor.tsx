@@ -20,6 +20,7 @@ import {
   Condition,
   QBClause,
   QBClauseData,
+  QBNestedData,
   QBNot,
   Selection,
 } from "roamjs-components/types/query-builder";
@@ -46,7 +47,7 @@ const QueryClause = ({
   index: number;
   setConditions: (cons: Condition[]) => void;
   conditions: Condition[];
-  availableSources: string[],
+  availableSources: string[];
 }) => {
   const debounceRef = useRef(0);
   const conditionLabels = useMemo(getConditionLabels, []);
@@ -66,9 +67,7 @@ const QueryClause = ({
         }}
         activeItem={con.source}
         items={Array.from(
-          new Set(
-            getSourceCandidates(conditions.slice(0, index) as Condition[])
-          )
+          new Set(getSourceCandidates(conditions.slice(0, index)))
         ).concat(availableSources)}
         onItemSelect={(value) => {
           setInputSetting({
@@ -159,18 +158,60 @@ const QueryClause = ({
   );
 };
 
+const QueryNestedData = ({
+  con,
+  setView,
+}: {
+  con: QBNestedData;
+  setView: (s: { uid: string; branch: number }) => void;
+}) => {
+  return (
+    <>
+      <Button
+        rightIcon={"arrow-right"}
+        text={"Edit"}
+        onClick={() => setView({ uid: con.uid, branch: 0 })}
+        style={{
+          minWidth: 144,
+          maxWidth: 144,
+          paddingRight: 8,
+        }}
+      />
+      <span
+        style={{
+          minWidth: 144,
+          display: "inline-block",
+          fontWeight: 600,
+        }}
+      >
+        ({con.conditions.length}) Branches
+      </span>
+      <span
+        style={{
+          flexGrow: 1,
+          minWidth: 300,
+          width: "100%",
+          display: "inline-block",
+        }}
+      ></span>
+    </>
+  );
+};
+
 const QueryCondition = ({
   con,
   index,
   setConditions,
   conditions,
   availableSources,
+  setView,
 }: {
   con: Condition;
   index: number;
   setConditions: (cons: Condition[]) => void;
   conditions: Condition[];
   availableSources: string[];
+  setView: (s: { uid: string; branch: number }) => void;
 }) => {
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
@@ -182,6 +223,9 @@ const QueryCondition = ({
           conditions={conditions}
           availableSources={availableSources}
         />
+      )}
+      {(con.type === "not or" || con.type === "or") && (
+        <QueryNestedData con={con} setView={setView} />
       )}
       <Button
         icon={"trash"}
@@ -324,6 +368,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   } = useMemo(() => parseQuery(scratchNode), [scratchNode]);
   const [conditions, setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
+  const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);
   return (
     <div
       style={{
@@ -373,6 +418,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
           conditions={conditions}
           availableSources={[returnNode]}
           setConditions={setConditions}
+          setView={(v) => setViews([...views, v])}
         />
       ))}
       {selections.map((sel) => (

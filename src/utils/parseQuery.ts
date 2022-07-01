@@ -26,9 +26,9 @@ const roamNodeToCondition = ({
           key: "relation",
         }),
         type,
-        
+
         // @deprecated
-        not: type === "not",
+        not: type === "not" || !!getSubTree({ tree: children, key: "not" }).uid,
       }
     : {
         uid,
