@@ -1,5 +1,8 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
-import type { Result as SearchResult } from "../components/ResultsView";
+import type {
+  RegisterSelection,
+  Result as SearchResult,
+} from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
   PullBlock,
@@ -8,9 +11,7 @@ import type {
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 
-type PredefinedSelection = Parameters<
-  typeof window.roamjs.extension.queryBuilder.registerSelection
->[0];
+type PredefinedSelection = Parameters<RegisterSelection>[0];
 
 const isVariableExposed = (
   clauses: (DatalogClause | DatalogAndClause)[],
@@ -184,6 +185,9 @@ const CREATE_DATE_TEST = /^\s*created?\s*date\s*$/i;
 const EDIT_DATE_TEST = /^\s*edit(ed)?\s*date\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
+const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
+const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
+const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const predefinedSelections: PredefinedSelection[] = [
   {
@@ -264,6 +268,42 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
+    test: SUBTRACT_TEST,
+    pull: ({ returnNode }) => `?${returnNode}`,
+    mapper: (_, key, result) => {
+      const exec = SUBTRACT_TEST.exec(key);
+      const arg0 = exec?.[1] || "";
+      const arg1 = exec?.[2] || "";
+      const val0 = /^today$/i.test(arg0) ? new Date() : result[arg0];
+      const val1 = /^today$/i.test(arg1) ? new Date() : result[arg1];
+      if (val0 instanceof Date && val1 instanceof Date) {
+        return Math.floor((val0.valueOf() - val1.valueOf()) / MILLISECONDS_IN_DAY);
+      } else {
+        return Number(val0) - Number(val1);
+      }
+    },
+  },
+  {
+    test: ADD_TEST,
+    pull: ({ returnNode }) => `?${returnNode}`,
+    mapper: (_, key, result) => {
+      const exec = SUBTRACT_TEST.exec(key);
+      const arg0 = exec?.[1] || "";
+      const arg1 = exec?.[2] || "";
+      const val0 = /^today$/i.test(arg0) ? new Date() : result[arg0];
+      const val1 = /^today$/i.test(arg1) ? new Date() : result[arg1];
+      if (val0 instanceof Date && val1 instanceof Date) {
+        return val1;
+      } else if (val0 instanceof Date) {
+        return new Date(val0.valueOf() + MILLISECONDS_IN_DAY * Number(val1));
+      } else if (val1 instanceof Date) {
+        return new Date(val1.valueOf() + MILLISECONDS_IN_DAY * Number(val0));
+      } else {
+        return Number(val0) + Number(val1);
+      }
+    },
+  },
+  {
     test: /.*/,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
     mapper: (r, key) => {
@@ -282,10 +322,9 @@ const predefinedSelections: PredefinedSelection[] = [
   },
 ];
 
-export const registerSelection: typeof window.roamjs.extension.queryBuilder.registerSelection =
-  (args) => {
-    predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
-  };
+export const registerSelection: RegisterSelection = (args) => {
+  predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
+};
 
 type FireQueryArgs = Parameters<
   typeof window.roamjs.extension.queryBuilder.fireQuery
@@ -396,18 +435,20 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
         .map((r) =>
           parts.definedSelections
             .map(
-              (c, i) => () =>
+              (c, i) => (prev: SearchResult) =>
                 !r[i]
                   ? Promise.resolve({ output: "", label: c.label })
-                  : Promise.resolve(c.mapper(r[i], c.key)).then((output) => ({
-                      output,
-                      label: c.label,
-                    }))
+                  : Promise.resolve(c.mapper(r[i], c.key, prev)).then(
+                      (output) => ({
+                        output,
+                        label: c.label,
+                      })
+                    )
             )
             .reduce(
               (prev, c) =>
                 prev.then((p) =>
-                  c().then(({ output, label }) => {
+                  c(p).then(({ output, label }) => {
                     if (
                       typeof output === "object" &&
                       !(output instanceof Date)

@@ -33,12 +33,7 @@ import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import { QBClauseData } from "roamjs-components/types/query-builder";
-
-export type Result = { text: string; uid: string } & Record<
-  string,
-  string | number | Date
->;
+import type { QBClauseData, Result } from "roamjs-components/types/query-builder";
 
 type Sorts = { key: string; descending: boolean }[];
 type Filters = Record<

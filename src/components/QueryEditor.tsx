@@ -307,7 +307,7 @@ const QuerySelection = ({
               )
             );
             debounceRef.current = window.setTimeout(() => {
-              updateBlock({ uid: sel.uid, text: sel.text });
+              updateBlock({ uid: sel.uid, text: e.target.value });
             }, 1000);
           }}
         />
