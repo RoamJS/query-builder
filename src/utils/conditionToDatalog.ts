@@ -575,7 +575,7 @@ const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionT
         new RegExp(relation, "i").test(k)
       )?.[1];
     const datalog = datalogTranslator?.callback?.(condition) || [];
-    if (datalog.length && con.type === "not")
+    if (datalog.length && (con.type === "not" || con.not))
       return [{ type: "not-clause", clauses: datalog }];
     return datalog;
   };
