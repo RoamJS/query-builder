@@ -76,35 +76,38 @@ const QueryPage = ({
   const [error, setError] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const onRefresh = useCallback(() => {
+    setError("");
+    setLoading(true);
+    const args = parseQuery(getQueryNode(pageUid));
+    setTimeout(() => {
+      (args.returnNode
+        ? fireQuery(args)
+            .then((results) => {
+              setResults(results);
+            })
+            .catch(() => {
+              setError(
+                `Query failed to run. Try running a new query from the editor.`
+              );
+            })
+        : defaultReturnNode
+        ? ensureSetting({
+            key: "scratch.return",
+            value: defaultReturnNode,
+            parentUid: pageUid,
+          }).then(() => setIsEdit(true))
+        : setIsEdit(true)
+      ).finally(() => {
+        setLoading(false);
+      });
+    }, 1);
+  }, [setResults, pageUid, setLoading, defaultReturnNode]);
   useEffect(() => {
     if (!isEdit) {
-      setError("");
-      setLoading(true);
-      const args = parseQuery(getQueryNode(pageUid));
-      setTimeout(() => {
-        (args.returnNode
-          ? fireQuery(args)
-              .then((results) => {
-                setResults(results);
-              })
-              .catch(() => {
-                setError(
-                  `Query failed to run. Try running a new query from the editor.`
-                );
-              })
-          : defaultReturnNode
-          ? ensureSetting({
-              key: "scratch.return",
-              value: defaultReturnNode,
-              parentUid: pageUid,
-            }).then(() => setIsEdit(true))
-          : setIsEdit(true)
-        ).finally(() => {
-          setLoading(false);
-        });
-      }, 1);
+      onRefresh();
     }
-  }, [setResults, pageUid, isEdit, setLoading, defaultReturnNode]);
+  }, [isEdit, onRefresh]);
   useEffect(() => {
     const roamBlock = containerRef.current.closest(".rm-block-main");
     if (roamBlock) {
@@ -153,6 +156,8 @@ const QueryPage = ({
               error ? <div className="text-red-700 mb-4">{error}</div> : <div />
             }
             results={results.map(({ id, ...a }) => a)}
+            onRefresh={onRefresh}
+            // hide header on edit
           />
         )}
       </div>

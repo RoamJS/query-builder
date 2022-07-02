@@ -1,4 +1,4 @@
-import { Button, H6, InputGroup, Switch } from "@blueprintjs/core";
+import { Button, H6, InputGroup, Switch, Tabs, Tab } from "@blueprintjs/core";
 import React, { useMemo, useRef, useState } from "react";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -25,6 +25,9 @@ import {
   Selection,
 } from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import parseQuery from "../utils/parseQuery";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
@@ -266,16 +269,14 @@ const QuerySelection = ({
           value={sel.label}
           onChange={(e) => {
             window.clearTimeout(debounceRef.current);
+            const label = e.target.value;
             setSelections(
-              selections.map((c) =>
-                c.uid === sel.uid ? { ...sel, label: e.target.value } : c
-              )
+              selections.map((c) => (c.uid === sel.uid ? { ...sel, label } : c))
             );
             debounceRef.current = window.setTimeout(() => {
               const firstChild = getFirstChildUidByBlockUid(sel.uid);
-              if (firstChild) updateBlock({ uid: firstChild, text: sel.label });
-              else
-                createBlock({ parentUid: sel.uid, node: { text: sel.label } });
+              if (firstChild) updateBlock({ uid: firstChild, text: label });
+              else createBlock({ parentUid: sel.uid, node: { text: label } });
             }, 1000);
           }}
         />
@@ -325,6 +326,17 @@ const QuerySelection = ({
   );
 };
 
+const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
+  for (const con of conditions) {
+    if (con.uid === uid) return con;
+    if (con.type === "or" || con.type === "not or") {
+      const c = getConditionByUid(uid, con.conditions.flat());
+      if (c) return c;
+    }
+  }
+  return undefined;
+};
+
 const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   parentUid,
   onQuery,
@@ -369,7 +381,56 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   const [conditions, setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
   const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);
-  return (
+  const view = useMemo(() => views.slice(-1)[0], [views]);
+  const viewCondition = useMemo(
+    () =>
+      view.uid === parentUid
+        ? undefined
+        : (getConditionByUid(view.uid, conditions) as QBNestedData),
+    [view, conditions]
+  );
+  const viewConditions = useMemo(
+    () =>
+      view.uid === parentUid
+        ? conditions
+        : viewCondition?.conditions?.[view.branch] || [],
+    [view, viewCondition, conditions]
+  );
+  const disabledMessage = useMemo(() => {
+    for (let index = 0; index < conditions.length; index++) {
+      const condition = conditions[index];
+      if (condition.type === "clause" || condition.type === "not") {
+        if (!condition.relation) {
+          return `Condition ${index + 1} must not have an empty relation.`;
+        }
+        if (!conditionLabels.has(condition.relation)) {
+          return `Condition ${index + 1} has an unsupported relation ${
+            condition.relation
+          }.`;
+        }
+        if (!condition.target) {
+          return `Condition ${index + 1} must not have an empty target.`;
+        }
+      } else if (!condition.conditions.length) {
+        return `Condition ${index + 1} must have at least one sub-condition.`;
+      }
+    }
+    if (!returnNode) {
+      return `Query must have a value specified in the "Find ... Where" input`;
+    }
+    for (let index = 0; index < selections.length; index++) {
+      const selection = selections[index];
+      if (!selection.text) {
+        return `Selection ${index + 1} must not have an empty select value.`;
+      }
+      if (!selection.label) {
+        return `Selection ${index + 1} must not have an empty select alias.`;
+      }
+    }
+    return "";
+  }, [returnNode, selections, conditionLabels, conditions]);
+  const [showDisabledMessage, setShowDisabledMessage] = useState(false);
+  return view.uid === parentUid ? (
     <div
       style={{
         padding: 16,
@@ -476,25 +537,152 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
             }}
           />
         </span>
-        <span
-          style={{ display: "inline-block", textAlign: "end", flexGrow: 1 }}
-        >
+        <span className="flex-grow flex gap-4 justify-end items-center">
+          {showDisabledMessage && (
+            <span className="text-red-700 inline-block">{disabledMessage}</span>
+          )}
           <Button
-            text={"Query"}
-            onClick={onQuery}
-            style={{ maxHeight: 32 }}
-            intent={"primary"}
-            disabled={
-              !conditions.every((c) =>
-                c.type == "clause" || c.type === "not"
-                  ? conditionLabels.has(c.relation) && !!c.target
-                  : c.conditions.length
-              ) ||
-              !returnNode ||
-              selections.some((s) => !s.text)
+            onMouseEnter={() =>
+              !!disabledMessage && setShowDisabledMessage(true)
             }
+            onMouseLeave={() => setShowDisabledMessage(false)}
+            text={"Query"}
+            onClick={disabledMessage ? undefined : onQuery}
+            className={disabledMessage ? "bp3-disabled" : ""}
+            style={{
+              maxHeight: 32,
+              outline: disabledMessage ? "none" : "inherit",
+            }}
+            intent={"primary"}
           />
         </span>
+      </div>
+    </div>
+  ) : (
+    <div
+      style={{
+        padding: 16,
+      }}
+    >
+      <div>
+        <h4>OR Branches</h4>
+        <Tabs
+          selectedTabId={view.branch}
+          onChange={(e) =>
+            setViews(
+              views.slice(0, -1).concat([{ uid: view.uid, branch: Number(e) }])
+            )
+          }
+        >
+          {Array(viewCondition.conditions.length)
+            .fill(null)
+            .map((_, j) => (
+              <Tab
+                key={j}
+                id={j}
+                title={`${j + 1}`}
+                panel={
+                  <>
+                    {viewConditions.map((con, index) => (
+                      <QueryCondition
+                        key={con.uid}
+                        con={con}
+                        index={index}
+                        conditions={viewConditions}
+                        availableSources={[
+                          returnNode,
+                          ...conditions
+                            .filter(
+                              (c) => c.type === "clause" || c.type === "not"
+                            )
+                            .map((c) => (c as QBClauseData).target),
+                        ]}
+                        setConditions={(cons) => {
+                          viewCondition.conditions[view.branch] = cons;
+                          setConditions([...conditions]);
+                        }}
+                        setView={(v) => setViews([...views, v])}
+                      />
+                    ))}
+                  </>
+                }
+              />
+            ))}
+        </Tabs>
+        <div style={{ display: "flex" }}>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              icon={"arrow-left"}
+              text={"Back"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                setViews(views.slice(0, -1));
+              }}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              rightIcon={"plus"}
+              text={"Add Branch"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                createBlock({
+                  parentUid: view.uid,
+                  order: viewConditions.length,
+                  node: {
+                    text: `AND`,
+                  },
+                }).then(() => {
+                  viewCondition.conditions.push([]);
+                  setConditions([...conditions]);
+                });
+              }}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              rightIcon={"plus"}
+              text={"Add Condition"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                const branchUid = getNthChildUidByBlockUid({
+                  blockUid: view.uid,
+                  order: view.branch,
+                });
+                (branchUid
+                  ? Promise.resolve(branchUid)
+                  : createBlock({
+                      parentUid: view.uid,
+                      order: view.branch,
+                      node: { text: "AND" },
+                    })
+                )
+                  .then((branchUid) =>
+                    createBlock({
+                      parentUid: branchUid,
+                      order: getChildrenLengthByPageUid(branchUid),
+                      node: {
+                        text: `clause`,
+                      },
+                    })
+                  )
+                  .then((uid) => {
+                    viewCondition.conditions[view.branch] = [
+                      ...viewConditions,
+                      {
+                        uid,
+                        source: "",
+                        relation: "",
+                        target: "",
+                        type: "clause",
+                      },
+                    ];
+                    setConditions([...conditions]);
+                  });
+              }}
+            />
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -476,6 +476,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   preventSavingSettings = false,
   preventExport,
   onEdit,
+  onRefresh,
   getExportTypes,
   onResultsInViewChange,
 }) => {
@@ -609,15 +610,10 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     onResultsInViewChange?.(paginatedResults);
   }, [paginatedResults]);
   return (
-    <div
-      className="roamjs-query-results-view"
-      style={{
-        width: "100%",
-      }}
-    >
+    <div className="roamjs-query-results-view w-full">
       <div
         tabIndex={-1}
-        style={{ position: "relative", outline: "none", padding: 16 }}
+        className={"roamjs-query-results-header relative outline-none p-4"}
       >
         <h4
           style={{
@@ -765,9 +761,12 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 )}
                 {onEdit && (
                   <Tooltip content={"Edit Query"}>
-                    <Button icon={"edit"} minimal onClick={onEdit} />
+                    <Button icon={"annotation"} minimal onClick={onEdit} />
                   </Tooltip>
                 )}
+                <Tooltip content={"Refresh Results"}>
+                  <Button icon={"refresh"} minimal onClick={onRefresh} />
+                </Tooltip>
               </span>
             </div>
             {showContent && <QueryUsed queryNode={queryNode} />}
