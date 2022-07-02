@@ -277,7 +277,11 @@ const predefinedSelections: PredefinedSelection[] = [
       const val0 = /^today$/i.test(arg0) ? new Date() : result[arg0];
       const val1 = /^today$/i.test(arg1) ? new Date() : result[arg1];
       if (val0 instanceof Date && val1 instanceof Date) {
-        return Math.floor((val0.valueOf() - val1.valueOf()) / MILLISECONDS_IN_DAY);
+        return Math.floor(
+          (val0.valueOf() - val1.valueOf()) / MILLISECONDS_IN_DAY
+        );
+      } else if (val0 instanceof Date) {
+        return new Date(val0.valueOf() - MILLISECONDS_IN_DAY * Number(val1));
       } else {
         return Number(val0) - Number(val1);
       }
