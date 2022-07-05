@@ -10,6 +10,7 @@ import type {
   DatalogClause,
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 
 type PredefinedSelection = Parameters<RegisterSelection>[0];
 
@@ -189,6 +190,13 @@ const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
+const getArgValue = (key: string, result: SearchResult) =>
+  /^today$/i.test(key)
+    ? new Date()
+    : DAILY_NOTE_PAGE_TITLE_REGEX.test(key)
+    ? window.roamAlphaAPI.util.pageTitleToDate(key)
+    : result[key];
+
 const predefinedSelections: PredefinedSelection[] = [
   {
     test: CREATE_DATE_TEST,
@@ -274,16 +282,18 @@ const predefinedSelections: PredefinedSelection[] = [
       const exec = SUBTRACT_TEST.exec(key);
       const arg0 = exec?.[1] || "";
       const arg1 = exec?.[2] || "";
-      const val0 = /^today$/i.test(arg0) ? new Date() : result[arg0];
-      const val1 = /^today$/i.test(arg1) ? new Date() : result[arg1];
+      const val0 = getArgValue(arg0, result);
+      const val1 = getArgValue(arg1, result);
       if (val0 instanceof Date && val1 instanceof Date) {
         return Math.floor(
           (val0.valueOf() - val1.valueOf()) / MILLISECONDS_IN_DAY
         );
       } else if (val0 instanceof Date) {
-        return new Date(val0.valueOf() - MILLISECONDS_IN_DAY * Number(val1));
+        return new Date(
+          val0.valueOf() - MILLISECONDS_IN_DAY * (Number(val1) || 0)
+        );
       } else {
-        return Number(val0) - Number(val1);
+        return (Number(val0) || 0) - (Number(val1) || 0);
       }
     },
   },
@@ -294,16 +304,28 @@ const predefinedSelections: PredefinedSelection[] = [
       const exec = SUBTRACT_TEST.exec(key);
       const arg0 = exec?.[1] || "";
       const arg1 = exec?.[2] || "";
-      const val0 = /^today$/i.test(arg0) ? new Date() : result[arg0];
-      const val1 = /^today$/i.test(arg1) ? new Date() : result[arg1];
+      const val0 = /^today$/i.test(arg0)
+        ? new Date()
+        : DAILY_NOTE_PAGE_TITLE_REGEX.test(arg0)
+        ? window.roamAlphaAPI.util.pageTitleToDate(arg0)
+        : result[arg0];
+      const val1 = /^today$/i.test(arg1)
+        ? new Date()
+        : DAILY_NOTE_PAGE_TITLE_REGEX.test(arg1)
+        ? window.roamAlphaAPI.util.pageTitleToDate(arg1)
+        : result[arg1];
       if (val0 instanceof Date && val1 instanceof Date) {
         return val1;
       } else if (val0 instanceof Date) {
-        return new Date(val0.valueOf() + MILLISECONDS_IN_DAY * Number(val1));
+        return new Date(
+          val0.valueOf() + MILLISECONDS_IN_DAY * (Number(val1) || 0)
+        );
       } else if (val1 instanceof Date) {
-        return new Date(val1.valueOf() + MILLISECONDS_IN_DAY * Number(val0));
+        return new Date(
+          val1.valueOf() + MILLISECONDS_IN_DAY * (Number(val0) || 0)
+        );
       } else {
-        return Number(val0) + Number(val1);
+        return (Number(val0) || 0) + (Number(val1) || 0);
       }
     },
   },
