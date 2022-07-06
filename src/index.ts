@@ -296,7 +296,7 @@ export default runExtension({
             key: s.text,
             descending: toFlexRegex("true").test(s.children[0]?.text || ""),
           }));
-          return fireQuery(parseQuery(getSubTree({ tree, key: "scratch" }))).then(
+          return fireQuery(parseQuery(parentUid)).then(
             (results) => {
               const sortedResults = results.sort((a, b) => {
                 for (const sort of activeSort) {

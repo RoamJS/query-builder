@@ -1,8 +1,63 @@
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { RoamBasicNode } from "roamjs-components/types/native";
-import { Condition } from "roamjs-components/types/query-builder";
+import { Condition, ParseQuery } from "roamjs-components/types/query-builder";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
+import setInputSetting from "roamjs-components/util/setInputSetting";
 import createBlock from "roamjs-components/writes/createBlock";
+import deleteBlock from "roamjs-components/writes/deleteBlock";
+import { getConditionLabels } from "./conditionToDatalog";
+
+const oldParseQuery = (q: string[] | RoamBasicNode) => {
+  const [findWhere = "", ...conditions] = Array.isArray(q)
+    ? q
+    : q.children.map((t) => t.text);
+  const returnNode = findWhere.split(" ")[1] || "";
+  const conditionLabels = getConditionLabels();
+  const conditionNodes = conditions
+    .filter((s) => !s.startsWith("Select"))
+    .map((c) => {
+      const not = /^NOT /.test(c);
+      const condition = c.replace(/^NOT /, "");
+      const relation =
+        conditionLabels.find((l) => condition.includes(` ${l} `)) || "";
+      const [source, target] = condition.split(` ${relation} `);
+      return {
+        source,
+        relation,
+        target,
+        not,
+        uid: window.roamAlphaAPI.util.generateUID(),
+        type: not ? ("not" as const) : ("clause" as const),
+      };
+    })
+    .filter((r) => !!r.relation);
+  const selectionNodes = conditions
+    .filter((s) => s.startsWith("Select"))
+    .map((s) =>
+      s
+        .replace(/^Select/i, "")
+        .trim()
+        .split(" AS ")
+    )
+    .map(([text, label]) => ({
+      uid: window.roamAlphaAPI.util.generateUID(),
+      text,
+      label,
+    }));
+  return {
+    returnNode,
+    conditions: conditionNodes,
+    selections: selectionNodes,
+    returnNodeUid: "",
+    conditionsNodesUid: "",
+    selectionsNodesUid: "",
+
+    // @deprecated
+    conditionNodes,
+    selectionNodes,
+  };
+};
 
 const roamNodeToCondition = ({
   uid,
@@ -39,9 +94,19 @@ const roamNodeToCondition = ({
       };
 };
 
-const parseQuery: typeof window.roamjs.extension.queryBuilder.parseQuery = (
-  queryNode
-) => {
+const parseQuery: ParseQuery = (parentUidOrNode) => {
+  const tree =
+    typeof parentUidOrNode === "string"
+      ? getBasicTreeByParentUid(parentUidOrNode)
+      : [];
+  const oldQueryNode =
+    typeof parentUidOrNode === "string"
+      ? getSubTree({ key: "query", tree })
+      : { text: "query", uid: "", children: [] };
+  const queryNode =
+    typeof parentUidOrNode === "string"
+      ? getSubTree({ key: "scratch", tree })
+      : parentUidOrNode;
   const { uid, children } = queryNode;
   const getOrCreateUid = (sub: RoamBasicNode, text: string) => {
     if (sub.uid) return sub.uid;
@@ -70,6 +135,70 @@ const parseQuery: typeof window.roamjs.extension.queryBuilder.parseQuery = (
     text,
     label: children?.[0]?.text || "",
   }));
+  // if (oldQueryNode.uid) deleteBlock(oldQueryNode.uid); wait until I have confidence in the below migration first
+  if (oldQueryNode.children.length) {
+    // record event in a migration mitigation tool I need to build
+    if (
+      !selections.length &&
+      !conditions.length &&
+      typeof parentUidOrNode === "string"
+    ) {
+      const { returnNode, conditions, selections } =
+        oldParseQuery(oldQueryNode);
+      const ensureScratchNode = (key: string) => {
+        const { uid } = getSubTree({ key, tree: queryNode.children });
+        if (uid) return uid;
+        const newUid = window.roamAlphaAPI.util.generateUID();
+        createBlock({ parentUid: queryNode.uid, node: { text: key } });
+        return newUid;
+      };
+      const returnNodeUid = ensureScratchNode("return");
+      const conditionsNodesUid = ensureScratchNode("conditions");
+      const selectionsNodesUid = ensureScratchNode("selections");
+      setInputSetting({
+        blockUid: parentUidOrNode,
+        key: "return",
+        value: returnNode,
+      });
+      conditions.forEach((condition, order) =>
+        createBlock({
+          parentUid: conditionsNodesUid,
+          order,
+          node: {
+            text: `${order}`,
+            children: [
+              { text: "source", children: [{ text: condition.source }] },
+              {
+                text: "relation",
+                children: [{ text: condition.relation }],
+              },
+              { text: "target", children: [{ text: condition.target }] },
+              ...(condition.type === "not" ? [{ text: "not" }] : []),
+            ],
+          },
+        })
+      );
+      selections.map((sel, order) =>
+        createBlock({
+          parentUid: selectionsNodesUid,
+          order,
+          node: {
+            text: sel.text,
+            uid: sel.uid,
+            children: [{ text: sel.label }],
+          },
+        }).then(() => sel)
+      );
+      return {
+        returnNode,
+        conditions,
+        selections,
+        returnNodeUid,
+        conditionsNodesUid,
+        selectionsNodesUid,
+      };
+    }
+  }
   return {
     returnNode,
     conditions,
@@ -77,10 +206,6 @@ const parseQuery: typeof window.roamjs.extension.queryBuilder.parseQuery = (
     returnNodeUid,
     conditionsNodesUid,
     selectionsNodesUid,
-
-    // @deprecated
-    conditionNodes: conditions,
-    selectionNodes: selections,
   };
 };
 

@@ -20,11 +20,6 @@ type Props = {
   getExportTypes?: Parameters<typeof ResultsView>[0]["getExportTypes"];
 };
 
-const getQueryNode = (parentUid: string) => {
-  const tree = getBasicTreeByParentUid(parentUid);
-  return getSubTree({ tree, key: "scratch" });
-};
-
 const ensureSetting = ({
   parentUid,
   key,
@@ -80,7 +75,7 @@ const QueryPage = ({
   const onRefresh = useCallback(() => {
     setError("");
     setLoading(true);
-    const args = parseQuery(getQueryNode(pageUid));
+    const args = parseQuery(pageUid);
     setTimeout(() => {
       (args.returnNode
         ? fireQuery(args)
@@ -123,8 +118,7 @@ const QueryPage = ({
   return (
     <Card
       id={`roamjs-query-page-${pageUid}`}
-      style={{ padding: 0 }}
-      className={"roamjs-query-page"}
+      className={"roamjs-query-page p-0 overflow-auto"}
     >
       <div ref={containerRef}>
         {hideMetadata && (

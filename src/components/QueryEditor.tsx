@@ -343,41 +343,26 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   defaultReturnNode, // returnNodeDisabled
 }) => {
   const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
-  const scratchNode = useSubTree({ parentUid, key: "scratch" });
-  const scratchNodeUid = useMemo(() => {
-    if (scratchNode?.uid) return scratchNode?.uid;
-    const newUid = window.roamAlphaAPI.util.generateUID();
-    createBlock({
-      node: { text: "scratch", uid: newUid },
-      parentUid,
-    });
-    return newUid;
-  }, [scratchNode, parentUid]);
-  const scratchNodeChildren = useMemo(
-    () => scratchNode?.children || [],
-    [scratchNode]
-  );
-  const [returnNode, setReturnNode] = useState(() =>
-    getSettingValueFromTree({ tree: scratchNodeChildren, key: "return" })
-  );
+  const {
+    returnNodeUid,
+    conditionsNodesUid,
+    selectionsNodesUid,
+    returnNode: initialReturnNode,
+    conditions: initialConditions,
+    selections: initialSelections,
+  } = useMemo(() => parseQuery(parentUid), [parentUid]);
+  const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
   const returnNodeOnChange = (value: string) => {
     window.clearTimeout(debounceRef.current);
     setReturnNode(value);
     debounceRef.current = window.setTimeout(() => {
-      setInputSetting({
-        blockUid: scratchNodeUid,
-        value,
-        key: "return",
+      updateBlock({
+        uid: returnNodeUid,
+        text: value,
       });
     }, 1000);
   };
-  const {
-    conditionsNodesUid,
-    selectionsNodesUid,
-    conditions: initialConditions,
-    selections: initialSelections,
-  } = useMemo(() => parseQuery(scratchNode), [scratchNode]);
   const [conditions, setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
   const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);

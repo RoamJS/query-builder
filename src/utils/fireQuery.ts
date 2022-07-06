@@ -10,7 +10,7 @@ import type {
   DatalogClause,
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
-import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 
 type PredefinedSelection = Parameters<RegisterSelection>[0];
 
@@ -193,8 +193,10 @@ const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 const getArgValue = (key: string, result: SearchResult) =>
   /^today$/i.test(key)
     ? new Date()
-    : DAILY_NOTE_PAGE_TITLE_REGEX.test(key)
-    ? window.roamAlphaAPI.util.pageTitleToDate(key)
+    : DAILY_NOTE_PAGE_REGEX.test(key)
+    ? window.roamAlphaAPI.util.pageTitleToDate(
+        DAILY_NOTE_PAGE_REGEX.exec(key)?.[1]
+      )
     : result[key];
 
 const predefinedSelections: PredefinedSelection[] = [
@@ -304,16 +306,8 @@ const predefinedSelections: PredefinedSelection[] = [
       const exec = SUBTRACT_TEST.exec(key);
       const arg0 = exec?.[1] || "";
       const arg1 = exec?.[2] || "";
-      const val0 = /^today$/i.test(arg0)
-        ? new Date()
-        : DAILY_NOTE_PAGE_TITLE_REGEX.test(arg0)
-        ? window.roamAlphaAPI.util.pageTitleToDate(arg0)
-        : result[arg0];
-      const val1 = /^today$/i.test(arg1)
-        ? new Date()
-        : DAILY_NOTE_PAGE_TITLE_REGEX.test(arg1)
-        ? window.roamAlphaAPI.util.pageTitleToDate(arg1)
-        : result[arg1];
+      const val0 = getArgValue(arg0, result);
+      const val1 = getArgValue(arg1, result);
       if (val0 instanceof Date && val1 instanceof Date) {
         return val1;
       } else if (val0 instanceof Date) {

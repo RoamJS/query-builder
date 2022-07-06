@@ -411,9 +411,9 @@ const toCellValue = (v: number | Date | string) =>
     ? ""
     : extractTag(v.toString());
 
-const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
+const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
-    const args = parseQuery(queryNode);
+    const args = parseQuery(parentUid);
     const datalogQuery = getDatalogQuery(getDatalogQueryComponents(args));
     const englishQuery = [
       `Find ${args.returnNode} Where`,
@@ -423,7 +423,7 @@ const QueryUsed = ({ queryNode }: { queryNode: RoamBasicNode }) => {
       ...args.selections.map((s) => `Select ${s.text} AS ${s.label}`),
     ];
     return { datalogQuery, englishQuery };
-  }, [queryNode]);
+  }, [parentUid]);
   const [isEnglish, setIsEnglish] = useState(true);
   return (
     <div
@@ -485,7 +485,6 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
   const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
-  const queryNode = useSubTree({ tree, key: "scratch" });
   const columns = useMemo(
     () =>
       results.length
@@ -764,7 +763,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 </Tooltip>
               </span>
             </div>
-            {showContent && <QueryUsed queryNode={queryNode} />}
+            {showContent && <QueryUsed parentUid={parentUid} />}
           </>
         )}
       </div>
