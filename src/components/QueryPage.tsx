@@ -92,7 +92,21 @@ const QueryPage = ({
             key: "scratch.return",
             value: defaultReturnNode,
             parentUid: pageUid,
-          }).then(() => setIsEdit(true))
+          }).then(() => {
+            if (defaultReturnNode === "block" || defaultReturnNode === "node") {
+              setIsEdit(true);
+            } else {
+              fireQuery({ ...args, returnNode: defaultReturnNode })
+                .then((results) => {
+                  setResults(results);
+                })
+                .catch(() => {
+                  setError(
+                    `Query failed to run. Try running a new query from the editor.`
+                  );
+                });
+            }
+          })
         : setIsEdit(true)
       ).finally(() => {
         setLoading(false);
