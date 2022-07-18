@@ -141,18 +141,8 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     ) {
       const { returnNode, conditions, selections } =
         oldParseQuery(oldQueryNode);
-      const ensureScratchNode = (key: string) => {
-        const { uid } = getSubTree({ key, tree: queryNode.children });
-        if (uid) return uid;
-        const newUid = window.roamAlphaAPI.util.generateUID();
-        createBlock({ parentUid: queryNode.uid, node: { text: key } });
-        return newUid;
-      };
-      const returnNodeUid = ensureScratchNode("return");
-      const conditionsNodesUid = ensureScratchNode("conditions");
-      const selectionsNodesUid = ensureScratchNode("selections");
       setInputSetting({
-        blockUid: parentUidOrNode,
+        blockUid: queryNode.uid,
         key: "return",
         value: returnNode,
       });
@@ -161,7 +151,7 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
           parentUid: conditionsNodesUid,
           order,
           node: {
-            text: `${order}`,
+            text: condition.type,
             children: [
               { text: "source", children: [{ text: condition.source }] },
               {
