@@ -1,6 +1,5 @@
 import { Button, H6, InputGroup, Switch, Tabs, Tab } from "@blueprintjs/core";
 import React, { useMemo, useRef, useState } from "react";
-import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import deleteBlock from "roamjs-components/writes/deleteBlock";

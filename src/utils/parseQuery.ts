@@ -95,17 +95,13 @@ const roamNodeToCondition = ({
 };
 
 const parseQuery: ParseQuery = (parentUidOrNode) => {
-  const tree =
-    typeof parentUidOrNode === "string"
-      ? getBasicTreeByParentUid(parentUidOrNode)
-      : [];
   const oldQueryNode =
     typeof parentUidOrNode === "string"
-      ? getSubTree({ key: "query", tree })
+      ? getSubTree({ key: "query", tree: getBasicTreeByParentUid(parentUidOrNode) })
       : { text: "query", uid: "", children: [] };
   const queryNode =
     typeof parentUidOrNode === "string"
-      ? getSubTree({ key: "scratch", tree })
+      ? getSubTree({ key: "scratch", parentUid: parentUidOrNode })
       : parentUidOrNode;
   const { uid, children } = queryNode;
   const getOrCreateUid = (sub: RoamBasicNode, text: string) => {

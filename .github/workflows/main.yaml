@@ -15,7 +15,7 @@ jobs:
       - name: install
         run: npm install
       - name: build
-        run: npm run build 
+        run: npx roamjs-scripts build 
       - name: RoamJS Publish
         uses: dvargas92495/roamjs-publish@0.4.4
         with:
