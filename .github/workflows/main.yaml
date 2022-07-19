@@ -7,6 +7,10 @@ on:
       - "package.json"
       - ".github/workflows/main.yaml"
 
+env:
+  ROAMJS_DEVELOPER_TOKEN: ${{ secrets.ROAMJS_DEVELOPER_TOKEN }}
+  ROAMJS_RELEASE_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -16,12 +20,5 @@ jobs:
         run: npm install
       - name: build
         run: npx roamjs-scripts build 
-      - name: RoamJS Publish
-        uses: dvargas92495/roamjs-publish@0.4.4
-        with:
-          token: ${{ secrets.ROAMJS_DEVELOPER_TOKEN }}
-          source: build
-          path: query-builder
-          release_token: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
-          email: dvargas92495@gmail.com
-          branch: ${{ github.ref_name }}
+      - name: publish
+        run: npx roamjs-scripts publish --email support@roamjs.com --commit ${{ github.ref }} --marketplace

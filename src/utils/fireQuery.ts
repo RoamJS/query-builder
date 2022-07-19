@@ -190,14 +190,15 @@ const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
-const getArgValue = (key: string, result: SearchResult) =>
-  /^today$/i.test(key)
-    ? new Date()
-    : DAILY_NOTE_PAGE_REGEX.test(key)
-    ? window.roamAlphaAPI.util.pageTitleToDate(
-        DAILY_NOTE_PAGE_REGEX.exec(key)?.[1]
-      )
-    : result[key];
+const getArgValue = (key: string, result: SearchResult) => {
+  if (/^today$/i.test(key)) return new Date();
+  const val = result[key];
+  if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
+    return window.roamAlphaAPI.util.pageTitleToDate(
+      DAILY_NOTE_PAGE_REGEX.exec(val)?.[1]
+    );
+  return val;
+};
 
 const predefinedSelections: PredefinedSelection[] = [
   {

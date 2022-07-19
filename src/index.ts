@@ -48,8 +48,10 @@ import type {
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 
 const extensionId = "query-builder";
+const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
 
 export default runExtension({
+  migratedTo: loadedElsewhere ? undefined : "Query Builder",
   extensionId,
   run: async () => {
     const style = addStyle(`.bp3-button:focus {
@@ -296,45 +298,37 @@ export default runExtension({
             key: s.text,
             descending: toFlexRegex("true").test(s.children[0]?.text || ""),
           }));
-          return fireQuery(parseQuery(parentUid)).then(
-            (results) => {
-              const sortedResults = results.sort((a, b) => {
-                for (const sort of activeSort) {
-                  const cmpResult = sortFunction(sort.key, sort.descending)(
-                    a,
-                    b
-                  );
-                  if (cmpResult !== 0) return cmpResult;
-                }
-                return 0;
-              });
-              const returnedResults =
-                random > 0
-                  ? sortedResults
-                      .sort(() => 0.5 - Math.random())
-                      .slice(0, random)
-                  : sortedResults;
-              return returnedResults
-                .map((r) =>
-                  format.replace(/{([^}]+)}/, (_, i) => {
-                    const value = r[i];
-                    return typeof value === "string"
-                      ? value
-                      : typeof value === "number"
-                      ? value.toString()
-                      : value instanceof Date
-                      ? window.roamAlphaAPI.util.dateToPageTitle(value)
-                      : "";
-                  })
-                )
-                .map((s) => () => proccessBlockText(s))
-                .reduce(
-                  (prev, cur) =>
-                    prev.then((p) => cur().then((c) => p.concat(c))),
-                  Promise.resolve([] as InputTextNode[])
-                );
-            }
-          );
+          return fireQuery(parseQuery(parentUid)).then((results) => {
+            const sortedResults = results.sort((a, b) => {
+              for (const sort of activeSort) {
+                const cmpResult = sortFunction(sort.key, sort.descending)(a, b);
+                if (cmpResult !== 0) return cmpResult;
+              }
+              return 0;
+            });
+            const returnedResults =
+              random > 0
+                ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, random)
+                : sortedResults;
+            return returnedResults
+              .map((r) =>
+                format.replace(/{([^}]+)}/, (_, i) => {
+                  const value = r[i];
+                  return typeof value === "string"
+                    ? value
+                    : typeof value === "number"
+                    ? value.toString()
+                    : value instanceof Date
+                    ? window.roamAlphaAPI.util.dateToPageTitle(value)
+                    : "";
+                })
+              )
+              .map((s) => () => proccessBlockText(s))
+              .reduce(
+                (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
+                Promise.resolve([] as InputTextNode[])
+              );
+          });
         },
     });
 
