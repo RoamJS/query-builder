@@ -195,7 +195,7 @@ const getArgValue = (key: string, result: SearchResult) => {
   const val = result[key];
   if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
     return window.roamAlphaAPI.util.pageTitleToDate(
-      DAILY_NOTE_PAGE_REGEX.exec(val)?.[1]
+      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0]
     );
   return val;
 };
