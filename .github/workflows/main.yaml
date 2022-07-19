@@ -21,4 +21,4 @@ jobs:
       - name: build
         run: npx roamjs-scripts build 
       - name: publish
-        run: npx roamjs-scripts publish --email support@roamjs.com --commit ${{ github.ref }} --marketplace
+        run: npx roamjs-scripts publish --email support@roamjs.com --commit ${{ github.sha }} --marketplace
