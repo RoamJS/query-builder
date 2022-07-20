@@ -16,7 +16,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "roamjs-scripts": "^0.20.6"
+    "roamjs-scripts": "^0.20.7"
   },
   "tags": [
     "queries",

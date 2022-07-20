@@ -48,7 +48,9 @@ import type {
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 
 const extensionId = "query-builder";
-const loadedElsewhere = !!document.currentScript.getAttribute("data-source");
+const loadedElsewhere = document.currentScript
+  ? !!document.currentScript.getAttribute("data-source")
+  : false;
 
 export default runExtension({
   migratedTo: loadedElsewhere ? undefined : "Query Builder",
