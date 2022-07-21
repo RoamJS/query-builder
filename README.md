@@ -1,5 +1,5 @@
 # Query Builder
-      
+
 Introduces new user interfaces for building queries in Roam.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FeNXPrcflN2.png?alt=media&token=6fca69c3-f5ca-4b21-b7a0-fb5583d07135)
@@ -7,14 +7,17 @@ Introduces new user interfaces for building queries in Roam.
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
 ## Query Pages
+
 With Query Pages, you could designate certain pages in your Roam graph as "views" into your data. These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
 
 ### Setup
+
 On the `roam/js/query-builder` page, you should see a tab called `Query Pages` under `Home`. You could use this to denote which page titles in your Roam Graph will be used to create query pages. Use the `*` as a wildcard.
 
 By default, Query Pages is set to be titled with `queries/*`. This means any page in your graph prefixed with `queries/` can be used to save a query. You can denote multiple page title formats.
 
 ### Usage
+
 Navigate to any valid query page in your graph and you should see a Query Editor on the page:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSINndquBoY.png?alt=media&token=37c28efd-7e1f-4580-9806-fda8ae77df08)
@@ -28,11 +31,13 @@ The results returned will be organized in a table with sortable and filterable c
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FZj7bCiNIDa.png?alt=media&token=8dabd2ce-c7e5-41d7-b5bf-f77883651dde)
 
 ### Conditions
-**Conditions** specify which blocks you want to return. They determine the __rows__ of the table. The anatomy of a Condition is a triple: `source`, `relationship`, & `target`:
+
+**Conditions** specify which blocks you want to return. They determine the **rows** of the table. The anatomy of a Condition is a triple: `source`, `relationship`, & `target`:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FVVTSrLrvtl.png?alt=media&token=e6c3484f-0343-4f2f-bd05-60b7ffef7316)
 
 You will use a combination of multiple conditions to select the data you want. Here are all the supported relationships:
+
 - `references` - The `source` block or page references the `target` block or page.
 - `references title` - The `source` block or page references a page with `target` as the title.
 - `is in page` - The `source` block is in the `target` page.
@@ -51,17 +56,20 @@ You will use a combination of multiple conditions to select the data you want. H
 - `edited after` - The `source` block or page was edited after the naturally specified `target`
 
 ### Selections
-**Selections** specify what data from the blocks that match your conditions get returned. They determine the __columns__ of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
+
+**Selections** specify what data from the blocks that match your conditions get returned. They determine the **columns** of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F36a81va0fE.png?alt=media&token=bb19988b-f7cd-44ce-8880-c4f46530f7af)
 
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
+
 - `Created Date` - The date the block or page was created
 - `Edited Date` - The date the block or page was created
 - `Author` - The user who created the block or page
 - Anything else is assumed to be an attribute of the exact text
 
 ### Manipulating Results
+
 After you fire a query, the results will output in a table view. There are multiple ways to post process these results after they output to the screen.
 
 Clicking on the table header for a given column will trigger an alphabetical sort. Clicking again will toggle descending order. Clicking once more will toggle the sort off. You could have multiple columns selected for sorting:
@@ -73,16 +81,18 @@ Each column is also filterable. The filter works just like the page and referenc
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FG7d1TrIzNq.png?alt=media&token=8df90fc5-5e8d-4347-9721-bd067ac7616a)
 
 Each column also has a view type. Choosing a view type will change how the cell is displayed in the table. The supported view types are:
+
 - `plain` - Outputted as just plain text
 - `link` - If the column is a block, cells will be outputted as a link to the block. If the column is a page, cells will be outputted as a link to the page.
-- `embed` - Embeds the contents of the block or page in the cell. 
-At any point, you could save the selected filters, sorts, and views so that any time you return to the query, they are applied automatically:
+- `embed` - Embeds the contents of the block or page in the cell.
+  At any point, you could save the selected filters, sorts, and views so that any time you return to the query, they are applied automatically:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FbOPvKM8ilS.png?alt=media&token=838b5724-b848-42b5-8cf0-17fde8cbb29c)
 
 ### Exporting
 
 Next to the save button is a button that will allow you to export your results. There are currently two formats available to export to:
+
 - CSV - All the columns in the table will become columns in the CSV
 - Markdown - The columns will become frontmatter data and the children of the block or page will become markdown content.
 
@@ -94,13 +104,16 @@ The above component is also available as a block component. This allows you to c
 
 Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
-[Demo](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
+### Demo
+
+[![](https://cdn.loom.com/sessions/thumbnails/12bdc4c42cf8449e8b7a712fe285a072-with-play.gif)](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
 
 ## Creating Vanilla Roam Queries
 
 In a block, type `{{query builder}}`. Similar to date picker, there will be an overlay that appears next to the query builder button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
 
 The Overlay is fully keyboard accessible. Each input is focusable and you can `tab` and `shift+tab` through them. For the query component dropdown, you could use the following key strokes to navigate:
+
 - Arrow Up/Arrow Down - Navigate Options
 - Enter - Open Dropdown
 - a - Select 'AND'
@@ -119,6 +132,7 @@ There will also be an edit button rendered on any existing query. Clicking the b
 ## Manipulating Native Roam Queries
 
 The legacy Query Tools extension was merged with this one to bring all native query manipulation features under Query Builder. These features could be configured on the "Native Queries" tab of the `roam/js/query-builder` page.
+
 - `Sort Blocks` - If set to 'True', sort the query results by blocks instead of pages.
 - `Context` - The default value for Context for all queries. See below.
 - `Default Sort` - The default sorting all native queries in your graph should use
@@ -126,6 +140,7 @@ The legacy Query Tools extension was merged with this one to bring all native qu
 ### Sorting
 
 On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user with the following options:
+
 - Sort By Page Title - This will sort all the query results in ascending alphabetical order of the page title.
 - Sort By Page Title Descending - This will sort all the query results in descending alphabetical order of the page title.
 - Sort By Word Count - This will sort all the query results in ascending order of the word count.

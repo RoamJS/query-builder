@@ -356,10 +356,13 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     window.clearTimeout(debounceRef.current);
     setReturnNode(value);
     debounceRef.current = window.setTimeout(() => {
-      updateBlock({
-        uid: returnNodeUid,
-        text: value,
-      });
+      const childUid = getFirstChildUidByBlockUid(returnNodeUid);
+      if (childUid)
+        updateBlock({
+          uid: childUid,
+          text: value,
+        });
+      else createBlock({ parentUid: returnNodeUid, node: { text: value } });
     }, 1000);
   };
   const [conditions, setConditions] = useState(initialConditions);

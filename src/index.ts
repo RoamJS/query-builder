@@ -228,7 +228,7 @@ export default runExtension({
               hideMetadata,
               pageUid: uid,
               parent,
-              defaultReturnNode: "block",
+              defaultReturnNode: "node",
             });
           }
         }

@@ -175,7 +175,7 @@ const QueryPage = ({
 };
 
 export const renderQueryBlock = createComponentRender(({ blockUid }) => (
-  <QueryPage pageUid={blockUid} defaultReturnNode={"block"} />
+  <QueryPage pageUid={blockUid} defaultReturnNode={"node"} />
 ));
 
 export const render = ({ parent, ...props }: { parent: HTMLElement } & Props) =>
