@@ -8,11 +8,10 @@
     "email": "support@roamjs.com"
   },
   "scripts": {
-    "start": "roamjs-scripts dev",
+    "start": "roamjs-scripts dev --depot",
     "dev:dep": "roamjs-scripts dev --port 3100",
-    "dev:roam": "roamjs-scripts dev --marketplace",
     "prebuild:roam": "npm install",
-    "build:roam": "roamjs-scripts build --marketplace"
+    "build:roam": "roamjs-scripts build --depot"
   },
   "license": "MIT",
   "devDependencies": {
@@ -23,6 +22,6 @@
     "widgets"
   ],
   "dependencies": {
-    "roamjs-components": "^0.70.8"
+    "roamjs-components": "^0.70.9"
   }
 }
