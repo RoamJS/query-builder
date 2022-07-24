@@ -1,40 +1,12 @@
 import { Button, Intent, InputGroup } from "@blueprintjs/core";
-import { useState } from "react";
-import deleteBlock from "roamjs-components/writes/deleteBlock";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import type { RoamBasicNode } from "roamjs-components/types";
-import getSubTree from "roamjs-components/util/getSubTree";
-import createBlock from "roamjs-components/writes/createBlock";
+import { useEffect, useRef, useState } from "react";
+import type { OnloadArgs } from "roamjs-components/types";
+import type { Filters } from "roamjs-components/components/Filter";
 
-type FilterData = {
-  includes: { values: Set<string> };
-  excludes: { values: Set<string> };
-  uid: string;
+export type StoredFilters = {
+  includes: { values: string[] };
+  excludes: { values: string[] };
 };
-
-export const getFilterEntries = (
-  n: Pick<RoamBasicNode, "children">
-): [string, FilterData][] =>
-  n.children.map((c) => [
-    c.text,
-    {
-      includes: {
-        values: new Set(
-          getSubTree({ tree: c.children, key: "includes" }).children.map(
-            (t) => t.text
-          )
-        ),
-      },
-      excludes: {
-        values: new Set(
-          getSubTree({ tree: c.children, key: "excludes" }).children.map(
-            (t) => t.text
-          )
-        ),
-      },
-      uid: c.uid,
-    },
-  ]);
 
 const Filter = ({
   column,
@@ -44,7 +16,7 @@ const Filter = ({
   onRemove,
 }: {
   column: string;
-  data: FilterData;
+  data: Filters;
   onFilterAdd: (args: {
     text: string;
     type: "includes" | "excludes";
@@ -103,7 +75,7 @@ const Filter = ({
         />
         <div>
           <Button
-            text={"Add Include"}
+            text={"Include"}
             rightIcon={"add"}
             intent={Intent.SUCCESS}
             style={{ marginRight: 8 }}
@@ -114,7 +86,7 @@ const Filter = ({
             }}
           />
           <Button
-            text={"Add Exclude"}
+            text={"Exclude"}
             rightIcon={"add"}
             intent={Intent.WARNING}
             onClick={() => {
@@ -123,97 +95,123 @@ const Filter = ({
               );
             }}
           />
+          <Button icon={"trash"} onClick={onRemove} minimal />
         </div>
       </div>
     </div>
   );
 };
 
-const DefaultFilters = ({ uid }: { uid: string }) => {
+const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
   const [newColumn, setNewColumn] = useState("");
   const [filters, setFilters] = useState(() =>
     Object.fromEntries(
-      getFilterEntries({ children: getBasicTreeByParentUid(uid) })
+      Object.entries(
+        (extensionAPI.settings.get("default-filters") as Record<
+          string,
+          StoredFilters
+        >) || {}
+      ).map(([k, v]) => [
+        k,
+        {
+          includes: Object.fromEntries(
+            Object.entries(v.includes).map(([k, v]) => [k, new Set(v)])
+          ),
+          excludes: Object.fromEntries(
+            Object.entries(v.excludes).map(([k, v]) => [k, new Set(v)])
+          ),
+        },
+      ])
     )
   );
+
+  const inputRef = useRef(null);
+  useEffect(() => {
+    inputRef.current.className = "rm-extensions-settings";
+  }, [inputRef]);
+  useEffect(() => {
+    extensionAPI.settings.set(
+      "default-filters",
+      Object.fromEntries(
+        Object.entries(filters).map(([k, v]) => [
+          k,
+          {
+            includes: Object.fromEntries(
+              Object.entries(v.includes).map(([k, v]) => [k, Array.from(v)])
+            ),
+            excludes: Object.fromEntries(
+              Object.entries(v.excludes).map(([k, v]) => [k, Array.from(v)])
+            ),
+          },
+        ])
+      )
+    );
+  }, [filters]);
   return (
-    <>
+    <div
+      style={{
+        width: "100%",
+        minWidth: 256,
+      }}
+    >
       {Object.entries(filters).map(([column, data]) => (
         <Filter
           column={column}
           key={column}
           data={data}
-          onFilterAdd={({ text, type }) =>
-            createBlock({
-              parentUid: getSubTree({ parentUid: data.uid, key: type }).uid,
-              node: { text },
-            }).then(() => {
-              data[type].values.add(text);
-              setFilters({
-                ...filters,
-              });
-            })
-          }
-          onFilterRemove={({ text, type }) =>
-            deleteBlock(
-              getSubTree({ parentUid: data.uid, key: type }).children.find(
-                (t) => t.text === text
-              )?.uid
-            ).then(() => {
-              data[type].values.delete(text);
-              setFilters({
-                ...filters,
-              });
-            })
-          }
-          onRemove={() =>
-            deleteBlock(data.uid).then(() =>
-              setFilters(
-                Object.fromEntries(
-                  Object.entries(filters).filter(([, d]) => d.uid !== data.uid)
-                )
-              )
-            )
-          }
+          onFilterAdd={({ text, type }) => {
+            data[type].values.add(text);
+            const newFilters = {
+              ...filters,
+            };
+            setFilters(newFilters);
+            extensionAPI.settings.set("default-filters", newFilters);
+            return Promise.resolve();
+          }}
+          onFilterRemove={({ text, type }) => {
+            data[type].values.delete(text);
+            const newFilters = {
+              ...filters,
+            };
+            setFilters(newFilters);
+            extensionAPI.settings.set("default-filters", newFilters);
+            return Promise.resolve();
+          }}
+          onRemove={() => {
+            const newFilters = Object.fromEntries(
+              Object.entries(filters).filter(([col, d]) => col !== column)
+            );
+            setFilters(newFilters);
+            extensionAPI.settings.set("default-filters", newFilters);
+            return Promise.resolve();
+          }}
         />
       ))}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+      <div className="flex justify-between items-center gap-2">
         <InputGroup
           value={newColumn}
           onChange={(e) => setNewColumn(e.target.value)}
+          inputRef={inputRef}
         />
         <Button
-          text={"Add Column"}
+          text={"Column"}
           rightIcon={"add"}
           intent={Intent.PRIMARY}
           onClick={() => {
-            createBlock({
-              parentUid: uid,
-              node: {
-                text: newColumn,
-                children: [{ text: "includes" }, { text: "excludes" }],
+            const newFilters = {
+              ...filters,
+              [newColumn]: {
+                includes: { values: new Set<string>() },
+                excludes: { values: new Set<string>() },
               },
-            }).then((fuid) => {
-              setFilters({
-                ...filters,
-                [newColumn]: {
-                  includes: { values: new Set() },
-                  excludes: { values: new Set() },
-                  uid: fuid,
-                },
-              });
-              setNewColumn("");
-            });
+            };
+            setFilters(newFilters);
+            extensionAPI.settings.set("default-filters", newFilters);
+            setNewColumn("");
           }}
         />
       </div>
-    </>
+    </div>
   );
 };
 

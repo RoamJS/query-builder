@@ -2,7 +2,7 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getUids from "roamjs-components/dom/getUids";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import type { RoamBlock } from "roamjs-components/types";
+import type { OnloadArgs, RoamBlock } from "roamjs-components/types";
 import getCreateTimeByBlockUid from "roamjs-components/queries/getCreateTimeByBlockUid";
 import getEditTimeByBlockUid from "roamjs-components/queries/getEditTimeByBlockUid";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
@@ -71,7 +71,7 @@ const getWordCountByPageTitle = (title: string): number => {
     .reduce((total, cur) => cur + total, 0);
 };
 
-const runQueryTools = (configUid: string) => {
+const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
   let isSortByBlocks = false;
 
   const menuItemCallback =
@@ -80,13 +80,9 @@ const runQueryTools = (configUid: string) => {
       const blockConfig = getBasicTreeByParentUid(
         getUids(sortContainer as HTMLDivElement).blockUid
       );
-      const pageConfig = getSubTree({
-        tree: getBasicTreeByParentUid(configUid),
-        key: "Native Queries",
-      }).children;
       isSortByBlocks =
         !!getSubTree({ tree: blockConfig, key: "Sort Blocks" }).uid ||
-        !!getSubTree({ tree: pageConfig, key: "Sort Blocks" }).uid;
+        !!extensionAPI.settings.get("sort-blocks");
       const refContainer =
         sortContainer.getElementsByClassName("refs-by-page-view")[0] ||
         sortContainer;
@@ -230,19 +226,12 @@ const runQueryTools = (configUid: string) => {
 
   const onCreateSortIcons = (container: HTMLDivElement) => {
     const blockConfig = getBasicTreeByParentUid(getUids(container).blockUid);
-    const pageConfig = getSubTree({
-      tree: getBasicTreeByParentUid(configUid),
-      key: "Native Queries",
-    }).children;
 
     const defaultSort = (getSettingValueFromTree({
       tree: blockConfig,
       key: "Default Sort",
     }) ||
-      getSettingValueFromTree({
-        tree: pageConfig,
-        key: "Default Sort",
-      })) as keyof typeof sortCallbacks;
+      extensionAPI.settings.get("default-sort")) as keyof typeof sortCallbacks;
     if (defaultSort && sortCallbacks[defaultSort]) {
       sortCallbacks[defaultSort](container)();
     }
@@ -475,17 +464,13 @@ const runQueryTools = (configUid: string) => {
       (e) => !e.getAttribute("data-is-contexted-results")
     ) as HTMLDivElement[];
     if (unContextedQueries.length) {
-      const pageConfig = getSubTree({
-        tree: getBasicTreeByParentUid(configUid),
-        key: "Native Queries",
-      }).children;
       unContextedQueries.forEach((q) => {
         const config = getBasicTreeByParentUid(
           getUids(q.closest<HTMLDivElement>(".roam-block")).blockUid
         );
         const configContext =
           getSettingValueFromTree({ tree: config, key: "Context" }) ||
-          getSettingValueFromTree({ tree: pageConfig, key: "Context" });
+          extensionAPI.settings.get("context") as string;
         if (configContext) {
           q.setAttribute("data-is-contexted-results", "true");
           const context = Number.isNaN(configContext)

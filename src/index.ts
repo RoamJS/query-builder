@@ -46,6 +46,9 @@ import type {
   SelectField,
 } from "roamjs-components/components/ConfigPanels/types";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
+import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings";
+import QueryPagesPanel from "./components/QueryPagesPanel";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 
 const extensionId = "query-builder";
 const loadedElsewhere = document.currentScript
@@ -55,7 +58,7 @@ const loadedElsewhere = document.currentScript
 export default runExtension({
   migratedTo: loadedElsewhere ? undefined : "Query Builder",
   extensionId,
-  run: async () => {
+  run: async ({ extensionAPI }) => {
     const style = addStyle(`.bp3-button:focus {
     outline-width: 2px;
 }
@@ -99,114 +102,151 @@ export default runExtension({
 .roamjs-query-results-view ul::-webkit-scrollbar-thumb {
   background: #888;
 }`);
-
-    const { pageUid, observer: configObserver } = await createConfigObserver({
-      title: toConfigPageName(extensionId),
-      config: {
-        tabs: [
+    migrateLegacySettings({
+      extensionAPI,
+      extensionId,
+      specialKeys: {
+        "Query Pages": (n) => [
+          { value: n.children.map((c) => c.text), key: "query-pages" },
+        ],
+        "Default Filters": (n) => [
           {
-            id: "Home",
-            fields: [
-              {
-                title: "Query Pages",
-                Panel: MultiTextPanel,
-                description:
-                  "The title formats of pages that you would like to serve as pages that generate queries",
-                defaultValue: ["queries/*"],
-              },
-              {
-                title: "Hide Metadata",
-                description:
-                  "Hide the Roam blocks that are used to power each query",
-                Panel: FlagPanel,
-              },
-              {
-                title: "Default Filters",
-                description:
-                  "Any filters that should be applied to your results by default",
-                Panel: CustomPanel,
-                options: {
-                  component: DefaultFilters,
+            key: "default-filters",
+            value: Object.fromEntries(
+              n.children.map((c) => [
+                c.text,
+                {
+                  includes: {
+                    values: new Set(
+                      getSubTree({
+                        tree: c.children,
+                        key: "includes",
+                      }).children.map((i) => i.text)
+                    ),
+                  },
+                  excludes: {
+                    values: new Set(
+                      getSubTree({
+                        tree: c.children,
+                        key: "excludes",
+                      }).children.map((i) => i.text)
+                    ),
+                  },
                 },
-              } as Field<CustomField>,
-              {
-                title: "Default Page Size",
-                description: "The default page size used for query results",
-                Panel: NumberPanel,
-                defaultValue: 10,
-              },
-            ],
-          },
-          {
-            id: "Native Queries",
-            fields: [
-              {
-                title: "Sort Blocks",
-                Panel: FlagPanel,
-                description:
-                  "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
-              },
-              {
-                title: "Context",
-                Panel: NumberPanel,
-                description:
-                  "How many levels of context to include with each query result for all queries by default",
-              },
-              {
-                title: "Default Sort",
-                Panel: SelectPanel,
-                description:
-                  "The default sorting all native queries in your graph should use",
-                options: {
-                  items: [
-                    "Alphabetically",
-                    "Alphabetically Descending",
-                    "Word Count",
-                    "Word Count Descending",
-                    "Created Date",
-                    "Created Date Descending",
-                    "Edited Date",
-                    "Edited Date Descending",
-                    "Daily Note",
-                    "Daily Note Descending",
-                  ],
-                },
-              } as Field<SelectField>,
-            ],
+              ])
+            ),
           },
         ],
+        "Native Queries": (n) =>
+          [
+            {
+              key: "sort-blocks",
+              value: !!getSubTree({ key: "Sort Blocks", tree: n.children }).uid,
+            },
+            {
+              key: "context",
+              value: getSettingValueFromTree({
+                key: "Context",
+                tree: n.children,
+              }),
+            },
+          ].filter((o) => typeof o.value !== "undefined"),
       },
     });
 
-    const getQueryPages = () => {
-      const configTree = getBasicTreeByParentUid(pageUid);
-      return getSubTree({
-        tree: configTree,
-        key: "Query Pages",
-      }).children.map(
-        (t) =>
-          new RegExp(
-            `^${t.text.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
-          )
-      );
-    };
-    const queryPages = {
-      current: getQueryPages(),
-    };
-
-    const listener = (e: HashChangeEvent) => {
-      if (e.oldURL.endsWith(pageUid)) {
-        queryPages.current = getQueryPages();
-      }
-    };
-    window.addEventListener("hashchange", listener);
+    extensionAPI.settings.panel.create({
+      tabTitle: "Query Builder",
+      settings: [
+        {
+          id: "query-pages",
+          name: "Query Pages",
+          description:
+            "The title formats of pages that you would like to serve as pages that generate queries",
+          action: {
+            type: "reactComponent",
+            component: QueryPagesPanel(extensionAPI),
+          },
+        },
+        {
+          id: "hide-metadata",
+          name: "Hide Metadata",
+          description: "Hide the Roam blocks that are used to power each query",
+          action: {
+            type: "switch",
+          },
+        },
+        {
+          id: "default-filters",
+          name: "Default Filters",
+          description:
+            "Any filters that should be applied to your results by default",
+          action: {
+            type: "reactComponent",
+            component: DefaultFilters(extensionAPI),
+          },
+        },
+        {
+          id: "default-page-size",
+          name: "Default Page Size",
+          description: "The default page size used for query results",
+          action: {
+            type: "input",
+            placeholder: "10",
+          },
+        },
+        {
+          id: "sort-blocks",
+          name: "Sort Blocks",
+          action: { type: "switch" },
+          description:
+            "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
+        },
+        {
+          id: "context",
+          name: "Context",
+          action: { type: "input", placeholder: "1" },
+          description:
+            "How many levels of context to include with each query result for all queries by default",
+        },
+        {
+          id: "default-sort",
+          action: {
+            type: "select",
+            items: [
+              "Alphabetically",
+              "Alphabetically Descending",
+              "Word Count",
+              "Word Count Descending",
+              "Created Date",
+              "Created Date Descending",
+              "Edited Date",
+              "Edited Date Descending",
+              "Daily Note",
+              "Daily Note Descending",
+            ],
+          },
+          name: "Default Sort",
+          description:
+            "The default sorting all native queries in your graph should use",
+        },
+      ],
+    });
 
     const h1Observer = createHTMLObserver({
       tag: "H1",
       className: "rm-title-display",
       callback: (h1: HTMLHeadingElement) => {
         const title = getPageTitleValueByHtmlElement(h1);
-        if (queryPages.current.some((r) => r.test(title))) {
+        if (
+          ((extensionAPI.settings.get("query-pages") as string[]) || [])
+            .map(
+              (t) =>
+                new RegExp(
+                  `^${t.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+                )
+            )
+            .some((r) => r.test(title))
+        ) {
           const uid = getPageUidByPageTitle(title);
           const attribute = `data-roamjs-${uid}`;
           const containerParent = h1.parentElement?.parentElement;
@@ -219,16 +259,11 @@ export default runExtension({
               parent,
               h1.parentElement?.nextElementSibling || null
             );
-            const tree = getBasicTreeByParentUid(pageUid);
-            const hideMetadata = !!getSubTree({
-              key: "Hide Metadata",
-              tree,
-            }).uid;
             renderQueryPage({
-              hideMetadata,
               pageUid: uid,
               parent,
               defaultReturnNode: "node",
+              extensionAPI,
             });
           }
         }
@@ -237,7 +272,7 @@ export default runExtension({
 
     const queryBlockObserver = createButtonObserver({
       attribute: "query-block",
-      render: renderQueryBlock,
+      render: (b) => renderQueryBlock(extensionAPI)(b),
     });
 
     const originalQueryBuilderObserver = createButtonObserver({
@@ -276,7 +311,7 @@ export default runExtension({
       className: "rm-query-title",
     });
 
-    const qtObserver = runQueryTools(pageUid);
+    const qtObserver = runQueryTools(extensionAPI);
 
     registerSmartBlocksCommand({
       text: "QUERYBUILDER",
@@ -356,14 +391,12 @@ export default runExtension({
     return {
       elements: [style],
       observers: [
-        configObserver,
         h1Observer,
         qtObserver,
         originalQueryBuilderObserver,
         editQueryBuilderObserver,
         queryBlockObserver,
       ],
-      windowListeners: [{ type: "hashchange", listener }],
     };
   },
   unload: () => {

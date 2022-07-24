@@ -16,7 +16,7 @@ import {
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import Filter from "roamjs-components/components/Filter";
+import Filter, { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -27,22 +27,17 @@ import extractTag from "roamjs-components/util/extractTag";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import Export from "./Export";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import { getFilterEntries } from "./DefaultFilters";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import type { QBClauseData, Result } from "roamjs-components/types/query-builder";
+import type {
+  QBClauseData,
+  Result,
+} from "roamjs-components/types/query-builder";
 
 type Sorts = { key: string; descending: boolean }[];
-type Filters = Record<
-  string,
-  {
-    includes: Record<string, Set<string>>;
-    excludes: Record<string, Set<string>>;
-  }
->;
+type FilterData = Record<string, Filters>;
 
 export const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
@@ -90,9 +85,9 @@ const ResultHeader = ({
   results: Result[];
   activeSort: Sorts;
   setActiveSort: (s: Sorts) => void;
-  filters: Filters;
-  setFilters: (f: Filters) => void;
-  initialFilter: Filters[string];
+  filters: FilterData;
+  setFilters: (f: FilterData) => void;
+  initialFilter: Filters;
   view: string;
   onViewChange: (s: string) => void;
 }) => {
@@ -461,6 +456,30 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
+const getFilterEntries = (
+  n: Pick<RoamBasicNode, "children">
+): [string, Filters][] =>
+  n.children.map((c) => [
+    c.text,
+    {
+      includes: {
+        values: new Set(
+          getSubTree({ tree: c.children, key: "includes" }).children.map(
+            (t) => t.text
+          )
+        ),
+      },
+      excludes: {
+        values: new Set(
+          getSubTree({ tree: c.children, key: "excludes" }).children.map(
+            (t) => t.text
+          )
+        ),
+      },
+      uid: c.uid,
+    },
+  ]);
+
 const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   parentUid,
   header = "Results",
@@ -474,13 +493,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
+
+  globalFiltersData = {},
+  globalPageSize = 10,
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
-  const configTree = useMemo(
-    () =>
-      getBasicTreeByParentUid(getPageUidByPageTitle("roam/js/query-builder")),
-    []
-  );
   const resultNode = useSubTree({ tree, key: "results" });
   const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
@@ -504,15 +521,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     }))
   );
   const savedFilterData = useMemo(() => {
-    const globalFilterData = getSubTree({
-      key: "Default Filters",
-      tree: configTree,
-    });
     const filterEntries = getFilterEntries(filtersNode);
     return filterEntries.length
       ? Object.fromEntries(filterEntries)
-      : Object.fromEntries(getFilterEntries(globalFilterData));
-  }, [filtersNode, configTree]);
+      : globalFiltersData;
+  }, [filtersNode, globalFiltersData]);
   const savedViewData = useMemo(
     () =>
       Object.fromEntries(
@@ -520,7 +533,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
       ),
     [filtersNode]
   );
-  const [filters, setFilters] = useState<Filters>(() =>
+  const [filters, setFilters] = useState<FilterData>(() =>
     Object.fromEntries(
       columns.map((key) => [
         key,
@@ -580,11 +593,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   const [pageSize, setPageSize] = useState(
     () =>
       getSettingIntFromTree({ tree: resultNode.children, key: "size" }) ||
-      getSettingIntFromTree({
-        tree: configTree,
-        key: "Default page size",
-        defaultValue: 10,
-      })
+      globalPageSize
   );
   const pageSizeTimeoutRef = useRef(0);
   const paginatedResults = useMemo(
