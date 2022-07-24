@@ -9,6 +9,7 @@ on:
 
 env:
   ROAMJS_DEVELOPER_TOKEN: ${{ secrets.ROAMJS_DEVELOPER_TOKEN }}
+  ROAMJS_EMAIL: support@roamjs.com
   ROAMJS_RELEASE_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
 
 jobs:
@@ -21,4 +22,4 @@ jobs:
       - name: build
         run: npx roamjs-scripts build 
       - name: publish
-        run: npx roamjs-scripts publish --email support@roamjs.com --commit ${{ github.sha }} --marketplace
+        run: npx roamjs-scripts publish --depot
