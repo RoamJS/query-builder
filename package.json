@@ -16,13 +16,13 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "roamjs-scripts": "^0.21.0"
+    "roamjs-scripts": "^0.21.3"
   },
   "tags": [
     "queries",
     "widgets"
   ],
   "dependencies": {
-    "roamjs-components": "^0.70.7"
+    "roamjs-components": "^0.70.8"
   }
 }
