@@ -109,6 +109,39 @@ const translator: Translator = {
               ],
             },
           ]
+        : target.startsWith("/") && target.endsWith("/")
+        ? [
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: source },
+                { type: "constant", value: ":node/title" },
+                { type: "variable", value: `${source}-Title` },
+              ],
+            },
+            {
+              type: "fn-expr",
+              fn: "re-pattern",
+              arguments: [
+                {
+                  type: "constant",
+                  value: `"${target.slice(1, -1)}"`,
+                },
+              ],
+              binding: {
+                type: "bind-scalar",
+                variable: { type: "variable", value: `${target}-regex` },
+              },
+            },
+            {
+              type: "pred-expr",
+              pred: "re-find",
+              arguments: [
+                { type: "variable", value: `${target}-regex` },
+                { type: "variable", value: `${source}-Title` },
+              ],
+            },
+          ]
         : [
             {
               type: "data-pattern",

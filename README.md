@@ -66,7 +66,9 @@ You will use a combination of multiple conditions to select the data you want. H
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
 
 - `Created Date` - The date the block or page was created
+    - `Created Time` - Same as above, but in `hh:mm` format
 - `Edited Date` - The date the block or page was edited
+    - `Edited Time` - Same as above, but in `hh:mm` format
 - `Author` - The user who created the block or page
 - `Last Edited By` - The user who created the block or page
 - `node:{node}` - Returns any intermediary node you defined in one of the conditions. For example, `node:page` will return the title of a `page` referenced in a condition.

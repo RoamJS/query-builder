@@ -182,12 +182,13 @@ const optimizeQuery = (
   return orderedClauses;
 };
 
-const CREATE_DATE_TEST = /^\s*created?\s*date\s*$/i;
-const EDIT_DATE_TEST = /^\s*edit(ed)?\s*date\s*$/i;
+const CREATE_DATE_TEST = /^\s*created?\s*(date|time)\s*$/i;
+const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time)\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
+const NODE_TEST = /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: SearchResult) => {
@@ -200,19 +201,46 @@ const getArgValue = (key: string, result: SearchResult) => {
   return val;
 };
 
+const formatDate = ({
+  regex,
+  key,
+  value,
+}: {
+  regex: RegExp;
+  key: string;
+  value?: number;
+}) => {
+  const exec = regex.exec(key);
+  const date = new Date(value || 0);
+  return exec?.[1] === "time"
+    ? `${date.getHours().toString().padStart(2, "0")}:${date
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}`
+    : date;
+};
+
 const predefinedSelections: PredefinedSelection[] = [
   {
     test: CREATE_DATE_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/time])`,
-    mapper: (r) => {
-      return new Date(r?.[":create/time"] || 0);
+    mapper: (r, key) => {
+      return formatDate({
+        regex: CREATE_DATE_TEST,
+        key,
+        value: r?.[":create/time"],
+      });
     },
   },
   {
     test: EDIT_DATE_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/time])`,
-    mapper: (r) => {
-      return new Date(r?.[":edit/time"] || 0);
+    mapper: (r, key) => {
+      return formatDate({
+        regex: EDIT_DATE_TEST,
+        key,
+        value: r?.[":edit/time"],
+      });
     },
   },
   {
@@ -240,7 +268,7 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
-    test: /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i,
+    test: NODE_TEST,
     pull: ({ match, returnNode, where }) => {
       const node = (match[1] || returnNode)?.trim();
       const field = (match[2] || "").trim();
@@ -256,18 +284,27 @@ const predefinedSelections: PredefinedSelection[] = [
 
       return isVariableExposed(where, node) ? `(pull ?${node} ${fields})` : "";
     },
-    mapper: (r) => {
-      const key = Object.keys(r)[0];
-      return key === ":create/time"
-        ? new Date(r?.[":create/time"] || 0)
-        : key === ":edit/time"
-        ? new Date(r?.[":edit/time"] || 0)
-        : key === ":create/user"
+    mapper: (r, key) => {
+      const match = NODE_TEST.exec(key)?.[2];
+      const field = Object.keys(r)[0];
+      return field === ":create/time"
+        ? formatDate({
+            regex: CREATE_DATE_TEST,
+            key: match,
+            value: r?.[":create/time"],
+          })
+        : field === ":edit/time"
+        ? formatDate({
+            regex: EDIT_DATE_TEST,
+            key: match,
+            value: r?.[":edit/time"],
+          })
+        : field === ":create/user"
         ? window.roamAlphaAPI.pull(
             "[:user/display-name]",
             r?.[":create/user"]?.[":db/id"]
           )?.[":user/display-name"] || "Anonymous User"
-        : key === ":edit/user"
+        : field === ":edit/user"
         ? window.roamAlphaAPI.pull(
             "[:user/display-name]",
             r?.[":edit/user"]?.[":db/id"]
