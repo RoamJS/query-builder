@@ -12,7 +12,7 @@ With Query Pages, you could designate certain pages in your Roam graph as "views
 
 ### Setup
 
-On the `roam/js/query-builder` page, you should see a tab called `Query Pages` under `Home`. You could use this to denote which page titles in your Roam Graph will be used to create query pages. Use the `*` as a wildcard.
+On the Roam Depot Settings page for Query Builder, you should see a setting called `Query Pages`. You could use this to denote which page titles in your Roam Graph will be used to create query pages. Use the `*` as a wildcard.
 
 By default, Query Pages is set to be titled with `queries/*`. This means any page in your graph prefixed with `queries/` can be used to save a query. You can denote multiple page title formats.
 
@@ -40,6 +40,7 @@ You will use a combination of multiple conditions to select the data you want. H
 
 - `references` - The `source` block or page references the `target` block or page.
 - `references title` - The `source` block or page references a page with `target` as the title.
+- `is referenced by` - The `source` block or page is referenced by the `target` block or page.
 - `is in page` - The `source` block is in the `target` page.
 - `is in page with title` - The `source` block is in a page with title `target`.
 - `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page.
@@ -49,6 +50,7 @@ You will use a combination of multiple conditions to select the data you want. H
 - `has descendent` - The `source` block or page has the `target` block as a descendant somewhere down the outliner tree
 - `with text` - The `source` block or page has the exact text `target` somewhere in its block text or page title
 - `created by` - The `source` block or page was created by the user with a display name of `target`
+- `edited by` - The `source` block or page was last edited by the user with a display name of `target`
 - `with title in text` - The `source` page has the exact text `target` somewhere in its page title.
 - `created before` - The `source` block or page was created before the naturally specified `target`
 - `created after` - The `source` block or page was created after the naturally specified `target`
@@ -64,9 +66,19 @@ You will use a combination of multiple conditions to select the data you want. H
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
 
 - `Created Date` - The date the block or page was created
-- `Edited Date` - The date the block or page was created
+- `Edited Date` - The date the block or page was edited
 - `Author` - The user who created the block or page
+- `Last Edited By` - The user who created the block or page
+- `node:{node}` - Returns any intermediary node you defined in one of the conditions. For example, `node:page` will return the title of a `page` referenced in a condition.
+- `node:{node}:{field}` - Specify one of the first four options as the field to return the related metadata for the intermediary node. For example, `node:page:Author` will return the user who created the `page` referenced in a condition.
 - Anything else is assumed to be an attribute of the exact text
+
+You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:
+
+- `add({alias1}, {alias2})` - Add the values of two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used. - `subtract({alias1}, {alias2})`
+- Subtract the values betweenn two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
 
 ### Manipulating Results
 
@@ -85,7 +97,8 @@ Each column also has a view type. Choosing a view type will change how the cell 
 - `plain` - Outputted as just plain text
 - `link` - If the column is a block, cells will be outputted as a link to the block. If the column is a page, cells will be outputted as a link to the page.
 - `embed` - Embeds the contents of the block or page in the cell.
-  At any point, you could save the selected filters, sorts, and views so that any time you return to the query, they are applied automatically:
+
+At any point, you could save the selected filters, sorts, and views so that any time you return to the query, they are applied automatically:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FbOPvKM8ilS.png?alt=media&token=838b5724-b848-42b5-8cf0-17fde8cbb29c)
 
@@ -106,7 +119,9 @@ Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-$
 
 ### Demo
 
-[![](https://cdn.loom.com/sessions/thumbnails/12bdc4c42cf8449e8b7a712fe285a072-with-play.gif)](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
+<video src="https://roamjs.com/loom/12bdc4c42cf8449e8b7a712fe285a072.mp4" controls="controls"></video>
+
+[View on Loom](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
 
 ## Creating Vanilla Roam Queries
 
@@ -131,11 +146,11 @@ There will also be an edit button rendered on any existing query. Clicking the b
 
 ## Manipulating Native Roam Queries
 
-The legacy Query Tools extension was merged with this one to bring all native query manipulation features under Query Builder. These features could be configured on the "Native Queries" tab of the `roam/js/query-builder` page.
+The legacy Query Tools extension was merged with this one to bring all native query manipulation features under Query Builder. These features could be configured within the Roam Depot Settings for Query Builder.
 
+- `Default Sort` - The default sorting all native queries in your graph should use
 - `Sort Blocks` - If set to 'True', sort the query results by blocks instead of pages.
 - `Context` - The default value for Context for all queries. See below.
-- `Default Sort` - The default sorting all native queries in your graph should use
 
 ### Sorting
 
