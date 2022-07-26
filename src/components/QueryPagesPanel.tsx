@@ -7,9 +7,11 @@ const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
     () => (extensionAPI.settings.get("query-pages") as string[]) || []
   );
   const [value, setValue] = useState("");
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     inputRef.current.className = "rm-extensions-settings";
+    inputRef.current.style.minWidth = "100%";
+    inputRef.current.style.maxWidth = "100%";
   }, [inputRef]);
   return (
     <div
@@ -23,7 +25,7 @@ const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
         <InputGroup
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          ref={inputRef}
+          inputRef={inputRef}
         />
         <Button
           icon={"plus"}

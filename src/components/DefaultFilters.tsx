@@ -17,17 +17,20 @@ const Filter = ({
 }: {
   column: string;
   data: Filters;
-  onFilterAdd: (args: {
-    text: string;
-    type: "includes" | "excludes";
-  }) => Promise<unknown>;
+  onFilterAdd: (args: { text: string; type: "includes" | "excludes" }) => void;
   onFilterRemove: (args: {
     text: string;
     type: "includes" | "excludes";
-  }) => Promise<unknown>;
+  }) => void;
   onRemove: () => void;
 }) => {
   const [newFilter, setNewFilter] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    inputRef.current.className = "rm-extensions-settings";
+    inputRef.current.style.minWidth = "100%";
+    inputRef.current.style.maxWidth = "100%";
+  }, [inputRef]);
   return (
     <div
       style={{
@@ -62,37 +65,30 @@ const Filter = ({
           ))}
         </ul>
       </div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+      <div className="justify-between items-center flex gap-1">
         <InputGroup
           value={newFilter}
           onChange={(e) => setNewFilter(e.target.value)}
+          inputRef={inputRef}
         />
-        <div>
+        <div
+          className="items-center gap-1 flex-shrink-0"
+          style={{ display: "flex" }}
+        >
           <Button
-            text={"Include"}
-            rightIcon={"add"}
+            icon={"plus"}
             intent={Intent.SUCCESS}
-            style={{ marginRight: 8 }}
             onClick={() => {
-              onFilterAdd({ text: newFilter, type: "includes" }).then(() =>
-                setNewFilter("")
-              );
+              onFilterAdd({ text: newFilter, type: "includes" });
+              setNewFilter("");
             }}
           />
           <Button
-            text={"Exclude"}
-            rightIcon={"add"}
+            icon={"cross"}
             intent={Intent.WARNING}
             onClick={() => {
-              onFilterAdd({ text: newFilter, type: "excludes" }).then(() =>
-                setNewFilter("")
-              );
+              onFilterAdd({ text: newFilter, type: "excludes" });
+              setNewFilter("");
             }}
           />
           <Button icon={"trash"} onClick={onRemove} minimal />
@@ -125,9 +121,11 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
     )
   );
 
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     inputRef.current.className = "rm-extensions-settings";
+    inputRef.current.style.minWidth = "100%";
+    inputRef.current.style.maxWidth = "100%";
   }, [inputRef]);
   useEffect(() => {
     extensionAPI.settings.set(
@@ -165,8 +163,6 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
               ...filters,
             };
             setFilters(newFilters);
-            extensionAPI.settings.set("default-filters", newFilters);
-            return Promise.resolve();
           }}
           onFilterRemove={({ text, type }) => {
             data[type].values.delete(text);
@@ -174,16 +170,12 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
               ...filters,
             };
             setFilters(newFilters);
-            extensionAPI.settings.set("default-filters", newFilters);
-            return Promise.resolve();
           }}
           onRemove={() => {
             const newFilters = Object.fromEntries(
-              Object.entries(filters).filter(([col, d]) => col !== column)
+              Object.entries(filters).filter(([col]) => col !== column)
             );
             setFilters(newFilters);
-            extensionAPI.settings.set("default-filters", newFilters);
-            return Promise.resolve();
           }}
         />
       ))}
@@ -194,9 +186,9 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
           inputRef={inputRef}
         />
         <Button
-          text={"Column"}
-          rightIcon={"add"}
+          icon={"add"}
           intent={Intent.PRIMARY}
+          disabled={!newColumn}
           onClick={() => {
             const newFilters = {
               ...filters,
