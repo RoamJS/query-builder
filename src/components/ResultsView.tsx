@@ -548,15 +548,13 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     const resultsToSort = resultFilter ? results.filter(resultFilter) : results;
     return resultsToSort
       .filter((r) => {
-        return (
-          Object.keys(filters).every(
-            (filterKey) =>
-              filters[filterKey].includes.values.size === 0 &&
-              !filters[filterKey].excludes.values.has(toCellValue(r[filterKey]))
-          ) ||
-          Object.keys(filters).some((filterKey) =>
+        return Object.keys(filters).every(
+          (filterKey) =>
+            (filters[filterKey].includes.values.size === 0 &&
+              !filters[filterKey].excludes.values.has(
+                toCellValue(r[filterKey])
+              )) ||
             filters[filterKey].includes.values.has(toCellValue(r[filterKey]))
-          )
         );
       })
       .sort((a, b) => {

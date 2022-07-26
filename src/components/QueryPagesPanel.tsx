@@ -10,6 +10,9 @@ const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     inputRef.current.className = "rm-extensions-settings";
+    if (!inputRef.current.style) {
+      console.log(inputRef);
+    }
     inputRef.current.style.minWidth = "100%";
     inputRef.current.style.maxWidth = "100%";
   }, [inputRef]);

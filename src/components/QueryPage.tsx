@@ -203,7 +203,7 @@ const getSettings = (extensionAPI: OnloadArgs["extensionAPI"]) => {
       ])
     ),
     hideMetadata: !!extensionAPI.settings.get("hide-metadata"),
-    globalPageSize: Number(extensionAPI.settings.get("default-page-size")) || 0,
+    globalPageSize: Number(extensionAPI.settings.get("default-page-size")) || 10,
   };
 };
 
