@@ -135,6 +135,17 @@ const QueryPage = ({
       }
     }
   }, []);
+  useEffect(() => {
+    const main =
+      containerRef.current.closest(".rm-block-main") ||
+      containerRef.current.closest(".roamjs-query-page")?.parentElement;
+    if (
+      main.nextElementSibling &&
+      main.nextElementSibling.classList.contains("rm-block-children")
+    ) {
+      main.nextElementSibling.classList.add("roamjs-query-builder-metadata");
+    }
+  }, []);
   return (
     <Card
       id={`roamjs-query-page-${pageUid}`}
@@ -143,7 +154,7 @@ const QueryPage = ({
       <div ref={containerRef}>
         {hideMetadata && (
           <style>
-            {`.roam-article .rm-block-children {
+            {`.roamjs-query-builder-metadata.rm-block-children {
           display: none;
         }`}
           </style>
@@ -203,19 +214,23 @@ const getSettings = (extensionAPI: OnloadArgs["extensionAPI"]) => {
       ])
     ),
     hideMetadata: !!extensionAPI.settings.get("hide-metadata"),
-    globalPageSize: Number(extensionAPI.settings.get("default-page-size")) || 10,
+    globalPageSize:
+      Number(extensionAPI.settings.get("default-page-size")) || 10,
   };
 };
 
 export const renderQueryBlock = (extensionAPI: OnloadArgs["extensionAPI"]) =>
-  createComponentRender(({ blockUid }) => (
-    <QueryPage
-      pageUid={blockUid}
-      defaultReturnNode={"node"}
-      // @ts-ignore
-      {...getSettings(extensionAPI)}
-    />
-  ));
+  createComponentRender(
+    ({ blockUid }) => (
+      <QueryPage
+        pageUid={blockUid}
+        defaultReturnNode={"node"}
+        // @ts-ignore
+        {...getSettings(extensionAPI)}
+      />
+    ),
+    "roamjs-query-builder-parent"
+  );
 
 export const render = ({
   parent,

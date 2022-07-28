@@ -212,7 +212,7 @@ const formatDate = ({
 }) => {
   const exec = regex.exec(key);
   const date = new Date(value || 0);
-  return exec?.[1] === "time"
+  return /time/i.test(exec?.[1] || "")
     ? `${date.getHours().toString().padStart(2, "0")}:${date
         .getMinutes()
         .toString()

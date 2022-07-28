@@ -5,8 +5,6 @@ import getUidsFromId from "roamjs-components/dom/getUidsFromId";
 import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
 import addStyle from "roamjs-components/dom/addStyle";
-import { createConfigObserver } from "roamjs-components/components/ConfigPage";
-import toConfigPageName from "roamjs-components/util/toConfigPageName";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
@@ -35,16 +33,6 @@ import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBloc
 import extractRef from "roamjs-components/util/extractRef";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
-import MultiTextPanel from "roamjs-components/components/ConfigPanels/MultiTextPanel";
-import FlagPanel from "roamjs-components/components/ConfigPanels/FlagPanel";
-import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
-import NumberPanel from "roamjs-components/components/ConfigPanels/NumberPanel";
-import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
-import type {
-  CustomField,
-  Field,
-  SelectField,
-} from "roamjs-components/components/ConfigPanels/types";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings";
 import QueryPagesPanel from "./components/QueryPagesPanel";

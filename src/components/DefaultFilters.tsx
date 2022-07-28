@@ -111,10 +111,10 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
         k,
         {
           includes: Object.fromEntries(
-            Object.entries(v.includes).map(([k, v]) => [k, new Set(v)])
+            Object.entries(v.includes || {}).map(([k, v]) => [k, new Set(v)])
           ),
           excludes: Object.fromEntries(
-            Object.entries(v.excludes).map(([k, v]) => [k, new Set(v)])
+            Object.entries(v.excludes || {}).map(([k, v]) => [k, new Set(v)])
           ),
         },
       ])
@@ -135,10 +135,10 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
           k,
           {
             includes: Object.fromEntries(
-              Object.entries(v.includes).map(([k, v]) => [k, Array.from(v)])
+              Object.entries(v.includes || {}).map(([k, v]) => [k, Array.from(v)])
             ),
             excludes: Object.fromEntries(
-              Object.entries(v.excludes).map(([k, v]) => [k, Array.from(v)])
+              Object.entries(v.excludes || {}).map(([k, v]) => [k, Array.from(v)])
             ),
           },
         ])
