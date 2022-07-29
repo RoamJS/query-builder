@@ -12,9 +12,7 @@ import {
   sourceToTargetOptions,
   sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
-import useSubTree from "roamjs-components/hooks/useSubTree";
 import {
   Condition,
   QBClause,
@@ -26,7 +24,6 @@ import {
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import parseQuery from "../utils/parseQuery";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
@@ -418,11 +415,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   }, [returnNode, selections, conditionLabels, conditions]);
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
   return view.uid === parentUid ? (
-    <div
-      style={{
-        padding: 16,
-      }}
-    >
+    <div className={"p-4 overflow-auto"}>
       <H6
         style={{
           display: "flex",
