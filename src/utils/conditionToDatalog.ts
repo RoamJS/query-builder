@@ -125,7 +125,7 @@ const translator: Translator = {
               arguments: [
                 {
                   type: "constant",
-                  value: `"${target.slice(1, -1)}"`,
+                  value: `"${target.slice(1, -1).replace(/\\/g, "\\\\")}"`,
                 },
               ],
               binding: {
