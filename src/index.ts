@@ -226,7 +226,7 @@ export default runExtension({
       callback: (h1: HTMLHeadingElement) => {
         const title = getPageTitleValueByHtmlElement(h1);
         if (
-          ((extensionAPI.settings.get("query-pages") as string[]) || [])
+          ((extensionAPI.settings.get("query-pages") as string[]) || ["queries/*"])
             .map(
               (t) =>
                 new RegExp(

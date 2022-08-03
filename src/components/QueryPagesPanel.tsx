@@ -4,7 +4,7 @@ import type { OnloadArgs } from "roamjs-components/types";
 
 const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
   const [texts, setTexts] = useState(
-    () => (extensionAPI.settings.get("query-pages") as string[]) || []
+    () => (extensionAPI.settings.get("query-pages") as string[]) || ["queries/*"]
   );
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
