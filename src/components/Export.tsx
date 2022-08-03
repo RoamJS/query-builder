@@ -88,11 +88,7 @@ export const ExportDialog: ExportDialogType = ({
   const [activeExportType, setActiveExportType] = useState<string>(
     exportTypes[0].name
   );
-  const graphs = useMemo(
-    () => window.roamjs.extension?.multiplayer?.getConnectedGraphs?.() || [],
-    []
-  );
-  const [graph, setGraph] = useState<string>(graphs[0]);
+  const [graph, setGraph] = useState<string>("");
   return (
     <Dialog
       isOpen={isOpen}
@@ -108,7 +104,12 @@ export const ExportDialog: ExportDialogType = ({
             items={[
               ...exportTypes
                 .map((e) => e.name)
-                .filter((t) => graphs.length || t !== "graph"),
+                .filter(
+                  (t) =>
+                    window.roamjs.loaded.has("samepage") ||
+                    window.roamjs.loaded.has("multiplayer") ||
+                    t !== "graph"
+                ),
             ]}
             activeItem={activeExportType}
             onItemSelect={(et) => setActiveExportType(et)}
@@ -117,10 +118,9 @@ export const ExportDialog: ExportDialogType = ({
         {activeExportType === "graph" && (
           <Label>
             Graph
-            <MenuItemSelect
-              items={graphs}
-              activeItem={graph}
-              onItemSelect={(et) => setGraph(et)}
+            <InputGroup
+              value={graph}
+              onChange={(et) => setGraph(et.target.value)}
             />
           </Label>
         )}
@@ -149,7 +149,9 @@ export const ExportDialog: ExportDialogType = ({
                     (e) => e.name === activeExportType
                   );
                   if (exportType) {
-                    const zip = await window.RoamLazy.JSZip().then((j) => new j());
+                    const zip = await window.RoamLazy.JSZip().then(
+                      (j) => new j()
+                    );
                     const files = await exportType.callback({
                       filename,
                       graph,
