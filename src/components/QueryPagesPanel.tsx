@@ -2,10 +2,13 @@ import { Button, InputGroup } from "@blueprintjs/core";
 import React, { useEffect, useRef, useState } from "react";
 import type { OnloadArgs } from "roamjs-components/types";
 
+export const getQueryPages = (extensionAPI: OnloadArgs["extensionAPI"]) => {
+  const value = extensionAPI.settings.get("query-pages") as string[] | string;
+  return typeof value === "string" ? [value] : value || ["queries/*"];
+};
+
 const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
-  const [texts, setTexts] = useState(
-    () => (extensionAPI.settings.get("query-pages") as string[]) || ["queries/*"]
-  );
+  const [texts, setTexts] = useState(() => getQueryPages(extensionAPI));
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {

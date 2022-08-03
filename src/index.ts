@@ -35,7 +35,7 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import type { InputTextNode } from "roamjs-components/types/native";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings";
-import QueryPagesPanel from "./components/QueryPagesPanel";
+import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 
 const extensionId = "query-builder";
@@ -226,7 +226,7 @@ export default runExtension({
       callback: (h1: HTMLHeadingElement) => {
         const title = getPageTitleValueByHtmlElement(h1);
         if (
-          ((extensionAPI.settings.get("query-pages") as string[]) || ["queries/*"])
+          getQueryPages(extensionAPI)
             .map(
               (t) =>
                 new RegExp(
