@@ -3,7 +3,10 @@ import parseNlpDate from "roamjs-components/date/parseNlpDate";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type { DatalogClause } from "roamjs-components/types";
-import type { QBClauseData } from "roamjs-components/types/query-builder";
+import type {
+  QBClauseData,
+  RegisterDatalogTranslator,
+} from "roamjs-components/types/query-builder";
 
 type Translator = Record<
   string,
@@ -19,7 +22,10 @@ type Translator = Record<
   }
 >;
 
-const translator: Translator = {
+const translator: Record<
+  string,
+  Omit<Parameters<RegisterDatalogTranslator>[0], "key">
+> = {
   self: {
     callback: ({ source }) => [
       {
@@ -567,12 +573,10 @@ const translator: Translator = {
   },
 };
 
-export const registerDatalogTranslator = ({
+export const registerDatalogTranslator: RegisterDatalogTranslator = ({
   key,
   ...translation
-}: {
-  key: string;
-} & Translator[string]) => {
+}) => {
   translator[key] = translation;
 };
 
