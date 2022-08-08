@@ -201,6 +201,17 @@ const getArgValue = (key: string, result: SearchResult) => {
   return val;
 };
 
+const getUserDisplayNameById = (id = 0) => {
+  const pageId =
+    window.roamAlphaAPI.pull("[:user/display-page]", id)?.[
+      ":user/display-page"
+    ]?.[":db/id"] || 0;
+  return (
+    window.roamAlphaAPI.pull("[:node/title]", pageId)?.[":node/title"] ||
+    "Anonymous User"
+  );
+};
+
 const formatDate = ({
   regex,
   key,
@@ -247,24 +258,14 @@ const predefinedSelections: PredefinedSelection[] = [
     test: CREATE_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/user])`,
     mapper: (r) => {
-      return (
-        window.roamAlphaAPI.pull(
-          "[:user/display-name]",
-          r?.[":create/user"]?.[":db/id"]
-        )?.[":user/display-name"] || "Anonymous User"
-      );
+      return getUserDisplayNameById(r?.[":create/user"]?.[":db/id"]);
     },
   },
   {
     test: EDIT_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/user])`,
     mapper: (r) => {
-      return (
-        window.roamAlphaAPI.pull(
-          "[:user/display-name]",
-          r?.[":edit/user"]?.[":db/id"]
-        )?.[":user/display-name"] || "Anonymous User"
-      );
+      return getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"]);
     },
   },
   {
@@ -300,15 +301,9 @@ const predefinedSelections: PredefinedSelection[] = [
             value: r?.[":edit/time"],
           })
         : field === ":create/user"
-        ? window.roamAlphaAPI.pull(
-            "[:user/display-name]",
-            r?.[":create/user"]?.[":db/id"]
-          )?.[":user/display-name"] || "Anonymous User"
+        ? getUserDisplayNameById(r?.[":create/user"]?.[":db/id"])
         : field === ":edit/user"
-        ? window.roamAlphaAPI.pull(
-            "[:user/display-name]",
-            r?.[":edit/user"]?.[":db/id"]
-          )?.[":user/display-name"] || "Anonymous User"
+        ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : {
             "": r?.[":node/title"] || r[":block/string"] || "",
             "-uid": r[":block/uid"],
