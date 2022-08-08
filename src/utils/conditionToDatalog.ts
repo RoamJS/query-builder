@@ -4,23 +4,8 @@ import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type { DatalogClause } from "roamjs-components/types";
 import type {
-  QBClauseData,
   RegisterDatalogTranslator,
 } from "roamjs-components/types/query-builder";
-
-type Translator = Record<
-  string,
-  {
-    callback: (args: {
-      source: string;
-      target: string;
-      uid: string;
-    }) => DatalogClause[];
-    targetOptions?: string[] | ((source: string) => string[]);
-    placeholder?: string;
-    isVariable?: true;
-  }
->;
 
 const translator: Record<
   string,
@@ -317,7 +302,15 @@ const translator: Record<
         type: "data-pattern",
         arguments: [
           { type: "variable", value: `${source}-User` },
-          { type: "constant", value: ":user/display-name" },
+          { type: "constant", value: ":user/display-page" },
+          { type: "variable", value: `${source}-User-Display` },
+        ],
+      },
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${source}-User-Display` },
+          { type: "constant", value: ":node/title" },
           { type: "constant", value: `"${normalizePageTitle(target)}"` },
         ],
       },
@@ -342,7 +335,15 @@ const translator: Record<
         type: "data-pattern",
         arguments: [
           { type: "variable", value: `${source}-User` },
-          { type: "constant", value: ":user/display-name" },
+          { type: "constant", value: ":user/display-page" },
+          { type: "variable", value: `${source}-User-Display` },
+        ],
+      },
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${source}-User-Display` },
+          { type: "constant", value: ":node/title" },
           { type: "constant", value: `"${normalizePageTitle(target)}"` },
         ],
       },
