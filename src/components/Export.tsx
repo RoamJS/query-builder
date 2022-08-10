@@ -9,7 +9,7 @@ import {
   SpinnerSize,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
@@ -17,6 +17,7 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
+import { Result } from "roamjs-components/types/query-builder";
 
 type ExportDialogType =
   typeof window.roamjs.extension.queryBuilder.ExportDialog;
@@ -131,7 +132,7 @@ export const ExportDialog: ExportDialogType = ({
             onChange={(e) => setFilename(e.target.value)}
           />
         </Label>
-        <span>Exporting {results.length} Results</span>
+        <span>Exporting {typeof results === 'function' ? "unknown number of" : results.length} results</span>
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -235,7 +236,7 @@ export const Export = ({
           })),
     },
   ],
-}: Pick<Props, "exportTypes" | "results">) => {
+}: Pick<Props, "exportTypes"> & { results: Result[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>

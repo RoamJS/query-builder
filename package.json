@@ -22,6 +22,6 @@
     "widgets"
   ],
   "dependencies": {
-    "roamjs-components": "^0.72.3"
+    "roamjs-components": "^0.72.4"
   }
 }
