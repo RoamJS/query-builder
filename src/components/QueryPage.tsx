@@ -49,17 +49,16 @@ const QueryPage = ({
   pageUid,
   defaultReturnNode,
   getExportTypes,
-
-  // @ts-ignore
   hideMetadata = false,
-  // @ts-ignore
   globalFiltersData,
-  // @ts-ignore
   globalPageSize,
 }: Props) => {
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const [isEdit, _setIsEdit] = useState(
     () => !!getSubTree({ tree, key: "editing" }).uid
+  );
+  const [hasResults, setHasResults] = useState(
+    () => !!getSubTree({ tree, key: "results" }).uid
   );
   const setIsEdit = useCallback(
     (b: boolean) => {
@@ -83,16 +82,27 @@ const QueryPage = ({
     setLoading(true);
     const args = parseQuery(pageUid);
     setTimeout(() => {
+      const runFireQuery = (a: Parameters<typeof fireQuery>[0]) =>
+        fireQuery(a)
+          .then((results) => {
+            setResults(results);
+          })
+          .catch(() => {
+            setError(
+              `Query failed to run. Try running a new query from the editor.`
+            );
+          })
+          .finally(() => {
+            const tree = getBasicTreeByParentUid(pageUid);
+            const node = getSubTree({ tree, key: "results" });
+            return (
+              node.uid
+                ? Promise.resolve(node.uid)
+                : createBlock({ parentUid: pageUid, node: { text: "results" } })
+            ).then(() => setHasResults(true));
+          });
       (args.returnNode
-        ? fireQuery(args)
-            .then((results) => {
-              setResults(results);
-            })
-            .catch(() => {
-              setError(
-                `Query failed to run. Try running a new query from the editor.`
-              );
-            })
+        ? runFireQuery(args)
         : defaultReturnNode
         ? ensureSetting({
             key: "scratch.return",
@@ -102,15 +112,7 @@ const QueryPage = ({
             if (defaultReturnNode === "block" || defaultReturnNode === "node") {
               setIsEdit(true);
             } else {
-              fireQuery({ ...args, returnNode: defaultReturnNode })
-                .then((results) => {
-                  setResults(results);
-                })
-                .catch(() => {
-                  setError(
-                    `Query failed to run. Try running a new query from the editor.`
-                  );
-                });
+              runFireQuery({ ...args, returnNode: defaultReturnNode });
             }
           })
         : setIsEdit(true)
@@ -145,6 +147,12 @@ const QueryPage = ({
     ) {
       main.nextElementSibling.classList.add("roamjs-query-builder-metadata");
     }
+    const container = containerRef.current.closest<HTMLDivElement>(
+      "div.roamjs-query-builder-parent"
+    );
+    if (container) {
+      container.style.width = "unset";
+    }
   }, []);
   return (
     <Card
@@ -166,14 +174,14 @@ const QueryPage = ({
               onQuery={() => setIsEdit(false)}
               defaultReturnNode={defaultReturnNode}
             />
-            <hr style={{ borderColor: "#333333" }} />
           </>
         )}
+        {isEdit && hasResults && <hr style={{ borderColor: "#333333" }} />}
         {loading ? (
           <p className="px-8 py-4">
             <Spinner /> Loading Results...
           </p>
-        ) : (
+        ) : hasResults ? (
           <ResultsView
             parentUid={pageUid}
             onEdit={() => setIsEdit(true)}
@@ -185,8 +193,9 @@ const QueryPage = ({
             onRefresh={onRefresh}
             globalFiltersData={globalFiltersData}
             globalPageSize={globalPageSize}
-            // hide header on edit
           />
+        ) : (
+          <></>
         )}
       </div>
     </Card>

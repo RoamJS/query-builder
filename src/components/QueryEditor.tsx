@@ -1,4 +1,12 @@
-import { Button, H6, InputGroup, Switch, Tabs, Tab } from "@blueprintjs/core";
+import {
+  Button,
+  H6,
+  InputGroup,
+  Switch,
+  Tabs,
+  Tab,
+  TextArea,
+} from "@blueprintjs/core";
 import React, { useMemo, useRef, useState } from "react";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -25,6 +33,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import parseQuery from "../utils/parseQuery";
+import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -105,12 +114,11 @@ const QueryClause = ({
         />
       </div>
       <Switch
-        label="NOT"
         style={{
           marginBottom: 0,
-          color: con.not ? "#000000" : "#ffffff",
           minWidth: 72,
         }}
+        innerLabelChecked={"NOT"}
         checked={con.not}
         onChange={(e) => {
           const not = (e.target as HTMLInputElement).checked;
@@ -188,7 +196,7 @@ const QueryNestedData = ({
       <span
         style={{
           flexGrow: 1,
-          minWidth: 300,
+          minWidth: 260,
           width: "100%",
           display: "inline-block",
         }}
@@ -346,6 +354,12 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     returnNode: initialReturnNode,
     conditions: initialConditions,
     selections: initialSelections,
+    // @ts-ignore
+    customNodeUid,
+    // @ts-ignore
+    customNode: initialCustom,
+    // @ts-ignore
+    isCustomEnabled: initialIsCustomEnabled,
   } = useMemo(() => parseQuery(parentUid), [parentUid]);
   const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
@@ -364,6 +378,20 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   };
   const [conditions, setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
+  const [custom, setCustom] = useState(initialCustom);
+  const customNodeOnChange = (value: string) => {
+    window.clearTimeout(debounceRef.current);
+    setCustom(value);
+    debounceRef.current = window.setTimeout(async () => {
+      const childUid = getFirstChildUidByBlockUid(customNodeUid);
+      if (childUid)
+        updateBlock({
+          uid: childUid,
+          text: value,
+        });
+      else createBlock({ parentUid: returnNodeUid, node: { text: value } });
+    }, 1000);
+  };
   const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);
   const view = useMemo(() => views.slice(-1)[0], [views]);
   const viewCondition = useMemo(
@@ -413,6 +441,9 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     }
     return "";
   }, [returnNode, selections, conditionLabels, conditions]);
+  const [isCustomEnabled, setIsCustomEnabled] = useState(
+    initialIsCustomEnabled
+  );
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
@@ -420,59 +451,128 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: isCustomEnabled ? "flex-end" : "space-between",
         }}
       >
-        <span
-          style={{
-            minWidth: 144,
-            display: "inline-block",
-          }}
-        >
-          Find
-        </span>
-        <InputGroup
-          autoFocus
-          value={returnNode}
-          disabled={!!defaultReturnNode}
+        {!isCustomEnabled && (
+          <>
+            <span
+              style={{
+                minWidth: 144,
+                display: "inline-block",
+              }}
+            >
+              Find
+            </span>
+            <InputGroup
+              autoFocus
+              value={returnNode}
+              disabled={!!defaultReturnNode}
+              onChange={(e) => {
+                returnNodeOnChange(e.target.value);
+              }}
+              placeholder={"Enter Label..."}
+              className="roamjs-query-return-node"
+            />
+            <span
+              style={{
+                flexGrow: 1,
+                display: "inline-block",
+                minWidth: 260,
+              }}
+            >
+              Where
+            </span>
+          </>
+        )}
+        <style>{`.roamjs-query-custom-enabled .bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
+    height: 0;
+}`}</style>
+        <Switch
+          checked={!isCustomEnabled}
+          className={"mr-8 roamjs-query-custom-enabled"}
           onChange={(e) => {
-            returnNodeOnChange(e.target.value);
+            const enabled = !(e.target as HTMLInputElement).checked;
+            const contentUid = getNthChildUidByBlockUid({
+              blockUid: customNodeUid,
+              order: 0,
+            });
+            const enabledUid = getNthChildUidByBlockUid({
+              blockUid: customNodeUid,
+              order: 1,
+            });
+            if (enabled) {
+              const text = getDatalogQuery(
+                getDatalogQueryComponents({
+                  conditions,
+                  selections,
+                  returnNode,
+                })
+              );
+              if (contentUid) updateBlock({ text, uid: contentUid });
+              else
+                createBlock({
+                  parentUid: customNodeUid,
+                  order: 0,
+                  node: {
+                    text,
+                  },
+                });
+              setCustom(text);
+              if (enabledUid) updateBlock({ text: "enabled", uid: enabledUid });
+              else
+                createBlock({
+                  parentUid: customNodeUid,
+                  order: 1,
+                  node: { text: "enabled" },
+                });
+            } else {
+              if (contentUid) {
+                // TODO - translate from custom back into english - seems very hard!
+              }
+              if (enabledUid) deleteBlock(enabledUid);
+            }
+            setIsCustomEnabled(enabled);
           }}
-          placeholder={"Enter Label..."}
-          className="roamjs-query-return-node"
+          innerLabelChecked={"ENG"}
+          innerLabel={"DATA"}
         />
-        <span
-          style={{
-            flexGrow: 1,
-            display: "inline-block",
-            minWidth: 300,
-          }}
-        >
-          Where
-        </span>
       </H6>
-      {conditions.map((con, index) => (
-        <QueryCondition
-          key={con.uid}
-          con={con}
-          index={index}
-          conditions={conditions}
-          availableSources={[returnNode]}
-          setConditions={setConditions}
-          setView={(v) => setViews([...views, v])}
+      {isCustomEnabled ? (
+        <TextArea
+          value={custom}
+          onChange={(e) => customNodeOnChange(e.target.value)}
+          className={"w-full mb-8"}
+          style={{ resize: "vertical", fontFamily: "monospace" }}
+          rows={8}
         />
-      ))}
-      {selections.map((sel) => (
-        <QuerySelection
-          key={sel.uid}
-          sel={sel}
-          selections={selections}
-          setSelections={setSelections}
-        />
-      ))}
+      ) : (
+        <>
+          {conditions.map((con, index) => (
+            <QueryCondition
+              key={con.uid}
+              con={con}
+              index={index}
+              conditions={conditions}
+              availableSources={[returnNode]}
+              setConditions={setConditions}
+              setView={(v) => setViews([...views, v])}
+            />
+          ))}
+          {selections.map((sel) => (
+            <QuerySelection
+              key={sel.uid}
+              sel={sel}
+              selections={selections}
+              setSelections={setSelections}
+            />
+          ))}
+        </>
+      )}
       <div style={{ display: "flex" }}>
         <span style={{ minWidth: 144, display: "inline-block" }}>
           <Button
+            disabled={isCustomEnabled}
             rightIcon={"plus"}
             text={"Add Condition"}
             style={{ maxHeight: 32 }}
@@ -501,6 +601,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
         </span>
         <span style={{ display: "inline-block", minWidth: 144 }}>
           <Button
+            disabled={isCustomEnabled}
             rightIcon={"plus"}
             text={"Add Selection"}
             style={{ maxHeight: 32 }}
@@ -539,11 +640,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
       </div>
     </div>
   ) : (
-    <div
-      style={{
-        padding: 16,
-      }}
-    >
+    <div className={"p-4"}>
       <div>
         <h4>OR Branches</h4>
         <Tabs

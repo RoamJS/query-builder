@@ -475,49 +475,72 @@ export const getDatalogQuery = (
   return query;
 };
 
+const getEnglishQuery = (args: FireQueryArgs) => {
+  const parts = getDatalogQueryComponents(args);
+  return {
+    query: getDatalogQuery(parts),
+    formatResult: (result: unknown[]) =>
+      parts.definedSelections
+        .map((c, i) => (prev: SearchResult) => {
+          const pullResult = result[i];
+          return typeof pullResult === "object"
+            ? Promise.resolve(
+                c.mapper(pullResult as PullBlock, c.key, prev)
+              ).then((output) => ({
+                output,
+                label: c.label,
+              }))
+            : typeof pullResult === "string" || typeof pullResult === "number"
+            ? Promise.resolve({ output: pullResult, label: c.label })
+            : Promise.resolve({ output: "", label: c.label });
+        })
+        .reduce(
+          (prev, c) =>
+            prev.then((p) =>
+              c(p).then(({ output, label }) => {
+                if (typeof output === "object" && !(output instanceof Date)) {
+                  Object.entries(output).forEach(([k, v]) => {
+                    p[label + k] = v;
+                  });
+                } else {
+                  p[label] = output;
+                }
+                return p;
+              })
+            ),
+          Promise.resolve({} as SearchResult)
+        ),
+  };
+};
+
 const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   args
 ) => {
-  const parts = getDatalogQueryComponents(args);
-  const query = getDatalogQuery(parts);
+  // @ts-ignore
+  const { isCustomEnabled, customNode } = args as {
+    isCustomEnabled: boolean;
+    custom: string;
+  };
+  const { query, formatResult } = isCustomEnabled
+    ? {
+        query: customNode,
+        formatResult: (r: unknown[]) =>
+          Promise.resolve({
+            text: "",
+            uid: "",
+            ...Object.fromEntries(
+              r.flatMap((p, index) =>
+                typeof p === "object"
+                  ? Object.entries(p)
+                  : [[index.toString(), p]]
+              )
+            ),
+          }),
+      }
+    : getEnglishQuery(args);
   try {
     return Promise.all(
-      window.roamAlphaAPI.data.fast
-        .q(query)
-        .map((a) => a as PullBlock[])
-        .map((r) =>
-          parts.definedSelections
-            .map(
-              (c, i) => (prev: SearchResult) =>
-                !r[i]
-                  ? Promise.resolve({ output: "", label: c.label })
-                  : Promise.resolve(c.mapper(r[i], c.key, prev)).then(
-                      (output) => ({
-                        output,
-                        label: c.label,
-                      })
-                    )
-            )
-            .reduce(
-              (prev, c) =>
-                prev.then((p) =>
-                  c(p).then(({ output, label }) => {
-                    if (
-                      typeof output === "object" &&
-                      !(output instanceof Date)
-                    ) {
-                      Object.entries(output).forEach(([k, v]) => {
-                        p[label + k] = v;
-                      });
-                    } else {
-                      p[label] = output;
-                    }
-                    return p;
-                  })
-                ),
-              Promise.resolve({} as SearchResult)
-            )
-        )
+      window.roamAlphaAPI.data.fast.q(query).map(formatResult)
     );
   } catch (e) {
     console.error("Error from Roam:");

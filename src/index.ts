@@ -38,14 +38,12 @@ import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings"
 import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 
-const extensionId = "query-builder";
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
   : false;
 
 export default runExtension({
   migratedTo: loadedElsewhere ? undefined : "Query Builder",
-  extensionId,
   run: async ({ extensionAPI }) => {
     const style = addStyle(`.bp3-button:focus {
     outline-width: 2px;
@@ -65,7 +63,7 @@ export default runExtension({
 
 .roamjs-query-condition-target { 
   flex-grow: 1;
-  min-width: 300px;
+  min-width: 260px;
 }
 
 .roamjs-query-condition-relation .bp3-popover-target,
@@ -92,7 +90,7 @@ export default runExtension({
 }`);
     migrateLegacySettings({
       extensionAPI,
-      extensionId,
+      extensionId: process.env.ROAMJS_EXTENSION_ID,
       specialKeys: {
         "Query Pages": (n) => [
           { value: n.children.map((c) => c.text), key: "query-pages" },

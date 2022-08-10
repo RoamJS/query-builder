@@ -450,6 +450,8 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         <Switch
           checked={isEnglish}
           onChange={(e) => setIsEnglish((e.target as HTMLInputElement).checked)}
+          innerLabelChecked={"ENG"}
+          innerLabel={"DATA"}
         />
       </div>
     </div>

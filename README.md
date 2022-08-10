@@ -6,6 +6,13 @@ Introduces new user interfaces for building queries in Roam.
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
+## Nomenclature
+
+There are some important terms to know and have exact definitions on since they will be used throughout the docs. 
+- `Page` - A Page is anything in Roam that was created with `[[brackets]]`, `#hashtag`, `#[[hashtag with brackts]]`, or `Attribute::`. Clicking on these links in your graph takes you to its designated page, each with its own unique title, and they have no parent.
+- `Block` - A bullet or line of text in Roam. While you can also go to pages that have a zoomed in block view, their content is not unique, and they always have one parent.
+- `Node` - A superset of `Block`s and `Page`s.
+
 ## Query Pages
 
 With Query Pages, you could designate certain pages in your Roam graph as "views" into your data. These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.

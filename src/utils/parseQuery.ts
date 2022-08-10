@@ -72,13 +72,19 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     text,
     label: children?.[0]?.text || "",
   }));
+
+  const customBlock = getSubTree({ tree: children, key: "custom" });
+  const customNodeUid = getOrCreateUid(customBlock, "custom");
   return {
     returnNode,
     conditions,
     selections,
+    customNode: customBlock.children[0]?.text || "",
     returnNodeUid,
     conditionsNodesUid,
     selectionsNodesUid,
+    customNodeUid,
+    isCustomEnabled: customBlock.children[1]?.text === "enabled",
   };
 };
 
