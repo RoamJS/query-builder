@@ -186,24 +186,19 @@ const CellEmbed = ({ uid }: { uid: string }) => {
 
 const ResultView = ({
   r,
-  colSpan,
   ctrlClick,
   views,
   extraColumn,
 }: {
   r: Result;
-  colSpan: number;
   ctrlClick?: (e: Result) => void;
   views: Record<string, string>;
-  extraColumn?: (e: Result) => React.ReactNode;
+  extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
 }) => {
   const rowCells = Object.keys(r).filter(
-    (k) => !defaultFields.some((r) => r.test(k))
-  );
-  const [contextOpen, setContextOpen] = useState(false);
-  const contextPageTitle = useMemo(
-    () => r.context && getPageTitleByPageUid(r.context.toString()),
-    [r.context]
+    (k) =>
+      !UID_REGEX.test(k) &&
+      !(extraColumn && extraColumn.reserved.some((t) => t.test(k)))
   );
   const namespaceSetting = useMemo(
     () =>
@@ -218,44 +213,6 @@ const ResultView = ({
       )?.[":user/settings"]?.[":namespace-options"]?.[0]?.name,
     []
   );
-  const contextBreadCrumbs = useMemo(
-    () =>
-      r.context
-        ? window.roamAlphaAPI
-            .q(
-              `[:find (pull ?p [:node/title :block/string :block/uid]) :where 
-              [?b :block/uid "${r.context}"]
-              [?b :block/parents ?p]
-            ]`
-            )
-            .map(
-              (a) => a[0] as { string?: string; title?: string; uid: string }
-            )
-            .map((a) => ({ uid: a.uid, text: a.string || a.title || "" }))
-        : [],
-    [r.context]
-  );
-  const contextChildren = useMemo(
-    () =>
-      r.context &&
-      (contextPageTitle
-        ? getShallowTreeByParentUid(r.context.toString()).map(({ uid }) => uid)
-        : [r.context.toString()]),
-    [r.context, contextPageTitle, r.uid]
-  );
-  const contextElement = useRef<HTMLTableCellElement>(null);
-  useEffect(() => {
-    if (contextOpen) {
-      setTimeout(() => {
-        contextChildren.forEach((uid) => {
-          window.roamAlphaAPI.ui.components.renderBlock({
-            uid,
-            el: contextElement.current.querySelector(`div[data-uid="${uid}"]`),
-          });
-        });
-      }, 1);
-    }
-  }, [contextOpen, contextElement, r.uid, contextPageTitle]);
   const cell = (key: string) => {
     const value = r[key] || "";
     const formattedValue =
@@ -341,67 +298,13 @@ const ResultView = ({
             </td>
           );
         })}
-        {r.context && (
-          <td>
-            <Tooltip content={"Context"}>
-              <Button
-                onClick={() => setContextOpen(!contextOpen)}
-                active={contextOpen}
-                style={{
-                  opacity: 0.5,
-                  fontSize: "0.8em",
-                  ...(contextOpen
-                    ? {
-                        opacity: 1,
-                        color: "#8A9BA8",
-                        backgroundColor: "#F5F8FA",
-                      }
-                    : {}),
-                }}
-                minimal
-                icon="info-sign"
-              />
-            </Tooltip>
-          </td>
-        )}
-        {extraColumn && <td>{extraColumn(r)}</td>}
+        {extraColumn && <td>{extraColumn.row(r)}</td>}
       </tr>
-      {contextOpen && (
-        <tr>
-          <td
-            ref={contextElement}
-            style={{
-              position: "relative",
-              backgroundColor: "#F5F8FA",
-              padding: 16,
-              maxHeight: 240,
-              overflowY: "scroll",
-            }}
-            colSpan={colSpan}
-          >
-            {contextPageTitle ? (
-              <h3 style={{ margin: 0 }}>{contextPageTitle}</h3>
-            ) : (
-              <div className="rm-zoom">
-                {contextBreadCrumbs.map((bc) => (
-                  <div key={bc.uid} className="rm-zoom-item">
-                    <span className="rm-zoom-item-content">{bc.text}</span>
-                    <Icon icon={"chevron-right"} />
-                  </div>
-                ))}
-              </div>
-            )}
-            {contextChildren.map((uid) => (
-              <div data-uid={uid} key={uid}></div>
-            ))}
-          </td>
-        </tr>
-      )}
     </>
   );
 };
 
-const defaultFields = [/uid/, /context/];
+const UID_REGEX = /uid/;
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)
@@ -512,14 +415,16 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   const columns = useMemo(
     () =>
       results.length
-        ? [
-            ...Object.keys(results[0]).filter(
-              (k) => !defaultFields.some((r) => r.test(k))
-            ),
-            ...(results.some((r) => !!r.context) ? ["context"] : []),
-          ]
+        ? Object.keys(results[0]).filter(
+            (k) =>
+              !UID_REGEX.test(k) &&
+              !(
+                extraColumn &&
+                extraColumn.reserved.some((t: RegExp) => t.test(k))
+              )
+          )
         : ["text"],
-    [results]
+    [results, extraColumn]
   );
   const [activeSort, setActiveSort] = useState<Sorts>(() =>
     sortsNode.children.map((s) => ({
@@ -826,10 +731,9 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
               <ResultView
                 key={Object.values(r).join("-")}
                 r={r}
-                colSpan={columns.length}
                 ctrlClick={ctrlClick}
                 views={views}
-                extraColumn={extraColumn?.row}
+                extraColumn={extraColumn}
               />
             ))}
           </tbody>
