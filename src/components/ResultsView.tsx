@@ -189,11 +189,13 @@ const ResultView = ({
   colSpan,
   ctrlClick,
   views,
+  extraColumn,
 }: {
   r: Result;
   colSpan: number;
   ctrlClick?: (e: Result) => void;
   views: Record<string, string>;
+  extraColumn?: (e: Result) => React.ReactNode;
 }) => {
   const rowCells = Object.keys(r).filter(
     (k) => !defaultFields.some((r) => r.test(k))
@@ -362,6 +364,7 @@ const ResultView = ({
             </Tooltip>
           </td>
         )}
+        {extraColumn && <td>{extraColumn(r)}</td>}
       </tr>
       {contextOpen && (
         <tr>
@@ -495,9 +498,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
-
   globalFiltersData = {},
   globalPageSize = 10,
+
+  // @ts-ignore
+  extraColumn,
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
   const resultNode = useSubTree({ tree, key: "results" });
@@ -629,7 +634,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
           {header}
         </h4>
         {!hideResults && (
-          <>
+          <div className="roamjs-query-results-metadata">
             <div
               style={{
                 display: "flex",
@@ -773,7 +778,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
               </span>
             </div>
             {showContent && <QueryUsed parentUid={parentUid} />}
-          </>
+          </div>
         )}
       </div>
       {!hideResults && results.length !== 0 && (
@@ -809,6 +814,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                   onViewChange={(v) => setViews({ ...views, [c]: v })}
                 />
               ))}
+              {extraColumn && (
+                <th style={{ width: extraColumn.width }}>
+                  {extraColumn.header}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -819,12 +829,16 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 colSpan={columns.length}
                 ctrlClick={ctrlClick}
                 views={views}
+                extraColumn={extraColumn?.row}
               />
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={columns.length} style={{ padding: 0 }}>
+              <td
+                colSpan={columns.length + (extraColumn ? 1 : 0)}
+                style={{ padding: 0 }}
+              >
                 <div
                   style={{
                     display: "flex",
