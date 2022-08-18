@@ -14,7 +14,6 @@ import {
   Switch,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
@@ -677,9 +676,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                     <Button icon={"annotation"} minimal onClick={onEdit} />
                   </Tooltip>
                 )}
-                <Tooltip content={"Refresh Results"}>
-                  <Button icon={"refresh"} minimal onClick={onRefresh} />
-                </Tooltip>
+                {onRefresh && (
+                  <Tooltip content={"Refresh Results"}>
+                    <Button icon={"refresh"} minimal onClick={onRefresh} />
+                  </Tooltip>
+                )}
               </span>
             </div>
             {showContent && <QueryUsed parentUid={parentUid} />}
