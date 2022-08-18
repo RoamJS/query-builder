@@ -17,11 +17,9 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import { Result } from "roamjs-components/types/query-builder";
+import { Result, ExportDialogComponent } from "roamjs-components/types/query-builder";
 
-type ExportDialogType =
-  typeof window.roamjs.extension.queryBuilder.ExportDialog;
-type Props = Parameters<ExportDialogType>[0];
+type Props = Parameters<ExportDialogComponent>[0];
 
 const viewTypeToPrefix = {
   bullet: "- ",
@@ -67,7 +65,7 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-export const ExportDialog: ExportDialogType = ({
+export const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
   exportTypes,
@@ -97,6 +95,8 @@ export const ExportDialog: ExportDialogType = ({
       canEscapeKeyClose
       canOutsideClickClose
       title={`Export Query Results`}
+      autoFocus={false}
+      enforceFocus={false}
     >
       <div className={Classes.DIALOG_BODY}>
         <Label>
