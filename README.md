@@ -6,6 +6,8 @@ Introduces new user interfaces for building queries in Roam.
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
+> NOTE: If your are a user of the RoamJS extension [Discourse Graph](https://roamjs.com/extensions/discourse-graph), do NOT install this extension, as Discourse Graph bundles its own version of Query Builder. In the future, Discourse Graph will be reintegrated back into Query Builder as an advanced set of features.
+
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs. 

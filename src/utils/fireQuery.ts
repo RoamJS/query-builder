@@ -11,6 +11,7 @@ import type {
 } from "roamjs-components/types";
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
+import { getNodeEnv } from "roamjs-components/util/env";
 
 type PredefinedSelection = Parameters<RegisterSelection>[0];
 
@@ -539,14 +540,16 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
       }
     : getEnglishQuery(args);
   try {
+    if (getNodeEnv() === "development") {
+      console.log("Query to Roam:");
+      console.log(query);
+    }
     return Promise.all(
       window.roamAlphaAPI.data.fast.q(query).map(formatResult)
     );
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);
-    console.error("Query from Roam:");
-    console.error(query);
     return [];
   }
 };
