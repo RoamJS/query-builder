@@ -43,7 +43,7 @@ const Filter = ({
       <h4>{column}</h4>
       <div style={{ display: "flex" }}>
         <ul style={{ width: "50%" }}>
-          {Array.from(data.includes.values).map((v) => (
+          {Array.from(data.includes.values || new Set<string>()).map((v) => (
             <li
               key={v}
               onClick={() => onFilterRemove({ text: v, type: "includes" })}
@@ -54,7 +54,7 @@ const Filter = ({
           ))}
         </ul>
         <ul style={{ width: "50%" }}>
-          {Array.from(data.excludes.values).map((v) => (
+          {Array.from(data.excludes.values || new Set<string>()).map((v) => (
             <li
               key={v}
               onClick={() => onFilterRemove({ text: v, type: "excludes" })}
