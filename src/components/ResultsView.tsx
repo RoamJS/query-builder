@@ -352,7 +352,7 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
             ))}
       </div>
       <div>
-        <style>{`.roamjs-query-results-lang .bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
+        <style>{`.roamjs-query-results-lang.bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
     height: 0;
 }`}</style>
         <Switch

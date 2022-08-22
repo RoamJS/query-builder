@@ -48,11 +48,11 @@ The results returned will be organized in a table with sortable and filterable c
 You will use a combination of multiple conditions to select the data you want. Here are all the supported relationships:
 
 - `references` - The `source` block or page references the `target` block or page.
-- `references title` - The `source` block or page references a page with `target` as the title.
+- `references title` - The `source` block or page references a page with `target` as the title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP, e.g. `{date:today}`.
 - `is referenced by` - The `source` block or page is referenced by the `target` block or page.
 - `is in page` - The `source` block is in the `target` page.
-- `is in page with title` - The `source` block is in a page with title `target`.
-- `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page.
+- `is in page with title` - The `source` block is in a page with title `target`. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP, e.g. `{date:today}`.
+- `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP, e.g. `{date:today}`.
 - `has attribute` - The `source` block or page has an attribute with value `target`.
 - `has child` - The `source` block or page has the `target` block as a child.
 - `has ancestor` - The `source` block has the `target` block or page as an ancestor up the outliner tree.

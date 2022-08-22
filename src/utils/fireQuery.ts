@@ -313,7 +313,7 @@ const predefinedSelections: PredefinedSelection[] = [
   },
   {
     test: SUBTRACT_TEST,
-    pull: ({ returnNode }) => `?${returnNode}`,
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:db/id])`,
     mapper: (_, key, result) => {
       const exec = SUBTRACT_TEST.exec(key);
       const arg0 = exec?.[1] || "";
@@ -335,9 +335,9 @@ const predefinedSelections: PredefinedSelection[] = [
   },
   {
     test: ADD_TEST,
-    pull: ({ returnNode }) => `?${returnNode}`,
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:db/id])`,
     mapper: (_, key, result) => {
-      const exec = SUBTRACT_TEST.exec(key);
+      const exec = ADD_TEST.exec(key);
       const arg0 = exec?.[1] || "";
       const arg1 = exec?.[2] || "";
       const val0 = getArgValue(arg0, result);
@@ -524,7 +524,7 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   };
   const { query, formatResult } = isCustomEnabled
     ? {
-        query: customNode,
+        query: customNode as string,
         formatResult: (r: unknown[]) =>
           Promise.resolve({
             text: "",

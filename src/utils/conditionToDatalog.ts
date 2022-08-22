@@ -3,9 +3,113 @@ import parseNlpDate from "roamjs-components/date/parseNlpDate";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type { DatalogClause } from "roamjs-components/types";
-import type {
-  RegisterDatalogTranslator,
-} from "roamjs-components/types/query-builder";
+import type { RegisterDatalogTranslator } from "roamjs-components/types/query-builder";
+
+const getTitleDatalog = ({
+  source,
+  target,
+}: {
+  source: string;
+  target: string;
+}): DatalogClause[] => {
+  const dateMatch = /^\s*{date(?::([^}]+))}\s*$/i.exec(target);
+  if (dateMatch) {
+    const nlp = dateMatch[1] || "";
+    if (nlp) {
+      const date = parseNlpDate(nlp);
+      return [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":node/title" },
+            {
+              type: "constant",
+              value: `"${window.roamAlphaAPI.util.dateToPageTitle(date)}"`,
+            },
+          ],
+        },
+      ];
+    } else {
+      return [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":node/title" },
+            { type: "variable", value: `${source}-Title` },
+          ],
+        },
+        {
+          type: "fn-expr",
+          fn: "re-pattern",
+          arguments: [
+            {
+              type: "constant",
+              value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
+            },
+          ],
+          binding: {
+            type: "bind-scalar",
+            variable: { type: "variable", value: `date-regex` },
+          },
+        },
+        {
+          type: "pred-expr",
+          pred: "re-find",
+          arguments: [
+            { type: "variable", value: "date-regex" },
+            { type: "variable", value: `${source}-Title` },
+          ],
+        },
+      ];
+    }
+  }
+  if (target.startsWith("/") && target.endsWith("/")) {
+    return [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":node/title" },
+          { type: "variable", value: `${source}-Title` },
+        ],
+      },
+      {
+        type: "fn-expr",
+        fn: "re-pattern" as const,
+        arguments: [
+          {
+            type: "constant",
+            value: `"${target.slice(1, -1).replace(/\\/g, "\\\\")}"`,
+          },
+        ],
+        binding: {
+          type: "bind-scalar",
+          variable: { type: "variable", value: `${target}-regex` },
+        },
+      },
+      {
+        type: "pred-expr",
+        pred: "re-find",
+        arguments: [
+          { type: "variable", value: `${target}-regex` },
+          { type: "variable", value: `${source}-Title` },
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      type: "data-pattern",
+      arguments: [
+        { type: "variable", value: source },
+        { type: "constant", value: ":node/title" },
+        { type: "constant", value: `"${normalizePageTitle(target)}"` },
+      ],
+    },
+  ];
+};
 
 const translator: Record<
   string,
@@ -66,84 +170,8 @@ const translator: Record<
     isVariable: true,
   },
   "has title": {
-    callback: ({ source, target }) =>
-      /^\s*{date}\s*$/i.test(target)
-        ? [
-            {
-              type: "data-pattern",
-              arguments: [
-                { type: "variable", value: source },
-                { type: "constant", value: ":node/title" },
-                { type: "variable", value: `${source}-Title` },
-              ],
-            },
-            {
-              type: "fn-expr",
-              fn: "re-pattern",
-              arguments: [
-                {
-                  type: "constant",
-                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
-                },
-              ],
-              binding: {
-                type: "bind-scalar",
-                variable: { type: "variable", value: `date-regex` },
-              },
-            },
-            {
-              type: "pred-expr",
-              pred: "re-find",
-              arguments: [
-                { type: "variable", value: "date-regex" },
-                { type: "variable", value: `${source}-Title` },
-              ],
-            },
-          ]
-        : target.startsWith("/") && target.endsWith("/")
-        ? [
-            {
-              type: "data-pattern",
-              arguments: [
-                { type: "variable", value: source },
-                { type: "constant", value: ":node/title" },
-                { type: "variable", value: `${source}-Title` },
-              ],
-            },
-            {
-              type: "fn-expr",
-              fn: "re-pattern",
-              arguments: [
-                {
-                  type: "constant",
-                  value: `"${target.slice(1, -1).replace(/\\/g, "\\\\")}"`,
-                },
-              ],
-              binding: {
-                type: "bind-scalar",
-                variable: { type: "variable", value: `${target}-regex` },
-              },
-            },
-            {
-              type: "pred-expr",
-              pred: "re-find",
-              arguments: [
-                { type: "variable", value: `${target}-regex` },
-                { type: "variable", value: `${source}-Title` },
-              ],
-            },
-          ]
-        : [
-            {
-              type: "data-pattern",
-              arguments: [
-                { type: "variable", value: source },
-                { type: "constant", value: ":node/title" },
-                { type: "constant", value: `"${normalizePageTitle(target)}"` },
-              ],
-            },
-          ],
-    targetOptions: () => getAllPageNames().concat(["{date}"]),
+    callback: getTitleDatalog,
+    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
@@ -364,54 +392,9 @@ const translator: Record<
           { type: "variable", value: target },
         ],
       },
-      ...(/^\s*{date}\s*$/i.test(target)
-        ? [
-            {
-              type: "data-pattern" as const,
-              arguments: [
-                { type: "variable" as const, value: target },
-                { type: "constant" as const, value: ":node/title" },
-                { type: "variable" as const, value: `${target}-Title` },
-              ],
-            },
-            {
-              type: "fn-expr" as const,
-              fn: "re-pattern" as const,
-              arguments: [
-                {
-                  type: "constant" as const,
-                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
-                },
-              ],
-              binding: {
-                type: "bind-scalar" as const,
-                variable: { type: "variable" as const, value: `date-regex` },
-              },
-            },
-            {
-              type: "pred-expr" as const,
-              pred: "re-find" as const,
-              arguments: [
-                { type: "variable" as const, value: "date-regex" },
-                { type: "variable" as const, value: `${target}-Title` },
-              ],
-            },
-          ]
-        : [
-            {
-              type: "data-pattern" as const,
-              arguments: [
-                { type: "variable" as const, value: target },
-                { type: "constant" as const, value: ":node/title" },
-                {
-                  type: "constant" as const,
-                  value: `"${normalizePageTitle(target)}"`,
-                },
-              ],
-            },
-          ]),
+      ...getTitleDatalog({source: target, target}),
     ],
-    targetOptions: () => getAllPageNames().concat(["{date}"]),
+    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "has heading": {
@@ -438,54 +421,9 @@ const translator: Record<
           { type: "variable", value: target },
         ],
       },
-      ...(/^\s*{date}\s*$/i.test(target)
-        ? [
-            {
-              type: "data-pattern" as const,
-              arguments: [
-                { type: "variable" as const, value: target },
-                { type: "constant" as const, value: ":node/title" },
-                { type: "variable" as const, value: `${target}-Title` },
-              ],
-            },
-            {
-              type: "fn-expr" as const,
-              fn: "re-pattern" as const,
-              arguments: [
-                {
-                  type: "constant" as const,
-                  value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
-                },
-              ],
-              binding: {
-                type: "bind-scalar" as const,
-                variable: { type: "variable" as const, value: `date-regex` },
-              },
-            },
-            {
-              type: "pred-expr" as const,
-              pred: "re-find" as const,
-              arguments: [
-                { type: "variable" as const, value: "date-regex" },
-                { type: "variable" as const, value: `${target}-Title` },
-              ],
-            },
-          ]
-        : [
-            {
-              type: "data-pattern" as const,
-              arguments: [
-                { type: "variable" as const, value: target },
-                { type: "constant" as const, value: ":node/title" },
-                {
-                  type: "constant" as const,
-                  value: `"${normalizePageTitle(target)}"`,
-                },
-              ],
-            },
-          ]),
+      ...getTitleDatalog({source: target, target}),
     ],
-    targetOptions: getAllPageNames,
+    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "created after": {
