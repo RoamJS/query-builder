@@ -12,7 +12,7 @@ const getTitleDatalog = ({
   source: string;
   target: string;
 }): DatalogClause[] => {
-  const dateMatch = /^\s*{date(?::([^}]+))}\s*$/i.exec(target);
+  const dateMatch = /^\s*{date(?::([^}]+))?}\s*$/i.exec(target);
   if (dateMatch) {
     const nlp = dateMatch[1] || "";
     if (nlp) {
@@ -505,6 +505,48 @@ const translator: Record<
         arguments: [
           { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
           { type: "variable", value: `${source}-EditTime` },
+        ],
+      },
+    ],
+    placeholder: "Enter any natural language date value",
+  },
+  "titled before": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":log/id" },
+          { type: "variable", value: `${source}-Log` },
+        ],
+      },
+      {
+        type: "pred-expr",
+        pred: ">",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-Log` },
+        ],
+      },
+    ],
+    placeholder: "Enter any natural language date value",
+  },
+  "titled after": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":log/id" },
+          { type: "variable", value: `${source}-Log` },
+        ],
+      },
+      {
+        type: "pred-expr",
+        pred: "<",
+        arguments: [
+          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          { type: "variable", value: `${source}-Log` },
         ],
       },
     ],

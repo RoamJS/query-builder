@@ -63,8 +63,10 @@ You will use a combination of multiple conditions to select the data you want. H
 - `with title in text` - The `source` page has the exact text `target` somewhere in its page title.
 - `created before` - The `source` block or page was created before the naturally specified `target`
 - `created after` - The `source` block or page was created after the naturally specified `target`
-- `edited before` - The `source` block or page was edited after the naturally specified `target`
+- `edited before` - The `source` block or page was edited before the naturally specified `target`
 - `edited after` - The `source` block or page was edited after the naturally specified `target`
+- `titled before` - The `source` page is a DNP that is befor the naturally specified `target`
+- `titled after` - The `source` page is a DNP that is after the naturally specified `target`
 
 ### Selections
 
