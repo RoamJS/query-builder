@@ -83,7 +83,9 @@ The `label`, which gets specified after **AS**, denotes the name of the column t
 - `Author` - The user who created the block or page
 - `Last Edited By` - The user who created the block or page
 - `node:{node}` - Returns any intermediary node you defined in one of the conditions. For example, `node:page` will return the title of a `page` referenced in a condition.
-- `node:{node}:{field}` - Specify one of the first four options as the field to return the related metadata for the intermediary node. For example, `node:page:Author` will return the user who created the `page` referenced in a condition.
+- `node:{node}:{field}` - Specify one of the first five options as the field to return the related metadata for the intermediary node. For example:
+    - `node:page:Author` will return the user who created the `page` defined in a condition.
+    - `node:page:Client` will return the value of the `Client` attribute from the `page` node defined in a condition.
 - Anything else is assumed to be an attribute of the exact text
 
 You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:

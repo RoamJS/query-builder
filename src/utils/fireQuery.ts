@@ -232,6 +232,20 @@ const formatDate = ({
     : date;
 };
 
+const getBlockAttribute = (key: string, r: PullBlock) => {
+  const block = window.roamAlphaAPI.data.fast.q(
+    `[:find (pull ?b [:block/string :block/uid]) :where [?a :node/title "${normalizePageTitle(
+      key
+    )}"] [?p :block/uid "${
+      r[":block/uid"]
+    }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
+  )?.[0]?.[0] as PullBlock;
+  return {
+    "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
+    "-uid": block?.[":block/uid"],
+  };
+};
+
 const predefinedSelections: PredefinedSelection[] = [
   {
     test: CREATE_DATE_TEST,
@@ -282,6 +296,8 @@ const predefinedSelections: PredefinedSelection[] = [
         ? `[:create/time]`
         : EDIT_DATE_TEST.test(field)
         ? `[:edit/time]`
+        : field
+        ? `[:block/uid]`
         : `[:node/title :block/uid :block/string]`;
 
       return isVariableExposed(where, node) ? `(pull ?${node} ${fields})` : "";
@@ -305,6 +321,8 @@ const predefinedSelections: PredefinedSelection[] = [
         ? getUserDisplayNameById(r?.[":create/user"]?.[":db/id"])
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
+        : match
+        ? getBlockAttribute(match, r)
         : {
             "": r?.[":node/title"] || r[":block/string"] || "",
             "-uid": r[":block/uid"],
@@ -361,17 +379,7 @@ const predefinedSelections: PredefinedSelection[] = [
     test: /.*/,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
     mapper: (r, key) => {
-      const block = window.roamAlphaAPI.data.fast.q(
-        `[:find (pull ?b [:block/string :block/uid]) :where [?a :node/title "${normalizePageTitle(
-          key
-        )}"] [?p :block/uid "${
-          r[":block/uid"]
-        }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
-      )?.[0]?.[0] as PullBlock;
-      return {
-        "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
-        "-uid": block?.[":block/uid"],
-      };
+      return getBlockAttribute(key, r);
     },
   },
 ];
