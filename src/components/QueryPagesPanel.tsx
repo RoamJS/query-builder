@@ -10,15 +10,6 @@ export const getQueryPages = (extensionAPI: OnloadArgs["extensionAPI"]) => {
 const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
   const [texts, setTexts] = useState(() => getQueryPages(extensionAPI));
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current.className = "rm-extensions-settings";
-    if (!inputRef.current.style) {
-      console.log(inputRef);
-    }
-    inputRef.current.style.minWidth = "100%";
-    inputRef.current.style.maxWidth = "100%";
-  }, [inputRef]);
   return (
     <div
       className="flex flex-col"
@@ -28,11 +19,7 @@ const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
       }}
     >
       <div className={"flex gap-2"}>
-        <InputGroup
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          inputRef={inputRef}
-        />
+        <InputGroup value={value} onChange={(e) => setValue(e.target.value)} />
         <Button
           icon={"plus"}
           minimal

@@ -492,7 +492,7 @@ const getEnglishQuery = (args: FireQueryArgs) => {
       parts.definedSelections
         .map((c, i) => (prev: SearchResult) => {
           const pullResult = result[i];
-          return typeof pullResult === "object"
+          return typeof pullResult === "object" && pullResult !== null
             ? Promise.resolve(
                 c.mapper(pullResult as PullBlock, c.key, prev)
               ).then((output) => ({

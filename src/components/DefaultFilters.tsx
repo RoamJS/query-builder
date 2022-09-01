@@ -25,12 +25,6 @@ const Filter = ({
   onRemove: () => void;
 }) => {
   const [newFilter, setNewFilter] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current.className = "rm-extensions-settings";
-    inputRef.current.style.minWidth = "100%";
-    inputRef.current.style.maxWidth = "100%";
-  }, [inputRef]);
   return (
     <div
       style={{
@@ -69,7 +63,6 @@ const Filter = ({
         <InputGroup
           value={newFilter}
           onChange={(e) => setNewFilter(e.target.value)}
-          inputRef={inputRef}
         />
         <div
           className="items-center gap-1 flex-shrink-0"
@@ -121,12 +114,6 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
     )
   );
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current.className = "rm-extensions-settings";
-    inputRef.current.style.minWidth = "100%";
-    inputRef.current.style.maxWidth = "100%";
-  }, [inputRef]);
   useEffect(() => {
     extensionAPI.settings.set(
       "default-filters",
@@ -183,7 +170,6 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
         <InputGroup
           value={newColumn}
           onChange={(e) => setNewColumn(e.target.value)}
-          inputRef={inputRef}
         />
         <Button
           icon={"add"}

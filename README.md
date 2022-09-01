@@ -132,6 +132,16 @@ The above component is also available as a block component. This allows you to c
 
 Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
+### Developer API
+
+For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
+- `listActiveQueries` - `() => { uid: string }[]` Returns an array of blocks or pages where the user has a query defined from query builder. 
+- `runQuery` - `(uid: string) => Promise<Result[]>` Runs the query defined at the input `uid` and returns a promise that resolves to the array of results from the user's graphs. `Result`s have the following schema:
+    - `text` - `string` The page title or block text of the primary node involved in the result.
+    - `uid` - `string` The reference of the primary node involved in the result.
+    - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
+    - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types. 
+
 ### Demo
 
 <video src="https://roamjs.com/loom/12bdc4c42cf8449e8b7a712fe285a072.mp4" controls="controls"></video>

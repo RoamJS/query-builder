@@ -34,38 +34,12 @@ import type {
   QBClauseData,
   Result,
 } from "roamjs-components/types/query-builder";
+import parseResultSettings from "../utils/parseResultSettings";
+import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
+import postProcessResults from "../utils/postProcessResults";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
-
-export const sortFunction =
-  (key: string, descending?: boolean) => (a: Result, b: Result) => {
-    const _aVal = a[key];
-    const _bVal = b[key];
-    const transform = (_val: Result[string]) =>
-      typeof _val === "string"
-        ? DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_val))
-          ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val))
-          : /^(-)?\d+(\.\d*)?$/.test(_val)
-          ? Number(_val)
-          : _val
-        : _val;
-    const aVal = transform(_aVal);
-    const bVal = transform(_bVal);
-    if (aVal instanceof Date && bVal instanceof Date) {
-      return descending
-        ? bVal.valueOf() - aVal.valueOf()
-        : aVal.valueOf() - bVal.valueOf();
-    } else if (typeof aVal === "number" && typeof bVal === "number") {
-      return descending ? bVal - aVal : aVal - bVal;
-    } else if (typeof aVal !== "undefined" && typeof bVal !== "undefined") {
-      return descending
-        ? bVal.toString().localeCompare(aVal.toString())
-        : aVal.toString().localeCompare(bVal.toString());
-    } else {
-      return 0;
-    }
-  };
 
 const VIEWS = ["link", "plain", "embed"];
 
@@ -213,7 +187,7 @@ const ResultView = ({
     []
   );
   const cell = (key: string) => {
-    const value = r[key] || "";
+    const value = toCellValue(r[key] || "");
     const formattedValue =
       typeof value === "string" &&
       r[`${key}-uid`] &&
@@ -367,30 +341,6 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
-const getFilterEntries = (
-  n: Pick<RoamBasicNode, "children">
-): [string, Filters][] =>
-  n.children.map((c) => [
-    c.text,
-    {
-      includes: {
-        values: new Set(
-          getSubTree({ tree: c.children, key: "includes" }).children.map(
-            (t) => t.text
-          )
-        ),
-      },
-      excludes: {
-        values: new Set(
-          getSubTree({ tree: c.children, key: "excludes" }).children.map(
-            (t) => t.text
-          )
-        ),
-      },
-      uid: c.uid,
-    },
-  ]);
-
 const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   parentUid,
   header = "Results",
@@ -404,17 +354,11 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
-  globalFiltersData = {},
-  globalPageSize = 10,
 
   // @ts-ignore
   extraColumn,
 }) => {
-  const tree = useMemo(() => getBasicTreeByParentUid(parentUid), [parentUid]);
-  const resultNode = useSubTree({ tree, key: "results" });
-  const sortsNode = useSubTree({ tree: resultNode.children, key: "sorts" });
-  const filtersNode = useSubTree({ tree: resultNode.children, key: "filters" });
-  const viewsNode = useSubTree({ tree: resultNode.children, key: "views" });
+  const extensionAPI = useExtensionAPI();
   const columns = useMemo(
     () =>
       results.length
@@ -429,98 +373,33 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
         : ["text"],
     [results, extraColumn]
   );
-  const [activeSort, setActiveSort] = useState<Sorts>(() =>
-    sortsNode.children.map((s) => ({
-      key: s.text,
-      descending: toFlexRegex("true").test(s.children[0]?.text || ""),
-    }))
+  const settings = useMemo(
+    () => parseResultSettings(parentUid, columns, extensionAPI),
+    [parentUid]
   );
-  const savedFilterData = useMemo(() => {
-    const filterEntries = getFilterEntries(filtersNode);
-    return filterEntries.length
-      ? Object.fromEntries(filterEntries)
-      : globalFiltersData;
-  }, [filtersNode, globalFiltersData]);
-  const savedViewData = useMemo(
-    () =>
-      Object.fromEntries(
-        viewsNode.children.map((c) => [c.text, c.children[0]?.text])
-      ),
-    [filtersNode]
-  );
-  const [filters, setFilters] = useState<FilterData>(() =>
-    Object.fromEntries(
-      columns.map((key) => [
-        key,
-        savedFilterData[key] || {
-          includes: { values: new Set() },
-          excludes: { values: new Set() },
-        },
-      ])
-    )
-  );
-  const sortedResults = useMemo(() => {
-    const resultsToSort = resultFilter ? results.filter(resultFilter) : results;
-    return resultsToSort
-      .filter((r) => {
-        return Object.keys(filters).every(
-          (filterKey) =>
-            (filters[filterKey].includes.values.size === 0 &&
-              !filters[filterKey].excludes.values.has(
-                toCellValue(r[filterKey])
-              )) ||
-            filters[filterKey].includes.values.has(toCellValue(r[filterKey]))
-        );
-      })
-      .sort((a, b) => {
-        for (const sort of activeSort) {
-          const cmpResult = sortFunction(sort.key, sort.descending)(a, b);
-          if (cmpResult !== 0) return cmpResult;
-        }
-        return 0;
-      })
-      .map((r) => ({
-        uid: r.uid,
-        text: r.text,
-        ...Object.fromEntries(
-          Object.entries(r)
-            .filter(([k]) => k !== "uid" && k !== "text")
-            .map(([k, v]) => [k, toCellValue(v)])
-        ),
-      }));
-  }, [results, activeSort, filters, resultFilter]);
-  const defaultRandomValue = useMemo(
-    () => getSettingIntFromTree({ tree: resultNode.children, key: "random" }),
-    [resultNode]
-  );
-  const randomRef = useRef(defaultRandomValue);
-  const [random, setRandom] = useState({ count: defaultRandomValue });
-  const resultsInView = useMemo(
-    () =>
-      random.count > 0
-        ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, random.count)
-        : sortedResults,
-    [random, sortedResults]
-  );
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(
-    () =>
-      getSettingIntFromTree({ tree: resultNode.children, key: "size" }) ||
-      globalPageSize
-  );
+  const [activeSort, setActiveSort] = useState<Sorts>(settings.activeSort);
+  const [filters, setFilters] = useState<FilterData>(() => settings.filters);
+  const randomRef = useRef(settings.random);
+  const [random, setRandom] = useState({ count: settings.random });
+  const [page, setPage] = useState(settings.page);
+  const [pageSize, setPageSize] = useState(settings.pageSize);
   const pageSizeTimeoutRef = useRef(0);
-  const paginatedResults = useMemo(
-    () => resultsInView.slice((page - 1) * pageSize, page * pageSize),
-    [page, pageSize, resultsInView]
+  const [views, setViews] = useState(settings.views);
+
+  const preProcessedResults = useMemo(
+    () => (resultFilter ? results.filter(resultFilter) : results),
+    [results, resultFilter]
   );
-  const [views, setViews] = useState(
-    Object.fromEntries(
-      columns.map((key) => [
-        key,
-        savedViewData[key] || (key === "text" ? "link" : "plain"),
-      ])
-    )
-  );
+  const { allResults, paginatedResults } = useMemo(() => {
+    return postProcessResults(preProcessedResults, {
+      activeSort,
+      filters,
+      random: random.count,
+      page,
+      pageSize,
+    });
+  }, [preProcessedResults, activeSort, filters]);
+
   const [showContent, setShowContent] = useState(false);
   useEffect(() => {
     onResultsInViewChange?.(paginatedResults);
@@ -671,8 +550,8 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 )}
                 {!preventExport && (
                   <Export
-                    results={resultsInView}
-                    exportTypes={getExportTypes?.(resultsInView)}
+                    results={allResults}
+                    exportTypes={getExportTypes?.(allResults)}
                   />
                 )}
                 {onEdit && (
@@ -719,7 +598,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                   setActiveSort={setActiveSort}
                   filters={filters}
                   setFilters={setFilters}
-                  initialFilter={savedFilterData[c]}
+                  initialFilter={settings.filters[c]}
                   view={views[c]}
                   onViewChange={(v) => setViews({ ...views, [c]: v })}
                 />
@@ -759,7 +638,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                 >
                   <span>
                     <InputGroup
-                      defaultValue={defaultRandomValue.toString()}
+                      defaultValue={settings.random.toString()}
                       onChange={(e) =>
                         (randomRef.current = Number(e.target.value))
                       }
@@ -814,19 +693,19 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                       icon={"chevron-right"}
                       onClick={() => setPage(page + 1)}
                       disabled={
-                        page === Math.ceil(resultsInView.length / pageSize) ||
-                        resultsInView.length === 0
+                        page === Math.ceil(allResults.length / pageSize) ||
+                        allResults.length === 0
                       }
                     />
                     <Button
                       minimal
                       icon={"double-chevron-right"}
                       disabled={
-                        page === Math.ceil(resultsInView.length / pageSize) ||
-                        resultsInView.length === 0
+                        page === Math.ceil(allResults.length / pageSize) ||
+                        allResults.length === 0
                       }
                       onClick={() =>
-                        setPage(Math.ceil(resultsInView.length / pageSize))
+                        setPage(Math.ceil(allResults.length / pageSize))
                       }
                     />
                   </span>

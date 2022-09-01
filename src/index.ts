@@ -5,7 +5,6 @@ import getUidsFromId from "roamjs-components/dom/getUidsFromId";
 import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
 import addStyle from "roamjs-components/dom/addStyle";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -14,7 +13,7 @@ import QueryPage, {
   renderQueryBlock,
 } from "./components/QueryPage";
 import QueryEditor from "./components/QueryEditor";
-import ResultsView, { sortFunction } from "./components/ResultsView";
+import ResultsView from "./components/ResultsView";
 import fireQuery, {
   registerSelection,
   getWhereClauses,
@@ -31,12 +30,11 @@ import { ExportDialog } from "./components/Export";
 import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
 import extractRef from "roamjs-components/util/extractRef";
-import toFlexRegex from "roamjs-components/util/toFlexRegex";
-import type { InputTextNode } from "roamjs-components/types/native";
-import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
+import type { InputTextNode, PullBlock } from "roamjs-components/types/native";
 import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings";
 import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import runQuery from "./utils/runQuery";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -44,7 +42,8 @@ const loadedElsewhere = document.currentScript
 
 export default runExtension({
   migratedTo: loadedElsewhere ? undefined : "Query Builder",
-  run: async ({ extensionAPI }) => {
+  run: async (onloadArgs) => {
+    const { extensionAPI } = onloadArgs;
     const style = addStyle(`.bp3-button:focus {
     outline-width: 2px;
 }
@@ -249,7 +248,7 @@ export default runExtension({
               pageUid: uid,
               parent,
               defaultReturnNode: "node",
-              extensionAPI,
+              onloadArgs,
             });
           }
         }
@@ -258,7 +257,7 @@ export default runExtension({
 
     const queryBlockObserver = createButtonObserver({
       attribute: "query-block",
-      render: (b) => renderQueryBlock(extensionAPI)(b),
+      render: (b) => renderQueryBlock(b, onloadArgs),
     });
 
     const originalQueryBuilderObserver = createButtonObserver({
@@ -307,35 +306,10 @@ export default runExtension({
         ({ proccessBlockText }) =>
         (queryUid, format = "(({uid}))") => {
           const parentUid = extractRef(queryUid);
-          const tree = getBasicTreeByParentUid(parentUid);
-          const resultNode = getSubTree({ tree, key: "results" });
-          const sortsNode = getSubTree({
-            tree: resultNode.children,
-            key: "sorts",
-          });
-          const random = getSettingIntFromTree({
-            tree: resultNode.children,
-            key: "random",
-          });
-          const activeSort = sortsNode.children.map((s) => ({
-            key: s.text,
-            descending: toFlexRegex("true").test(s.children[0]?.text || ""),
-          }));
-          return fireQuery(parseQuery(parentUid)).then((results) => {
-            const sortedResults = results.sort((a, b) => {
-              for (const sort of activeSort) {
-                const cmpResult = sortFunction(sort.key, sort.descending)(a, b);
-                if (cmpResult !== 0) return cmpResult;
-              }
-              return 0;
-            });
-            const returnedResults =
-              random > 0
-                ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, random)
-                : sortedResults;
-            return returnedResults
+          return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
+            return allResults
               .map((r) =>
-                format.replace(/{([^}]+)}/, (_, i) => {
+                format.replace(/{([^}]+)}/, (_, i: string) => {
                   const value = r[i];
                   return typeof value === "string"
                     ? value
@@ -372,6 +346,26 @@ export default runExtension({
       getWhereClauses,
       // @ts-ignore This is highly experimental - exposing this method for use in D-G.
       getDatalogQueryComponents,
+      
+      // ALL TYPES ABOVE THIS COMMENT ARE SCHEDULED TO MOVE BACK INTO QUERY BUILDER AS INTERNAL
+      
+      runQuery: (parentUid: string) =>
+        runQuery(parentUid, extensionAPI).then(({ allResults }) => allResults),
+      listActiveQueries: () =>
+        (
+          window.roamAlphaAPI.data.fast.q(
+            `[:find (pull ?b [:block/uid]) :where [or-join [?b] 
+                 [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block}}"]] ]
+                 ${getQueryPages(extensionAPI).map(
+                   (p) =>
+                     `[and [?b :node/title ?t] [[re-pattern "^${p.replace(
+                       /\*/,
+                       ".*"
+                     )}$"] ?regex] [[re-find ?regex ?t]]]`
+                 )}
+            ]]`
+          ) as [PullBlock][]
+        ).map((b) => ({ uid: b[0][":block/uid"] })),
     };
 
     return {

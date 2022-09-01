@@ -16,7 +16,9 @@ import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import { OnloadArgs } from "roamjs-components/types/native";
-import { StoredFilters } from "./DefaultFilters";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
 
 type Props = Parameters<QueryPageComponent>[0];
 
@@ -45,14 +47,12 @@ const ensureSetting = ({
   );
 };
 
-const QueryPage = ({
-  pageUid,
-  defaultReturnNode,
-  getExportTypes,
-  hideMetadata = false,
-  globalFiltersData,
-  globalPageSize,
-}: Props) => {
+const QueryPage = ({ pageUid, defaultReturnNode, getExportTypes }: Props) => {
+  const extensionAPI = useExtensionAPI();
+  const hideMetadata = useMemo(
+    () => !!extensionAPI.settings.get("hide-metadata"),
+    [extensionAPI]
+  );
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const [isEdit, _setIsEdit] = useState(
     () => !!getSubTree({ tree, key: "editing" }).uid
@@ -191,8 +191,6 @@ const QueryPage = ({
             }
             results={results.map(({ id, ...a }) => a)}
             onRefresh={onRefresh}
-            globalFiltersData={globalFiltersData}
-            globalPageSize={globalPageSize}
           />
         ) : (
           <></>
@@ -202,56 +200,20 @@ const QueryPage = ({
   );
 };
 
-const getSettings = (extensionAPI: OnloadArgs["extensionAPI"]) => {
-  return {
-    globalFiltersData: Object.fromEntries(
-      Object.entries(
-        (extensionAPI.settings.get("default-filters") as Record<
-          string,
-          StoredFilters
-        >) || {}
-      ).map(([k, v]) => [
-        k,
-        {
-          includes: Object.fromEntries(
-            Object.entries(v.includes || {}).map(([k, v]) => [k, new Set(v)])
-          ),
-          excludes: Object.fromEntries(
-            Object.entries(v.excludes || {}).map(([k, v]) => [k, new Set(v)])
-          ),
-        },
-      ])
-    ),
-    hideMetadata: !!extensionAPI.settings.get("hide-metadata"),
-    globalPageSize:
-      Number(extensionAPI.settings.get("default-page-size")) || 10,
-  };
-};
-
-export const renderQueryBlock = (extensionAPI: OnloadArgs["extensionAPI"]) =>
-  createComponentRender(
-    ({ blockUid }) => (
-      <QueryPage
-        pageUid={blockUid}
-        defaultReturnNode={"node"}
-        // @ts-ignore
-        {...getSettings(extensionAPI)}
-      />
-    ),
-    "roamjs-query-builder-parent"
-  );
+export const renderQueryBlock = createComponentRender(
+  ({ blockUid }) => <QueryPage pageUid={blockUid} defaultReturnNode={"node"} />,
+  "roamjs-query-builder-parent"
+);
 
 export const render = ({
   parent,
-  extensionAPI,
+  onloadArgs,
   ...props
-}: { parent: HTMLElement; extensionAPI: OnloadArgs["extensionAPI"] } & Props) =>
+}: { parent: HTMLElement; onloadArgs: OnloadArgs } & Props) =>
   ReactDOM.render(
-    <QueryPage
-      {...props}
-      // @ts-ignore
-      {...getSettings(extensionAPI)}
-    />,
+    <ExtensionApiContextProvider {...onloadArgs}>
+      <QueryPage {...props} />
+    </ExtensionApiContextProvider>,
     parent
   );
 
