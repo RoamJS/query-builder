@@ -398,7 +398,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
       page,
       pageSize,
     });
-  }, [preProcessedResults, activeSort, filters]);
+  }, [preProcessedResults, activeSort, filters, page, pageSize, random.count]);
 
   const [showContent, setShowContent] = useState(false);
   useEffect(() => {
