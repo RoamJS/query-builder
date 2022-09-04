@@ -42,8 +42,14 @@ const postProcessResults = (
         (filterKey) =>
           (settings.filters[filterKey].includes.values.size === 0 &&
             !settings.filters[filterKey].excludes.values.has(
+              extractTag(r[filterKey] as string)
+            ) &&
+            !settings.filters[filterKey].excludes.values.has(
               r[filterKey] as string
             )) ||
+          settings.filters[filterKey].includes.values.has(
+            extractTag(r[filterKey] as string)
+          ) ||
           settings.filters[filterKey].includes.values.has(
             r[filterKey] as string
           )
