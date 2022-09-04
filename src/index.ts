@@ -35,6 +35,8 @@ import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings"
 import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import runQuery from "./utils/runQuery";
+import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import React from "react";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -333,7 +335,12 @@ export default runExtension({
       ExportDialog,
       QueryEditor,
       QueryPage,
-      ResultsView,
+      ResultsView: (props) =>
+        React.createElement(
+          ExtensionApiContextProvider,
+          onloadArgs,
+          React.createElement(ResultsView, props)
+        ),
       fireQuery,
       parseQuery,
       conditionToDatalog,
@@ -346,9 +353,9 @@ export default runExtension({
       getWhereClauses,
       // @ts-ignore This is highly experimental - exposing this method for use in D-G.
       getDatalogQueryComponents,
-      
+
       // ALL TYPES ABOVE THIS COMMENT ARE SCHEDULED TO MOVE BACK INTO QUERY BUILDER AS INTERNAL
-      
+
       runQuery: (parentUid: string) =>
         runQuery(parentUid, extensionAPI).then(({ allResults }) => allResults),
       listActiveQueries: () =>
