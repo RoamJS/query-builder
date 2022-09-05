@@ -28,7 +28,6 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
-import type { RoamBasicNode } from "roamjs-components/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import type {
   QBClauseData,

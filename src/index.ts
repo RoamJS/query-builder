@@ -334,7 +334,12 @@ export default runExtension({
     window.roamjs.extension.queryBuilder = {
       ExportDialog,
       QueryEditor,
-      QueryPage,
+      QueryPage: (props) =>
+        React.createElement(
+          ExtensionApiContextProvider,
+          onloadArgs,
+          React.createElement(QueryPage, props)
+        ),
       ResultsView: (props) =>
         React.createElement(
           ExtensionApiContextProvider,
