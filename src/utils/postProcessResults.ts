@@ -41,15 +41,25 @@ const postProcessResults = (
       return Object.keys(settings.filters).every(
         (filterKey) =>
           (settings.filters[filterKey].includes.values.size === 0 &&
-            !settings.filters[filterKey].excludes.values.has(
-              extractTag(r[filterKey] as string)
-            ) &&
+            (typeof r[filterKey] !== "string" ||
+              !settings.filters[filterKey].excludes.values.has(
+                extractTag(r[filterKey] as string)
+              )) &&
+            (r[filterKey] instanceof Date ||
+              !settings.filters[filterKey].excludes.values.has(
+                window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
+              )) &&
             !settings.filters[filterKey].excludes.values.has(
               r[filterKey] as string
             )) ||
-          settings.filters[filterKey].includes.values.has(
-            extractTag(r[filterKey] as string)
-          ) ||
+          (typeof r[filterKey] === "string" &&
+            settings.filters[filterKey].includes.values.has(
+              extractTag(r[filterKey] as string)
+            )) ||
+          (r[filterKey] instanceof Date &&
+            settings.filters[filterKey].includes.values.has(
+              window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
+            )) ||
           settings.filters[filterKey].includes.values.has(
             r[filterKey] as string
           )
