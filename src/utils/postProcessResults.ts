@@ -34,7 +34,7 @@ const sortFunction =
 
 const postProcessResults = (
   results: Result[],
-  settings: Omit<ReturnType<typeof parseResultSettings>, "views">
+  settings: Omit<ReturnType<typeof parseResultSettings>, "views" | "layout">
 ) => {
   const sortedResults = results
     .filter((r) => {

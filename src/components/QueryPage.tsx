@@ -47,7 +47,13 @@ const ensureSetting = ({
   );
 };
 
-const QueryPage = ({ pageUid, defaultReturnNode, getExportTypes }: Props) => {
+const QueryPage = ({
+  pageUid,
+  defaultReturnNode,
+  getExportTypes,
+  // @ts-ignore
+  isEditBlock,
+}: Props) => {
   const extensionAPI = useExtensionAPI();
   const hideMetadata = useMemo(
     () => !!extensionAPI.settings.get("hide-metadata"),
@@ -176,7 +182,6 @@ const QueryPage = ({ pageUid, defaultReturnNode, getExportTypes }: Props) => {
             />
           </>
         )}
-        {isEdit && hasResults && <hr style={{ borderColor: "#333333" }} />}
         {loading ? (
           <p className="px-8 py-4">
             <Spinner /> Loading Results...
@@ -187,10 +192,14 @@ const QueryPage = ({ pageUid, defaultReturnNode, getExportTypes }: Props) => {
             onEdit={() => setIsEdit(true)}
             getExportTypes={getExportTypes}
             header={
-              error ? <div className="text-red-700 mb-4">{error}</div> : <div />
+              error ? (
+                <div className="text-red-700 mb-4">{error}</div>
+              ) : undefined
             }
             results={results.map(({ id, ...a }) => a)}
             onRefresh={onRefresh}
+            // @ts-ignore
+            isEditBlock={isEditBlock}
           />
         ) : (
           <></>
@@ -201,7 +210,14 @@ const QueryPage = ({ pageUid, defaultReturnNode, getExportTypes }: Props) => {
 };
 
 export const renderQueryBlock = createComponentRender(
-  ({ blockUid }) => <QueryPage pageUid={blockUid} defaultReturnNode={"node"} />,
+  ({ blockUid }) => (
+    <QueryPage
+      pageUid={blockUid}
+      defaultReturnNode={"node"}
+      //@ts-ignore
+      isEditBlock
+    />
+  ),
   "roamjs-query-builder-parent"
 );
 

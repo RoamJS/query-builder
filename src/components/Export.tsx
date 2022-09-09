@@ -2,9 +2,11 @@ import {
   Button,
   Classes,
   Dialog,
+  Icon,
   InputGroup,
   Intent,
   Label,
+  MenuItem,
   Spinner,
   SpinnerSize,
   Tooltip,
@@ -17,7 +19,10 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import { Result, ExportDialogComponent } from "roamjs-components/types/query-builder";
+import {
+  Result,
+  ExportDialogComponent,
+} from "roamjs-components/types/query-builder";
 
 type Props = Parameters<ExportDialogComponent>[0];
 
@@ -68,8 +73,62 @@ const toMarkdown = ({
 export const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
-  exportTypes,
   results = [],
+  exportTypes = [
+    {
+      name: "CSV",
+      callback: async ({ filename }) => {
+        const resolvedResults = Array.isArray(results)
+          ? results
+          : await results();
+        const keys = Object.keys(resolvedResults[0]).filter(
+          (u) => !/uid/i.test(u)
+        );
+        const header = `${keys.join(",")}\n`;
+        const data = resolvedResults
+          .map((r) =>
+            keys
+              .map((k) => r[k].toString())
+              .map((v) => (v.includes(",") ? `"${v}"` : v))
+          )
+          .join("\n");
+        return [
+          {
+            title: `${filename.replace(/\.csv/, "")}.csv`,
+            content: `${header}${data}`,
+          },
+        ];
+      },
+    },
+    {
+      name: "Markdown",
+      callback: async () =>
+        (Array.isArray(results) ? results : await results())
+          .map(({ uid, ...rest }) => {
+            const v = (
+              (
+                window.roamAlphaAPI.data.fast.q(
+                  `[:find (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
+                )[0]?.[0] as PullBlock
+              )?.[":children/view-type"] || ":bullet"
+            ).slice(1) as ViewType;
+            const treeNode = getFullTreeByParentUid(uid);
+
+            const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
+              .filter((k) => !/uid/i.test(k))
+              .map(
+                (k) => `${k}: ${rest[k].toString()}`
+              )}---\n\n${treeNode.children
+              .map((c) => toMarkdown({ c, v, i: 0 }))
+              .join("\n")}\n`;
+            return { title: rest.text, content };
+          })
+          .map(({ title, content }) => ({
+            title: titleToFilename(title),
+            content,
+          })),
+    },
+  ],
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,7 +191,11 @@ export const ExportDialog: ExportDialogComponent = ({
             onChange={(e) => setFilename(e.target.value)}
           />
         </Label>
-        <span>Exporting {typeof results === 'function' ? "unknown number of" : results.length} results</span>
+        <span>
+          Exporting{" "}
+          {typeof results === "function" ? "unknown number of" : results.length}{" "}
+          results
+        </span>
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -184,73 +247,4 @@ export const ExportDialog: ExportDialogComponent = ({
   );
 };
 
-export const Export = ({
-  results,
-  exportTypes = [
-    {
-      name: "CSV",
-      callback: async ({ filename }) => {
-        const keys = Object.keys(results[0]).filter((u) => !/uid/i.test(u));
-        const header = `${keys.join(",")}\n`;
-        const data = results
-          .map((r) =>
-            keys
-              .map((k) => r[k].toString())
-              .map((v) => (v.includes(",") ? `"${v}"` : v))
-          )
-          .join("\n");
-        return [
-          {
-            title: `${filename.replace(/\.csv/, "")}.csv`,
-            content: `${header}${data}`,
-          },
-        ];
-      },
-    },
-    {
-      name: "Markdown",
-      callback: async () =>
-        results
-          .map(({ uid, ...rest }) => {
-            const v = (
-              (
-                window.roamAlphaAPI.data.fast.q(
-                  `[:find (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
-                )[0]?.[0] as PullBlock
-              )?.[":children/view-type"] || ":bullet"
-            ).slice(1) as ViewType;
-            const treeNode = getFullTreeByParentUid(uid);
-
-            const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
-              .filter((k) => !/uid/i.test(k))
-              .map(
-                (k) => `${k}: ${rest[k].toString()}`
-              )}---\n\n${treeNode.children
-              .map((c) => toMarkdown({ c, v, i: 0 }))
-              .join("\n")}\n`;
-            return { title: rest.text, content };
-          })
-          .map(({ title, content }) => ({
-            title: titleToFilename(title),
-            content,
-          })),
-    },
-  ],
-}: Pick<Props, "exportTypes"> & { results: Result[] }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <>
-      <Tooltip content={"Export Results"}>
-        <Button icon={"export"} onClick={() => setIsOpen(true)} minimal />
-      </Tooltip>
-      <ExportDialog
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        results={results}
-        exportTypes={exportTypes}
-      />
-    </>
-  );
-};
-
-export default Export;
+export default ExportDialog;

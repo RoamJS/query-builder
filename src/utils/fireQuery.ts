@@ -522,6 +522,26 @@ const getEnglishQuery = (args: FireQueryArgs) => {
   };
 };
 
+const backend = (query: string) =>
+  fetch(
+    `https://api.roamresearch.com/api/graph/${window.roamAlphaAPI.graph.name}/q`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization:
+          "Bearer roam-graph-token-3tVTfiimleRQ8z52foEClRCzfZ5lobiZog6u2z-N",
+        "Content-Type": "application/json",
+      },
+      redirect: "manual",
+      method: "POST",
+      body: JSON.stringify({
+        query,
+      }),
+    }
+  );
+//@ts-ignore
+window.backend = backend;
+
 const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   args
 ) => {

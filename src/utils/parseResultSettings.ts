@@ -2,6 +2,7 @@ import { Filters } from "roamjs-components/components/Filter";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { OnloadArgs, RoamBasicNode } from "roamjs-components/types/native";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
@@ -80,6 +81,10 @@ const parseResultSettings = (
   const savedViewData = Object.fromEntries(
     viewsNode.children.map((c) => [c.text, c.children[0]?.text])
   );
+  const layout = getSettingValueFromTree({
+    tree: resultNode.children,
+    key: "layout",
+  });
   return {
     activeSort: sortsNode.children.map((s) => ({
       key: s.text,
@@ -102,6 +107,7 @@ const parseResultSettings = (
     ),
     random,
     pageSize,
+    layout,
     page: 1, // TODO save in roam data
   };
 };

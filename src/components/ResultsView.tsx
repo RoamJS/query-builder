@@ -14,17 +14,11 @@ import {
   Switch,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import createBlock from "roamjs-components/writes/createBlock";
-import { render as renderToast } from "roamjs-components/components/Toast";
-import toFlexRegex from "roamjs-components/util/toFlexRegex";
-import useSubTree from "roamjs-components/hooks/useSubTree";
 import extractTag from "roamjs-components/util/extractTag";
-import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
-import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
@@ -36,6 +30,9 @@ import type {
 import parseResultSettings from "../utils/parseResultSettings";
 import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import postProcessResults from "../utils/postProcessResults";
+import setInputSetting from "roamjs-components/util/setInputSetting";
+import getUids from "roamjs-components/dom/getUids";
+import Charts from "./Charts";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -93,24 +90,9 @@ const ResultHeader = ({
         }
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <span>{c}</span>
+      <div className="flex items-center">
+        <span className="inline-block mr-4">{c}</span>
         <span>
-          {sortIndex >= 0 && (
-            <span>
-              <Icon
-                icon={
-                  activeSort[sortIndex].descending ? "sort-desc" : "sort-asc"
-                }
-              />
-              ({sortIndex + 1})
-            </span>
-          )}
           <Filter
             data={filterData}
             initialValue={initialFilter}
@@ -120,11 +102,12 @@ const ResultHeader = ({
             renderButtonText={(s) =>
               s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
             }
+            small
           />
           <span onClick={(e) => e.stopPropagation()}>
             <Tooltip content={"Switch View"}>
               <Popover
-                target={<Button icon={"eye-open"} minimal />}
+                target={<Button icon={"eye-open"} minimal small />}
                 content={
                   <Menu style={{ padding: 16 }}>
                     {VIEWS.map((c) => (
@@ -139,6 +122,16 @@ const ResultHeader = ({
               />
             </Tooltip>
           </span>
+          {sortIndex >= 0 && (
+            <span>
+              <Icon
+                icon={
+                  activeSort[sortIndex].descending ? "sort-desc" : "sort-asc"
+                }
+              />
+              <span style={{ fontSize: 8 }}>({sortIndex + 1})</span>
+            </span>
+          )}
         </span>
       </div>
     </td>
@@ -304,6 +297,7 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         fontSize: 10,
         position: "relative",
         display: "flex",
+        padding: "8px 4px",
       }}
     >
       <div
@@ -340,9 +334,15 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
+const SUPPORTED_LAYOUTS = [
+  { id: "table", icon: "join-table" },
+  { id: "line", icon: "chart" },
+  { id: "bar", icon: "vertical-bar-chart-asc" },
+] as const;
+
 const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   parentUid,
-  header = "Results",
+  header,
   results,
   hideResults = false,
   resultFilter,
@@ -356,6 +356,8 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
 
   // @ts-ignore
   extraColumn,
+  // @ts-ignore
+  isEditBlock,
 }) => {
   const extensionAPI = useExtensionAPI();
   const columns = useMemo(
@@ -403,12 +405,178 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   useEffect(() => {
     onResultsInViewChange?.(paginatedResults);
   }, [paginatedResults]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isEditRandom, setIsEditRandom] = useState(false);
+  const [isEditLayout, setIsEditLayout] = useState(false);
+  const [layout, setLayout] = useState(
+    settings.layout || SUPPORTED_LAYOUTS[0].id
+  );
   return (
-    <div className="roamjs-query-results-view w-full">
-      <div
-        tabIndex={-1}
-        className={"roamjs-query-results-header relative outline-none p-4"}
-      >
+    <div
+      className="roamjs-query-results-view w-full relative"
+      ref={containerRef}
+    >
+      <Export
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        results={allResults}
+        exportTypes={getExportTypes?.(allResults)}
+      />
+      <span className="absolute top-2 right-2 z-10">
+        {onRefresh && (
+          <Tooltip content={"Refresh Results"}>
+            <Button icon={"refresh"} minimal onClick={onRefresh} small />
+          </Tooltip>
+        )}
+        <Popover
+          isOpen={moreMenuOpen}
+          target={
+            <Button
+              minimal
+              icon={"more"}
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+            />
+          }
+          content={
+            isEditRandom ? (
+              <div className="relative w-72 p-4">
+                <h4 className="font-bold flex justify-between items-center">
+                  Get Random
+                  <Button
+                    icon={"small-cross"}
+                    onClick={() => setIsEditRandom(false)}
+                    minimal
+                    small
+                  />
+                </h4>
+                <InputGroup
+                  defaultValue={settings.random.toString()}
+                  onChange={(e) => (randomRef.current = Number(e.target.value))}
+                  rightElement={
+                    <Tooltip content={"Select Random Results"}>
+                      <Button
+                        icon={"random"}
+                        onClick={() => {
+                          setRandom({ count: randomRef.current });
+
+                          if (preventSavingSettings) return;
+                          const resultNode = getSubTree({
+                            key: "results",
+                            parentUid,
+                          });
+                          setInputSetting({
+                            key: "random",
+                            value: randomRef.current.toString(),
+                            blockUid: resultNode.uid,
+                          });
+                        }}
+                        minimal
+                      />
+                    </Tooltip>
+                  }
+                  type={"number"}
+                  style={{ width: 80 }}
+                />
+              </div>
+            ) : isEditLayout ? (
+              <div className="relative w-72 p-4">
+                <h4 className="font-bold flex justify-between items-center">
+                  Layout
+                  <Button
+                    icon={"small-cross"}
+                    onClick={() => setIsEditLayout(false)}
+                    minimal
+                    small
+                  />
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {SUPPORTED_LAYOUTS.map((l) => (
+                    <div
+                      className={`rounded-sm border py-2 px-6 flex flex-col gap-2 cursor-pointer ${
+                        l.id === layout
+                          ? "border-blue-300 border-opacity-75 text-blue-300"
+                          : "border-gray-100 border-opacity-25 text-gray-100"
+                      }`}
+                      onClick={() => {
+                        setLayout(l.id);
+                        const resultNode = getSubTree({
+                          key: "results",
+                          parentUid,
+                        });
+                        setInputSetting({
+                          key: "layout",
+                          value: l.id,
+                          blockUid: resultNode.uid,
+                        });
+                      }}
+                    >
+                      <Icon icon={l.icon} />
+                      <span className="capitalize">{l.id}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Menu>
+                {onEdit && (
+                  <MenuItem
+                    icon={"annotation"}
+                    text={"Edit Query"}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      onEdit();
+                    }}
+                  />
+                )}
+                <MenuItem
+                  icon={"layout"}
+                  text={"Layout"}
+                  onClick={() => {
+                    setIsEditLayout(true);
+                  }}
+                />
+                {!preventExport && (
+                  <MenuItem
+                    icon={"export"}
+                    text={"Export"}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      setIsExportOpen(true);
+                    }}
+                  />
+                )}
+                <MenuItem
+                  icon={"random"}
+                  text={"Get Random"}
+                  onClick={() => setIsEditRandom(true)}
+                />
+                {isEditBlock && (
+                  <MenuItem
+                    icon={"edit"}
+                    text={"Edit Block"}
+                    onClick={() => {
+                      const location = getUids(
+                        containerRef.current.closest(
+                          ".roam-block"
+                        ) as HTMLDivElement
+                      );
+                      window.roamAlphaAPI.ui.setBlockFocusAndSelection({
+                        location: {
+                          "window-id": location.windowId,
+                          "block-uid": location.blockUid,
+                        },
+                      });
+                    }}
+                  />
+                )}
+              </Menu>
+            )
+          }
+        />
+      </span>
+      {header && (
         <h4
           style={{
             display: "flex",
@@ -419,301 +587,248 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
         >
           {header}
         </h4>
-        {!hideResults && (
-          <div className="roamjs-query-results-metadata">
-            <div
+      )}
+      {!hideResults &&
+        results.length !== 0 &&
+        (layout === "table" ? (
+          <HTMLTable
+            style={{
+              maxHeight: "400px",
+              overflowY: "scroll",
+              width: "100%",
+              tableLayout: "fixed",
+              borderRadius: 3,
+            }}
+            striped
+            interactive
+            bordered
+          >
+            <thead
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                background: "#eeeeee80",
               }}
             >
-              <i style={{ opacity: 0.8 }}>
-                <Button
-                  icon={showContent ? "caret-down" : "caret-right"}
-                  minimal
-                  onClick={() => setShowContent(!showContent)}
-                  style={{
-                    marginRight: 16,
-                  }}
-                />
-                Showing {paginatedResults.length} of {results.length} results
-              </i>
-              <span>
-                {!preventSavingSettings && (
-                  <Tooltip content={"Save settings"}>
-                    <Button
-                      icon={"saved"}
-                      minimal
-                      onClick={() => {
-                        const resultNode = getSubTree({
-                          key: "results",
-                          parentUid,
-                        });
-                        return (
-                          resultNode.uid
-                            ? Promise.all(
-                                resultNode.children.map((c) =>
-                                  deleteBlock(c.uid)
-                                )
-                              ).then(() => resultNode.uid)
-                            : createBlock({
-                                parentUid,
-                                node: { text: "results" },
-                              })
+              <tr>
+                {columns.map((c) => (
+                  <ResultHeader
+                    key={c}
+                    c={c}
+                    results={results}
+                    activeSort={activeSort}
+                    setActiveSort={(as) => {
+                      setActiveSort(as);
+                      if (preventSavingSettings) return;
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      const sortsNode = getSubTree({
+                        key: "sorts",
+                        parentUid: resultNode.uid,
+                      });
+                      sortsNode.children.forEach((c) => deleteBlock(c.uid));
+                      as.map((a) => ({
+                        text: a.key,
+                        children: [{ text: `${a.descending}` }],
+                      })).forEach((node, order) =>
+                        createBlock({ parentUid: sortsNode.uid, node, order })
+                      );
+                    }}
+                    filters={filters}
+                    setFilters={(fs) => {
+                      setFilters(fs);
+
+                      if (preventSavingSettings) return;
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      const filtersNode = getSubTree({
+                        key: "filters",
+                        parentUid: resultNode.uid,
+                      });
+                      filtersNode.children.forEach((c) => deleteBlock(c.uid));
+                      Object.entries(fs)
+                        .filter(
+                          ([, data]) =>
+                            data.includes.values.size ||
+                            data.excludes.values.size
                         )
-                          .then((uid) =>
-                            Promise.all([
-                              createBlock({
-                                parentUid: uid,
-                                node: {
-                                  text: "filters",
-                                  children: Object.entries(filters)
-                                    .filter(
-                                      ([, data]) =>
-                                        data.includes.values.size ||
-                                        data.excludes.values.size
-                                    )
-                                    .map(([column, data]) => ({
-                                      text: column,
-                                      children: [
-                                        {
-                                          text: "includes",
-                                          children: Array.from(
-                                            data.includes.values
-                                          ).map((text) => ({ text })),
-                                        },
-                                        {
-                                          text: "excludes",
-                                          children: Array.from(
-                                            data.excludes.values
-                                          ).map((text) => ({ text })),
-                                        },
-                                      ],
-                                    })),
-                                },
-                              }),
-                              createBlock({
-                                parentUid: uid,
-                                node: {
-                                  text: "sorts",
-                                  children: activeSort.map((a) => ({
-                                    text: a.key,
-                                    children: [{ text: `${a.descending}` }],
-                                  })),
-                                },
-                                order: 2,
-                              }),
-                              createBlock({
-                                parentUid: uid,
-                                node: {
-                                  text: "views",
-                                  children: Object.entries(views).map(
-                                    ([key, value]) => ({
-                                      text: key,
-                                      children: [{ text: value }],
-                                    })
-                                  ),
-                                },
-                                order: 3,
-                              }),
-                              createBlock({
-                                parentUid: uid,
-                                node: {
-                                  text: "random",
-                                  children: [{ text: random.count.toString() }],
-                                },
-                                order: 4,
-                              }),
-                              createBlock({
-                                parentUid: uid,
-                                node: {
-                                  text: "size",
-                                  children: [{ text: pageSize.toString() }],
-                                },
-                                order: 5,
-                              }),
-                            ])
-                          )
-                          .then(() =>
-                            renderToast({
-                              id: "query-results-success",
-                              content:
-                                "Successfully saved query results settings!",
-                              intent: Intent.SUCCESS,
-                            })
-                          );
-                      }}
-                    />
-                  </Tooltip>
-                )}
-                {!preventExport && (
-                  <Export
-                    results={allResults}
-                    exportTypes={getExportTypes?.(allResults)}
+                        .map(([column, data]) => ({
+                          text: column,
+                          children: [
+                            {
+                              text: "includes",
+                              children: Array.from(data.includes.values).map(
+                                (text) => ({ text })
+                              ),
+                            },
+                            {
+                              text: "excludes",
+                              children: Array.from(data.excludes.values).map(
+                                (text) => ({ text })
+                              ),
+                            },
+                          ],
+                        }))
+                        .forEach((node, order) =>
+                          createBlock({
+                            parentUid: filtersNode.uid,
+                            node,
+                            order,
+                          })
+                        );
+                    }}
+                    initialFilter={settings.filters[c]}
+                    view={views[c]}
+                    onViewChange={(v) => {
+                      const vs = { ...views, [c]: v };
+                      setViews(vs);
+
+                      if (preventSavingSettings) return;
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      const viewsNode = getSubTree({
+                        key: "views",
+                        parentUid: resultNode.uid,
+                      });
+                      viewsNode.children.forEach((c) => deleteBlock(c.uid));
+
+                      Object.entries(vs)
+                        .map(([key, value]) => ({
+                          text: key,
+                          children: [{ text: value }],
+                        }))
+                        .forEach((node, order) =>
+                          createBlock({ node, order, parentUid: viewsNode.uid })
+                        );
+                    }}
                   />
+                ))}
+                {extraColumn && (
+                  <th style={{ width: extraColumn.width }}>
+                    {extraColumn.header}
+                  </th>
                 )}
-                {onEdit && (
-                  <Tooltip content={"Edit Query"}>
-                    <Button icon={"annotation"} minimal onClick={onEdit} />
-                  </Tooltip>
-                )}
-                {onRefresh && (
-                  <Tooltip content={"Refresh Results"}>
-                    <Button icon={"refresh"} minimal onClick={onRefresh} />
-                  </Tooltip>
-                )}
-              </span>
-            </div>
-            {showContent && <QueryUsed parentUid={parentUid} />}
-          </div>
-        )}
-      </div>
-      {!hideResults && results.length !== 0 && (
-        <HTMLTable
-          style={{
-            maxHeight: "400px",
-            overflowY: "scroll",
-            width: "100%",
-            tableLayout: "fixed",
-            borderRadius: 3,
-          }}
-          striped
-          interactive
-          bordered
-        >
-          <thead
-            style={{
-              background: "#eeeeee80",
-            }}
-          >
-            <tr>
-              {columns.map((c) => (
-                <ResultHeader
-                  key={c}
-                  c={c}
-                  results={results}
-                  activeSort={activeSort}
-                  setActiveSort={setActiveSort}
-                  filters={filters}
-                  setFilters={setFilters}
-                  initialFilter={settings.filters[c]}
-                  view={views[c]}
-                  onViewChange={(v) => setViews({ ...views, [c]: v })}
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedResults.map((r) => (
+                <ResultView
+                  key={Object.values(r).join("-")}
+                  r={r}
+                  ctrlClick={ctrlClick}
+                  views={views}
+                  extraColumn={extraColumn}
                 />
               ))}
-              {extraColumn && (
-                <th style={{ width: extraColumn.width }}>
-                  {extraColumn.header}
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedResults.map((r) => (
-              <ResultView
-                key={Object.values(r).join("-")}
-                r={r}
-                ctrlClick={ctrlClick}
-                views={views}
-                extraColumn={extraColumn}
-              />
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td
-                colSpan={columns.length + (extraColumn ? 1 : 0)}
-                style={{ padding: 0 }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    opacity: 0.8,
-                    background: "#eeeeee80",
-                    padding: "8px 4px",
-                  }}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td
+                  colSpan={columns.length + (extraColumn ? 1 : 0)}
+                  style={{ padding: 0, background: "#eeeeee80" }}
                 >
-                  <span>
-                    <InputGroup
-                      defaultValue={settings.random.toString()}
-                      onChange={(e) =>
-                        (randomRef.current = Number(e.target.value))
-                      }
-                      rightElement={
-                        <Tooltip content={"Select Random Results"}>
-                          <Button
-                            icon={"random"}
-                            onClick={() =>
-                              setRandom({ count: randomRef.current })
-                            }
-                            minimal
-                          />
-                        </Tooltip>
-                      }
-                      type={"number"}
-                      style={{ width: 80 }}
-                    />
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center" }}>
-                    <span>Rows per page:</span>
-                    <InputGroup
-                      defaultValue={pageSize.toString()}
-                      onChange={(e) => {
-                        clearTimeout(pageSizeTimeoutRef.current);
-                        pageSizeTimeoutRef.current = window.setTimeout(() => {
-                          setPageSize(Number(e.target.value));
-                        }, 1000);
-                      }}
-                      type="number"
-                      style={{
-                        width: 60,
-                        maxWidth: 60,
-                        marginRight: 32,
-                        marginLeft: 16,
-                      }}
-                    />
-                    <Button
-                      minimal
-                      icon={"double-chevron-left"}
-                      onClick={() => setPage(1)}
-                      disabled={page === 1}
-                    />
-                    <Button
-                      minimal
-                      icon={"chevron-left"}
-                      onClick={() => setPage(page - 1)}
-                      disabled={page === 1}
-                    />
-                    <span style={{ margin: "4px 0" }}>{page}</span>
-                    <Button
-                      minimal
-                      icon={"chevron-right"}
-                      onClick={() => setPage(page + 1)}
-                      disabled={
-                        page === Math.ceil(allResults.length / pageSize) ||
-                        allResults.length === 0
-                      }
-                    />
-                    <Button
-                      minimal
-                      icon={"double-chevron-right"}
-                      disabled={
-                        page === Math.ceil(allResults.length / pageSize) ||
-                        allResults.length === 0
-                      }
-                      onClick={() =>
-                        setPage(Math.ceil(allResults.length / pageSize))
-                      }
-                    />
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </tfoot>
-        </HTMLTable>
-      )}
+                  <div
+                    className="flex justify-between items-center"
+                    style={{
+                      opacity: 0.8,
+                      padding: "8px 4px",
+                    }}
+                  >
+                    <span>
+                      <i style={{ opacity: 0.8 }}>
+                        <Button
+                          icon={showContent ? "caret-down" : "caret-right"}
+                          minimal
+                          small
+                          onClick={() => setShowContent(!showContent)}
+                          style={{
+                            marginRight: 4,
+                          }}
+                        />
+                        Showing {paginatedResults.length} of {results.length}{" "}
+                        results
+                      </i>
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center" }}>
+                      <span>Rows per page:</span>
+                      <InputGroup
+                        defaultValue={pageSize.toString()}
+                        onChange={(e) => {
+                          clearTimeout(pageSizeTimeoutRef.current);
+                          pageSizeTimeoutRef.current = window.setTimeout(() => {
+                            setPageSize(Number(e.target.value));
+
+                            if (preventSavingSettings) return;
+                            const resultNode = getSubTree({
+                              key: "results",
+                              parentUid,
+                            });
+                            setInputSetting({
+                              key: "size",
+                              value: e.target.value,
+                              blockUid: resultNode.uid,
+                            });
+                          }, 1000);
+                        }}
+                        type="number"
+                        style={{
+                          width: 60,
+                          maxWidth: 60,
+                          marginRight: 32,
+                          marginLeft: 16,
+                        }}
+                      />
+                      <Button
+                        minimal
+                        icon={"double-chevron-left"}
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                      />
+                      <Button
+                        minimal
+                        icon={"chevron-left"}
+                        onClick={() => setPage(page - 1)}
+                        disabled={page === 1}
+                      />
+                      <span style={{ margin: "4px 0" }}>{page}</span>
+                      <Button
+                        minimal
+                        icon={"chevron-right"}
+                        onClick={() => setPage(page + 1)}
+                        disabled={
+                          page === Math.ceil(allResults.length / pageSize) ||
+                          allResults.length === 0
+                        }
+                      />
+                      <Button
+                        minimal
+                        icon={"double-chevron-right"}
+                        disabled={
+                          page === Math.ceil(allResults.length / pageSize) ||
+                          allResults.length === 0
+                        }
+                        onClick={() =>
+                          setPage(Math.ceil(allResults.length / pageSize))
+                        }
+                      />
+                    </span>
+                  </div>
+                  {showContent && <QueryUsed parentUid={parentUid} />}
+                </td>
+              </tr>
+            </tfoot>
+          </HTMLTable>
+        ) : layout === "line" ? (
+          <Charts type="line" data={allResults} columns={columns.slice(1)} />
+        ) : layout === "bar" ? (
+          <Charts type="bar" data={allResults} columns={columns.slice(1)} />
+        ) : (
+          <div>Layout `{layout}` is not supported</div>
+        ))}
     </div>
   );
 };

@@ -117,6 +117,12 @@ At any point, you could save the selected filters, sorts, and views so that any 
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FbOPvKM8ilS.png?alt=media&token=838b5724-b848-42b5-8cf0-17fde8cbb29c)
 
+### Layouts
+
+By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. The following values are also supported:
+- `Line` - Displays your data as a line chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
+- `Bar` - Displays your data as a bar chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
+
 ### Exporting
 
 Next to the save button is a button that will allow you to export your results. There are currently two formats available to export to:

@@ -88,6 +88,19 @@ export default runExtension({
 /* Handle */
 .roamjs-query-results-view ul::-webkit-scrollbar-thumb {
   background: #888;
+}
+
+.roamjs-query-builder-parent .roamjs-edit-component {
+  display: none;
+}
+
+.roamjs-query-results-view thead td .bp3-button,
+.roamjs-query-results-view thead td .bp3-button svg,
+.roamjs-query-results-view thead td .bp3-icon svg  {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
 }`);
     migrateLegacySettings({
       extensionAPI,
