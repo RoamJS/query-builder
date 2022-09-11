@@ -589,245 +589,257 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
         </h4>
       )}
       {!hideResults &&
-        results.length !== 0 &&
-        (layout === "table" ? (
-          <HTMLTable
-            style={{
-              maxHeight: "400px",
-              overflowY: "scroll",
-              width: "100%",
-              tableLayout: "fixed",
-              borderRadius: 3,
-            }}
-            striped
-            interactive
-            bordered
-          >
-            <thead
+        (results.length !== 0 ? (
+          layout === "table" ? (
+            <HTMLTable
               style={{
-                background: "#eeeeee80",
+                maxHeight: "400px",
+                overflowY: "scroll",
+                width: "100%",
+                tableLayout: "fixed",
+                borderRadius: 3,
               }}
+              striped
+              interactive
+              bordered
             >
-              <tr>
-                {columns.map((c) => (
-                  <ResultHeader
-                    key={c}
-                    c={c}
-                    results={results}
-                    activeSort={activeSort}
-                    setActiveSort={(as) => {
-                      setActiveSort(as);
-                      if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
-                      const sortsNode = getSubTree({
-                        key: "sorts",
-                        parentUid: resultNode.uid,
-                      });
-                      sortsNode.children.forEach((c) => deleteBlock(c.uid));
-                      as.map((a) => ({
-                        text: a.key,
-                        children: [{ text: `${a.descending}` }],
-                      })).forEach((node, order) =>
-                        createBlock({ parentUid: sortsNode.uid, node, order })
-                      );
-                    }}
-                    filters={filters}
-                    setFilters={(fs) => {
-                      setFilters(fs);
-
-                      if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
-                      const filtersNode = getSubTree({
-                        key: "filters",
-                        parentUid: resultNode.uid,
-                      });
-                      filtersNode.children.forEach((c) => deleteBlock(c.uid));
-                      Object.entries(fs)
-                        .filter(
-                          ([, data]) =>
-                            data.includes.values.size ||
-                            data.excludes.values.size
-                        )
-                        .map(([column, data]) => ({
-                          text: column,
-                          children: [
-                            {
-                              text: "includes",
-                              children: Array.from(data.includes.values).map(
-                                (text) => ({ text })
-                              ),
-                            },
-                            {
-                              text: "excludes",
-                              children: Array.from(data.excludes.values).map(
-                                (text) => ({ text })
-                              ),
-                            },
-                          ],
-                        }))
-                        .forEach((node, order) =>
-                          createBlock({
-                            parentUid: filtersNode.uid,
-                            node,
-                            order,
-                          })
+              <thead
+                style={{
+                  background: "#eeeeee80",
+                }}
+              >
+                <tr>
+                  {columns.map((c) => (
+                    <ResultHeader
+                      key={c}
+                      c={c}
+                      results={results}
+                      activeSort={activeSort}
+                      setActiveSort={(as) => {
+                        setActiveSort(as);
+                        if (preventSavingSettings) return;
+                        const resultNode = getSubTree({
+                          key: "results",
+                          parentUid,
+                        });
+                        const sortsNode = getSubTree({
+                          key: "sorts",
+                          parentUid: resultNode.uid,
+                        });
+                        sortsNode.children.forEach((c) => deleteBlock(c.uid));
+                        as.map((a) => ({
+                          text: a.key,
+                          children: [{ text: `${a.descending}` }],
+                        })).forEach((node, order) =>
+                          createBlock({ parentUid: sortsNode.uid, node, order })
                         );
-                    }}
-                    initialFilter={settings.filters[c]}
-                    view={views[c]}
-                    onViewChange={(v) => {
-                      const vs = { ...views, [c]: v };
-                      setViews(vs);
+                      }}
+                      filters={filters}
+                      setFilters={(fs) => {
+                        setFilters(fs);
 
-                      if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
-                      const viewsNode = getSubTree({
-                        key: "views",
-                        parentUid: resultNode.uid,
-                      });
-                      viewsNode.children.forEach((c) => deleteBlock(c.uid));
+                        if (preventSavingSettings) return;
+                        const resultNode = getSubTree({
+                          key: "results",
+                          parentUid,
+                        });
+                        const filtersNode = getSubTree({
+                          key: "filters",
+                          parentUid: resultNode.uid,
+                        });
+                        filtersNode.children.forEach((c) => deleteBlock(c.uid));
+                        Object.entries(fs)
+                          .filter(
+                            ([, data]) =>
+                              data.includes.values.size ||
+                              data.excludes.values.size
+                          )
+                          .map(([column, data]) => ({
+                            text: column,
+                            children: [
+                              {
+                                text: "includes",
+                                children: Array.from(data.includes.values).map(
+                                  (text) => ({ text })
+                                ),
+                              },
+                              {
+                                text: "excludes",
+                                children: Array.from(data.excludes.values).map(
+                                  (text) => ({ text })
+                                ),
+                              },
+                            ],
+                          }))
+                          .forEach((node, order) =>
+                            createBlock({
+                              parentUid: filtersNode.uid,
+                              node,
+                              order,
+                            })
+                          );
+                      }}
+                      initialFilter={settings.filters[c]}
+                      view={views[c]}
+                      onViewChange={(v) => {
+                        const vs = { ...views, [c]: v };
+                        setViews(vs);
 
-                      Object.entries(vs)
-                        .map(([key, value]) => ({
-                          text: key,
-                          children: [{ text: value }],
-                        }))
-                        .forEach((node, order) =>
-                          createBlock({ node, order, parentUid: viewsNode.uid })
-                        );
-                    }}
+                        if (preventSavingSettings) return;
+                        const resultNode = getSubTree({
+                          key: "results",
+                          parentUid,
+                        });
+                        const viewsNode = getSubTree({
+                          key: "views",
+                          parentUid: resultNode.uid,
+                        });
+                        viewsNode.children.forEach((c) => deleteBlock(c.uid));
+
+                        Object.entries(vs)
+                          .map(([key, value]) => ({
+                            text: key,
+                            children: [{ text: value }],
+                          }))
+                          .forEach((node, order) =>
+                            createBlock({
+                              node,
+                              order,
+                              parentUid: viewsNode.uid,
+                            })
+                          );
+                      }}
+                    />
+                  ))}
+                  {extraColumn && (
+                    <th style={{ width: extraColumn.width }}>
+                      {extraColumn.header}
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedResults.map((r) => (
+                  <ResultView
+                    key={Object.values(r).join("-")}
+                    r={r}
+                    ctrlClick={ctrlClick}
+                    views={views}
+                    extraColumn={extraColumn}
                   />
                 ))}
-                {extraColumn && (
-                  <th style={{ width: extraColumn.width }}>
-                    {extraColumn.header}
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedResults.map((r) => (
-                <ResultView
-                  key={Object.values(r).join("-")}
-                  r={r}
-                  ctrlClick={ctrlClick}
-                  views={views}
-                  extraColumn={extraColumn}
-                />
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td
-                  colSpan={columns.length + (extraColumn ? 1 : 0)}
-                  style={{ padding: 0, background: "#eeeeee80" }}
-                >
-                  <div
-                    className="flex justify-between items-center"
-                    style={{
-                      opacity: 0.8,
-                      padding: "8px 4px",
-                    }}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td
+                    colSpan={columns.length + (extraColumn ? 1 : 0)}
+                    style={{ padding: 0, background: "#eeeeee80" }}
                   >
-                    <span>
-                      <i style={{ opacity: 0.8 }}>
-                        <Button
-                          icon={showContent ? "caret-down" : "caret-right"}
-                          minimal
-                          small
-                          onClick={() => setShowContent(!showContent)}
+                    <div
+                      className="flex justify-between items-center"
+                      style={{
+                        opacity: 0.8,
+                        padding: "8px 4px",
+                      }}
+                    >
+                      <span>
+                        <i style={{ opacity: 0.8 }}>
+                          <Button
+                            icon={showContent ? "caret-down" : "caret-right"}
+                            minimal
+                            small
+                            onClick={() => setShowContent(!showContent)}
+                            style={{
+                              marginRight: 4,
+                            }}
+                          />
+                          Showing {paginatedResults.length} of {results.length}{" "}
+                          results
+                        </i>
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <span>Rows per page:</span>
+                        <InputGroup
+                          defaultValue={pageSize.toString()}
+                          onChange={(e) => {
+                            clearTimeout(pageSizeTimeoutRef.current);
+                            pageSizeTimeoutRef.current = window.setTimeout(
+                              () => {
+                                setPageSize(Number(e.target.value));
+
+                                if (preventSavingSettings) return;
+                                const resultNode = getSubTree({
+                                  key: "results",
+                                  parentUid,
+                                });
+                                setInputSetting({
+                                  key: "size",
+                                  value: e.target.value,
+                                  blockUid: resultNode.uid,
+                                });
+                              },
+                              1000
+                            );
+                          }}
+                          type="number"
                           style={{
-                            marginRight: 4,
+                            width: 60,
+                            maxWidth: 60,
+                            marginRight: 32,
+                            marginLeft: 16,
                           }}
                         />
-                        Showing {paginatedResults.length} of {results.length}{" "}
-                        results
-                      </i>
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center" }}>
-                      <span>Rows per page:</span>
-                      <InputGroup
-                        defaultValue={pageSize.toString()}
-                        onChange={(e) => {
-                          clearTimeout(pageSizeTimeoutRef.current);
-                          pageSizeTimeoutRef.current = window.setTimeout(() => {
-                            setPageSize(Number(e.target.value));
-
-                            if (preventSavingSettings) return;
-                            const resultNode = getSubTree({
-                              key: "results",
-                              parentUid,
-                            });
-                            setInputSetting({
-                              key: "size",
-                              value: e.target.value,
-                              blockUid: resultNode.uid,
-                            });
-                          }, 1000);
-                        }}
-                        type="number"
-                        style={{
-                          width: 60,
-                          maxWidth: 60,
-                          marginRight: 32,
-                          marginLeft: 16,
-                        }}
-                      />
-                      <Button
-                        minimal
-                        icon={"double-chevron-left"}
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
-                      />
-                      <Button
-                        minimal
-                        icon={"chevron-left"}
-                        onClick={() => setPage(page - 1)}
-                        disabled={page === 1}
-                      />
-                      <span style={{ margin: "4px 0" }}>{page}</span>
-                      <Button
-                        minimal
-                        icon={"chevron-right"}
-                        onClick={() => setPage(page + 1)}
-                        disabled={
-                          page === Math.ceil(allResults.length / pageSize) ||
-                          allResults.length === 0
-                        }
-                      />
-                      <Button
-                        minimal
-                        icon={"double-chevron-right"}
-                        disabled={
-                          page === Math.ceil(allResults.length / pageSize) ||
-                          allResults.length === 0
-                        }
-                        onClick={() =>
-                          setPage(Math.ceil(allResults.length / pageSize))
-                        }
-                      />
-                    </span>
-                  </div>
-                  {showContent && <QueryUsed parentUid={parentUid} />}
-                </td>
-              </tr>
-            </tfoot>
-          </HTMLTable>
-        ) : layout === "line" ? (
-          <Charts type="line" data={allResults} columns={columns.slice(1)} />
-        ) : layout === "bar" ? (
-          <Charts type="bar" data={allResults} columns={columns.slice(1)} />
+                        <Button
+                          minimal
+                          icon={"double-chevron-left"}
+                          onClick={() => setPage(1)}
+                          disabled={page === 1}
+                        />
+                        <Button
+                          minimal
+                          icon={"chevron-left"}
+                          onClick={() => setPage(page - 1)}
+                          disabled={page === 1}
+                        />
+                        <span style={{ margin: "4px 0" }}>{page}</span>
+                        <Button
+                          minimal
+                          icon={"chevron-right"}
+                          onClick={() => setPage(page + 1)}
+                          disabled={
+                            page === Math.ceil(allResults.length / pageSize) ||
+                            allResults.length === 0
+                          }
+                        />
+                        <Button
+                          minimal
+                          icon={"double-chevron-right"}
+                          disabled={
+                            page === Math.ceil(allResults.length / pageSize) ||
+                            allResults.length === 0
+                          }
+                          onClick={() =>
+                            setPage(Math.ceil(allResults.length / pageSize))
+                          }
+                        />
+                      </span>
+                    </div>
+                    {showContent && <QueryUsed parentUid={parentUid} />}
+                  </td>
+                </tr>
+              </tfoot>
+            </HTMLTable>
+          ) : layout === "line" ? (
+            <Charts type="line" data={allResults} columns={columns.slice(1)} />
+          ) : layout === "bar" ? (
+            <Charts type="bar" data={allResults} columns={columns.slice(1)} />
+          ) : (
+            <div>Layout `{layout}` is not supported</div>
+          )
         ) : (
-          <div>Layout `{layout}` is not supported</div>
+          <p className="px-2 py-3 flex justify-between items-center mb-0">
+            <i>No Results Found</i>
+          </p>
         ))}
     </div>
   );
