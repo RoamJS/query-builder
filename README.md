@@ -122,6 +122,7 @@ At any point, you could save the selected filters, sorts, and views so that any 
 By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. The following values are also supported:
 - `Line` - Displays your data as a line chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
 - `Bar` - Displays your data as a bar chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
+- `Timeline` - Displays your data as an interactive timeline view. You need to have a selection chosen labelled **Date** that returns date values for this layout to work.
 
 ### Exporting
 
