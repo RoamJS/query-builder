@@ -4,10 +4,10 @@ import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import {
   Button,
   Icon,
+  IconName,
   Tooltip,
   HTMLTable,
   InputGroup,
-  Intent,
   Popover,
   Menu,
   MenuItem,
@@ -33,6 +33,7 @@ import postProcessResults from "../utils/postProcessResults";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import getUids from "roamjs-components/dom/getUids";
 import Charts from "./Charts";
+import Timeline from "./Timeline";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -338,6 +339,7 @@ const SUPPORTED_LAYOUTS = [
   { id: "table", icon: "join-table" },
   { id: "line", icon: "chart" },
   { id: "bar", icon: "vertical-bar-chart-asc" },
+  { id: "timeline", icon: "timeline-events" },
 ] as const;
 
 const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
@@ -833,6 +835,8 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
             <Charts type="line" data={allResults} columns={columns.slice(1)} />
           ) : layout === "bar" ? (
             <Charts type="bar" data={allResults} columns={columns.slice(1)} />
+          ) : layout === "timeline" ? (
+            <Timeline timelineElements={allResults} />
           ) : (
             <div>Layout `{layout}` is not supported</div>
           )
