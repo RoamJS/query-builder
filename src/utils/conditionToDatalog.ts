@@ -2,6 +2,8 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import parseNlpDate from "roamjs-components/date/parseNlpDate";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
+import startOfDay from "date-fns/startOfDay";
+import endOfDay from "date-fns/endOfDay";
 import type { DatalogClause } from "roamjs-components/types";
 import type { RegisterDatalogTranslator } from "roamjs-components/types/query-builder";
 
@@ -392,7 +394,7 @@ const translator: Record<
           { type: "variable", value: target },
         ],
       },
-      ...getTitleDatalog({source: target, target}),
+      ...getTitleDatalog({ source: target, target }),
     ],
     targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
@@ -421,7 +423,7 @@ const translator: Record<
           { type: "variable", value: target },
         ],
       },
-      ...getTitleDatalog({source: target, target}),
+      ...getTitleDatalog({ source: target, target }),
     ],
     targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
@@ -524,7 +526,10 @@ const translator: Record<
         type: "pred-expr",
         pred: ">",
         arguments: [
-          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          {
+            type: "constant",
+            value: `${startOfDay(parseNlpDate(target)).valueOf()}`,
+          },
           { type: "variable", value: `${source}-Log` },
         ],
       },
@@ -545,7 +550,10 @@ const translator: Record<
         type: "pred-expr",
         pred: "<",
         arguments: [
-          { type: "constant", value: `${parseNlpDate(target).valueOf()}` },
+          {
+            type: "constant",
+            value: `${endOfDay(parseNlpDate(target)).valueOf()}`,
+          },
           { type: "variable", value: `${source}-Log` },
         ],
       },
