@@ -113,9 +113,7 @@ Each column also has a view type. Choosing a view type will change how the cell 
 - `link` - If the column is a block, cells will be outputted as a link to the block. If the column is a page, cells will be outputted as a link to the page.
 - `embed` - Embeds the contents of the block or page in the cell.
 
-At any point, you could save the selected filters, sorts, and views so that any time you return to the query, they are applied automatically:
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FbOPvKM8ilS.png?alt=media&token=838b5724-b848-42b5-8cf0-17fde8cbb29c)
+All changes to the outputted results are saved automatically.
 
 ### Layouts
 
@@ -138,6 +136,13 @@ The above component is also available as a block component. This allows you to c
 ### Styling
 
 Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
+
+### SmartBlocks Integration
+
+This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing query builder instance in your graph and return the results as separate blocks. The command takes in two arguments:
+1. The block reference of the query builder instance
+1. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
+
 
 ### Developer API
 
