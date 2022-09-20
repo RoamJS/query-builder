@@ -101,6 +101,20 @@ export default runExtension({
   height: 12px;
   min-width: 12px;
   min-height: 12px;
+}
+
+.roamjs-view-select button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.roamjs-view-select {
+  flex: 1;
+}
+
+.roamjs-view-select > span {
+  width: 100%;
 }`);
     migrateLegacySettings({
       extensionAPI,

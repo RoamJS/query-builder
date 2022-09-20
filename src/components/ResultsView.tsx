@@ -34,11 +34,13 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 import getUids from "roamjs-components/dom/getUids";
 import Charts from "./Charts";
 import Timeline from "./Timeline";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
 
-const VIEWS = ["link", "plain", "embed"];
+const VIEWS = ["link", "plain", "embed", "alias"];
 
 const ResultHeader = ({
   c,
@@ -48,8 +50,6 @@ const ResultHeader = ({
   filters,
   setFilters,
   initialFilter,
-  view,
-  onViewChange,
 }: {
   c: string;
   results: Result[];
@@ -58,8 +58,6 @@ const ResultHeader = ({
   filters: FilterData;
   setFilters: (f: FilterData) => void;
   initialFilter: Filters;
-  view: string;
-  onViewChange: (s: string) => void;
 }) => {
   const filterData = useMemo(
     () => ({
@@ -105,24 +103,6 @@ const ResultHeader = ({
             }
             small
           />
-          <span onClick={(e) => e.stopPropagation()}>
-            <Tooltip content={"Switch View"}>
-              <Popover
-                target={<Button icon={"eye-open"} minimal small />}
-                content={
-                  <Menu style={{ padding: 16 }}>
-                    {VIEWS.map((c) => (
-                      <MenuItem
-                        active={c === view}
-                        onClick={() => onViewChange(c)}
-                        text={c}
-                      />
-                    ))}
-                  </Menu>
-                }
-              />
-            </Tooltip>
-          </span>
           {sortIndex >= 0 && (
             <span>
               <Icon
@@ -158,7 +138,7 @@ const ResultView = ({
 }: {
   r: Result;
   ctrlClick?: (e: Result) => void;
-  views: Record<string, string>;
+  views: { column: string; mode: string; value: string }[];
   extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
 }) => {
   const rowCells = Object.keys(r).filter(
@@ -206,12 +186,17 @@ const ResultView = ({
         </span>
       ));
   };
+  const viewsByColumn = useMemo(
+    () => Object.fromEntries(views.map((v) => [v.column, v])),
+    [views]
+  );
   return (
     <>
       <tr>
         {rowCells.map((k) => {
           const uid = (r[`${k}-uid`] || "").toString();
           const val = r[k] || "";
+          const { mode: view, value: viewValue } = viewsByColumn[k];
           return (
             <td
               style={{
@@ -222,7 +207,7 @@ const ResultView = ({
             >
               {val === "" ? (
                 <i>[block is blank]</i>
-              ) : views[k] === "link" ? (
+              ) : view === "link" || view === "alias" ? (
                 <a
                   className={"rm-page-ref"}
                   data-link-title={getPageTitleByPageUid(uid) || ""}
@@ -254,9 +239,9 @@ const ResultView = ({
                     }
                   }}
                 >
-                  {cell(k)}
+                  {view === "alias" ? viewValue : cell(k)}
                 </a>
-              ) : views[k] === "embed" ? (
+              ) : view === "embed" ? (
                 <CellEmbed uid={uid} />
               ) : (
                 cell(k)
@@ -409,12 +394,42 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
   }, [paginatedResults]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [isEditViews, setIsEditViews] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
+  const onViewChange = (view: typeof views[number], i: number) => {
+    setViews(views.map((v, j) => (i === j ? view : v)));
+
+    if (preventSavingSettings) return;
+    const resultNode = getSubTree({
+      key: "results",
+      parentUid,
+    });
+    const viewsNode = getSubTree({
+      key: "views",
+      parentUid: resultNode.uid,
+    });
+    viewsNode.children.forEach((c) => deleteBlock(c.uid));
+
+    views
+      .map((v) => ({
+        text: v.column,
+        children: [
+          { text: v.mode, children: v.value ? [{ text: v.value }] : [] },
+        ],
+      }))
+      .forEach((node, order) =>
+        createBlock({
+          node,
+          order,
+          parentUid: viewsNode.uid,
+        })
+      );
+  };
   return (
     <div
       className="roamjs-query-results-view w-full relative"
@@ -520,6 +535,77 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                   ))}
                 </div>
               </div>
+            ) : isEditViews ? (
+              <div className="relative w-72 p-4">
+                <h4 className="font-bold flex justify-between items-center">
+                  Set Column Views
+                  <Button
+                    icon={"small-cross"}
+                    onClick={() => setIsEditViews(false)}
+                    minimal
+                    small
+                  />
+                </h4>
+                <div className="flex flex-col gap-1">
+                  {views.map(({ column, mode, value }, i) => (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <span style={{ flex: 1 }}>{column}</span>
+                        <MenuItemSelect
+                          className="roamjs-view-select"
+                          items={VIEWS}
+                          activeItem={mode}
+                          onItemSelect={(m) => {
+                            onViewChange({ mode: m, column, value }, i);
+                          }}
+                        />
+                      </div>
+                      {mode === "alias" && (
+                        <InputGroup
+                          value={value}
+                          onChange={(e) => {
+                            onViewChange(
+                              { mode, column, value: e.target.value },
+                              i
+                            );
+                          }}
+                        />
+                      )}
+                    </>
+                  ))}
+                </div>
+                {/* 
+                Save this for when we move filters
+                <Button
+                  icon={"plus"}
+                  text={"Add Filter"}
+                  minimal
+                  className="w-full"
+                  onClick={() => {
+                    setViews(
+                      views.concat({ column: columns[0], mode: VIEWS[0] })
+                    );
+
+                    if (preventSavingSettings) return;
+                    const resultNode = getSubTree({
+                      key: "results",
+                      parentUid,
+                    });
+                    const viewsNode = getSubTree({
+                      key: "views",
+                      parentUid: resultNode.uid,
+                    });
+                    createBlock({
+                      node: {
+                        text: columns[0],
+                        children: [{ text: VIEWS[0] }],
+                      },
+                      order: viewsNode.children.length,
+                      parentUid: viewsNode.uid,
+                    });
+                  }}
+                /> */}
+              </div>
             ) : (
               <Menu>
                 {onEdit && (
@@ -537,6 +623,13 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                   text={"Layout"}
                   onClick={() => {
                     setIsEditLayout(true);
+                  }}
+                />
+                <MenuItem
+                  icon={"eye-open"}
+                  text={"Column Views"}
+                  onClick={() => {
+                    setIsEditViews(true);
                   }}
                 />
                 {!preventExport && (
@@ -682,35 +775,6 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                           );
                       }}
                       initialFilter={settings.filters[c]}
-                      view={views[c]}
-                      onViewChange={(v) => {
-                        const vs = { ...views, [c]: v };
-                        setViews(vs);
-
-                        if (preventSavingSettings) return;
-                        const resultNode = getSubTree({
-                          key: "results",
-                          parentUid,
-                        });
-                        const viewsNode = getSubTree({
-                          key: "views",
-                          parentUid: resultNode.uid,
-                        });
-                        viewsNode.children.forEach((c) => deleteBlock(c.uid));
-
-                        Object.entries(vs)
-                          .map(([key, value]) => ({
-                            text: key,
-                            children: [{ text: value }],
-                          }))
-                          .forEach((node, order) =>
-                            createBlock({
-                              node,
-                              order,
-                              parentUid: viewsNode.uid,
-                            })
-                          );
-                      }}
                     />
                   ))}
                   {extraColumn && (

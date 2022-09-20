@@ -79,7 +79,13 @@ const parseResultSettings = (
     globalPageSize;
   const viewsNode = getSubTree({ tree: resultNode.children, key: "views" });
   const savedViewData = Object.fromEntries(
-    viewsNode.children.map((c) => [c.text, c.children[0]?.text])
+    viewsNode.children.map((c) => [
+      c.text,
+      {
+        mode: c.children[0]?.text,
+        value: c.children[0]?.children?.[0]?.text || "",
+      },
+    ])
   );
   const layout = getSettingValueFromTree({
     tree: resultNode.children,
@@ -99,12 +105,12 @@ const parseResultSettings = (
         },
       ])
     ),
-    views: Object.fromEntries(
-      columns.map((key) => [
-        key,
-        savedViewData[key] || (key === "text" ? "link" : "plain"),
-      ])
-    ),
+    views: columns.map((column) => ({
+      column,
+      mode:
+        savedViewData[column]?.mode || (column === "text" ? "link" : "plain"),
+      value: savedViewData[column]?.value || "",
+    })),
     random,
     pageSize,
     layout,
