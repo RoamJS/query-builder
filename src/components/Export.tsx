@@ -65,7 +65,8 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-export const ExportDialog: ExportDialogComponent = ({
+export const ExportDialog = ({
+  children,
   onClose,
   isOpen = true,
   results = [],
@@ -124,7 +125,7 @@ export const ExportDialog: ExportDialogComponent = ({
           })),
     },
   ],
-}) => {
+}: React.PropsWithChildren<Parameters<ExportDialogComponent>[0]>) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const today = new Date();
@@ -191,6 +192,7 @@ export const ExportDialog: ExportDialogComponent = ({
           {typeof results === "function" ? "unknown number of" : results.length}{" "}
           results
         </span>
+        {children}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
