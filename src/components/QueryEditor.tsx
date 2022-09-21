@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   H6,
   InputGroup,
   Switch,
@@ -33,7 +34,11 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import parseQuery from "../utils/parseQuery";
-import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
+import {
+  backendToken,
+  getDatalogQuery,
+  getDatalogQueryComponents,
+} from "../utils/fireQuery";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -354,12 +359,10 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     returnNode: initialReturnNode,
     conditions: initialConditions,
     selections: initialSelections,
-    // @ts-ignore
     customNodeUid,
-    // @ts-ignore
     customNode: initialCustom,
-    // @ts-ignore
     isCustomEnabled: initialIsCustomEnabled,
+    isBackendEnabled: initialIsBackendEnabled,
   } = useMemo(() => parseQuery(parentUid), [parentUid]);
   const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
@@ -443,6 +446,9 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   }, [returnNode, selections, conditionLabels, conditions]);
   const [isCustomEnabled, setIsCustomEnabled] = useState(
     initialIsCustomEnabled
+  );
+  const [isBackendEnabled, setIsBackendEnabled] = useState(
+    initialIsBackendEnabled
   );
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
   return view.uid === parentUid ? (
@@ -621,6 +627,32 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
         <span className="flex-grow flex gap-4 justify-end items-center">
           {showDisabledMessage && (
             <span className="text-red-700 inline-block">{disabledMessage}</span>
+          )}
+          {backendToken && (
+            <Checkbox
+              label="BE"
+              checked={isBackendEnabled}
+              onChange={(e) => {
+                const enabled = (e.target as HTMLInputElement).checked;
+                const scratchNode = getSubTree({ parentUid, key: "scratch" });
+                const enabledUid = getSubTree({
+                  tree: scratchNode.children,
+                  key: "backend",
+                }).uid;
+                if (enabled && !enabledUid) {
+                  createBlock({
+                    parentUid: scratchNode.uid,
+                    order: 0,
+                    node: {
+                      text: "backend",
+                    },
+                  });
+                } else if (!enabled && enabledUid) {
+                  deleteBlock(enabledUid);
+                }
+                setIsBackendEnabled(enabled);
+              }}
+            />
           )}
           <Button
             onMouseEnter={() =>

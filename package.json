@@ -25,6 +25,6 @@
   "dependencies": {
     "react-charts": "^3.0.0-beta.48",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.73.4"
+    "roamjs-components": "^0.73.16"
   }
 }

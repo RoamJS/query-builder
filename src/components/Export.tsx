@@ -19,12 +19,7 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import {
-  Result,
-  ExportDialogComponent,
-} from "roamjs-components/types/query-builder";
-
-type Props = Parameters<ExportDialogComponent>[0];
+import { ExportDialogComponent } from "roamjs-components/types/query-builder";
 
 const viewTypeToPrefix = {
   bullet: "- ",

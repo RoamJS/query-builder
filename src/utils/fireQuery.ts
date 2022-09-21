@@ -1,6 +1,8 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
 import type {
+  FireQuery,
   RegisterSelection,
+  Result,
   Result as SearchResult,
 } from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
@@ -12,6 +14,7 @@ import type {
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
+import apiPost from "roamjs-components/util/apiPost";
 
 type PredefinedSelection = Parameters<RegisterSelection>[0];
 
@@ -388,9 +391,10 @@ export const registerSelection: RegisterSelection = (args) => {
   predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
 };
 
-type FireQueryArgs = Parameters<
-  typeof window.roamjs.extension.queryBuilder.fireQuery
->[0];
+type FireQueryArgs = Omit<
+  Parameters<typeof window.roamjs.extension.queryBuilder.fireQuery>[0],
+  "isBackendEnabled"
+>;
 
 export const getWhereClauses = ({
   conditions,
@@ -522,29 +526,10 @@ const getEnglishQuery = (args: FireQueryArgs) => {
   };
 };
 
-const backend = (query: string) =>
-  fetch(
-    `https://api.roamresearch.com/api/graph/${window.roamAlphaAPI.graph.name}/q`,
-    {
-      headers: {
-        Accept: "application/json",
-        Authorization:
-          "Bearer roam-graph-token-3tVTfiimleRQ8z52foEClRCzfZ5lobiZog6u2z-N",
-        "Content-Type": "application/json",
-      },
-      redirect: "manual",
-      method: "POST",
-      body: JSON.stringify({
-        query,
-      }),
-    }
-  );
-//@ts-ignore
-window.backend = backend;
+export let backendToken = "";
+export const setBackendToken = (t: string) => (backendToken = t);
 
-const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
-  args
-) => {
+const fireQuery: FireQuery = async (args) => {
   // @ts-ignore
   const { isCustomEnabled, customNode } = args as {
     isCustomEnabled: boolean;
@@ -553,7 +538,7 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
   const { query, formatResult } = isCustomEnabled
     ? {
         query: customNode as string,
-        formatResult: (r: unknown[]) =>
+        formatResult: (r: unknown[]): Promise<Result> =>
           Promise.resolve({
             text: "",
             uid: "",
@@ -572,9 +557,17 @@ const fireQuery: typeof window.roamjs.extension.queryBuilder.fireQuery = async (
       console.log("Query to Roam:");
       console.log(query);
     }
-    return Promise.all(
-      window.roamAlphaAPI.data.fast.q(query).map(formatResult)
-    );
+    return args.isBackendEnabled && backendToken
+      ? apiPost<{ result: PullBlock[][] }>({
+          domain: "https://lambda.roamjs.com",
+          path: "query",
+          authorization: `Bearer ${backendToken}`,
+          data: {
+            graph: window.roamAlphaAPI.graph.name,
+            query,
+          },
+        }).then((r) => Promise.all(r.result.map(formatResult)))
+      : Promise.all(window.roamAlphaAPI.data.fast.q(query).map(formatResult));
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);

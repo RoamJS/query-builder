@@ -18,6 +18,7 @@ import fireQuery, {
   registerSelection,
   getWhereClauses,
   getDatalogQueryComponents,
+  setBackendToken,
 } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import conditionToDatalog, {
@@ -243,8 +244,20 @@ export default runExtension({
           description:
             "The default sorting all native queries in your graph should use",
         },
+        {
+          id: "token",
+          name: "Backend Token (EXPERIMENTAL)",
+          description:
+            "Add your backend graph token to perform queries in the background instead of blocking the UI",
+          action: {
+            type: "input",
+            placeholder: "roam-graph-token-xxxx",
+            onChange: (e) => setBackendToken(e.target.value),
+          },
+        },
       ],
     });
+    setBackendToken(extensionAPI.settings.get("token") as string || "");
 
     const h1Observer = createHTMLObserver({
       tag: "H1",
@@ -416,10 +429,9 @@ export default runExtension({
         editQueryBuilderObserver,
         queryBlockObserver,
       ],
+      unload: () => {
+        window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
+      },
     };
-  },
-  unload: () => {
-    delete window.roamjs.extension.queryBuilder;
-    window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
   },
 });

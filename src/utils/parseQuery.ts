@@ -75,6 +75,7 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
 
   const customBlock = getSubTree({ tree: children, key: "custom" });
   const customNodeUid = getOrCreateUid(customBlock, "custom");
+  const backendBlock = getSubTree({ tree: children, key: "backend" });
   return {
     returnNode,
     conditions,
@@ -85,6 +86,7 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     selectionsNodesUid,
     customNodeUid,
     isCustomEnabled: customBlock.children[1]?.text === "enabled",
+    isBackendEnabled: !!backendBlock.uid,
   };
 };
 
