@@ -38,32 +38,29 @@ const postProcessResults = (
 ) => {
   const sortedResults = results
     .filter((r) => {
-      return Object.keys(settings.filters).every(
-        (filterKey) =>
-          (settings.filters[filterKey].includes.values.size === 0 &&
+      return Object.keys(settings.filters).every((filterKey) => {
+        const includeValues =
+          settings.filters[filterKey].includes.values || new Set();
+        const excludeValues =
+          settings.filters[filterKey].excludes.values || new Set();
+        return (
+          (includeValues.size === 0 &&
             (typeof r[filterKey] !== "string" ||
-              !settings.filters[filterKey].excludes.values.has(
-                extractTag(r[filterKey] as string)
-              )) &&
+              !excludeValues.has(extractTag(r[filterKey] as string))) &&
             (r[filterKey] instanceof Date ||
-              !settings.filters[filterKey].excludes.values.has(
+              !excludeValues.has(
                 window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
               )) &&
-            !settings.filters[filterKey].excludes.values.has(
-              r[filterKey] as string
-            )) ||
+            !excludeValues.has(r[filterKey] as string)) ||
           (typeof r[filterKey] === "string" &&
-            settings.filters[filterKey].includes.values.has(
-              extractTag(r[filterKey] as string)
-            )) ||
+            includeValues.has(extractTag(r[filterKey] as string))) ||
           (r[filterKey] instanceof Date &&
-            settings.filters[filterKey].includes.values.has(
+            includeValues.has(
               window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
             )) ||
-          settings.filters[filterKey].includes.values.has(
-            r[filterKey] as string
-          )
-      );
+          includeValues.has(r[filterKey] as string)
+        );
+      });
     })
     .sort((a, b) => {
       for (const sort of settings.activeSort) {
