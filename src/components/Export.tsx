@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Classes,
   Dialog,
   Icon,
@@ -11,7 +12,7 @@ import {
   SpinnerSize,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
@@ -20,6 +21,9 @@ import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import { ExportDialogComponent } from "roamjs-components/types/query-builder";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getSubTree from "roamjs-components/util/getSubTree";
+import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 
 const viewTypeToPrefix = {
   bullet: "- ",
@@ -65,8 +69,7 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-export const ExportDialog = ({
-  children,
+export const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
   results = [],
@@ -125,7 +128,7 @@ export const ExportDialog = ({
           })),
     },
   ],
-}: React.PropsWithChildren<Parameters<ExportDialogComponent>[0]>) => {
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const today = new Date();
@@ -143,6 +146,15 @@ export const ExportDialog = ({
     exportTypes[0].name
   );
   const [graph, setGraph] = useState<string>("");
+  const hasToken = useMemo(() => {
+    return !!getSubTree({
+      tree: getShallowTreeByParentUid(
+        getPageUidByPageTitle("roam/js/query-builder")
+      ).map((n) => ({ ...n, children: [] })),
+      key: "token",
+    }).uid;
+  }, []);
+  const [isBackendEnabled, setIsBackendEnabled] = useState(false);
   return (
     <Dialog
       isOpen={isOpen}
@@ -192,7 +204,16 @@ export const ExportDialog = ({
           {typeof results === "function" ? "unknown number of" : results.length}{" "}
           results
         </span>
-        {children}
+
+        {hasToken && (
+          <Checkbox
+            checked={isBackendEnabled}
+            onChange={(e) =>
+              setIsBackendEnabled((e.target as HTMLInputElement).checked)
+            }
+            label={"BE"}
+          />
+        )}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -216,6 +237,7 @@ export const ExportDialog = ({
                     const files = await exportType.callback({
                       filename,
                       graph,
+                      isBackendEnabled,
                     });
                     if (!files.length) {
                       onClose();
