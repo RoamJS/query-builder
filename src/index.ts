@@ -257,7 +257,9 @@ export default runExtension({
         },
       ],
     });
-    setBackendToken(extensionAPI.settings.get("token") as string || "");
+    setTimeout(() => {
+      setBackendToken((extensionAPI.settings.get("token") as string) || "");
+    }, 1000);
 
     const h1Observer = createHTMLObserver({
       tag: "H1",
