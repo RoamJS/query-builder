@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "roamjs-scripts dev --depot",
-    "dev:dep": "roamjs-scripts dev --port 3100",
     "prebuild:roam": "npm install",
     "build:roam": "roamjs-scripts build --depot"
   },

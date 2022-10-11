@@ -402,7 +402,8 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
   const onViewChange = (view: typeof views[number], i: number) => {
-    setViews(views.map((v, j) => (i === j ? view : v)));
+    const newViews = views.map((v, j) => (i === j ? view : v));
+    setViews(newViews);
 
     if (preventSavingSettings) return;
     const resultNode = getSubTree({
@@ -415,7 +416,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
     });
     viewsNode.children.forEach((c) => deleteBlock(c.uid));
 
-    views
+    newViews
       .map((v) => ({
         text: v.column,
         children: [
@@ -449,13 +450,18 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
         )}
         <Popover
           isOpen={moreMenuOpen}
-          target={
-            <Button
-              minimal
-              icon={"more"}
-              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-            />
-          }
+          target={<Button minimal icon={"more"} />}
+          onInteraction={(next, e) => {
+            if (!e) return;
+            const target = e.target as HTMLElement;
+            if (
+              target.classList.contains("bp3-menu-item") ||
+              target.closest(".bp3-menu-item")
+            ) {
+              return;
+            }
+            setMoreMenuOpen(next);
+          }}
           content={
             isEditRandom ? (
               <div className="relative w-72 p-4">
