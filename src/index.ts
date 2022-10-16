@@ -37,7 +37,13 @@ import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import runQuery from "./utils/runQuery";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import { render as cyRender } from "./components/CytoscapePlayground";
 import React from "react";
+import isFlagEnabled from "./utils/isFlagEnabled";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import createBlock from "roamjs-components/writes/createBlock";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -261,6 +267,35 @@ export default runExtension({
       setBackendToken((extensionAPI.settings.get("token") as string) || "");
     }, 1000);
 
+    const globalRefs: { [key: string]: (...args: string[]) => void } = {
+      clearOnClick: () => {},
+    };
+
+    const clearOnClick = async (tag: string) => {
+      const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"] || "";
+      const text = `[[${tag}]]`;
+      if (uid) {
+        const currentText = getTextByBlockUid(uid);
+        updateBlock({
+          text: `${currentText} ${text}`,
+          uid,
+        });
+      } else {
+        const parentUid = await window.roamAlphaAPI.ui.mainWindow
+          .getOpenPageOrBlockUid()
+          .then(
+            (uid) => uid || window.roamAlphaAPI.util.dateToPageTitle(new Date())
+          );
+        const pageTitle = getPageTitleByPageUid(parentUid);
+        if (pageTitle.startsWith("Playground")) {
+          globalRefs.clearOnClick(tag);
+        } else {
+          const order = getChildrenLengthByPageUid(parentUid);
+          createBlock({ parentUid, node: { text }, order });
+        }
+      }
+    };
+
     const h1Observer = createHTMLObserver({
       tag: "H1",
       className: "rm-title-display",
@@ -293,6 +328,26 @@ export default runExtension({
               parent,
               defaultReturnNode: "node",
               onloadArgs,
+            });
+          }
+        } else if (
+          title.startsWith("Playground") &&
+          !!h1.closest(".roam-article")
+        ) {
+          const children = document.querySelector<HTMLDivElement>(
+            ".roam-article .rm-block-children"
+          );
+          if (!children.hasAttribute("data-roamjs-discourse-playground")) {
+            children.setAttribute("data-roamjs-discourse-playground", "true");
+            const parent = document.createElement("div");
+            children.parentElement.appendChild(parent);
+            parent.style.height = "500px";
+            // TODO POST MIGRATION - Instead of globalRefs, use dom event system
+            cyRender({
+              parent,
+              title,
+              previewEnabled: isFlagEnabled("preview"),
+              globalRefs,
             });
           }
         }

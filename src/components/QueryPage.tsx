@@ -1,5 +1,5 @@
 import { Card, Spinner } from "@blueprintjs/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import type {

@@ -76,10 +76,10 @@ export const ExportDialog: ExportDialogComponent = ({
   exportTypes = [
     {
       name: "CSV",
-      callback: async ({ filename }) => {
+      callback: async ({ filename, isBackendEnabled }) => {
         const resolvedResults = Array.isArray(results)
           ? results
-          : await results();
+          : await results(isBackendEnabled);
         const keys = Object.keys(resolvedResults[0]).filter(
           (u) => !/uid/i.test(u)
         );
@@ -101,8 +101,8 @@ export const ExportDialog: ExportDialogComponent = ({
     },
     {
       name: "Markdown",
-      callback: async () =>
-        (Array.isArray(results) ? results : await results())
+      callback: async ({ isBackendEnabled }) =>
+        (Array.isArray(results) ? results : await results(isBackendEnabled))
           .map(({ uid, ...rest }) => {
             const v = (
               (

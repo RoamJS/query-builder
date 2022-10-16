@@ -14,16 +14,21 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@types/cytoscape": "^3.19.9",
     "@types/react-vertical-timeline-component": "^3.3.3",
-    "roamjs-scripts": "^0.22.3"
+    "roamjs-scripts": "^0.24.0"
   },
   "tags": [
     "queries",
     "widgets"
   ],
   "dependencies": {
+    "cytoscape": "^3.21.0",
+    "cytoscape-navigator": "^2.0.1",
+    "mathjs": "^10.4.2",
     "react-charts": "^3.0.0-beta.48",
+    "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.73.18"
+    "roamjs-components": "^0.74.13"
   }
 }
