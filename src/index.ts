@@ -45,6 +45,7 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
+import initializeDiscourseGraphsMode, { SETTING } from "./discourseGraphsMode";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -175,6 +176,8 @@ export default runExtension({
           ].filter((o) => typeof o.value !== "undefined"),
       },
     });
+    const toggleDiscourseGraphsMode =
+      initializeDiscourseGraphsMode(extensionAPI);
 
     const toggleSortReferences = runSortReferences();
     extensionAPI.settings.panel.create({
@@ -261,6 +264,16 @@ export default runExtension({
           },
           description:
             "Whether or not to enable sorting on the linked references section",
+        },
+        {
+          id: SETTING,
+          name: "Discourse Graphs Enabled",
+          description:
+            "Includes the ability to construct higher level discourse graph nodes and relations for higher order reasoning.",
+          action: {
+            type: "switch",
+            onChange: (e) => toggleDiscourseGraphsMode(e.target.checked),
+          },
         },
         {
           id: "token",
@@ -500,6 +513,7 @@ export default runExtension({
       ],
       unload: () => {
         window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
+        toggleDiscourseGraphsMode(false);
       },
     };
   },
