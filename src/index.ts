@@ -45,6 +45,7 @@ import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLen
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import initializeDiscourseGraphsMode, { SETTING } from "./discourseGraphsMode";
+import getPageMetadata from "./utils/getPageMetadata";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -193,7 +194,7 @@ export default runExtension({
         },
         {
           id: "hide-metadata",
-          name: "Hide Metadata",
+          name: "Hide Query Metadata",
           description: "Hide the Roam blocks that are used to power each query",
           action: {
             type: "switch",
@@ -252,6 +253,15 @@ export default runExtension({
           name: "Default Sort",
           description:
             "The default sorting all native queries in your graph should use",
+        },
+        {
+          id: "show-page-metadata",
+          name: "Show Page Metadata",
+          description:
+            "Show page metadata below each page title, such as the author and when it was created.",
+          action: {
+            type: "switch",
+          },
         },
         {
           id: SETTING,
@@ -314,6 +324,26 @@ export default runExtension({
       className: "rm-title-display",
       callback: (h1: HTMLHeadingElement) => {
         const title = getPageTitleValueByHtmlElement(h1);
+        if (!!extensionAPI.settings.get("show-page-metadata")) {
+          const { displayName, date } = getPageMetadata(title);
+          const container = document.createElement("div");
+          const oldMarginBottom = getComputedStyle(h1).marginBottom;
+          container.style.marginTop = `${
+            4 - Number(oldMarginBottom.replace("px", "")) / 2
+          }px`;
+          container.style.marginBottom = oldMarginBottom;
+          const label = document.createElement("i");
+          label.innerText = `Created by ${
+            displayName || "Anonymous"
+          } on ${date.toLocaleString()}`;
+          container.appendChild(label);
+          if (h1.parentElement.lastChild === h1) {
+            h1.parentElement.appendChild(container);
+          } else {
+            h1.parentElement.insertBefore(container, h1.nextSibling);
+          }
+        }
+
         if (
           getQueryPages(extensionAPI)
             .map(
