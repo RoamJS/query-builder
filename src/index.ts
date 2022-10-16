@@ -47,6 +47,8 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import createBlock from "roamjs-components/writes/createBlock";
 import initializeDiscourseGraphsMode, { SETTING } from "./discourseGraphsMode";
 import getPageMetadata from "./utils/getPageMetadata";
+import { render as queryRender } from "./components/QueryDrawer";
+import createPage from "roamjs-components/writes/createPage";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -532,8 +534,25 @@ export default runExtension({
         ).map((b) => ({ uid: b[0][":block/uid"] })),
     };
 
+    window.roamAlphaAPI.ui.commandPalette.addCommand({
+      label: "Open Query Drawer",
+      callback: () =>
+        Promise.resolve(
+          getPageUidByPageTitle("roam/js/query-builder/drawer") ||
+            createPage({
+              title: "roam/js/query-builder/drawer",
+            })
+        ).then((blockUid) =>
+          queryRender({
+            blockUid,
+            clearOnClick,
+          })
+        ),
+    });
+
     return {
       elements: [style],
+      commands: ["Open Query Drawer"],
       observers: [
         h1Observer,
         qtObserver,

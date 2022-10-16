@@ -135,6 +135,10 @@ Next to the save button is a button that will allow you to export your results. 
 
 The above component is also available as a block component. This allows you to create several on a page, wherever on the page you want. To create one, simply add `{{query block}}` to any block on the page.
 
+### Query Drawer
+
+The above component is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. To open, enter `Open Query Drawer` from the Roam Command Palette.
+
 ### Styling
 
 Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
