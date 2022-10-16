@@ -10,7 +10,7 @@ import React, {
 import ReactDOM from "react-dom";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import getNodeReferenceChildren from "../utils/getNodeReferenceChildren";
+import { render as renderReferenceContext } from "./ReferenceContext";
 import isDiscourseNode from "../utils/isDiscourseNode";
 
 const sizes = [300, 400, 500, 600];
@@ -47,7 +47,7 @@ const TooltipContent = ({
       newIsEmpty = false;
     }
     if (isDiscourseNode(uid)) {
-      const refs = getNodeReferenceChildren(tag);
+      const refs = renderReferenceContext({ title: tag });
       containerRef.current.appendChild(refs);
       newIsEmpty = newIsEmpty && !refs.childElementCount;
     }

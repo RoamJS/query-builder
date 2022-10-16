@@ -77,10 +77,10 @@ const ReferenceContext = ({ title }: Props) => {
   );
 };
 
-export const render = ({
-  container,
-  ...props
-}: { container: HTMLDivElement } & Props) =>
+export const render = (props: Props) => {
+  const container = document.createElement("div");
   ReactDOM.render(<ReferenceContext {...props} />, container);
+  return container;
+};
 
 export default ReferenceContext;
