@@ -464,6 +464,28 @@ const initializeDiscourseGraphsMode = (
         pageRefObservers.add(overlayPageRefHandler);
       }
       if (pageRefObservers.size) enablePageRefObserver();
+
+
+    //   if (isFlagEnabled("render references")) {
+    //     createHTMLObserver({
+    //       className: "rm-sidebar-window",
+    //       tag: "div",
+    //       callback: (d) => {
+    //         const label = d.querySelector<HTMLSpanElement>(
+    //           ".window-headers div span"
+    //         );
+    //         if (label && label.innerText.startsWith("Outline")) {
+    //           const title = elToTitle(
+    //             d.querySelector<HTMLHeadingElement>(".rm-title-display")
+    //           );
+    //           if (isDiscourseNode(getPageUidByPageTitle(title))) {
+    //             const container = renderReferenceContext({ title });
+    //             d.appendChild(container);
+    //           }
+    //         }
+    //       },
+    //     });
+    //   }
     } else {
       unloads.forEach((u) => u());
       unloads.clear();
