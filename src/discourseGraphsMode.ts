@@ -27,6 +27,7 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import isDiscourseNode from "./utils/isDiscourseNode";
 import isFlagEnabled from "./utils/isFlagEnabled";
 import addStyle from "roamjs-components/dom/addStyle";
+import { render as exportRender } from "./components/ExportDialog";
 
 export const SETTING = "discourse-graphs";
 
@@ -465,27 +466,51 @@ const initializeDiscourseGraphsMode = (
       }
       if (pageRefObservers.size) enablePageRefObserver();
 
+      extensionAPI.settings.set("query-pages", [
+        ...((extensionAPI.settings.get("query-pages") as string[]) || []),
+        "discourse-graph/queries/*",
+      ]);
+      unloads.add(function removeQueryPage() {
+        extensionAPI.settings.set(
+          "query-pages",
+          ((extensionAPI.settings.get("query-pages") as string[]) || []).filter(
+            (s) => s !== "discourse-graph/queries/*"
+          )
+        );
+        unloads.delete(removeQueryPage);
+      });
 
-    //   if (isFlagEnabled("render references")) {
-    //     createHTMLObserver({
-    //       className: "rm-sidebar-window",
-    //       tag: "div",
-    //       callback: (d) => {
-    //         const label = d.querySelector<HTMLSpanElement>(
-    //           ".window-headers div span"
-    //         );
-    //         if (label && label.innerText.startsWith("Outline")) {
-    //           const title = elToTitle(
-    //             d.querySelector<HTMLHeadingElement>(".rm-title-display")
-    //           );
-    //           if (isDiscourseNode(getPageUidByPageTitle(title))) {
-    //             const container = renderReferenceContext({ title });
-    //             d.appendChild(container);
-    //           }
-    //         }
-    //       },
-    //     });
-    //   }
+      window.roamAlphaAPI.ui.commandPalette.addCommand({
+        label: "Export Discourse Graph",
+        callback: () => exportRender({}),
+      });
+      unloads.add(function removeExportCommand() {
+        window.roamAlphaAPI.ui.commandPalette.removeCommand({
+          label: "Export Discourse Graph",
+        });
+        unloads.delete(removeExportCommand);
+      });
+
+      //   if (isFlagEnabled("render references")) {
+      //     createHTMLObserver({
+      //       className: "rm-sidebar-window",
+      //       tag: "div",
+      //       callback: (d) => {
+      //         const label = d.querySelector<HTMLSpanElement>(
+      //           ".window-headers div span"
+      //         );
+      //         if (label && label.innerText.startsWith("Outline")) {
+      //           const title = elToTitle(
+      //             d.querySelector<HTMLHeadingElement>(".rm-title-display")
+      //           );
+      //           if (isDiscourseNode(getPageUidByPageTitle(title))) {
+      //             const container = renderReferenceContext({ title });
+      //             d.appendChild(container);
+      //           }
+      //         }
+      //       },
+      //     });
+      //   }
     } else {
       unloads.forEach((u) => u());
       unloads.clear();

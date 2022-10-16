@@ -42,7 +42,9 @@ const getContentFromNodes = ({
   title: string;
   allNodes: ReturnType<typeof getDiscourseNodes>;
 }) => {
-  const nodeFormat = allNodes.find((a) => matchDiscourseNode({ title, ...a }))?.format;
+  const nodeFormat = allNodes.find((a) =>
+    matchDiscourseNode({ title, ...a })
+  )?.format;
   if (!nodeFormat) return title;
   const regex = new RegExp(
     `^${nodeFormat
@@ -192,9 +194,7 @@ type Props = {
 const getExportTypes = ({
   results,
   relations,
-}: Props): Parameters<
-  typeof ExportDialog
->[0]["exportTypes"] => {
+}: Props): Parameters<typeof ExportDialog>[0]["exportTypes"] => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -306,39 +306,6 @@ const getExportTypes = ({
   };
 
   return [
-    {
-      name: "Neo4j",
-      callback: async ({ filename, isBackendEnabled }) => {
-        const nodeHeader = "uid:ID,label:LABEL,title,author,date\n";
-        const nodeData = (await getPageData(isBackendEnabled))
-          .map(({ text, uid, type }) => {
-            const value = text.replace(new RegExp(`^\\[\\[\\w*\\]\\] - `), "");
-            const { displayName, date } = getPageMetadata(text);
-            return `${uid},${type.toUpperCase()},${
-              value.includes(",") ? `"${value}"` : value
-            },${displayName},"${date.toLocaleString()}"`;
-          })
-          .join("\n");
-        const relationHeader = "start:START_ID,end:END_ID,label:TYPE\n";
-        return getRelationData(isBackendEnabled).then((rels) => {
-          const relationData = rels.map(
-            ({ source, target, label }) =>
-              `${source},${target},${label.toUpperCase()}`
-          );
-          const relations = relationData.join("\n");
-          return [
-            {
-              title: `${filename.replace(/\.csv/, "")}_nodes.csv`,
-              content: `${nodeHeader}${nodeData}`,
-            },
-            {
-              title: `${filename.replace(/\.csv/, "")}_relations.csv`,
-              content: `${relationHeader}${relations}`,
-            },
-          ];
-        });
-      },
-    },
     {
       name: "Markdown",
       callback: async ({ isBackendEnabled }) => {
@@ -541,8 +508,40 @@ const getExportTypes = ({
         return [];
       },
     },
+    {
+      name: "Neo4j",
+      callback: async ({ filename, isBackendEnabled }) => {
+        const nodeHeader = "uid:ID,label:LABEL,title,author,date\n";
+        const nodeData = (await getPageData(isBackendEnabled))
+          .map(({ text, uid, type }) => {
+            const value = text.replace(new RegExp(`^\\[\\[\\w*\\]\\] - `), "");
+            const { displayName, date } = getPageMetadata(text);
+            return `${uid},${type.toUpperCase()},${
+              value.includes(",") ? `"${value}"` : value
+            },${displayName},"${date.toLocaleString()}"`;
+          })
+          .join("\n");
+        const relationHeader = "start:START_ID,end:END_ID,label:TYPE\n";
+        return getRelationData(isBackendEnabled).then((rels) => {
+          const relationData = rels.map(
+            ({ source, target, label }) =>
+              `${source},${target},${label.toUpperCase()}`
+          );
+          const relations = relationData.join("\n");
+          return [
+            {
+              title: `${filename.replace(/\.csv/, "")}_nodes.csv`,
+              content: `${nodeHeader}${nodeData}`,
+            },
+            {
+              title: `${filename.replace(/\.csv/, "")}_relations.csv`,
+              content: `${relationHeader}${relations}`,
+            },
+          ];
+        });
+      },
+    },
   ];
 };
 
 export default getExportTypes;
-
