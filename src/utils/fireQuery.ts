@@ -2,8 +2,7 @@ import conditionToDatalog from "../utils/conditionToDatalog";
 import type {
   FireQuery,
   RegisterSelection,
-  Result,
-  Result as SearchResult,
+  Result as QueryResult,
 } from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
@@ -195,7 +194,7 @@ const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
-const getArgValue = (key: string, result: SearchResult) => {
+const getArgValue = (key: string, result: QueryResult) => {
   if (/^today$/i.test(key)) return new Date();
   const val = result[key];
   if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
@@ -499,7 +498,7 @@ const getEnglishQuery = (args: FireQueryArgs) => {
     query: getDatalogQuery(parts),
     formatResult: (result: unknown[]) =>
       parts.definedSelections
-        .map((c, i) => (prev: SearchResult) => {
+        .map((c, i) => (prev: QueryResult) => {
           const pullResult = result[i];
           return typeof pullResult === "object" && pullResult !== null
             ? Promise.resolve(
@@ -526,7 +525,7 @@ const getEnglishQuery = (args: FireQueryArgs) => {
                 return p;
               })
             ),
-          Promise.resolve({} as SearchResult)
+          Promise.resolve({} as QueryResult)
         ),
   };
 };
@@ -543,7 +542,7 @@ const fireQuery: FireQuery = async (args) => {
   const { query, formatResult } = isCustomEnabled
     ? {
         query: customNode as string,
-        formatResult: (r: unknown[]): Promise<Result> =>
+        formatResult: (r: unknown[]): Promise<QueryResult> =>
           Promise.resolve({
             text: "",
             uid: "",
