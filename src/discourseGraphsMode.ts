@@ -28,6 +28,10 @@ import isDiscourseNode from "./utils/isDiscourseNode";
 import isFlagEnabled from "./utils/isFlagEnabled";
 import addStyle from "roamjs-components/dom/addStyle";
 import { render as exportRender } from "./components/ExportDialog";
+import registerDiscourseDatalogTranslators from "./utils/registerDiscourseDatalogTranslators";
+import { registerSelection } from "./utils/fireQuery";
+import deriveNodeAttribute from "./utils/deriveDiscourseNodeAttribute";
+import matchDiscourseNode from "./utils/matchDiscourseNode";
 
 export const SETTING = "discourse-graphs";
 
@@ -433,7 +437,44 @@ const initializeDiscourseGraphsMode = (
         unloads.delete(removeHashChangeListener);
       });
 
-      refreshConfigTree();
+      const unregisterDatalog = refreshConfigTree().concat([
+        registerSelection({
+          test: /^(.*)-(.*)$/,
+          pull: ({ returnNode }) => `(pull ?${returnNode} [:node/title])`,
+          mapper: () => {
+            return `This selection is deprecated. Define a Node Attribute and use \`discourse:attribute\` instead.`;
+          },
+        }),
+        registerSelection({
+          test: /^discourse:(.*)$/,
+          pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
+          mapper: (r, key) => {
+            const attribute = key.substring("discourse:".length);
+            const uid = r[":block/uid"] || "";
+            return deriveNodeAttribute({ uid, attribute });
+          },
+        }),
+        registerSelection({
+          test: /^\s*type\s*$/i,
+          pull: ({ returnNode }) =>
+            `(pull ?${returnNode} [:node/title :block/string])`,
+          mapper: (r) => {
+            const title = r[":node/title"] || "";
+            return (
+              getDiscourseNodes().find((n) =>
+                matchDiscourseNode({
+                  ...n,
+                  title,
+                })
+              )?.text || (r[":block/string"] ? "block" : "page")
+            );
+          },
+        }),
+      ]);
+      unloads.add(function unregisterAllDatalog() {
+        unregisterDatalog.forEach((u) => u());
+        unloads.delete(unregisterAllDatalog);
+      });
       const configTree = getBasicTreeByParentUid(pageUid);
 
       const trigger = getSettingValueFromTree({

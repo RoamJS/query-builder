@@ -113,10 +113,18 @@ const getTitleDatalog = ({
   ];
 };
 
-const translator: Record<
-  string,
-  Omit<Parameters<RegisterDatalogTranslator>[0], "key">
-> = {
+type Translator = {
+  callback: (args: {
+    source: string;
+    target: string;
+    uid: string;
+  }) => DatalogClause[];
+  targetOptions?: string[] | ((source: string) => string[]);
+  placeholder?: string;
+  isVariable?: true;
+};
+
+const translator: Record<string, Translator> = {
   self: {
     callback: ({ source }) => [
       {
@@ -562,11 +570,12 @@ const translator: Record<
   },
 };
 
-export const registerDatalogTranslator: RegisterDatalogTranslator = ({
+export const registerDatalogTranslator = ({
   key,
   ...translation
-}) => {
+}: Translator & { key: string }) => {
   translator[key] = translation;
+  return () => unregisterDatalogTranslator({ key });
 };
 
 export const unregisterDatalogTranslator = ({ key }: { key: string }) =>
