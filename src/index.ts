@@ -8,39 +8,20 @@ import addStyle from "roamjs-components/dom/addStyle";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import QueryPage, {
+import {
   render as renderQueryPage,
   renderQueryBlock,
 } from "./components/QueryPage";
-import QueryEditor from "./components/QueryEditor";
-import ResultsView from "./components/ResultsView";
-import fireQuery, {
-  registerSelection,
-  getWhereClauses,
-  getDatalogQueryComponents,
-  setBackendToken,
-} from "./utils/fireQuery";
-import parseQuery from "./utils/parseQuery";
-import conditionToDatalog, {
-  getConditionLabels,
-  registerDatalogTranslator,
-  unregisterDatalogTranslator,
-} from "./utils/conditionToDatalog";
+import { setBackendToken } from "./utils/fireQuery";
 import runQueryTools from "./utils/runQueryTools";
-import { ExportDialog } from "./components/Export";
 import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
 import extractRef from "roamjs-components/util/extractRef";
 import type { InputTextNode, PullBlock } from "roamjs-components/types/native";
-import migrateLegacySettings from "roamjs-components/util/migrateLegacySettings";
 import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import runQuery from "./utils/runQuery";
-import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
-import React from "react";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import initializeDiscourseGraphsMode, {
   renderDiscourseNodeTypeConfigPage,
@@ -52,7 +33,7 @@ import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 
 const loadedElsewhere = document.currentScript
-  ? !!document.currentScript.getAttribute("data-source")
+  ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
 
 export default runExtension({
@@ -129,57 +110,6 @@ export default runExtension({
 .roamjs-view-select > span {
   width: 100%;
 }`);
-    migrateLegacySettings({
-      extensionAPI,
-      extensionId: process.env.ROAMJS_EXTENSION_ID,
-      specialKeys: {
-        "Query Pages": (n) => [
-          { value: n.children.map((c) => c.text), key: "query-pages" },
-        ],
-        "Default Filters": (n) => [
-          {
-            key: "default-filters",
-            value: Object.fromEntries(
-              n.children.map((c) => [
-                c.text,
-                {
-                  includes: {
-                    values: new Set(
-                      getSubTree({
-                        tree: c.children,
-                        key: "includes",
-                      }).children.map((i) => i.text)
-                    ),
-                  },
-                  excludes: {
-                    values: new Set(
-                      getSubTree({
-                        tree: c.children,
-                        key: "excludes",
-                      }).children.map((i) => i.text)
-                    ),
-                  },
-                },
-              ])
-            ),
-          },
-        ],
-        "Native Queries": (n) =>
-          [
-            {
-              key: "sort-blocks",
-              value: !!getSubTree({ key: "Sort Blocks", tree: n.children }).uid,
-            },
-            {
-              key: "context",
-              value: getSettingValueFromTree({
-                key: "Context",
-                tree: n.children,
-              }),
-            },
-          ].filter((o) => typeof o.value !== "undefined"),
-      },
-    });
     const toggleDiscourseGraphsMode = initializeDiscourseGraphsMode(onloadArgs);
     const h1ObserverCallback = (h1: HTMLHeadingElement) => {
       const title = getPageTitleValueByHtmlElement(h1);
@@ -357,9 +287,15 @@ export default runExtension({
         },
       ],
     });
-    setTimeout(() => {
-      setBackendToken((extensionAPI.settings.get("token") as string) || "");
-    }, 1000);
+    setBackendToken((extensionAPI.settings.get("token") as string) || "");
+    if (loadedElsewhere) {
+      extensionAPI.settings.set(SETTING, true);
+      toggleDiscourseGraphsMode(true).then(() =>
+        document
+          .querySelectorAll(`h1.rm-title-display`)
+          .forEach(h1ObserverCallback)
+      );
+    }
 
     const globalRefs = {
       clearOnClick: ({
