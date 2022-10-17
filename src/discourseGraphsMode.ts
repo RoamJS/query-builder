@@ -1,9 +1,13 @@
-import { createConfigObserver } from "roamjs-components/components/ConfigPage";
+import {
+  createConfigObserver,
+  render as configPageRender,
+} from "roamjs-components/components/ConfigPage";
 import {
   CustomField,
   Field,
   FlagField,
   SelectField,
+  TextField,
 } from "roamjs-components/components/ConfigPanels/types";
 import DiscourseNodeConfigPanel from "./components/DiscourseNodeConfigPanel";
 import DiscourseRelationConfigPanel from "./components/DiscourseRelationConfigPanel";
@@ -13,6 +17,7 @@ import FlagPanel from "roamjs-components/components/ConfigPanels/FlagPanel";
 import NumberPanel from "roamjs-components/components/ConfigPanels/NumberPanel";
 import MultiTextPanel from "roamjs-components/components/ConfigPanels/MultiTextPanel";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
+import BlocksPanel from "roamjs-components/components/ConfigPanels/BlocksPanel";
 import DEFAULT_RELATION_VALUES from "./data/defaultDiscourseRelations";
 import { OnloadArgs } from "roamjs-components/types";
 import getDiscourseNodes from "./utils/getDiscourseNodes";
@@ -22,16 +27,22 @@ import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromT
 import { render } from "./components/DiscourseNodeMenu";
 import { render as discourseOverlayRender } from "./components/DiscourseContextOverlay";
 import { render as previewRender } from "./components/LivePreview";
+import { render as renderReferenceContext } from "./components/ReferenceContext";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import isDiscourseNode from "./utils/isDiscourseNode";
 import isFlagEnabled from "./utils/isFlagEnabled";
 import addStyle from "roamjs-components/dom/addStyle";
 import { render as exportRender } from "./components/ExportDialog";
-import registerDiscourseDatalogTranslators from "./utils/registerDiscourseDatalogTranslators";
 import { registerSelection } from "./utils/fireQuery";
 import deriveNodeAttribute from "./utils/deriveDiscourseNodeAttribute";
 import matchDiscourseNode from "./utils/matchDiscourseNode";
+import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
+import React from "react";
+import DiscourseNodeIndex from "./components/DiscourseNodeIndex";
+import DiscourseNodeSpecification from "./components/DiscourseNodeSpecification";
+import DiscourseNodeAttributes from "./components/DiscourseNodeAttributes";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 export const SETTING = "discourse-graphs";
 
@@ -107,11 +118,115 @@ const overlayPageRefHandler = (s: HTMLSpanElement) => {
   }
 };
 
+let enabled = false;
+
+export const renderDiscourseNodeTypeConfigPage = ({
+  title,
+  h,
+}: {
+  title: string;
+  h: HTMLHeadingElement;
+}) => {
+  if (!enabled) return;
+  const nodeText = title.substring("discourse-graph/nodes/".length);
+  const allNodes = getDiscourseNodes();
+  const node = allNodes.find(({ text }) => text === nodeText);
+  if (node) {
+    const renderNode = () =>
+      configPageRender({
+        h,
+        title,
+        config: [
+          {
+            title: "Index",
+            description: "Index of all of the pages in your graph of this type",
+            Panel: CustomPanel,
+            options: {
+              component: ({ uid }) =>
+                React.createElement(DiscourseNodeIndex, {
+                  node,
+                  parentUid: uid,
+                }),
+            },
+          } as Field<CustomField>,
+          {
+            title: "Format",
+            description: `The format ${nodeText} pages should have.`,
+            defaultValue: "\\",
+            Panel: TextPanel,
+            options: {
+              placeholder: `Include "{content}" in format`,
+            },
+          } as Field<TextField>,
+          {
+            title: "Specification",
+            description: `The conditions specified to identify a ${nodeText} node.`,
+            Panel: CustomPanel,
+            options: {
+              component: ({ uid }) =>
+                React.createElement(DiscourseNodeSpecification, {
+                  node,
+                  parentUid: uid,
+                }),
+            },
+          } as Field<CustomField>,
+          {
+            title: "Shortcut",
+            description: `The trigger to quickly create a ${nodeText} page from the node menu.`,
+            defaultValue: "\\",
+            Panel: TextPanel,
+          },
+          {
+            title: "Description",
+            description: `Describing what the ${nodeText} node represents in your graph.`,
+            Panel: TextPanel,
+          },
+          {
+            title: "Template",
+            description: `The template that auto fills ${nodeText} page when generated.`,
+            Panel: BlocksPanel,
+          },
+          {
+            title: "Attributes",
+            description: `A set of derived properties about the node based on queryable data.`,
+            Panel: CustomPanel,
+            options: {
+              component: DiscourseNodeAttributes,
+            },
+          } as Field<CustomField>,
+          {
+            title: "Overlay",
+            description: `Select which attribute is used for the Discourse Overlay`,
+            Panel: SelectPanel,
+            options: {
+              items: () =>
+                getSubTree({
+                  parentUid: getPageUidByPageTitle(title),
+                  key: "Attributes",
+                }).children.map((c) => c.text),
+            },
+          } as Field<SelectField>,
+        ],
+      });
+
+    if (window.roamjs.extension.queryBuilder) {
+      renderNode();
+    } else {
+      document.body.addEventListener(
+        "roamjs:discourse-graph:query-builder",
+        renderNode,
+        { once: true }
+      );
+    }
+  }
+};
+
 const initializeDiscourseGraphsMode = (
   extensionAPI: OnloadArgs["extensionAPI"]
 ) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
+    enabled = flag;
     if (flag) {
       const style =
         addStyle(`.roamjs-discourse-live-preview>div>div>.rm-block-main,
@@ -532,26 +647,26 @@ const initializeDiscourseGraphsMode = (
         unloads.delete(removeExportCommand);
       });
 
-      //   if (isFlagEnabled("render references")) {
-      //     createHTMLObserver({
-      //       className: "rm-sidebar-window",
-      //       tag: "div",
-      //       callback: (d) => {
-      //         const label = d.querySelector<HTMLSpanElement>(
-      //           ".window-headers div span"
-      //         );
-      //         if (label && label.innerText.startsWith("Outline")) {
-      //           const title = elToTitle(
-      //             d.querySelector<HTMLHeadingElement>(".rm-title-display")
-      //           );
-      //           if (isDiscourseNode(getPageUidByPageTitle(title))) {
-      //             const container = renderReferenceContext({ title });
-      //             d.appendChild(container);
-      //           }
-      //         }
-      //       },
-      //     });
-      //   }
+      if (isFlagEnabled("render references")) {
+        createHTMLObserver({
+          className: "rm-sidebar-window",
+          tag: "div",
+          callback: (d) => {
+            const label = d.querySelector<HTMLSpanElement>(
+              ".window-headers div span"
+            );
+            if (label && label.innerText.startsWith("Outline")) {
+              const title = getPageTitleValueByHtmlElement(
+                d.querySelector<HTMLHeadingElement>(".rm-title-display")
+              );
+              if (isDiscourseNode(getPageUidByPageTitle(title))) {
+                const container = renderReferenceContext({ title });
+                d.appendChild(container);
+              }
+            }
+          },
+        });
+      }
     } else {
       unloads.forEach((u) => u());
       unloads.clear();

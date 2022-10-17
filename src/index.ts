@@ -45,7 +45,10 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
-import initializeDiscourseGraphsMode, { SETTING } from "./discourseGraphsMode";
+import initializeDiscourseGraphsMode, {
+  renderDiscourseNodeTypeConfigPage,
+  SETTING,
+} from "./discourseGraphsMode";
 import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
@@ -407,6 +410,8 @@ export default runExtension({
               globalRefs,
             });
           }
+        } else if (title.startsWith("discourse-graph/nodes/")) {
+          renderDiscourseNodeTypeConfigPage({ title, h: h1 });
         }
       },
     });
