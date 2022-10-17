@@ -7,6 +7,7 @@ import deleteBlock from "roamjs-components/writes/deleteBlock";
 import refreshConfigTree from "../utils/refreshConfigTree";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import getDiscourseNodeFormatExpression from "../utils/getDiscourseNodeFormatExpression";
+import QueryEditor from "./QueryEditor";
 
 const NodeSpecification = ({
   parentUid,
@@ -21,7 +22,6 @@ const NodeSpecification = ({
       getSubTree({ tree: getBasicTreeByParentUid(parentUid), key: "enabled" })
         ?.uid
   );
-  const { QueryEditor } = window.roamjs.extension.queryBuilder;
   React.useEffect(() => {
     if (enabled) {
       const scratchNode = getSubTree({ parentUid, key: "scratch" });

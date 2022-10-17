@@ -47,6 +47,8 @@ import getDiscourseRelations from "../utils/getDiscourseRelations";
 import matchDiscourseNode from "../utils/matchDiscourseNode";
 import getDiscourseRelationTriples from "../utils/getDiscourseRelationTriples";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
+import extractRef from "roamjs-components/util/extractRef";
+import fireQuery from "../utils/fireQuery";
 
 navigator(cytoscape);
 const editCursor =
@@ -164,22 +166,20 @@ const LabelDialog = ({
   useEffect(() => {
     if (nodeType !== TEXT_TYPE) {
       const conditionUid = window.roamAlphaAPI.util.generateUID();
-      window.roamjs.extension.queryBuilder
-        .fireQuery({
-          returnNode: "node",
-          selections: [],
-          conditions: [
-            {
-              source: "node",
-              relation: "is a",
-              target: nodeType,
-              uid: conditionUid,
-              type: "clause",
-            },
-          ],
-          isBackendEnabled: false,
-        })
-        .then((results) => setOptions(results.map((r) => r.text)));
+      fireQuery({
+        returnNode: "node",
+        selections: [],
+        conditions: [
+          {
+            source: "node",
+            relation: "is a",
+            target: nodeType,
+            uid: conditionUid,
+            type: "clause",
+          },
+        ],
+        isBackendEnabled: false,
+      }).then((results) => setOptions(results.map((r) => r.text)));
     }
   }, [nodeType]);
   return (
@@ -328,7 +328,7 @@ const NodeIcon = ({
 type Props = {
   title: string;
   previewEnabled: boolean;
-  globalRefs: { [key: string]: (...args: string[]) => void };
+  globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
 const useTreeFieldUid = ({
@@ -819,6 +819,7 @@ const CytoscapePlayground = ({
   );
 
   useEffect(() => {
+    const oldClearOnClick = globalRefs.clearOnClick;
     Promise.all(elementsChildren.map(getCyElementFromRoamNode)).then(
       (elements) => {
         cyRef.current = cytoscape({
@@ -884,7 +885,7 @@ const CytoscapePlayground = ({
         });
         cyRef.current.nodes().forEach(nodeInitCallback);
         cyRef.current.edges().forEach(edgeCallback);
-        globalRefs.clearOnClick = (s: string) => {
+        globalRefs.clearOnClick = ({ text }) => {
           const { x1, x2, y1, y2 } = cyRef.current.extent();
           const lastTime = cyRef.current.scratch("last_insert") as {
             x: number;
@@ -896,6 +897,7 @@ const CytoscapePlayground = ({
                 y: lastTime.y + (y2 - y1) * 0.05,
               }
             : { x: (x2 + x1) / 2, y: (y2 + y1) / 2 };
+          const s = extractRef(text);
           createNode(
             s,
             position,
@@ -962,6 +964,7 @@ const CytoscapePlayground = ({
     );
 
     return () => {
+      globalRefs.clearOnClick = oldClearOnClick;
       watches.current.forEach((args) =>
         window.roamAlphaAPI.data.removePullWatch(
           args.pullPattern,

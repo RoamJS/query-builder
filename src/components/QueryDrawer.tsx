@@ -13,7 +13,7 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import ResizableDrawer from "./ResizableDrawer";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { PullBlock } from "roamjs-components/types/native";
+import { OnloadArgs, PullBlock } from "roamjs-components/types/native";
 import { Result } from "roamjs-components/types/query-builder";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
@@ -24,10 +24,16 @@ import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBloc
 import getQBClauses from "../utils/getQBClauses";
 import { render as exportRender } from "./ExportDialog";
 import renderOverlay from "roamjs-components/util/renderOverlay";
+import fireQuery from "../utils/fireQuery";
+import parseQuery from "../utils/parseQuery";
+import ResultsView from "./ResultsView";
+import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import QueryEditor from "./QueryEditor";
 
 type Props = {
   blockUid: string;
   clearOnClick: (s: string) => void;
+  onloadArgs: OnloadArgs;
 };
 
 const SavedQuery = ({
@@ -61,8 +67,6 @@ const SavedQuery = ({
   const [label, setLabel] = useState(() => getTextByBlockUid(uid));
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [error, setError] = useState("");
-  const { ResultsView, fireQuery, parseQuery } =
-    window.roamjs.extension.queryBuilder;
   useEffect(() => {
     if (!initialQuery && !minimized) {
       setInitialQuery(true);
@@ -120,7 +124,7 @@ const SavedQuery = ({
                   {label}
                 </span>
               )}
-              <div>
+              <div className="mr-14 mt-2">
                 <Tooltip content={"Edit"}>
                   <Button
                     icon={"edit"}
@@ -136,13 +140,18 @@ const SavedQuery = ({
                       )
                         .then(() =>
                           createBlock({
-                            parentUid: oldScratchUid,
+                            parentUid,
                             node: { text: "scratch" },
                           })
                         )
                         .then((newUid) =>
                           Promise.all(
-                            getShallowTreeByParentUid(uid).map((c, order) =>
+                            getShallowTreeByParentUid(
+                              getSubTree({
+                                key: "scratch",
+                                parentUid: uid,
+                              }).uid
+                            ).map((c, order) =>
                               window.roamAlphaAPI.moveBlock({
                                 location: { "parent-uid": newUid, order },
                                 block: { uid: c.uid },
@@ -356,6 +365,7 @@ const SavedQueriesContainer = ({
 const QueryDrawerContent = ({
   clearOnClick,
   blockUid,
+  onloadArgs,
   ...exportRenderProps
 }: Props) => {
   const tree = useMemo(() => getBasicTreeByParentUid(blockUid), []);
@@ -379,8 +389,6 @@ const QueryDrawerContent = ({
   );
 
   const [query, setQuery] = useState(savedQueryLabel);
-  const { QueryEditor, fireQuery, parseQuery } =
-    window.roamjs.extension.queryBuilder;
   return (
     <>
       <QueryEditor
@@ -430,13 +438,15 @@ const QueryDrawerContent = ({
         }}
       />
       {!!savedQueries.length && (
-        <SavedQueriesContainer
-          savedQueries={savedQueries}
-          setSavedQueries={setSavedQueries}
-          clearOnClick={clearOnClick}
-          setQuery={setQuery}
-          {...exportRenderProps}
-        />
+        <ExtensionApiContextProvider {...onloadArgs}>
+          <SavedQueriesContainer
+            savedQueries={savedQueries}
+            setSavedQueries={setSavedQueries}
+            clearOnClick={clearOnClick}
+            setQuery={setQuery}
+            {...exportRenderProps}
+          />
+        </ExtensionApiContextProvider>
       )}
     </>
   );

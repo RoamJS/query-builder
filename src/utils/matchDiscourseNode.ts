@@ -1,6 +1,7 @@
 import compileDatalog from "roamjs-components/queries/compileDatalog";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
+import conditionToDatalog from "./conditionToDatalog";
 import getDiscourseNodeFormatExpression from "./getDiscourseNodeFormatExpression";
 import type { DiscourseNode } from "./getDiscourseNodes";
 import replaceDatalogVariables from "./replaceDatalogVariables";
@@ -17,11 +18,11 @@ const matchDiscourseNode = ({
       }
     | { uid: string }
   )) => {
-  if (specification.length && window.roamjs.extension.queryBuilder) {
+  if (specification.length) {
     const where = replaceDatalogVariables(
       [{ from: text, to: "node" }],
       specification.flatMap((c) =>
-        window.roamjs.extension.queryBuilder.conditionToDatalog(c)
+        conditionToDatalog(c)
       )
     ).map((c) => compileDatalog(c, 0));
     const firstClause =

@@ -2,6 +2,7 @@ import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromT
 import getSubTree from "roamjs-components/util/getSubTree";
 import discourseConfigRef from "./discourseConfigRef";
 import getDiscourseRelations from "./getDiscourseRelations";
+import parseQuery from "./parseQuery";
 
 export type DiscourseNode = ReturnType<typeof getDiscourseNodes>[number];
 
@@ -20,10 +21,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) =>
         type,
         specification:
           !!getSubTree({ tree: specTree, key: "enabled" }).uid &&
-          window.roamjs.loaded.has("query-builder")
-            ? window.roamjs.extension.queryBuilder.parseQuery(spec.uid)
-                .conditions
-            : [],
+          parseQuery(spec.uid).conditions,
         isRelationBacked: false,
       };
     })

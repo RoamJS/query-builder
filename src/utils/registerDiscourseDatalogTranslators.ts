@@ -13,6 +13,8 @@ import getDiscourseNodes from "./getDiscourseNodes";
 import getDiscourseRelations from "./getDiscourseRelations";
 import matchDiscourseNode from "./matchDiscourseNode";
 import replaceDatalogVariables from "./replaceDatalogVariables";
+import parseQuery from "./parseQuery";
+import { getWhereClauses } from "./fireQuery";
 
 const collectVariables = (
   clauses: (DatalogClause | DatalogAndClause)[]
@@ -103,20 +105,8 @@ const registerDiscourseDatalogTranslators = () => {
           tree: queryMetadataTree,
           key: "query",
         });
-        const { conditions, returnNode } =
-          window.roamjs.extension.queryBuilder.parseQuery(queryData);
-        // @ts-ignore
-        const { getWhereClauses } = window.roamjs.extension.queryBuilder;
-        const clauses = (
-          getWhereClauses as (
-            args: Omit<
-              Parameters<
-                typeof window.roamjs.extension.queryBuilder.fireQuery
-              >[0],
-              "selections" | "isBackendEnabled"
-            >
-          ) => DatalogClause[]
-        )({ conditions, returnNode });
+        const { conditions, returnNode } = parseQuery(queryData);
+        const clauses = getWhereClauses({ conditions, returnNode });
         const variables = Array.from(collectVariables(clauses));
         const orClause: DatalogClause = {
           type: "or-join-clause",
