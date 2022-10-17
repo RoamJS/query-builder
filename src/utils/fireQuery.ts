@@ -15,7 +15,22 @@ import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiPost from "roamjs-components/util/apiPost";
 
-type PredefinedSelection = Parameters<RegisterSelection>[0];
+type PredefinedSelection = {
+  test: RegExp;
+  pull: (a: {
+    returnNode: string;
+    match: RegExpExecArray;
+    where: DatalogClause[];
+  }) => string;
+  mapper: (
+    r: PullBlock,
+    key: string,
+    result: QueryResult
+  ) =>
+    | QueryResult[string]
+    | Record<string, QueryResult[string]>
+    | Promise<QueryResult[string] | Record<string, QueryResult[string]>>;
+};
 
 const isVariableExposed = (
   clauses: (DatalogClause | DatalogAndClause)[],
@@ -386,8 +401,14 @@ const predefinedSelections: PredefinedSelection[] = [
   },
 ];
 
-export const registerSelection: RegisterSelection = (args) => {
+export const registerSelection = (args: PredefinedSelection) => {
   predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
+  return () => {
+    const index = predefinedSelections.indexOf(args);
+    if (index >= 0) {
+      predefinedSelections.splice(index, 1);
+    }
+  };
 };
 
 type FireQueryArgs = Omit<
