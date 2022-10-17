@@ -28,7 +28,7 @@ import { render } from "./components/DiscourseNodeMenu";
 import { render as discourseOverlayRender } from "./components/DiscourseContextOverlay";
 import { render as previewRender } from "./components/LivePreview";
 import { render as renderReferenceContext } from "./components/ReferenceContext";
-import { render as discourseContextRender } from "./components/DiscourseContext";
+import DiscourseContext from "./components/DiscourseContext";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import isDiscourseNode from "./utils/isDiscourseNode";
@@ -56,6 +56,8 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import { render as importRender } from "./components/ImportDialog";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
+import { render as cyRender } from "./components/CytoscapePlayground";
+import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 
 export const SETTING = "discourse-graphs";
 
@@ -133,12 +135,36 @@ const overlayPageRefHandler = (s: HTMLSpanElement) => {
 
 let enabled = false;
 
+export const renderPlayground = (
+  title: string,
+  globalRefs: Parameters<typeof cyRender>[0]["globalRefs"]
+) => {
+  if (!enabled) return;
+  const children = document.querySelector<HTMLDivElement>(
+    ".roam-article .rm-block-children"
+  );
+  if (!children.hasAttribute("data-roamjs-discourse-playground")) {
+    children.setAttribute("data-roamjs-discourse-playground", "true");
+    const parent = document.createElement("div");
+    children.parentElement.appendChild(parent);
+    parent.style.height = "500px";
+    cyRender({
+      parent,
+      title,
+      previewEnabled: isFlagEnabled("preview"),
+      globalRefs,
+    });
+  }
+};
+
 export const renderDiscourseNodeTypeConfigPage = ({
   title,
   h,
+  onloadArgs,
 }: {
   title: string;
   h: HTMLHeadingElement;
+  onloadArgs: OnloadArgs;
 }) => {
   if (!enabled) return;
   const nodeText = title.substring("discourse-graph/nodes/".length);
@@ -159,6 +185,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
                 React.createElement(DiscourseNodeIndex, {
                   node,
                   parentUid: uid,
+                  onloadArgs,
                 }),
             },
           } as Field<CustomField>,
@@ -222,25 +249,24 @@ export const renderDiscourseNodeTypeConfigPage = ({
         ],
       });
 
-    if (window.roamjs.extension.queryBuilder) {
-      renderNode();
-    } else {
-      document.body.addEventListener(
-        "roamjs:discourse-graph:query-builder",
-        renderNode,
-        { once: true }
-      );
-    }
+    renderNode();
   }
 };
 
-const initializeDiscourseGraphsMode = (
-  extensionAPI: OnloadArgs["extensionAPI"]
-) => {
+const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
     enabled = flag;
     if (flag) {
+      window.roamjs.version = {
+        ...window.roamjs.version,
+        discourseGraph: args.extension.version,
+      };
+      unloads.add(function removeVersion() {
+        delete window.roamjs.version.discourseGraph;
+        unloads.delete(removeVersion);
+      });
+      
       const style =
         addStyle(`.roamjs-discourse-live-preview>div>div>.rm-block-main,
   .roamjs-discourse-live-preview>div>div>.rm-inline-references,
@@ -279,28 +305,13 @@ const initializeDiscourseGraphsMode = (
   outline: none;
   }
   
-  .roamjs-discourse-drawer > .bp3-overlay,
-  .roamjs-discourse-notification-drawer > .bp3-overlay {
+  .roamjs-discourse-drawer > .bp3-overlay {
   pointer-events: none;
   }
   
-  div.roamjs-discourse-drawer div.bp3-drawer,
-  div.roamjs-discourse-notification-drawer div.bp3-drawer {
+  div.roamjs-discourse-drawer div.bp3-drawer {
   pointer-events: all;
   width: 40%;
-  }
-  
-  .roamjs-discourse-notification-drawer .roamjs-discourse-notification-uid:hover {
-  text-decoration: underline;
-  }
-  
-  .roamjs-discourse-notification-drawer .roamjs-discourse-notification-uid {
-  cursor: pointer; 
-  color: #106BA3;
-  }
-  
-  .roamjs-discourse-notification-drawer .bp3-drawer {
-  max-width: 400px;
   }
   
   .roam-main {
@@ -633,10 +644,13 @@ const initializeDiscourseGraphsMode = (
             if (parent) {
               const p = document.createElement("div");
               parent.parentElement.insertBefore(p, parent);
-              discourseContextRender({
-                parent: p,
-                uid,
-              });
+              renderWithUnmount(
+                React.createElement(DiscourseContext, {
+                  uid,
+                }),
+                p,
+                args
+              );
             }
           }
         },
@@ -652,16 +666,16 @@ const initializeDiscourseGraphsMode = (
       }
       if (pageRefObservers.size) enablePageRefObserver();
 
-      extensionAPI.settings.set("query-pages", [
-        ...((extensionAPI.settings.get("query-pages") as string[]) || []),
+      args.extensionAPI.settings.set("query-pages", [
+        ...((args.extensionAPI.settings.get("query-pages") as string[]) || []),
         "discourse-graph/queries/*",
       ]);
       unloads.add(function removeQueryPage() {
-        extensionAPI.settings.set(
+        args.extensionAPI.settings.set(
           "query-pages",
-          ((extensionAPI.settings.get("query-pages") as string[]) || []).filter(
-            (s) => s !== "discourse-graph/queries/*"
-          )
+          (
+            (args.extensionAPI.settings.get("query-pages") as string[]) || []
+          ).filter((s) => s !== "discourse-graph/queries/*")
         );
         unloads.delete(removeQueryPage);
       });
@@ -856,7 +870,7 @@ const initializeDiscourseGraphsMode = (
           acceptButtonObserver.disconnect();
           unloads.delete(removeAcceptObserver);
         });
-        
+
         document.body.removeEventListener(
           "roamjs:samepage:loaded",
           samePageLoadedListener
@@ -878,7 +892,7 @@ const initializeDiscourseGraphsMode = (
       unloads.clear();
     }
   };
-  toggle(!!extensionAPI.settings.get(SETTING));
+  toggle(!!args.extensionAPI.settings.get(SETTING));
   return toggle;
 };
 

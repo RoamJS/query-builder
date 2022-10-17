@@ -37,15 +37,14 @@ import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import runQuery from "./utils/runQuery";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
-import { render as cyRender } from "./components/CytoscapePlayground";
 import React from "react";
-import isFlagEnabled from "./utils/isFlagEnabled";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import initializeDiscourseGraphsMode, {
   renderDiscourseNodeTypeConfigPage,
+  renderPlayground,
   SETTING,
 } from "./discourseGraphsMode";
 import getPageMetadata from "./utils/getPageMetadata";
@@ -181,8 +180,67 @@ export default runExtension({
           ].filter((o) => typeof o.value !== "undefined"),
       },
     });
-    const toggleDiscourseGraphsMode =
-      initializeDiscourseGraphsMode(extensionAPI);
+    const toggleDiscourseGraphsMode = initializeDiscourseGraphsMode(onloadArgs);
+    const h1ObserverCallback = (h1: HTMLHeadingElement) => {
+      const title = getPageTitleValueByHtmlElement(h1);
+      if (!!extensionAPI.settings.get("show-page-metadata")) {
+        const { displayName, date } = getPageMetadata(title);
+        const container = document.createElement("div");
+        const oldMarginBottom = getComputedStyle(h1).marginBottom;
+        container.style.marginTop = `${
+          4 - Number(oldMarginBottom.replace("px", "")) / 2
+        }px`;
+        container.style.marginBottom = oldMarginBottom;
+        const label = document.createElement("i");
+        label.innerText = `Created by ${
+          displayName || "Anonymous"
+        } on ${date.toLocaleString()}`;
+        container.appendChild(label);
+        if (h1.parentElement.lastChild === h1) {
+          h1.parentElement.appendChild(container);
+        } else {
+          h1.parentElement.insertBefore(container, h1.nextSibling);
+        }
+      }
+
+      if (
+        getQueryPages(extensionAPI)
+          .map(
+            (t) =>
+              new RegExp(
+                `^${t.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
+              )
+          )
+          .some((r) => r.test(title))
+      ) {
+        const uid = getPageUidByPageTitle(title);
+        const attribute = `data-roamjs-${uid}`;
+        const containerParent = h1.parentElement?.parentElement;
+        if (containerParent && !containerParent.hasAttribute(attribute)) {
+          containerParent.setAttribute(attribute, "true");
+          const parent = document.createElement("div");
+          const configPageId = title.split("/").slice(-1)[0];
+          parent.id = `${configPageId}-config`;
+          containerParent.insertBefore(
+            parent,
+            h1.parentElement?.nextElementSibling || null
+          );
+          renderQueryPage({
+            pageUid: uid,
+            parent,
+            defaultReturnNode: "node",
+            onloadArgs,
+          });
+        }
+      } else if (
+        title.startsWith("Playground") &&
+        !!h1.closest(".roam-article")
+      ) {
+        renderPlayground(title, globalRefs);
+      } else if (title.startsWith("discourse-graph/nodes/")) {
+        renderDiscourseNodeTypeConfigPage({ title, h: h1, onloadArgs });
+      }
+    };
 
     extensionAPI.settings.panel.create({
       tabTitle: "Query Builder",
@@ -275,7 +333,15 @@ export default runExtension({
             "Includes the ability to construct higher level discourse graph nodes and relations for higher order reasoning.",
           action: {
             type: "switch",
-            onChange: (e) => toggleDiscourseGraphsMode(e.target.checked),
+            onChange: (e) => {
+              const flag = e.target.checked;
+              toggleDiscourseGraphsMode(flag).then(() => {
+                if (flag)
+                  document
+                    .querySelectorAll(`h1.rm-title-display`)
+                    .forEach(h1ObserverCallback);
+              });
+            },
           },
         },
         {
@@ -295,8 +361,17 @@ export default runExtension({
       setBackendToken((extensionAPI.settings.get("token") as string) || "");
     }, 1000);
 
-    const globalRefs: { [key: string]: (...args: string[]) => void } = {
-      clearOnClick: () => {},
+    const globalRefs = {
+      clearOnClick: ({
+        parentUid,
+        text,
+      }: {
+        parentUid: string;
+        text: string;
+      }) => {
+        const order = getChildrenLengthByPageUid(parentUid);
+        createBlock({ parentUid, node: { text }, order });
+      },
     };
 
     const clearOnClick = async (tag: string) => {
@@ -314,94 +389,14 @@ export default runExtension({
           .then(
             (uid) => uid || window.roamAlphaAPI.util.dateToPageTitle(new Date())
           );
-        const pageTitle = getPageTitleByPageUid(parentUid);
-        if (pageTitle.startsWith("Playground")) {
-          globalRefs.clearOnClick(tag);
-        } else {
-          const order = getChildrenLengthByPageUid(parentUid);
-          createBlock({ parentUid, node: { text }, order });
-        }
+        globalRefs.clearOnClick({ parentUid, text });
       }
     };
 
     const h1Observer = createHTMLObserver({
       tag: "H1",
       className: "rm-title-display",
-      callback: (h1: HTMLHeadingElement) => {
-        const title = getPageTitleValueByHtmlElement(h1);
-        if (!!extensionAPI.settings.get("show-page-metadata")) {
-          const { displayName, date } = getPageMetadata(title);
-          const container = document.createElement("div");
-          const oldMarginBottom = getComputedStyle(h1).marginBottom;
-          container.style.marginTop = `${
-            4 - Number(oldMarginBottom.replace("px", "")) / 2
-          }px`;
-          container.style.marginBottom = oldMarginBottom;
-          const label = document.createElement("i");
-          label.innerText = `Created by ${
-            displayName || "Anonymous"
-          } on ${date.toLocaleString()}`;
-          container.appendChild(label);
-          if (h1.parentElement.lastChild === h1) {
-            h1.parentElement.appendChild(container);
-          } else {
-            h1.parentElement.insertBefore(container, h1.nextSibling);
-          }
-        }
-
-        if (
-          getQueryPages(extensionAPI)
-            .map(
-              (t) =>
-                new RegExp(
-                  `^${t.replace(/\*/g, ".*").replace(/([()])/g, "\\$1")}$`
-                )
-            )
-            .some((r) => r.test(title))
-        ) {
-          const uid = getPageUidByPageTitle(title);
-          const attribute = `data-roamjs-${uid}`;
-          const containerParent = h1.parentElement?.parentElement;
-          if (containerParent && !containerParent.hasAttribute(attribute)) {
-            containerParent.setAttribute(attribute, "true");
-            const parent = document.createElement("div");
-            const configPageId = title.split("/").slice(-1)[0];
-            parent.id = `${configPageId}-config`;
-            containerParent.insertBefore(
-              parent,
-              h1.parentElement?.nextElementSibling || null
-            );
-            renderQueryPage({
-              pageUid: uid,
-              parent,
-              defaultReturnNode: "node",
-              onloadArgs,
-            });
-          }
-        } else if (
-          title.startsWith("Playground") &&
-          !!h1.closest(".roam-article")
-        ) {
-          const children = document.querySelector<HTMLDivElement>(
-            ".roam-article .rm-block-children"
-          );
-          if (!children.hasAttribute("data-roamjs-discourse-playground")) {
-            children.setAttribute("data-roamjs-discourse-playground", "true");
-            const parent = document.createElement("div");
-            children.parentElement.appendChild(parent);
-            parent.style.height = "500px";
-            // TODO POST MIGRATION - Instead of globalRefs, use dom event system
-            cyRender({
-              parent,
-              title,
-              previewEnabled: isFlagEnabled("preview"),
-              globalRefs,
-            });
-          }
-        } else if (title.startsWith("discourse-graph/nodes/")) {
-          renderDiscourseNodeTypeConfigPage({ title, h: h1 });
-        }
-      },
+      callback: h1ObserverCallback,
     });
 
     const queryBlockObserver = createButtonObserver({
@@ -478,36 +473,8 @@ export default runExtension({
         },
     });
 
+    // @ts-ignore
     window.roamjs.extension.queryBuilder = {
-      ExportDialog,
-      QueryEditor,
-      QueryPage: (props) =>
-        React.createElement(
-          ExtensionApiContextProvider,
-          onloadArgs,
-          React.createElement(QueryPage, props)
-        ),
-      ResultsView: (props) =>
-        React.createElement(
-          ExtensionApiContextProvider,
-          onloadArgs,
-          React.createElement(ResultsView, props)
-        ),
-      fireQuery,
-      parseQuery,
-      conditionToDatalog,
-      getConditionLabels,
-      registerSelection,
-      registerDatalogTranslator,
-      unregisterDatalogTranslator,
-
-      // @ts-ignore This is used in d-g for the "involved with query" condition. Will be migrated here after idea is proven
-      getWhereClauses,
-      // @ts-ignore This is highly experimental - exposing this method for use in D-G.
-      getDatalogQueryComponents,
-
-      // ALL TYPES ABOVE THIS COMMENT ARE SCHEDULED TO MOVE BACK INTO QUERY BUILDER AS INTERNAL
-
       runQuery: (parentUid: string) =>
         runQuery(parentUid, extensionAPI).then(({ allResults }) => allResults),
       listActiveQueries: () =>
@@ -539,6 +506,7 @@ export default runExtension({
           queryRender({
             blockUid,
             clearOnClick,
+            onloadArgs,
           })
         ),
     });

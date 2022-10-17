@@ -19,6 +19,7 @@ import getDiscourseRelations from "./getDiscourseRelations";
 import type { ExportDialog } from "../components/Export";
 import getPageMetadata from "./getPageMetadata";
 import getDiscourseContextResults from "./getDiscourseContextResults";
+import fireQuery from "./fireQuery";
 
 const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   text: n[":block/string"] || n[":node/title"] || "",
@@ -181,9 +182,7 @@ const toMarkdown = ({
 };
 
 type Props = {
-  results?: Parameters<
-    typeof window.roamjs.extension.queryBuilder.ExportDialog
-  >[0]["results"];
+  results?: Parameters<typeof ExportDialog>[0]["results"];
   relations?: {
     target: string;
     source: string;
@@ -249,34 +248,32 @@ const getExportTypes = ({
               const targetLabel = nodeLabelByType[s.destination];
               return !sourceLabel || !targetLabel
                 ? []
-                : window.roamjs.extension.queryBuilder
-                    .fireQuery({
-                      returnNode: sourceLabel,
-                      conditions: [
-                        {
-                          relation: s.label,
-                          source: sourceLabel,
-                          target: targetLabel,
-                          uid: s.id,
-                          type: "clause",
-                        },
-                      ],
-                      selections: [
-                        {
-                          uid: window.roamAlphaAPI.util.generateUID(),
-                          text: `node:${targetLabel}`,
-                          label: "target",
-                        },
-                      ],
-                      isBackendEnabled,
-                    })
-                    .then((results) =>
-                      results.map((result) => ({
-                        source: result.uid,
-                        target: result["target-uid"],
-                        label: s.label,
-                      }))
-                    );
+                : fireQuery({
+                    returnNode: sourceLabel,
+                    conditions: [
+                      {
+                        relation: s.label,
+                        source: sourceLabel,
+                        target: targetLabel,
+                        uid: s.id,
+                        type: "clause",
+                      },
+                    ],
+                    selections: [
+                      {
+                        uid: window.roamAlphaAPI.util.generateUID(),
+                        text: `node:${targetLabel}`,
+                        label: "target",
+                      },
+                    ],
+                    isBackendEnabled,
+                  }).then((results) =>
+                    results.map((result) => ({
+                      source: result.uid,
+                      target: result["target-uid"],
+                      label: s.label,
+                    }))
+                  );
             })
         ).then((r) => r.flat());
   const getJsonData = async (isBackendEnabled: boolean) => {

@@ -8,6 +8,7 @@ import getExportTypes from "../utils/getExportTypes";
 import { ExportDialog as QBExportDialog } from "./Export";
 import renderOverlay from "roamjs-components/util/renderOverlay";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
+import fireQuery from "../utils/fireQuery";
 
 type Props = {
   fromQuery?: {
@@ -33,7 +34,7 @@ const ExportDialog = ({
       nodes: (isBackendEnabled: boolean) =>
         Promise.all(
           discourseNodes.map((d) =>
-            window.roamjs.extension.queryBuilder.fireQuery({
+            fireQuery({
               returnNode: "node",
               conditions: [
                 {

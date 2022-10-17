@@ -20,6 +20,7 @@ import { Result } from "roamjs-components/types/query-builder";
 import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
+import ResultsView from "./ResultsView";
 
 type Props = {
   uid: string;
@@ -247,7 +248,6 @@ const ContextTab = ({
         : r.results,
     [groupByTarget, r.results, subTabId, getFilteredResults]
   );
-  const { ResultsView } = window.roamjs.extension.queryBuilder;
   const resultsView = (
     <ResultsView
       preventSavingSettings
@@ -387,8 +387,5 @@ const DiscourseContext = ({ uid }: Props) => {
     </>
   );
 };
-
-export const render = ({ parent, ...props }: Props & { parent: HTMLElement }) =>
-  renderWithUnmount(<DiscourseContext {...props} />, parent);
 
 export default DiscourseContext;

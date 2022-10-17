@@ -915,16 +915,7 @@ const DiscourseRelationConfigPanel: CustomField["options"]["component"] = ({
     return nodes;
   }, []);
   const previewUid = useSubTree({ parentUid, key: "preview" }).uid;
-  const [translatorKeys, setTranslatorKeys] = useState(
-    () => getConditionLabels?.() || []
-  );
-  useEffect(() => {
-    document.body.addEventListener(
-      "roamjs:discourse-graph:query-builder",
-      () => setTranslatorKeys(getConditionLabels()),
-      { once: true }
-    );
-  }, []);
+  const [translatorKeys, setTranslatorKeys] = useState(getConditionLabels);
   const [relations, setRelations] = useState(refreshRelations);
   const [editingRelation, setEditingRelation] = useState("");
   const [newRelation, setNewRelation] = useState("");

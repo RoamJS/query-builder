@@ -35,7 +35,6 @@ import getUids from "roamjs-components/dom/getUids";
 import Charts from "./Charts";
 import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import updateBlock from "roamjs-components/writes/updateBlock";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
