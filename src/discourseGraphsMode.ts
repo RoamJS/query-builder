@@ -260,13 +260,13 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
     if (flag) {
       window.roamjs.version = {
         ...window.roamjs.version,
-        discourseGraph: args.extension.version,
+        ["discourse-graph"]: args.extension.version,
       };
       unloads.add(function removeVersion() {
         delete window.roamjs.version.discourseGraph;
         unloads.delete(removeVersion);
       });
-      
+
       const style =
         addStyle(`.roamjs-discourse-live-preview>div>div>.rm-block-main,
   .roamjs-discourse-live-preview>div>div>.rm-inline-references,
