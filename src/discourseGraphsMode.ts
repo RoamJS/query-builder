@@ -28,6 +28,7 @@ import { render } from "./components/DiscourseNodeMenu";
 import { render as discourseOverlayRender } from "./components/DiscourseContextOverlay";
 import { render as previewRender } from "./components/LivePreview";
 import { render as renderReferenceContext } from "./components/ReferenceContext";
+import { render as discourseContextRender } from "./components/DiscourseContext";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import isDiscourseNode from "./utils/isDiscourseNode";
@@ -614,6 +615,38 @@ const initializeDiscourseGraphsMode = (
       unloads.add(function removeKeydownListener() {
         document.removeEventListener("keydown", keydownListener);
         unloads.delete(removeKeydownListener);
+      });
+
+      const discourseContextObserver = createHTMLObserver({
+        tag: "DIV",
+        useBody: true,
+        className: "rm-reference-main",
+        callback: async (d: HTMLDivElement) => {
+          const isMain = !!d.closest(".roam-article");
+          const uid = isMain
+            ? await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid()
+            : getPageUidByPageTitle(getPageTitleValueByHtmlElement(d));
+          if (
+            isDiscourseNode(uid) &&
+            !d.getAttribute("data-roamjs-discourse-context")
+          ) {
+            d.setAttribute("data-roamjs-discourse-context", "true");
+            const parent =
+              d.querySelector("div.rm-reference-container") || d.children[0];
+            if (parent) {
+              const p = document.createElement("div");
+              parent.parentElement.insertBefore(p, parent);
+              discourseContextRender({
+                parent: p,
+                uid,
+              });
+            }
+          }
+        },
+      });
+      unloads.add(function removeDiscourseContextObserver() {
+        discourseContextObserver.disconnect();
+        unloads.delete(removeDiscourseContextObserver);
       });
 
       if (isFlagEnabled("preview")) pageRefObservers.add(previewPageRefHandler);
