@@ -226,3 +226,11 @@ By default, query results only display the most nested block in the result. To d
 ### Aliases
 
 By default, query results display the query logic itself for the label. To display an alias for the given query, add a block that says Alias as a child block of the query, with the value of the alias nested below that.
+
+## Discourse Graphs
+
+This extension implements the Discourse Graph protocol, developed by Joel Chan. To enable the features associated with this protocol, toggle the `Discourse Graphs Enabled` switch.
+
+For more about the suite of tools this mode brings, checkout our documentation for how to use this extension at https://oasis-lab.gitbook.io/roamresearch-discourse-graph-extension/.
+
+Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the #discourse-graph channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
