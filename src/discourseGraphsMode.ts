@@ -44,6 +44,18 @@ import DiscourseNodeIndex from "./components/DiscourseNodeIndex";
 import DiscourseNodeSpecification from "./components/DiscourseNodeSpecification";
 import DiscourseNodeAttributes from "./components/DiscourseNodeAttributes";
 import getSubTree from "roamjs-components/util/getSubTree";
+import { render as queryRequestRender } from "./components/SendQueryRequest";
+import getSamePageApi from "./utils/getSamePageApi";
+import importDiscourseGraph from "./utils/importDiscourseGraph";
+import createButtonObserver from "roamjs-components/dom/createButtonObserver";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import createBlock from "roamjs-components/writes/createBlock";
+import { render as renderToast } from "roamjs-components/components/Toast";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import { render as importRender } from "./components/ImportDialog";
+import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 
 export const SETTING = "discourse-graphs";
 
@@ -430,21 +442,6 @@ const initializeDiscourseGraphsMode = (
                     onChange: onPageRefObserverChange(previewPageRefHandler),
                   },
                 } as Field<FlagField>,
-                //   {
-                //     title: "render references",
-                //     Panel: FlagPanel,
-                //     description:
-                //       "Whether or not to render linked references within outline sidebar",
-                //   },
-                //   {
-                //     title: "subscriptions",
-                //     description:
-                //       "Subscription User Settings to notify you of latest changes",
-                //     Panel: CustomPanel,
-                //     options: {
-                //       component: SubscriptionConfigPanel,
-                //     },
-                //   } as Field<CustomField>,
               ],
             },
             {
@@ -698,6 +695,182 @@ const initializeDiscourseGraphsMode = (
               }
             }
           },
+        });
+      }
+
+      const samePageLoadedListener = () => {
+        const { addGraphListener, sendToGraph, removeGraphListener } =
+          getSamePageApi();
+        addGraphListener({
+          operation: "IMPORT_DISCOURSE_GRAPH",
+          handler: (
+            data: Parameters<typeof importDiscourseGraph>[0],
+            graph
+          ) => {
+            importDiscourseGraph(data);
+            const todayUid = window.roamAlphaAPI.util.dateToPageUid(new Date());
+            const todayOrder = getChildrenLengthByPageUid(todayUid);
+            createBlock({
+              parentUid: todayUid,
+              order: todayOrder,
+              node: {
+                text: `Imported discourse graph from [[${graph}]]`,
+                children: [{ text: `[[${data.title}]]` }],
+              },
+            });
+            sendToGraph({
+              operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
+              graph,
+            });
+          },
+        });
+        unloads.add(function removeImportDgOperation() {
+          removeGraphListener({ operation: "IMPORT_DISCOURSE_GRAPH" });
+          unloads.delete(removeImportDgOperation);
+        });
+
+        addGraphListener({
+          operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
+          handler: (_, graph) =>
+            renderToast({
+              id: "import-p2p-success",
+              content: `${graph} successfully imported your discourse graph!`,
+            }),
+        });
+        unloads.add(function removeImportConfirmOperation() {
+          removeGraphListener({ operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM" });
+          unloads.delete(removeImportConfirmOperation);
+        });
+
+        addGraphListener({
+          operation: "QUERY_REQUEST",
+          handler: (json, graph) => {
+            const { page, requestId } = json as {
+              page: string;
+              requestId: string;
+            };
+            const todayUid = window.roamAlphaAPI.util.dateToPageUid(new Date());
+            const bottom = getChildrenLengthByPageUid(todayUid);
+            createBlock({
+              parentUid: todayUid,
+              order: bottom,
+              node: {
+                text: `New [[query request]] from [[${graph}]]`,
+                children: [
+                  {
+                    text: `Get full page contents of [[${page}]]`,
+                  },
+                  {
+                    text: `{{Accept:${graph}:${requestId}:${page}}}`,
+                  },
+                ],
+              },
+            });
+            renderToast({
+              id: "new-query-request",
+              content: `New query request from ${graph}`,
+              intent: "primary",
+            });
+            sendToGraph({
+              operation: "QUERY_REQUEST_RECEIVED",
+              graph,
+            });
+          },
+        });
+        unloads.add(function removeQueryRequestOperation() {
+          removeGraphListener({ operation: "QUERY_REQUEST" });
+          unloads.delete(removeQueryRequestOperation);
+        });
+
+        window.roamAlphaAPI.ui.commandPalette.addCommand({
+          label: "Send Query Request",
+          callback: () => {
+            queryRequestRender({
+              uid: window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"],
+            });
+          },
+        });
+        unloads.add(function removeQueryCommand() {
+          window.roamAlphaAPI.ui.commandPalette.removeCommand({
+            label: "Send Query Request",
+          });
+          unloads.delete(removeQueryCommand);
+        });
+
+        window.roamAlphaAPI.ui.commandPalette.addCommand({
+          label: "Import Discourse Graph",
+          callback: () => importRender({}),
+        });
+        unloads.add(function removeImportCommand() {
+          window.roamAlphaAPI.ui.commandPalette.removeCommand({
+            label: "Import Discourse Graph",
+          });
+          unloads.delete(removeImportCommand);
+        });
+
+        const acceptButtonObserver = createButtonObserver({
+          attribute: "accept",
+          render: (b) => {
+            b.onclick = () => {
+              const { blockUid } = getUidsFromButton(b);
+              const text = getTextByBlockUid(blockUid);
+              const parts = (/{{([^}]+)}}/.exec(text)?.[1] || "").split(":");
+              if (parts.length >= 4) {
+                const [, graph, requestId, ...page] = parts;
+                const title = page.join(":");
+                const uid = getPageUidByPageTitle(title);
+                const tree = getFullTreeByParentUid(uid).children;
+                sendToGraph({
+                  graph,
+                  operation: `QUERY_RESPONSE/${requestId}`,
+                  data: {
+                    page: {
+                      tree,
+                      title,
+                      uid,
+                    },
+                  },
+                });
+                const operation = `QUERY_RESPONSE_RECEIVED/${requestId}`;
+                addGraphListener({
+                  operation,
+                  handler: (_, g) => {
+                    if (g === graph) {
+                      renderToast({
+                        id: "query-response-success",
+                        content: `Graph ${g} Successfully Received the query`,
+                        intent: "success",
+                      });
+                      removeGraphListener({
+                        operation,
+                      });
+                      updateBlock({ uid: blockUid, text: "Sent" });
+                    }
+                  },
+                });
+              }
+            };
+          },
+        });
+        unloads.add(function removeAcceptObserver() {
+          acceptButtonObserver.disconnect();
+          unloads.delete(removeAcceptObserver);
+        });
+        
+        document.body.removeEventListener(
+          "roamjs:samepage:loaded",
+          samePageLoadedListener
+        );
+      };
+      if (window.roamjs.loaded.has("samepage")) {
+        samePageLoadedListener();
+      } else {
+        unloads.add(function removeSamePageListener() {
+          document.body.removeEventListener(
+            "roamjs:samepage:loaded",
+            samePageLoadedListener
+          );
+          unloads.delete(removeSamePageListener);
         });
       }
     } else {
