@@ -302,14 +302,18 @@ export default runExtension({
         },
       ],
     });
-    setBackendToken((extensionAPI.settings.get("token") as string) || "");
     if (loadedElsewhere) {
-      extensionAPI.settings.set(SETTING, true);
-      toggleDiscourseGraphsMode(true).then(() =>
-        document
-          .querySelectorAll(`h1.rm-title-display`)
-          .forEach(h1ObserverCallback)
-      );
+      setTimeout(() => {
+        setBackendToken((extensionAPI.settings.get("token") as string) || "");
+        extensionAPI.settings.set(SETTING, true);
+        toggleDiscourseGraphsMode(true).then(() =>
+          document
+            .querySelectorAll(`h1.rm-title-display`)
+            .forEach(h1ObserverCallback)
+        );
+      }, 1000);
+    } else {
+      setBackendToken((extensionAPI.settings.get("token") as string) || "");
     }
 
     const globalRefs = {

@@ -239,3 +239,11 @@ In your Roam Depot Settings, there is a flag called `Sortable Linked References`
 - Sort By Daily Note Descending - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
+
+## Discourse Graphs
+
+This extension implements the Discourse Graph protocol, developed by Joel Chan. To enable the features associated with this protocol, toggle the `Discourse Graphs Enabled` switch.
+
+For more about the suite of tools this mode brings, checkout our documentation for how to use this extension at https://oasis-lab.gitbook.io/roamresearch-discourse-graph-extension/.
+
+Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the #discourse-graph channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
