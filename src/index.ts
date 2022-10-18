@@ -38,6 +38,7 @@ import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromT
 import runQuery from "./utils/runQuery";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 import React from "react";
+import runSortReferences from "./utils/runSortReferences";
 
 const loadedElsewhere = document.currentScript
   ? !!document.currentScript.getAttribute("data-source")
@@ -169,6 +170,7 @@ export default runExtension({
       },
     });
 
+    const toggleSortReferences = runSortReferences();
     extensionAPI.settings.panel.create({
       tabTitle: "Query Builder",
       settings: [
@@ -243,6 +245,16 @@ export default runExtension({
           name: "Default Sort",
           description:
             "The default sorting all native queries in your graph should use",
+        },
+        {
+          id: "sort-references",
+          name: "Sortable Linked References",
+          action: {
+            type: "switch",
+            onChange: (e) => toggleSortReferences(e.target.checked),
+          },
+          description:
+            "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
         },
         {
           id: "token",

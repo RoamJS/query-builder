@@ -10,7 +10,8 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
 
 ## Nomenclature
 
-There are some important terms to know and have exact definitions on since they will be used throughout the docs. 
+There are some important terms to know and have exact definitions on since they will be used throughout the docs.
+
 - `Page` - A Page is anything in Roam that was created with `[[brackets]]`, `#hashtag`, `#[[hashtag with brackts]]`, or `Attribute::`. Clicking on these links in your graph takes you to its designated page, each with its own unique title, and they have no parent.
 - `Block` - A bullet or line of text in Roam. While you can also go to pages that have a zoomed in block view, their content is not unique, and they always have one parent.
 - `Node` - A superset of `Block`s and `Page`s.
@@ -77,15 +78,15 @@ You will use a combination of multiple conditions to select the data you want. H
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
 
 - `Created Date` - The date the block or page was created
-    - `Created Time` - Same as above, but in `hh:mm` format
+  - `Created Time` - Same as above, but in `hh:mm` format
 - `Edited Date` - The date the block or page was edited
-    - `Edited Time` - Same as above, but in `hh:mm` format
+  - `Edited Time` - Same as above, but in `hh:mm` format
 - `Author` - The user who created the block or page
 - `Last Edited By` - The user who created the block or page
 - `node:{node}` - Returns any intermediary node you defined in one of the conditions. For example, `node:page` will return the title of a `page` referenced in a condition.
 - `node:{node}:{field}` - Specify one of the first five options as the field to return the related metadata for the intermediary node. For example:
-    - `node:page:Author` will return the user who created the `page` defined in a condition.
-    - `node:page:Client` will return the value of the `Client` attribute from the `page` node defined in a condition.
+  - `node:page:Author` will return the user who created the `page` defined in a condition.
+  - `node:page:Client` will return the value of the `Client` attribute from the `page` node defined in a condition.
 - Anything else is assumed to be an attribute of the exact text
 
 You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:
@@ -118,6 +119,7 @@ All changes to the outputted results are saved automatically.
 ### Layouts
 
 By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. The following values are also supported:
+
 - `Line` - Displays your data as a line chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
 - `Bar` - Displays your data as a bar chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
 - `Timeline` - Displays your data as an interactive timeline view. You need to have a selection chosen labelled **Date** that returns date values for this layout to work.
@@ -140,19 +142,20 @@ Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-$
 ### SmartBlocks Integration
 
 This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing query builder instance in your graph and return the results as separate blocks. The command takes in two arguments:
+
 1. The block reference of the query builder instance
 1. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
-
 
 ### Developer API
 
 For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
-- `listActiveQueries` - `() => { uid: string }[]` Returns an array of blocks or pages where the user has a query defined from query builder. 
+
+- `listActiveQueries` - `() => { uid: string }[]` Returns an array of blocks or pages where the user has a query defined from query builder.
 - `runQuery` - `(uid: string) => Promise<Result[]>` Runs the query defined at the input `uid` and returns a promise that resolves to the array of results from the user's graphs. `Result`s have the following schema:
-    - `text` - `string` The page title or block text of the primary node involved in the result.
-    - `uid` - `string` The reference of the primary node involved in the result.
-    - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
-    - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types. 
+  - `text` - `string` The page title or block text of the primary node involved in the result.
+  - `uid` - `string` The reference of the primary node involved in the result.
+  - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
+  - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
 ### Demo
 
@@ -219,3 +222,16 @@ By default, query results only display the most nested block in the result. To d
 ### Aliases
 
 By default, query results display the query logic itself for the label. To display an alias for the given query, add a block that says Alias as a child block of the query, with the value of the alias nested below that.
+
+## Sortable Linked References
+
+In your Roam Depot Settings, there is a flag called `Sortable Linked References`. When enabled, there will appear a sort icon next to the filter icon near the linked references. Clicking on the sort icon will make a sort menu visible to the user with the following options:
+
+- Sort By Page Title - This will sort all the linked references in ascending alphabetical order of the page title.
+- Sort By Page Title Descending - This will sort all the linked references in descending alphabetical order of the page title.
+- Sort By Created Date - This will sort all the linked references in ascending order that the page was created.
+- Sort By Created Date Descending - This will sort all the linked references in descending order that the page was created.
+- Sort By Daily Note - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
+- Sort By Daily Note Descending - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
+
+You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
