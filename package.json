@@ -15,7 +15,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/react-vertical-timeline-component": "^3.3.3",
-    "roamjs-scripts": "^0.22.3"
+    "roamjs-scripts": "^0.24.0"
   },
   "tags": [
     "queries",

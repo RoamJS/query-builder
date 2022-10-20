@@ -122,7 +122,7 @@ export const createSortIcon = (
 };
 
 // This API is terrible and should be redesigned
-export const createSortIcons = (
+const createSortIcons = (
   containerClass: string,
   callback: (container: HTMLDivElement) => void,
   sortCallbacks: { [key: string]: (refContainer: Element) => () => void },
