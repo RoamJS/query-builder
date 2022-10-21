@@ -1,5 +1,5 @@
 import { Button, Intent, InputGroup } from "@blueprintjs/core";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { OnloadArgs } from "roamjs-components/types";
 import type { Filters } from "roamjs-components/components/Filter";
 
