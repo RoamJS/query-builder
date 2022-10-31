@@ -254,7 +254,7 @@ export default runExtension({
             onChange: (e) => toggleSortReferences(e.target.checked),
           },
           description:
-            "Whether to sort the blocks within the pages returned by native roam queries instead of the pages themselves.",
+            "Whether or not to enable sorting on the linked references section",
         },
         {
           id: "token",
