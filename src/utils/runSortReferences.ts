@@ -2,7 +2,7 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getLinkedPageReferences from "roamjs-components/queries/getPageTitleReferencesByPageTitle";
-import createObserver from "roamjs-components/dom/createObserver";
+import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
 import createIconButton from "roamjs-components/dom/createIconButton";
 
 const POPOVER_WRAPPER_CLASS = "sort-popover-wrapper";
@@ -326,7 +326,8 @@ const runSortReferences = () => {
               .closest(".rm-reference-container")
               ?.getElementsByClassName("refs-by-page-view")?.[0]
         );
-      const observer = createObserver(observerCallback);
+      const observer = createOverlayObserver(observerCallback);
+      observerCallback();
       unloads.add(() => {
         document
           .querySelectorAll(".roamjs-sort-icon")
