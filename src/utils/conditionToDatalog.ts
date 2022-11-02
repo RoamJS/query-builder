@@ -4,7 +4,7 @@ import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
-import type { DatalogClause } from "roamjs-components/types";
+import type { DatalogClause, PullBlock } from "roamjs-components/types";
 import type { RegisterDatalogTranslator } from "roamjs-components/types/query-builder";
 
 const getTitleDatalog = ({
@@ -347,8 +347,8 @@ const translator: Record<
     ],
     targetOptions: () =>
       window.roamAlphaAPI.data.fast
-        .q(`[:find ?n :where [?u :user/display-name ?n]]`)
-        .map((a) => a[0] as string),
+        .q(`[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`)
+        .map((d: [PullBlock]) => d[0][":node/title"]),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "edited by": {
@@ -380,8 +380,8 @@ const translator: Record<
     ],
     targetOptions: () =>
       window.roamAlphaAPI.data.fast
-        .q(`[:find ?n :where [?u :user/display-name ?n]]`)
-        .map((a) => a[0] as string),
+        .q(`[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`)
+        .map((d: [PullBlock]) => d[0][":node/title"]),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "references title": {

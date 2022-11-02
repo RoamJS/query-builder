@@ -205,11 +205,16 @@ const getArgValue = (key: string, result: SearchResult) => {
   return val;
 };
 
-const getUserDisplayNameById = (id = 0) => {
-  const pageId =
-    window.roamAlphaAPI.pull("[:user/display-page]", id)?.[
-      ":user/display-page"
-    ]?.[":db/id"] || 0;
+const getUserDisplayNameById = (id?: number) => {
+  if (!id) {
+    return "Anonymous User";
+  }
+  const pageId = window.roamAlphaAPI.pull("[:user/display-page]", id)?.[
+    ":user/display-page"
+  ]?.[":db/id"];
+  if (!pageId) {
+    return "Anonymous User";
+  }
   return (
     window.roamAlphaAPI.pull("[:node/title]", pageId)?.[":node/title"] ||
     "Anonymous User"
