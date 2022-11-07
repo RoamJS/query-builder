@@ -666,8 +666,16 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
       }
       if (pageRefObservers.size) enablePageRefObserver();
 
+      const queryPages = args.extensionAPI.settings.get("query-pages");
+      const queryPageArray = Array.isArray(queryPages)
+        ? queryPages
+        : typeof queryPages === "object"
+        ? []
+        : typeof queryPages === "string" && queryPages
+        ? [queryPages]
+        : [];
       args.extensionAPI.settings.set("query-pages", [
-        ...((args.extensionAPI.settings.get("query-pages") as string[]) || []),
+        ...queryPageArray,
         "discourse-graph/queries/*",
       ]);
       unloads.add(function removeQueryPage() {
