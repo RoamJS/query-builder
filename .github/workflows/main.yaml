@@ -1,7 +1,7 @@
 name: Publish Extension
 on:
   push:
-    branches: TROJAN
+    branches: main
     paths:
       - "src/**"
       - "package.json"
@@ -11,7 +11,7 @@ env:
   ROAMJS_DEVELOPER_TOKEN: ${{ secrets.ROAMJS_DEVELOPER_TOKEN }}
   ROAMJS_EMAIL: support@roamjs.com
   ROAMJS_EXTENSION_ID: query-builder
-  # ROAMJS_RELEASE_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
+  ROAMJS_RELEASE_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
 
 jobs:
   deploy:
@@ -23,9 +23,9 @@ jobs:
       - name: build
         run: npx roamjs-scripts build --depot
       - name: publish
-        run: npx roamjs-scripts publish --depot --path query-builder/trojan
+        run: npx roamjs-scripts publish --depot
       # this is for discourse graph
       - name: build
         run: npx roamjs-scripts build
       - name: publish
-        run: npx roamjs-scripts publish --path query-builder/trojan
+        run: npx roamjs-scripts publish
