@@ -45,7 +45,7 @@ import DiscourseNodeSpecification from "./components/DiscourseNodeSpecification"
 import DiscourseNodeAttributes from "./components/DiscourseNodeAttributes";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { render as queryRequestRender } from "./components/SendQueryRequest";
-import getSamePageApi from "./utils/getSamePageApi";
+import getSamePageApi from "@samepage/external/getSamePageAPI";
 import importDiscourseGraph from "./utils/importDiscourseGraph";
 import createButtonObserver from "roamjs-components/dom/createButtonObserver";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
@@ -712,14 +712,14 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
         });
       }
 
-      const samePageLoadedListener = () => {
-        const { addGraphListener, sendToGraph, removeGraphListener } =
-          getSamePageApi();
-        addGraphListener({
+      const samePageLoadedListener = async () => {
+        const { addNotebookListener, sendToNotebook, removeNotebookListener } =
+          await getSamePageApi();
+        addNotebookListener({
           operation: "IMPORT_DISCOURSE_GRAPH",
           handler: (
             data: Parameters<typeof importDiscourseGraph>[0],
-            graph
+            source
           ) => {
             importDiscourseGraph(data);
             const todayUid = window.roamAlphaAPI.util.dateToPageUid(new Date());
@@ -728,22 +728,22 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
               parentUid: todayUid,
               order: todayOrder,
               node: {
-                text: `Imported discourse graph from [[${graph}]]`,
+                text: `Imported discourse graph from [[${source.workspace}]]`,
                 children: [{ text: `[[${data.title}]]` }],
               },
             });
-            sendToGraph({
+            sendToNotebook({
               operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
-              graph,
+              target: source.uuid,
             });
           },
         });
         unloads.add(function removeImportDgOperation() {
-          removeGraphListener({ operation: "IMPORT_DISCOURSE_GRAPH" });
+          removeNotebookListener({ operation: "IMPORT_DISCOURSE_GRAPH" });
           unloads.delete(removeImportDgOperation);
         });
 
-        addGraphListener({
+        addNotebookListener({
           operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
           handler: (_, graph) =>
             renderToast({
@@ -752,13 +752,15 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
             }),
         });
         unloads.add(function removeImportConfirmOperation() {
-          removeGraphListener({ operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM" });
+          removeNotebookListener({
+            operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
+          });
           unloads.delete(removeImportConfirmOperation);
         });
 
-        addGraphListener({
+        addNotebookListener({
           operation: "QUERY_REQUEST",
-          handler: (json, graph) => {
+          handler: (json, source) => {
             const { page, requestId } = json as {
               page: string;
               requestId: string;
@@ -769,30 +771,30 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
               parentUid: todayUid,
               order: bottom,
               node: {
-                text: `New [[query request]] from [[${graph}]]`,
+                text: `New [[query request]] from [[${source.workspace}]]`,
                 children: [
                   {
                     text: `Get full page contents of [[${page}]]`,
                   },
                   {
-                    text: `{{Accept:${graph}:${requestId}:${page}}}`,
+                    text: `{{Accept:${source.workspace}:${requestId}:${page}}}`,
                   },
                 ],
               },
             });
             renderToast({
               id: "new-query-request",
-              content: `New query request from ${graph}`,
+              content: `New query request from ${source.uuid}`,
               intent: "primary",
             });
-            sendToGraph({
+            sendToNotebook({
               operation: "QUERY_REQUEST_RECEIVED",
-              graph,
+              target: source.uuid,
             });
           },
         });
         unloads.add(function removeQueryRequestOperation() {
-          removeGraphListener({ operation: "QUERY_REQUEST" });
+          removeNotebookListener({ operation: "QUERY_REQUEST" });
           unloads.delete(removeQueryRequestOperation);
         });
 
@@ -834,8 +836,8 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
                 const title = page.join(":");
                 const uid = getPageUidByPageTitle(title);
                 const tree = getFullTreeByParentUid(uid).children;
-                sendToGraph({
-                  graph,
+                sendToNotebook({
+                  target: { app: 1, workspace: graph },
                   operation: `QUERY_RESPONSE/${requestId}`,
                   data: {
                     page: {
@@ -846,16 +848,16 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
                   },
                 });
                 const operation = `QUERY_RESPONSE_RECEIVED/${requestId}`;
-                addGraphListener({
+                addNotebookListener({
                   operation,
-                  handler: (_, g) => {
-                    if (g === graph) {
+                  handler: (_, source) => {
+                    if (source.workspace === graph) {
                       renderToast({
                         id: "query-response-success",
-                        content: `Graph ${g} Successfully Received the query`,
+                        content: `Graph ${source.workspace} Successfully Received the query`,
                         intent: "success",
                       });
-                      removeGraphListener({
+                      removeNotebookListener({
                         operation,
                       });
                       updateBlock({ uid: blockUid, text: "Sent" });

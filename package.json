@@ -23,6 +23,7 @@
     "widgets"
   ],
   "dependencies": {
+    "@samepage/external": "^0.28.3",
     "cytoscape": "^3.21.0",
     "cytoscape-navigator": "^2.0.1",
     "mathjs": "^10.4.2",

@@ -11,7 +11,7 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import XRegExp from "xregexp";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import getSamePageApi from "./getSamePageApi";
+import getSamePageApi from "@samepage/external/getSamePageAPI";
 import getDiscourseNodes from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
 import matchDiscourseNode from "./matchDiscourseNode";
@@ -493,14 +493,14 @@ const getExportTypes = ({
       name: "graph",
       callback: async ({ filename, graph, isBackendEnabled }) => {
         const data = await getJsonData(isBackendEnabled);
-        const { sendToGraph } = getSamePageApi();
-        sendToGraph({
+        const { sendToNotebook } = await getSamePageApi();
+        sendToNotebook({
           operation: "IMPORT_DISCOURSE_GRAPH",
           data: {
             ...data,
             title: filename,
           },
-          graph,
+          target: { app: 1, workspace: graph },
         });
         return [];
       },

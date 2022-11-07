@@ -19,7 +19,7 @@ import createPage from "roamjs-components/writes/createPage";
 import { PullBlock, TreeNode } from "roamjs-components/types";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import nanoid from "nanoid";
-import getSamePageApi from "../utils/getSamePageApi";
+import getSamePageApi from "@samepage/external/getSamePageAPI";
 
 type Props = {
   uid?: string;
@@ -67,32 +67,35 @@ const SendQueryRequest = ({ onClose, uid }: RoamOverlayProps<Props>) => {
           <Button
             text={"Request"}
             intent={Intent.PRIMARY}
-            onClick={() => {
+            onClick={async () => {
               setLoading(true);
-              const { sendToGraph, addGraphListener, removeGraphListener } =
-                getSamePageApi();
-              sendToGraph({
-                graph,
+              const {
+                sendToNotebook,
+                addNotebookListener,
+                removeNotebookListener,
+              } = await getSamePageApi();
+              sendToNotebook({
+                target: { app: 1, workspace: graph },
                 operation: "QUERY_REQUEST",
                 data: { page, requestId },
               });
-              addGraphListener({
+              addNotebookListener({
                 operation: "QUERY_REQUEST_RECEIVED",
                 handler: (_, g) => {
-                  if (g === graph) {
+                  if (g.workspace === graph) {
                     renderToast({
                       id: "query-request-success",
                       content: `Query Successfully Requested From ${g}`,
                       intent: Intent.SUCCESS,
                     });
-                    removeGraphListener({
+                    removeNotebookListener({
                       operation: "QUERY_REQUEST_RECEIVED",
                     });
                     const operation = `QUERY_RESPONSE/${requestId}`;
-                    addGraphListener({
+                    addNotebookListener({
                       operation,
                       handler: (json, g) => {
-                        if (g === graph) {
+                        if (g.workspace === graph) {
                           const { page } = json as {
                             page: {
                               title: string;
@@ -110,12 +113,12 @@ const SendQueryRequest = ({ onClose, uid }: RoamOverlayProps<Props>) => {
                           }
                           renderToast({
                             id: "query-response-success",
-                            content: `New Query Response From ${g}!`,
+                            content: `New Query Response From ${g.workspace}!`,
                             intent: Intent.SUCCESS,
                           });
-                          removeGraphListener({ operation });
-                          sendToGraph({
-                            graph,
+                          removeNotebookListener({ operation });
+                          sendToNotebook({
+                            target: g.uuid,
                             operation: `QUERY_RESPONSE_RECEIVED/${requestId}`,
                           });
                           const todayUid =
@@ -123,7 +126,7 @@ const SendQueryRequest = ({ onClose, uid }: RoamOverlayProps<Props>) => {
                           createBlock({
                             parentUid: todayUid,
                             node: {
-                              text: `Received response for page ${page.title} from graph ${g}.`,
+                              text: `Received response for page ${page.title} from graph ${g.workspace}.`,
                             },
                             order: getChildrenLengthByPageUid(todayUid),
                           });
