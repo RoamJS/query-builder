@@ -58,6 +58,8 @@ import { render as importRender } from "./components/ImportDialog";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
+import createPage from "roamjs-components/writes/createPage";
+import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 
 export const SETTING = "discourse-graphs";
 
@@ -546,6 +548,21 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
         observer.disconnect();
         unloads.delete(configObserverDisconnect);
       });
+
+      if (getDiscourseNodes().length === 0) {
+        await Promise.all(
+          DEFAULT_NODE_VALUES.map((n) =>
+            createPage({
+              title: `discourse-graph/nodes/${n.text}`,
+              uid: n.type,
+              tree: [
+                { text: "Format", children: [{ text: n.format }] },
+                { text: "Shortcut", children: [{ text: n.shortcut }] },
+              ],
+            })
+          )
+        );
+      }
 
       const hashChangeListener = (e: HashChangeEvent) => {
         if (
