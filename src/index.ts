@@ -134,7 +134,9 @@ export default runExtension({
         }
       }
 
-      if (
+      if (title.startsWith("discourse-graph/nodes/")) {
+        renderDiscourseNodeTypeConfigPage({ title, h: h1, onloadArgs });
+      } else if (
         getQueryPages(extensionAPI)
           .map(
             (t) =>
@@ -168,8 +170,6 @@ export default runExtension({
         !!h1.closest(".roam-article")
       ) {
         renderPlayground(title, globalRefs);
-      } else if (title.startsWith("discourse-graph/nodes/")) {
-        renderDiscourseNodeTypeConfigPage({ title, h: h1, onloadArgs });
       }
     };
 

@@ -3,8 +3,17 @@ import React, { useEffect, useRef, useState } from "react";
 import type { OnloadArgs } from "roamjs-components/types";
 
 export const getQueryPages = (extensionAPI: OnloadArgs["extensionAPI"]) => {
-  const value = extensionAPI.settings.get("query-pages") as string[] | string;
-  return typeof value === "string" ? [value] : value || ["queries/*"];
+  const value = extensionAPI.settings.get("query-pages") as
+    | string[]
+    | string
+    | Record<string, string>;
+  return typeof value === "string"
+    ? [value]
+    : Array.isArray(value)
+    ? value
+    : typeof value === "object"
+    ? Object.keys(value)
+    : ["queries/*"];
 };
 
 const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
