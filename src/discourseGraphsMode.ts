@@ -549,17 +549,20 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
         unloads.delete(configObserverDisconnect);
       });
 
+      refreshConfigTree();
       if (getDiscourseNodes().length === 0) {
         await Promise.all(
-          DEFAULT_NODE_VALUES.map((n) =>
-            createPage({
-              title: `discourse-graph/nodes/${n.text}`,
-              uid: n.type,
-              tree: [
-                { text: "Format", children: [{ text: n.format }] },
-                { text: "Shortcut", children: [{ text: n.shortcut }] },
-              ],
-            })
+          DEFAULT_NODE_VALUES.map(
+            (n) =>
+              getPageUidByPageTitle(`discourse-graph/nodes/${n.text}`) ||
+              createPage({
+                title: `discourse-graph/nodes/${n.text}`,
+                uid: n.type,
+                tree: [
+                  { text: "Format", children: [{ text: n.format }] },
+                  { text: "Shortcut", children: [{ text: n.shortcut }] },
+                ],
+              })
           )
         );
       }
