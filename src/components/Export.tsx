@@ -8,11 +8,12 @@ import {
   Intent,
   Label,
   MenuItem,
+  ProgressBar,
   Spinner,
   SpinnerSize,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
@@ -130,6 +131,7 @@ export const ExportDialog: ExportDialogComponent = ({
   ],
 }) => {
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState("");
   const today = new Date();
   const [filename, setFilename] = useState(
@@ -155,6 +157,17 @@ export const ExportDialog: ExportDialogComponent = ({
     }).uid;
   }, []);
   const [isBackendEnabled, setIsBackendEnabled] = useState(false);
+  useEffect(() => {
+    const body = document.querySelector(".roamjs-export-dialog-body");
+    if (body) {
+      const listener: EventListener = (e: CustomEvent) => {
+        setLoadingProgress(e.detail.progress);
+      };
+      body.addEventListener("roamjs:loading:progress", listener);
+      return () =>
+        body.removeEventListener("roamjs:loading:progress", listener);
+    }
+  }, [setLoadingProgress]);
   return (
     <Dialog
       isOpen={isOpen}
@@ -164,6 +177,7 @@ export const ExportDialog: ExportDialogComponent = ({
       title={`Export Query Results`}
       autoFocus={false}
       enforceFocus={false}
+      portalClassName={"roamjs-export-dialog-body"}
     >
       <div className={Classes.DIALOG_BODY}>
         <Label>
@@ -218,12 +232,13 @@ export const ExportDialog: ExportDialogComponent = ({
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
           <span style={{ color: "darkred" }}>{error}</span>
-          {loading && <Spinner size={SpinnerSize.SMALL} />}
+          {loading && <ProgressBar value={loadingProgress} />}
           <Button
             text={"Export"}
             intent={Intent.PRIMARY}
             onClick={() => {
               setLoading(true);
+              setLoadingProgress(0);
               setError("");
               setTimeout(async () => {
                 try {
@@ -252,8 +267,10 @@ export const ExportDialog: ExportDialogComponent = ({
                     }
                   }
                 } catch (e) {
+                  console.error(e);
                   setError(e.message);
                   setLoading(false);
+                  setLoadingProgress(0);
                 }
               }, 1);
             }}

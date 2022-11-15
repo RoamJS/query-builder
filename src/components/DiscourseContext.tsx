@@ -19,8 +19,9 @@ import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeB
 import { Result } from "roamjs-components/types/query-builder";
 import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
-import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import ResultsView from "./ResultsView";
+import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import { OnloadArgs } from "roamjs-components/types/native";
 
 type Props = {
   uid: string;
@@ -353,7 +354,7 @@ export const ContextContent = ({ uid, results }: Props) => {
   ) : loading ? (
     <div>Loading discourse relations...</div>
   ) : (
-    <div>No discourse relations found.</div>
+    <div className="ml-8">No discourse relations found.</div>
   );
 };
 

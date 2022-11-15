@@ -1,5 +1,5 @@
 import { Button, InputGroup } from "@blueprintjs/core";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import type { OnloadArgs } from "roamjs-components/types";
 
 export const getQueryPages = (extensionAPI: OnloadArgs["extensionAPI"]) => {
@@ -11,7 +11,7 @@ export const getQueryPages = (extensionAPI: OnloadArgs["extensionAPI"]) => {
     ? [value]
     : Array.isArray(value)
     ? value
-    : typeof value === "object"
+    : typeof value === "object" && value !== null
     ? Object.keys(value)
     : ["queries/*"];
 };

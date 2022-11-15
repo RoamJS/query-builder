@@ -14,6 +14,8 @@ import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import getDiscourseRelations from "../utils/getDiscourseRelations";
+import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import { OnloadArgs } from "roamjs-components/types/native";
 // import localStorageGet from "roamjs-components/util/localStorageGet";
 // import fireWorkerQuery from "../utils/fireWorkerQuery";
 
@@ -150,12 +152,10 @@ const DiscourseContextOverlay = ({ tag, id }: { tag: string; id: string }) => {
   const [score, setScore] = useState<number | string>(0);
   const getInfo = useCallback(
     () =>
-      (
-        // localStorageGet("experimental") === "true"
-        // ? experimentalGetOverlayInfo(tag)
-        // : 
-        getOverlayInfo(tag, id)
-      )
+      // localStorageGet("experimental") === "true"
+      // ? experimentalGetOverlayInfo(tag)
+      // :
+      getOverlayInfo(tag, id)
         .then(({ refs, results }) => {
           const discourseNode = findDiscourseNode(tagUid);
           if (discourseNode) {
@@ -164,13 +164,14 @@ const DiscourseContextOverlay = ({ tag, id }: { tag: string; id: string }) => {
               key: "Overlay",
               defaultValue: "Overlay",
             });
-            return deriveDiscourseNodeAttribute({ uid: tagUid, attribute }).then(
-              (score) => {
-                setResults(results);
-                setRefs(refs);
-                setScore(score);
-              }
-            );
+            return deriveDiscourseNodeAttribute({
+              uid: tagUid,
+              attribute,
+            }).then((score) => {
+              setResults(results);
+              setRefs(refs);
+              setScore(score);
+            });
           }
         })
         .finally(() => setLoading(false)),
@@ -252,13 +253,20 @@ const Wrapper = ({ parent, tag }: { parent: HTMLElement; tag: string }) => {
 export const render = ({
   tag,
   parent,
+  onloadArgs,
 }: {
   tag: string;
   parent: HTMLElement;
+  onloadArgs: OnloadArgs
 }) => {
   parent.style.margin = "0 8px";
   parent.onmousedown = (e) => e.stopPropagation();
-  ReactDOM.render(<Wrapper tag={tag} parent={parent} />, parent);
+  ReactDOM.render(
+    <ExtensionApiContextProvider {...onloadArgs}>
+      <Wrapper tag={tag} parent={parent} />
+    </ExtensionApiContextProvider>,
+    parent
+  );
 };
 
 export default DiscourseContextOverlay;

@@ -60,6 +60,7 @@ import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
+import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 
 export const SETTING = "discourse-graphs";
 
@@ -108,30 +109,6 @@ const previewPageRefHandler = (s: HTMLSpanElement) => {
       },
     });
     s.appendChild(parent);
-  }
-};
-
-const overlayPageRefHandler = (s: HTMLSpanElement) => {
-  if (s.parentElement && !s.parentElement.closest(".rm-page-ref")) {
-    const tag =
-      s.getAttribute("data-tag") ||
-      s.parentElement.getAttribute("data-link-title");
-    if (
-      !s.getAttribute("data-roamjs-discourse-overlay") &&
-      isDiscourseNode(getPageUidByPageTitle(tag))
-    ) {
-      s.setAttribute("data-roamjs-discourse-overlay", "true");
-      const parent = document.createElement("span");
-      discourseOverlayRender({
-        parent,
-        tag: tag.replace(/\\"/g, '"'),
-      });
-      if (s.hasAttribute("data-tag")) {
-        s.appendChild(parent);
-      } else {
-        s.parentElement.appendChild(parent);
-      }
-    }
   }
 };
 
@@ -432,6 +409,31 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
         unloads.delete(removeStyle);
       });
 
+      const overlayPageRefHandler = (s: HTMLSpanElement) => {
+        if (s.parentElement && !s.parentElement.closest(".rm-page-ref")) {
+          const tag =
+            s.getAttribute("data-tag") ||
+            s.parentElement.getAttribute("data-link-title");
+          if (
+            !s.getAttribute("data-roamjs-discourse-overlay") &&
+            isDiscourseNode(getPageUidByPageTitle(tag))
+          ) {
+            s.setAttribute("data-roamjs-discourse-overlay", "true");
+            const parent = document.createElement("span");
+            discourseOverlayRender({
+              parent,
+              tag: tag.replace(/\\"/g, '"'),
+              onloadArgs: args,
+            });
+            if (s.hasAttribute("data-tag")) {
+              s.appendChild(parent);
+            } else {
+              s.parentElement.appendChild(parent);
+            }
+          }
+        }
+      };
+
       const { pageUid, observer } = await createConfigObserver({
         title: "roam/js/discourse-graph",
         config: {
@@ -668,8 +670,7 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
                 React.createElement(DiscourseContext, {
                   uid,
                 }),
-                p,
-                args
+                p
               );
             }
           }
@@ -694,10 +695,12 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
         : typeof queryPages === "string" && queryPages
         ? [queryPages]
         : [];
-      args.extensionAPI.settings.set("query-pages", [
-        ...queryPageArray,
-        "discourse-graph/queries/*",
-      ]);
+      if (!queryPageArray.includes("discourse-graph/queries/*")) {
+        args.extensionAPI.settings.set("query-pages", [
+          ...queryPageArray,
+          "discourse-graph/queries/*",
+        ]);
+      }
       unloads.add(function removeQueryPage() {
         args.extensionAPI.settings.set(
           "query-pages",
