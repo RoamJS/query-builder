@@ -543,7 +543,6 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
               ],
             },
           ],
-          // versioning,
         },
       });
       unloads.add(function configObserverDisconnect() {

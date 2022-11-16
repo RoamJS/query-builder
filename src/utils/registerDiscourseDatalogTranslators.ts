@@ -42,6 +42,8 @@ const collectVariables = (
   );
 
 const registerDiscourseDatalogTranslators = () => {
+  const discourseRelations = getDiscourseRelations();
+  const discourseNodes = getDiscourseNodes(discourseRelations);
   const isACallback: Parameters<
     typeof registerDatalogTranslator
   >[0]["callback"] = ({ source, target }) => {
@@ -70,8 +72,6 @@ const registerDiscourseDatalogTranslators = () => {
         })
       : [];
   };
-  const discourseRelations = getDiscourseRelations();
-  const discourseNodes = getDiscourseNodes(discourseRelations);
   const unregisters = new Set<() => void>();
   unregisters.add(
     registerDatalogTranslator({

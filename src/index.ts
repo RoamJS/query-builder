@@ -111,7 +111,6 @@ export default runExtension({
 .roamjs-view-select > span {
   width: 100%;
 }`);
-    const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(onloadArgs);
     const h1ObserverCallback = (h1: HTMLHeadingElement) => {
       const title = getPageTitleValueByHtmlElement(h1);
       if (!!extensionAPI.settings.get("show-page-metadata")) {
@@ -172,6 +171,22 @@ export default runExtension({
         renderPlayground(title, globalRefs);
       }
     };
+    if (loadedElsewhere) {
+      await extensionAPI.settings.set(SETTING, true);
+      setTimeout(() => {
+        setBackendToken((extensionAPI.settings.get("token") as string) || "");
+        toggleDiscourseGraphsMode(true).then(() =>
+          document
+            .querySelectorAll(`h1.rm-title-display`)
+            .forEach(h1ObserverCallback)
+        );
+      }, 1000);
+    } else {
+      setBackendToken((extensionAPI.settings.get("token") as string) || "");
+    }
+    const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
+      onloadArgs
+    );
 
     const toggleSortReferences = runSortReferences();
     extensionAPI.settings.panel.create({
@@ -299,19 +314,6 @@ export default runExtension({
         },
       ],
     });
-    if (loadedElsewhere) {
-      setTimeout(() => {
-        setBackendToken((extensionAPI.settings.get("token") as string) || "");
-        extensionAPI.settings.set(SETTING, true);
-        toggleDiscourseGraphsMode(true).then(() =>
-          document
-            .querySelectorAll(`h1.rm-title-display`)
-            .forEach(h1ObserverCallback)
-        );
-      }, 1000);
-    } else {
-      setBackendToken((extensionAPI.settings.get("token") as string) || "");
-    }
 
     const globalRefs = {
       clearOnClick: ({
