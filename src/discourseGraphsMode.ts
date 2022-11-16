@@ -232,7 +232,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
   }
 };
 
-const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
+const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
     enabled = flag;
@@ -925,7 +925,7 @@ const initializeDiscourseGraphsMode = (args: OnloadArgs) => {
       unloads.clear();
     }
   };
-  toggle(!!args.extensionAPI.settings.get(SETTING));
+  await toggle(!!args.extensionAPI.settings.get(SETTING));
   return toggle;
 };
 

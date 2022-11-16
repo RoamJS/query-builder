@@ -111,7 +111,7 @@ export default runExtension({
 .roamjs-view-select > span {
   width: 100%;
 }`);
-    const toggleDiscourseGraphsMode = initializeDiscourseGraphsMode(onloadArgs);
+    const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(onloadArgs);
     const h1ObserverCallback = (h1: HTMLHeadingElement) => {
       const title = getPageTitleValueByHtmlElement(h1);
       if (!!extensionAPI.settings.get("show-page-metadata")) {
