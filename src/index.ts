@@ -171,24 +171,6 @@ export default runExtension({
         renderPlayground(title, globalRefs);
       }
     };
-    if (loadedElsewhere) {
-      await extensionAPI.settings.set(SETTING, true);
-      setTimeout(() => {
-        setBackendToken((extensionAPI.settings.get("token") as string) || "");
-        toggleDiscourseGraphsMode(true).then(() =>
-          document
-            .querySelectorAll(`h1.rm-title-display`)
-            .forEach(h1ObserverCallback)
-        );
-      }, 1000);
-    } else {
-      setBackendToken((extensionAPI.settings.get("token") as string) || "");
-    }
-    const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
-      onloadArgs
-    );
-
-    const toggleSortReferences = runSortReferences();
     extensionAPI.settings.panel.create({
       tabTitle: "Query Builder",
       settings: [
@@ -314,6 +296,23 @@ export default runExtension({
         },
       ],
     });
+    if (loadedElsewhere) {
+      await extensionAPI.settings.set(SETTING, true);
+      setTimeout(() => {
+        setBackendToken((extensionAPI.settings.get("token") as string) || "");
+        toggleDiscourseGraphsMode(true).then(() =>
+          document
+            .querySelectorAll(`h1.rm-title-display`)
+            .forEach(h1ObserverCallback)
+        );
+      }, 1000);
+    } else {
+      setBackendToken((extensionAPI.settings.get("token") as string) || "");
+    }
+    const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
+      onloadArgs
+    );
+    const toggleSortReferences = runSortReferences();
 
     const globalRefs = {
       clearOnClick: ({
