@@ -406,8 +406,13 @@ export default runExtension({
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
             return allResults
               .map((r) =>
+                Object.fromEntries(
+                  Object.entries(r).map(([k, v]) => [k.toLowerCase(), v])
+                )
+              )
+              .map((r) =>
                 format.replace(/{([^}]+)}/, (_, i: string) => {
-                  const value = r[i];
+                  const value = r[i.toLowerCase()];
                   return typeof value === "string"
                     ? value
                     : typeof value === "number"
