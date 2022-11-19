@@ -669,7 +669,8 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 React.createElement(DiscourseContext, {
                   uid,
                 }),
-                p
+                p,
+                args,
               );
             }
           }
