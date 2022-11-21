@@ -400,8 +400,9 @@ export default runExtension({
       delayArgs: true,
       help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
       handler:
-        ({ proccessBlockText }) =>
-        (queryUid, format = "(({uid}))") => {
+        ({ proccessBlockText, variables }) =>
+        (arg, format = "(({uid}))") => {
+          const queryUid = variables[arg] || arg;
           const parentUid = extractRef(queryUid);
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
             return allResults
