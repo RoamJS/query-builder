@@ -235,8 +235,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
 const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
-    enabled = flag;
-    if (flag) {
+    if (flag && !enabled) {
       window.roamjs.version = {
         ...window.roamjs.version,
         ["discourse-graph"]: args.extension.version,
@@ -920,10 +919,11 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           unloads.delete(removeSamePageListener);
         });
       }
-    } else {
+    } else if (!flag && enabled) {
       unloads.forEach((u) => u());
       unloads.clear();
     }
+    enabled = flag;
   };
   await toggle(!!args.extensionAPI.settings.get(SETTING));
   return toggle;

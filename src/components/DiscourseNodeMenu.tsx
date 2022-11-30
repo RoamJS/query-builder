@@ -117,8 +117,10 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
                   );
                   setTimeout(() => {
                     const ta = document.activeElement as HTMLTextAreaElement;
-                    const index = ta.value.length;
-                    ta.setSelectionRange(index, index);
+                    if (ta.tagName === "TEXTAREA") {
+                      const index = ta.value.length;
+                      ta.setSelectionRange(index, index);
+                    }
                   }, 1);
                 }, 100);
               });
