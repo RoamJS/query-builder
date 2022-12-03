@@ -6,5 +6,7 @@ out
 main.js
 extension.js
 extension.js.LICENSE.txt
+extension.css
 report.html
 stats.json
+analyze.txt

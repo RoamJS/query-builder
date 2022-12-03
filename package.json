@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "1.0.2",
+  "version": "2022-12-03-17-21",
   "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
   "author": {
@@ -8,15 +8,14 @@
     "email": "support@roamjs.com"
   },
   "scripts": {
-    "start": "roamjs-scripts dev --depot",
+    "start": "roamjs-scripts dev --labs",
     "prebuild:roam": "npm install",
-    "build:roam": "roamjs-scripts build --depot"
+    "build:roam": "roamjs-scripts build --labs"
   },
   "license": "MIT",
   "devDependencies": {
     "@types/cytoscape": "^3.19.9",
-    "@types/react-vertical-timeline-component": "^3.3.3",
-    "roamjs-scripts": "^0.24.0"
+    "@types/react-vertical-timeline-component": "^3.3.3"
   },
   "tags": [
     "queries",
@@ -30,6 +29,7 @@
     "react-charts": "^3.0.0-beta.48",
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.74.27"
+    "roamjs-components": "^0.74.27",
+    "roamjs-scripts": "^0.26.16"
   }
 }

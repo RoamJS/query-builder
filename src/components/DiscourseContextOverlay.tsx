@@ -2,7 +2,7 @@ import { Button, Popover, Position, Tooltip } from "@blueprintjs/core";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { ContextContent } from "./DiscourseContext";
-import { useInViewport } from "react-in-viewport";
+import useInViewport from "react-in-viewport/dist/es/lib/useInViewport";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import deriveDiscourseNodeAttribute from "../utils/deriveDiscourseNodeAttribute";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
@@ -257,7 +257,7 @@ export const render = ({
 }: {
   tag: string;
   parent: HTMLElement;
-  onloadArgs: OnloadArgs
+  onloadArgs: OnloadArgs;
 }) => {
   parent.style.margin = "0 8px";
   parent.onmousedown = (e) => e.stopPropagation();

@@ -21,9 +21,7 @@ jobs:
       - name: install
         run: npm install
       - name: build
-        run: npx roamjs-scripts build --depot
-      - name: publish
-        run: npx roamjs-scripts publish --depot
+        run: npx roamjs-scripts build --labs
       # this is for discourse graph
       - name: build
         run: npx roamjs-scripts build
