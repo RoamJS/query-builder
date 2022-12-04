@@ -15,8 +15,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/cytoscape": "^3.19.9",
-    "@types/react-vertical-timeline-component": "^3.3.3"
+    "@types/react-vertical-timeline-component": "^3.3.3",
+    "axios": "^0.27.2"
   },
+  "//": "axios dep temporary - need to fix the dep in underlying libraries",
   "tags": [
     "queries",
     "widgets"
