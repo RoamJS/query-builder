@@ -26,7 +26,7 @@ jobs:
           script: |
             const fs = require('fs');
             const file = 'node_modules/@samepage/scripts/build.js';
-            fs.writeFileSync(file, fs.readFileSync(file).toString().replace(/const message = /, "console.log(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/commits/${process.env.GITHUB_SHA}`, await axios_1.default.get(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/commits/${process.env.GITHUB_SHA}`, opts).then((r) => typeof r.data));const message = ").replace(/`, opts\)/, "`)"))
+            fs.writeFileSync(file, fs.readFileSync(file).toString().replace(/const message = /, "console.log(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/commits/${process.env.GITHUB_SHA}`, await axios_1.default.get(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/commits/${process.env.GITHUB_SHA}`, opts).then((r) => Object.keys(r.data)));const message = "))
       - name: build
         run: npx roamjs-scripts build --labs
       # this is for discourse graph
