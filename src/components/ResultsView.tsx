@@ -910,9 +910,37 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
             <div>Layout `{layout}` is not supported</div>
           )
         ) : (
-          <p className="px-2 py-3 flex justify-between items-center mb-0">
-            <i>No Results Found</i>
-          </p>
+          <>
+            <p className="px-2 py-3 flex justify-between items-center mb-0">
+              <i>No Results Found</i>
+            </p>
+            <div style={{ background: "#eeeeee80"}}>
+              <div
+                className="flex justify-between items-center"
+                style={{
+                  opacity: 0.8,
+                  padding: "8px 4px",
+                }}
+              >
+                <span>
+                  <i style={{ opacity: 0.8 }}>
+                    <Button
+                      icon={showContent ? "caret-down" : "caret-right"}
+                      minimal
+                      small
+                      onClick={() => setShowContent(!showContent)}
+                      style={{
+                        marginRight: 4,
+                      }}
+                    />
+                    Showing {paginatedResults.length} of {results.length}{" "}
+                    results
+                  </i>
+                </span>
+              </div>
+              {showContent && <QueryUsed parentUid={parentUid} />}
+            </div>
+          </>
         ))}
     </div>
   );
