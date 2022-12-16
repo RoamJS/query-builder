@@ -377,7 +377,7 @@ const registerDiscourseDatalogTranslators = () => {
           ];
         },
         targetOptions: (source) => {
-          let pageNames = getAllPageNames();
+          const pageNames = getAllPageNames();
           const sourcedRelations = discourseRelations
             .flatMap((dr) => [
               { source: dr.source, relation: dr.label, target: dr.destination },
@@ -394,16 +394,20 @@ const registerDiscourseDatalogTranslators = () => {
                   dr.source === source ||
                   nodeLabelByType[dr.source] === source)
             );
-          pageNames = pageNames.filter((p) =>
+          return pageNames.filter((p) =>
             sourcedRelations.some((sr) =>
               matchDiscourseNode({
                 ...nodeByType[sr.target],
                 title: p,
               })
             )
+          ).concat(
+            ...Object.values(nodeLabelByType).filter((p) =>
+              sourcedRelations.some((sr) =>
+                nodeByType[sr.target].text === p
+              )
+            )
           );
-          pageNames.push(...Object.values(nodeLabelByType).filter((p) => sourcedRelations.some((sr) => nodeByType[sr.target].text === p)));
-          return pageNames
         },
         placeholder: "Enter a valid target",
       })
