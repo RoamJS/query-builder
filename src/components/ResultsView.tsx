@@ -12,8 +12,11 @@ import {
   Menu,
   MenuItem,
   Switch,
+  Intent,
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
@@ -35,6 +38,8 @@ import getUids from "roamjs-components/dom/getUids";
 import Charts from "./Charts";
 import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import { RoamBasicNode } from "roamjs-components/types";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -622,7 +627,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                       onEdit();
                     }}
                   />
-                )}
+                  )}
                 <MenuItem
                   icon={"layout"}
                   text={"Layout"}
@@ -671,6 +676,38 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                     }}
                   />
                 )}
+                 <MenuItem
+                    icon={"clipboard"}
+                    text={"Copy Query"}
+                    onClick={() => {
+                      const getTextFromTreeToPaste = (items: RoamBasicNode[], indentLevel = 0): string => {
+                        let textValues = "";
+                        const indentation = "    ".repeat(indentLevel);
+                        
+                        items.forEach(item => {
+                          if (item.text) {
+                            textValues += `${indentation}- ${item.text}\n`;
+                          }
+                          if (item.children) {
+                            textValues += getTextFromTreeToPaste(item.children, indentLevel + 1);
+                          }
+                        });
+                        return textValues;
+                      };
+                      const blockUid = getBlockUidFromTarget(
+                        containerRef.current.closest(
+                          ".roam-block"
+                        ) as HTMLDivElement
+                      );
+                      const tree = getBasicTreeByParentUid(blockUid);
+                      navigator.clipboard.writeText("- {{query block}}    \n" + getTextFromTreeToPaste(tree, 1));
+                      renderToast({
+                        id: "query-copy",
+                        content: "Copied Query",
+                        intent: Intent.PRIMARY,
+                      });
+                    }}
+                  />
               </Menu>
             )
           }
