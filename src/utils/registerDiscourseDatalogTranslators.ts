@@ -401,6 +401,12 @@ const registerDiscourseDatalogTranslators = () => {
                 title: p,
               })
             )
+          ).concat(
+            ...Object.values(nodeLabelByType).filter((p) =>
+              sourcedRelations.some((sr) =>
+                nodeByType[sr.target].text === p
+              )
+            )
           );
         },
         placeholder: "Enter a valid target",
