@@ -16,7 +16,6 @@ import {
 } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
@@ -681,26 +680,21 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                     text={"Copy Query"}
                     onClick={() => {
                       const getTextFromTreeToPaste = (items: RoamBasicNode[], indentLevel = 0): string => {
-                        let textValues = "";
+                        const obj = { textValues: "" };
                         const indentation = "    ".repeat(indentLevel);
                         
                         items.forEach(item => {
                           if (item.text) {
-                            textValues += `${indentation}- ${item.text}\n`;
+                            obj.textValues += `${indentation}- ${item.text}\n`;
                           }
                           if (item.children) {
-                            textValues += getTextFromTreeToPaste(item.children, indentLevel + 1);
+                            obj.textValues += getTextFromTreeToPaste(item.children, indentLevel + 1);
                           }
                         });
-                        return textValues;
+                        return obj.textValues;
                       };
-                      const blockUid = getBlockUidFromTarget(
-                        containerRef.current.closest(
-                          ".roam-block"
-                        ) as HTMLDivElement
-                      );
-                      const tree = getBasicTreeByParentUid(blockUid);
-                      navigator.clipboard.writeText("- {{query block}}    \n" + getTextFromTreeToPaste(tree, 1));
+                      const tree = getBasicTreeByParentUid(parentUid);
+                      navigator.clipboard.writeText("- {{query block}}\n" + getTextFromTreeToPaste(tree, 1));
                       renderToast({
                         id: "query-copy",
                         content: "Copied Query",
