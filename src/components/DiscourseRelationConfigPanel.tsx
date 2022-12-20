@@ -433,7 +433,6 @@ const RelationEditPanel = ({
       boxSelectionEnabled: false,
     });
     cyRef.current.on("click", (e) => {
-      console.log(e);
       if (blockClickRef.current) {
         return;
       }
