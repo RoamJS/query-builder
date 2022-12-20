@@ -680,18 +680,12 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                     text={"Copy Query"}
                     onClick={() => {
                       const getTextFromTreeToPaste = (items: RoamBasicNode[], indentLevel = 0): string => {
-                        const obj = { textValues: "" };
                         const indentation = "    ".repeat(indentLevel);
-                        
-                        items.forEach(item => {
-                          if (item.text) {
-                            obj.textValues += `${indentation}- ${item.text}\n`;
-                          }
-                          if (item.children) {
-                            obj.textValues += getTextFromTreeToPaste(item.children, indentLevel + 1);
-                          }
-                        });
-                        return obj.textValues;
+
+                        return items.map(item => {
+                          const childrenText = item.children.length > 0 ? getTextFromTreeToPaste(item.children, indentLevel + 1) : "";
+                          return `${indentation}- ${item.text}\n${childrenText}`;
+                        }).join("")
                       };
                       const tree = getBasicTreeByParentUid(parentUid);
                       navigator.clipboard.writeText("- {{query block}}\n" + getTextFromTreeToPaste(tree, 1));
