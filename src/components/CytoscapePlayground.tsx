@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import cytoscape from "cytoscape";
+import type cytoscape from "cytoscape";
 import {
   Button,
   Classes,
@@ -50,7 +50,7 @@ import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
 
-navigator(cytoscape);
+window.RoamLazy.Cytoscape().then(navigator);
 const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
 const trashCursor =
@@ -821,7 +821,8 @@ const CytoscapePlayground = ({
   useEffect(() => {
     const oldClearOnClick = globalRefs.clearOnClick;
     Promise.all(elementsChildren.map(getCyElementFromRoamNode)).then(
-      (elements) => {
+      async (elements) => {
+        const cytoscape = await window.RoamLazy.Cytoscape();
         cyRef.current = cytoscape({
           container: containerRef.current,
           elements,
