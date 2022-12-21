@@ -14,7 +14,6 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/cytoscape": "^3.19.9",
     "@types/react-vertical-timeline-component": "^3.3.3",
     "axios": "^0.27.2"
   },
@@ -25,13 +24,11 @@
   ],
   "dependencies": {
     "@samepage/external": "^0.28.3",
-    "cytoscape": "^3.21.0",
     "cytoscape-navigator": "^2.0.1",
-    "mathjs": "^10.4.2",
     "react-charts": "^3.0.0-beta.48",
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.74.27",
-    "roamjs-scripts": "^0.26.22"
+    "roamjs-components": "^0.75.1",
+    "roamjs-scripts": "^0.26.23"
   }
 }

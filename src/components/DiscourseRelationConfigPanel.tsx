@@ -12,7 +12,7 @@ import {
   Tabs,
   Tooltip,
 } from "@blueprintjs/core";
-import cytoscape, { NodeSingular } from "cytoscape";
+import type cytoscape from "cytoscape";
 import React, {
   useCallback,
   useEffect,
@@ -386,8 +386,9 @@ const RelationEditPanel = ({
     initialElements.length ? initialElements.map((_, i) => i) : [0]
   );
 
-  const loadCytoscape = useCallback(() => {
+  const loadCytoscape = useCallback(async () => {
     cyRef.current?.destroy?.();
+    const cytoscape = await window.RoamLazy.Cytoscape();
     cyRef.current = cytoscape({
       container: containerRef.current,
       elements: elementsRef.current[tab],
@@ -545,7 +546,7 @@ const RelationEditPanel = ({
             onItemSelect={(e) => {
               unsavedChanges();
               setSource(e);
-              (cyRef.current.nodes("#source") as NodeSingular).data(
+              (cyRef.current.nodes("#source") as cytoscape.NodeSingular).data(
                 "node",
                 nodes[e]?.label
               );
@@ -562,10 +563,9 @@ const RelationEditPanel = ({
             onItemSelect={(e) => {
               unsavedChanges();
               setDestination(e);
-              (cyRef.current.nodes("#destination") as NodeSingular).data(
-                "node",
-                nodes[e]?.label
-              );
+              (
+                cyRef.current.nodes("#destination") as cytoscape.NodeSingular
+              ).data("node", nodes[e]?.label);
             }}
             items={Object.keys(nodes)}
             transformItem={(u) => nodes[u]?.label}

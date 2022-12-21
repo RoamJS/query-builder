@@ -1,4 +1,3 @@
-import { evaluate } from "mathjs";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
@@ -9,6 +8,11 @@ import getDiscourseNodes from "./getDiscourseNodes";
 import getDiscourseRelations from "./getDiscourseRelations";
 
 export const ANY_RELATION_REGEX = /Has Any Relation To/i;
+
+const evaluate = (s: string) =>
+  window.RoamLazy.Insect().then((insect) =>
+    Number(insect.repl(insect.fmtPlain)(insect.initialEnvironment)(s).msg)
+  );
 
 const getRelatedResults = ({
   uid,
