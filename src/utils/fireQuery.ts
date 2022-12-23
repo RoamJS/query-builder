@@ -207,7 +207,7 @@ const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
-const NODE_TEST = /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i;
+const NODE_TEST = /^node:(\s*[^:]+\s*):(.*)?$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
@@ -328,7 +328,7 @@ const predefinedSelections: PredefinedSelection[] = [
       return isVariableExposed(where, node) ? `(pull ?${node} ${fields})` : "";
     },
     mapper: (r, key) => {
-      const match = NODE_TEST.exec(key)?.[2];
+      const match = NODE_TEST.exec(key)?.at(-1);
       const field = Object.keys(r)[0];
       return field === ":create/time"
         ? formatDate({
@@ -347,7 +347,7 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp((match.slice(1,-1))).exec(r?.[":block/string"])?.[0]
+        ? new RegExp((match.slice(1,-1))).exec(r?.[":block/string"])?.at(-1)
         : match
         ? getBlockAttribute(match, r)
         : {
