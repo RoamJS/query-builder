@@ -200,7 +200,7 @@ const optimizeQuery = (
   return orderedClauses;
 };
 
-const REGEX_TEST = /{([^}]*)}/;
+const REGEX_TEST = /\/([^}]*)\//;
 const CREATE_DATE_TEST = /^\s*created?\s*(date|time)\s*$/i;
 const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time)\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
@@ -347,7 +347,7 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp((match.slice(1,-1))).exec(r?.[":block/string"])?.at(-1)
+        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.at(-1)
         : match
         ? getBlockAttribute(match, r)
         : {
