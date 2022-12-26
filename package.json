@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "2022-12-03-17-21",
+  "version": "1.0.0",
   "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
   "author": {
