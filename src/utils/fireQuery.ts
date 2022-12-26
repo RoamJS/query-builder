@@ -200,13 +200,14 @@ const optimizeQuery = (
   return orderedClauses;
 };
 
+const REGEX_TEST = /\/([^}]*)\//;
 const CREATE_DATE_TEST = /^\s*created?\s*(date|time)\s*$/i;
 const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time)\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
-const NODE_TEST = /^node:(\s*[^:]+\s*)(?::([^:]+))?$/i;
+const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
@@ -309,7 +310,7 @@ const predefinedSelections: PredefinedSelection[] = [
     test: NODE_TEST,
     pull: ({ match, returnNode, where }) => {
       const node = (match[1] || returnNode)?.trim();
-      const field = (match[2] || "").trim();
+      const field = (match[2] || "").trim().substring(1);
       const fields = CREATE_BY_TEST.test(field)
         ? `[:create/user]`
         : EDIT_BY_TEST.test(field)
@@ -318,6 +319,8 @@ const predefinedSelections: PredefinedSelection[] = [
         ? `[:create/time]`
         : EDIT_DATE_TEST.test(field)
         ? `[:edit/time]`
+        : REGEX_TEST.test(field)
+        ? `[:node/title :block/string]`
         : field
         ? `[:block/uid]`
         : `[:node/title :block/uid :block/string]`;
@@ -325,7 +328,7 @@ const predefinedSelections: PredefinedSelection[] = [
       return isVariableExposed(where, node) ? `(pull ?${node} ${fields})` : "";
     },
     mapper: (r, key) => {
-      const match = NODE_TEST.exec(key)?.[2];
+      const match = (NODE_TEST.exec(key)?.[2] || "").substring(1);
       const field = Object.keys(r)[0];
       return field === ":create/time"
         ? formatDate({
@@ -343,6 +346,8 @@ const predefinedSelections: PredefinedSelection[] = [
         ? getUserDisplayNameById(r?.[":create/user"]?.[":db/id"])
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
+        : REGEX_TEST.test(match)
+        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.at(-1)
         : match
         ? getBlockAttribute(match, r)
         : {
