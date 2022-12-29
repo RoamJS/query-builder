@@ -200,6 +200,7 @@ const optimizeQuery = (
   return orderedClauses;
 };
 
+const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
 const CREATE_DATE_TEST = /^\s*created?\s*(date|time)\s*$/i;
 const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time)\s*$/i;
@@ -357,6 +358,11 @@ const predefinedSelections: PredefinedSelection[] = [
     },
   },
   {
+    test: ALIAS_TEST,
+    pull: () => '',
+    mapper: (r) => {return ''},
+  },
+  {
     test: SUBTRACT_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:db/id])`,
     mapper: (_, key, result) => {
@@ -474,7 +480,7 @@ export const getDatalogQueryComponents = ({
         };
       },
       pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
-      label: "text",
+      label: selections.find(s => s.text === "node")?.label || "text",
       key: "",
     },
     {
