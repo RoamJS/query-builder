@@ -10,7 +10,7 @@
   "scripts": {
     "start": "roamjs-scripts dev --labs",
     "prebuild:roam": "npm install",
-    "build:roam": "roamjs-scripts build --labs"
+    "build:roam": "roamjs-scripts build --labs --dry"
   },
   "license": "MIT",
   "devDependencies": {
