@@ -75,6 +75,15 @@ export default runExtension({
   display: none;
 }
 
+.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-main,
+.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-children > .rm-multibar {
+  display: none;
+}
+
+.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-children {
+  margin-left: initial;
+}
+
 /* width */
 .roamjs-query-results-view ul::-webkit-scrollbar {
   width: 6px;
