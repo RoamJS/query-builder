@@ -122,7 +122,6 @@ const ResultHeader = ({
   );
 };
 
-
 const CellEmbed = ({ uid }: { uid: string }) => {
   const isPage = !!getPageTitleByPageUid(uid) ? "page-embed" : "block-embed"
   const contentRef = useRef(null);
