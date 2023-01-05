@@ -75,13 +75,17 @@ export default runExtension({
   display: none;
 }
 
-.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-main,
-.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-children > .rm-multibar {
+.roamjs-query-embed > .page-embed > .roam-block-container > .rm-block-main,
+.roamjs-query-embed > .page-embed > .roam-block-container > .rm-block-children > .rm-multibar {
   display: none;
 }
 
-.roamjs-query-embed.page-embed > .roam-block-container > .rm-block-children {
+.roamjs-query-embed > .page-embed > .roam-block-container > .rm-block-children {
   margin-left: initial;
+}
+
+.roamjs-query-embed > .rm-page-title {
+  margin: 10px 0px 10px 24px;
 }
 
 /* width */
