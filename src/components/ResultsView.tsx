@@ -123,6 +123,8 @@ const ResultHeader = ({
 };
 
 const CellEmbed = ({ uid }: { uid: string }) => {
+  const title = getPageTitleByPageUid(uid);
+  const isPage = !!title ? "page-embed" : "block-embed"
   const contentRef = useRef(null);
   useEffect(() => {
     window.roamAlphaAPI.ui.components.renderBlock({
@@ -130,7 +132,10 @@ const CellEmbed = ({ uid }: { uid: string }) => {
       el: contentRef.current,
     });
   }, [contentRef]);
-  return <div ref={contentRef} className="roamjs-query-embed" />;
+  return <div className="roamjs-query-embed">
+      {isPage === "page-embed" ? <h1 className="rm-page-title">{title}</h1> : ""}
+      <div ref={contentRef} className={isPage}/>
+    </div>
 };
 
 const ResultView = ({
