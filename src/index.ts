@@ -330,7 +330,9 @@ export default runExtension({
       onloadArgs
     );
     const toggleSortReferences = runSortReferences();
-    if (!!extensionAPI.settings.get("sort-references")) {toggleSortReferences(true);}
+    if (!!extensionAPI.settings.get("sort-references")) {
+      toggleSortReferences(true);
+    }
     
     const globalRefs = {
       clearOnClick: ({
