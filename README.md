@@ -6,13 +6,13 @@ Introduces new user interfaces for building queries in Roam.
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
-> NOTE: If your are a user of the RoamJS extension [Discourse Graph](https://roamjs.com/extensions/discourse-graph), do NOT install this extension, as Discourse Graph bundles its own version of Query Builder. In the future, Discourse Graph will be reintegrated back into Query Builder as an advanced set of features.
+> NOTE: If you are a user of the RoamJS extension [Discourse Graph](https://roamjs.com/extensions/discourse-graph), do NOT install this extension, as Discourse Graph bundles its own version of Query Builder. In the future, Discourse Graph will be reintegrated back into Query Builder as an advanced set of features.
 
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs.
 
-- `Page` - A Page is anything in Roam that was created with `[[brackets]]`, `#hashtag`, `#[[hashtag with brackts]]`, or `Attribute::`. Clicking on these links in your graph takes you to its designated page, each with its own unique title, and they have no parent.
+- `Page` - A Page is anything in Roam that was created with `[[brackets]]`, `#hashtag`, `#[[hashtag with brackets]]`, or `Attribute::`. Clicking on these links in your graph takes you to its designated page, each with its own unique title, and they have no parent.
 - `Block` - A bullet or line of text in Roam. While you can also go to pages that have a zoomed in block view, their content is not unique, and they always have one parent.
 - `Node` - A superset of `Block`s and `Page`s.
 
@@ -66,7 +66,7 @@ You will use a combination of multiple conditions to select the data you want. H
 - `created after` - The `source` block or page was created after the naturally specified `target`
 - `edited before` - The `source` block or page was edited before the naturally specified `target`
 - `edited after` - The `source` block or page was edited after the naturally specified `target`
-- `titled before` - The `source` page is a DNP that is befor the naturally specified `target`
+- `titled before` - The `source` page is a DNP that is before the naturally specified `target`
 - `titled after` - The `source` page is a DNP that is after the naturally specified `target`
 
 ### Selections
@@ -78,15 +78,22 @@ You will use a combination of multiple conditions to select the data you want. H
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
 
 - `Created Date` - The date the block or page was created
-  - `Created Time` - Same as above, but in `hh:mm` format
+- `Created Time` - Same as above, but in `hh:mm` format
 - `Edited Date` - The date the block or page was edited
-  - `Edited Time` - Same as above, but in `hh:mm` format
+- `Edited Time` - Same as above, but in `hh:mm` format
 - `Author` - The user who created the block or page
 - `Last Edited By` - The user who created the block or page
-- `node:{node}` - Returns any intermediary node you defined in one of the conditions. For example, `node:page` will return the title of a `page` referenced in a condition.
-- `node:{node}:{field}` - Specify one of the first five options as the field to return the related metadata for the intermediary node. For example:
+- `node:{node}` - Returns any intermediary node you defined in one of the conditions.  For example:
+  - `node:page` will return the title of a `page` referenced in a condition.
+  - `node:placeholder` will return the title of a `placeholder` referenced in a condition.
+- `node:{node}:{field}` - Specify one of the first six options as the field to return the related metadata for the intermediary node.  For example:
   - `node:page:Author` will return the user who created the `page` defined in a condition.
-  - `node:page:Client` will return the value of the `Client` attribute from the `page` node defined in a condition.
+  - `node:placeholder:Client` will return the value of the `Client` attribute from the `placeholder` node defined in a condition.
+- `node:{node}:/regular_expression/` - returns match according to a regular expression between `/`'s.  For example:
+  - `node:node:/(\d\d?:\d\d)/` will return time in the format of "hours:minutes" from the main `node` being queried
+  - `node:placeholder:/#([^\s]*)/` will return the text after the first hashtag from the `placeholder` node defined in a condition.
+- `node` - Edit the column header of the first column
+  - ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fgkc5hYMG4K.png?alt=media&token=c506c0a6-81e5-45c5-8825-bf62ef9860a1)
 - Anything else is assumed to be an attribute of the exact text
 
 You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:
