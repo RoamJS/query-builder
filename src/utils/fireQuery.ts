@@ -518,10 +518,12 @@ export const getDatalogQuery = (
   args: ReturnType<typeof getDatalogQueryComponents>
 ) => {
   const find = args.definedSelections.map((p) => p.pull).join("\n  ");
-  const query = `[:find\n  ${find}\n:where\n${args.where
-    .map((c) => compileDatalog(c, 0))
-    .join("\n")}\n]`;
-  return query;
+  const where = args.where.map((c) => compileDatalog(c, 0)).join("\n");
+  return `[:find\n  ${find}\n:where\n${
+    args.where.length === 1 && args.where[0].type === "not-clause"
+      ? `[?node :block/uid _]`
+      : ""
+  }${where}\n]`;
 };
 
 const getEnglishQuery = (args: FireQueryArgs) => {
