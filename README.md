@@ -1,4 +1,4 @@
-# RoamJS Query Builder <!-- omit in toc -->
+# Query Builder <!-- omit in toc -->
 
 Introduces new user interfaces for building queries in Roam.
 
@@ -8,7 +8,7 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
 
 ## Table of Contents <!-- omit in toc -->
 - [Nomenclature](#nomenclature)
-- [Query Builder](#query-builder)
+- [RoamJS Query Builder](#roamjs-query-builder)
   - [Query Pages](#query-pages)
   - [Query Blocks](#query-blocks)
   - [Query Drawer](#query-drawer)
@@ -39,9 +39,9 @@ There are some important terms to know and have exact definitions on since they 
 - `Block` - A bullet or line of text in Roam. While you can also go to pages that have a zoomed in block view, their content is not unique, and they always have one parent.
 - `Node` - A superset of `Block`s and `Page`s.
 
-## Query Builder
+## RoamJS Query Builder
 
-Query Builder can be create queries via [Query Pages](#query-pages), a [Query Block](#query-blocks), or the [Query Drawer](#query-drawer).
+Query Builder can be used to create queries via [Query Pages](#query-pages), a [Query Block](#query-blocks), or the [Query Drawer](#query-drawer).
 
 These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
 
@@ -54,6 +54,8 @@ On the Roam Depot Settings page for Query Builder, you should see a setting call
 
 By default, Query Pages is set to be titled with `queries/*`. This means any page in your graph prefixed with `queries/` can be used to save a query. You can denote multiple page title formats.
 
+Example: `[[queries/Demo]]`
+
 ### Query Blocks
 
 The above UI is also available as a block component. This allows you to create several on a page, wherever on the page you want. To create one, simply add `{{query block}}` to any block on the page.
@@ -63,9 +65,9 @@ The above UI is also available as a block component. This allows you to create s
 The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. To open, enter `Open Query Drawer` from the Roam Command Palette.
 ### Usage
 
-Navigate to a [Query Pages](#query-pages), create a [Query Block](#query-blocks), or open the [Query Drawer](#query-drawer) to begin to create your query.
+Navigate to a [Query Page](#query-pages), create a [Query Block](#query-blocks), or open the [Query Drawer](#query-drawer) to begin to create your query.  You can use this editor to create and save a query. 
 
-You can use this editor to create and save a query. There are two important parts to a query: [Conditions](#conditions) and [Selections](#selections).
+There are two important parts to a query: [Conditions](#conditions) and [Selections](#selections).
 
 After specifying conditions and selections, hit the `Query` button to return results in your graph. These results will always include a `text` field which will link to the relevant block or page reference. Hitting `Query` also effectively "Saves" the query to the graph.
 
@@ -213,13 +215,11 @@ For developers of other extensions who want to use the queries defined by users,
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
 ### Demos
-Demo showing Query Pages, Conditions, and Selections.
+Demo showing [Query Pages](#query-pages), [Query Block](#query-blocks), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
-(in the demo you'll see the `block` being used, but that can be interchanged with `node`)
+<video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
 
-<video src="https://roamjs.com/loom/12bdc4c42cf8449e8b7a712fe285a072.mp4" controls="controls"></video>
-
-[View on Loom](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
+[Direct Video Link](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820)
 
 **Conversation with Conor White-Sullivan**
 
@@ -231,9 +231,11 @@ About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 m
 
 ## Native Roam Queries
 ### Creating Native Roam Queries
+In a block, type `{{qb}}`.
+
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSNq4QmaRxy.png?alt=media&token=5b7c1173-da57-4d83-851b-1719edffab02)
 
-In a block, type `{{qb}}`. Similar to date picker, there will be an overlay that appears next to the QUERY button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
+ Similar to date picker, there will be an overlay that appears next to the QUERY button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
 
 The overlay is fully keyboard accessible. Each input is focusable and you can `tab` and `shift+tab` through them. For the query component dropdown, you could use the following key strokes to navigate:
 
@@ -260,6 +262,7 @@ The legacy Query Tools extension was merged with this one to bring all native qu
 - `Context` - The default value for Context for all queries. See below.
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2" controls="controls"></video>
+
 [Direct Link to Video](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2)
 
 #### Sorting
@@ -306,4 +309,4 @@ In your Roam Depot Settings, there is a flag called `Sortable Linked References`
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
-
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
