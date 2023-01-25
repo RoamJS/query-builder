@@ -19,7 +19,6 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
   - [Layouts](#layouts)
   - [Exporting](#exporting)
   - [Styling](#styling)
-  - [Discourse Graphs](#discourse-graphs)
   - [SmartBlocks Integration](#smartblocks-integration)
   - [Developer API](#developer-api)
   - [Demos](#demos)
@@ -31,6 +30,7 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
     - [Context](#context)
     - [Aliases](#aliases)
 - [Sortable Linked References](#sortable-linked-references)
+- [Discourse Graphs](#discourse-graphs)
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs.
@@ -184,13 +184,6 @@ Next to the save button is a button that will allow you to export your results. 
 
 Every [Query Page](#query-pages) or [Query Block](#query-blocks) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
-### Discourse Graphs
-
-This extension implements the Discourse Graph protocol, developed by Joel Chan. To enable the features associated with this protocol, toggle the `Discourse Graphs Enabled` switch.
-
-For more about the suite of tools this mode brings, checkout our documentation for how to use this extension at https://oasis-lab.gitbook.io/roamresearch-discourse-graph-extension/.
-
-Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the `#discourse-graph` channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
 ### SmartBlocks Integration
 
 This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in two arguments:
@@ -312,3 +305,11 @@ In your Roam Depot Settings, there is a flag called `Sortable Linked References`
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
+
+## Discourse Graphs
+
+This extension implements the Discourse Graph protocol, developed by Joel Chan. To enable the features associated with this protocol, toggle the `Discourse Graphs Enabled` switch.
+
+For more about the suite of tools this mode brings, checkout our documentation for how to use this extension at https://oasis-lab.gitbook.io/roamresearch-discourse-graph-extension/.
+
+Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the `#discourse-graph` channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
