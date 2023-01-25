@@ -226,7 +226,9 @@ Demo showing [Query Pages](#query-pages), [Query Block](#query-blocks), [Query D
 About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 minutes.
 
 (in the demo you'll see the `block` being used, but that can be interchanged with `node`)
+
 [![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FEY0iYQHf3N.png?alt=media&token=c8958afa-0c7c-495c-908a-bd5edcb02fd1)](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FEY0iYQHf3N.png?alt=media&token=c8958afa-0c7c-495c-908a-bd5edcb02fd1)
+
 [View on Grain](https://grain.com/share/recording/9d0e349b-bb0d-4267-a362-e2a79667b787/UOW64KlylDapMRhDJjwuTrDl8bzMOcQ3tUGECdhR)
 
 ## Native Roam Queries
