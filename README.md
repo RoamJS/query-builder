@@ -1,13 +1,36 @@
-# Query Builder
+# Query Builder <!-- omit in toc -->
 
 Introduces new user interfaces for building queries in Roam.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FeNXPrcflN2.png?alt=media&token=6fca69c3-f5ca-4b21-b7a0-fb5583d07135)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FTTIyJxNaux.png?alt=media&token=fa991711-f319-43e1-8a9c-6a64d818df29)
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
-> NOTE: If you are a user of the RoamJS extension [Discourse Graph](https://roamjs.com/extensions/discourse-graph), do NOT install this extension, as Discourse Graph bundles its own version of Query Builder. In the future, Discourse Graph will be reintegrated back into Query Builder as an advanced set of features.
-
+## Table of Contents <!-- omit in toc -->
+- [Nomenclature](#nomenclature)
+- [RoamJS Query Builder](#roamjs-query-builder)
+  - [Query Blocks](#query-blocks)
+  - [Query Pages](#query-pages)
+  - [Query Drawer](#query-drawer)
+  - [Usage](#usage)
+  - [Conditions](#conditions)
+  - [Selections](#selections)
+  - [Manipulating Results](#manipulating-results)
+  - [Layouts](#layouts)
+  - [Exporting](#exporting)
+  - [Styling](#styling)
+  - [SmartBlocks Integration](#smartblocks-integration)
+  - [Developer API](#developer-api)
+  - [Demos](#demos)
+- [Native Roam Queries](#native-roam-queries)
+  - [Creating Native Roam Queries](#creating-native-roam-queries)
+  - [Manipulating Native Roam Queries](#manipulating-native-roam-queries)
+    - [Sorting](#sorting)
+    - [Randomization](#randomization)
+    - [Context](#context)
+    - [Aliases](#aliases)
+- [Sortable Linked References](#sortable-linked-references)
+- [Discourse Graphs](#discourse-graphs)
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs.
@@ -16,37 +39,60 @@ There are some important terms to know and have exact definitions on since they 
 - `Block` - A bullet or line of text in Roam. While you can also go to pages that have a zoomed in block view, their content is not unique, and they always have one parent.
 - `Node` - A superset of `Block`s and `Page`s.
 
-## Query Pages
+## RoamJS Query Builder
 
-With Query Pages, you could designate certain pages in your Roam graph as "views" into your data. These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
+Query Builder can be used to create queries via a [Query Block](#query-blocks), [Query Pages](#query-pages), or the [Query Drawer](#query-drawer).
 
-### Setup
+These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fn8yTiwZTl3.png?alt=media&token=98c0bafe-694f-4c27-bf49-7ab1935564d0)
+
+### Query Blocks
+The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
+
+To create one, simply add `{{query block}}` to any block on the page.
+### Query Pages
+
+With Query Pages, you designate certain pages in your Roam graph as "views" into your data. 
 
 On the Roam Depot Settings page for Query Builder, you should see a setting called `Query Pages`. You could use this to denote which page titles in your Roam Graph will be used to create query pages. Use the `*` as a wildcard.
 
 By default, Query Pages is set to be titled with `queries/*`. This means any page in your graph prefixed with `queries/` can be used to save a query. You can denote multiple page title formats.
 
+Example: `[[queries/Demo]]`
+
+### Query Drawer
+
+The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. 
+
+To open, enter `Open Query Drawer` from the Roam Command Palette.
 ### Usage
 
-Navigate to any valid query page in your graph and you should see a Query Editor on the page:
+Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query.  You can use this editor to create and save a query. 
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSINndquBoY.png?alt=media&token=37c28efd-7e1f-4580-9806-fda8ae77df08)
-
-You can use this editor to create and save a query. There are two important parts to a query: **Conditions** and **Selections**.
+There are two important parts to a query: [Conditions](#conditions) and [Selections](#selections).
 
 After specifying conditions and selections, hit the `Query` button to return results in your graph. These results will always include a `text` field which will link to the relevant block or page reference. Hitting `Query` also effectively "Saves" the query to the graph.
 
-The results returned will be organized in a table with sortable and filterable columns. Click on the columns to sort the data and use the input on the top right to filter your table to desired results:
+The results returned will be organized in a table with sortable and filterable columns. Click on the columns to sort the data and use the filter icon to narrow down the table to your desired results:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FZj7bCiNIDa.png?alt=media&token=8dabd2ce-c7e5-41d7-b5bf-f77883651dde)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4Tl0Yotz6V.png?alt=media&token=db2db5e3-4b66-489f-9d6d-ad271a170463)
 
 ### Conditions
 
 **Conditions** specify which blocks you want to return. They determine the **rows** of the table. The anatomy of a Condition is a triple: `source`, `relationship`, & `target`:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FVVTSrLrvtl.png?alt=media&token=e6c3484f-0343-4f2f-bd05-60b7ffef7316)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F43zLKIaYmR.png?alt=media&token=d279b43a-790c-472a-9ac4-28c05f76563f)
 
-You will use a combination of multiple conditions to select the data you want. Here are all the supported relationships:
+You can use a combination of multiple **conditions** to select the data you want. 
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fq6Tn9LVu89.png?alt=media&token=548ab58b-2cd3-4b5a-aca4-e553b3e55b19)
+
+`relationship`s will autocomplete as you type:
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FdM2m9nT_4G.png?alt=media&token=aded28a9-2971-4a4c-9ad2-3014f971f0ea)
+
+Here are all the supported `relationship`s:
 
 - `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP to resolve a single date, e.g. `{date:today}`. The `target` also supports Regular Expressions by starting and ending the value with a `/`.
 - `references` - The `source` block or page references the `target` block or page.
@@ -73,7 +119,7 @@ You will use a combination of multiple conditions to select the data you want. H
 
 **Selections** specify what data from the blocks that match your conditions get returned. They determine the **columns** of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F36a81va0fE.png?alt=media&token=bb19988b-f7cd-44ce-8880-c4f46530f7af)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FRfEkGB3PWo.png?alt=media&token=3d48fe9e-6fab-4a5e-846a-be426a4ab18c)
 
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
 
@@ -137,26 +183,22 @@ Next to the save button is a button that will allow you to export your results. 
 
 - CSV - All the columns in the table will become columns in the CSV
 - Markdown - The columns will become frontmatter data and the children of the block or page will become markdown content.
-
-### Query Blocks
-
-The above component is also available as a block component. This allows you to create several on a page, wherever on the page you want. To create one, simply add `{{query block}}` to any block on the page.
-
-### Query Drawer
-
-The above component is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. To open, enter `Open Query Drawer` from the Roam Command Palette.
-
 ### Styling
 
-Every Query Page is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block refence of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
+Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
 ### SmartBlocks Integration
 
-This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing query builder instance in your graph and return the results as separate blocks. The command takes in two arguments:
+This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in two arguments:
 
-1. The block reference of the query builder instance
+1. The block reference of the query instance
 1. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
 
+> The block reference of a `Query Page` can be found at the end of the `URL`
+>
+> In this example the block reference is `qYlSTLyhT`
+>
+> `https://roamresearch.com/#/app/your-graph/page/qYlSTLyhT`
 ### Developer API
 
 For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
@@ -168,17 +210,33 @@ For developers of other extensions who want to use the queries defined by users,
   - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
-### Demo
+### Demos
+Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
-<video src="https://roamjs.com/loom/12bdc4c42cf8449e8b7a712fe285a072.mp4" controls="controls"></video>
+<video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
 
-[View on Loom](https://www.loom.com/share/12bdc4c42cf8449e8b7a712fe285a072)
+[Direct Video Link](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820)
 
-## Creating Vanilla Roam Queries
+**Conversation with Conor White-Sullivan**
 
-In a block, type `{{query builder}}`. Similar to date picker, there will be an overlay that appears next to the query builder button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
+About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 minutes.
 
-The Overlay is fully keyboard accessible. Each input is focusable and you can `tab` and `shift+tab` through them. For the query component dropdown, you could use the following key strokes to navigate:
+(in the demo you'll see the `block` being used, but that can be interchanged with `node`)
+
+[![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FEY0iYQHf3N.png?alt=media&token=c8958afa-0c7c-495c-908a-bd5edcb02fd1)](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FEY0iYQHf3N.png?alt=media&token=c8958afa-0c7c-495c-908a-bd5edcb02fd1)
+
+[View on Grain](https://grain.com/share/recording/9d0e349b-bb0d-4267-a362-e2a79667b787/UOW64KlylDapMRhDJjwuTrDl8bzMOcQ3tUGECdhR)
+
+## Native Roam Queries
+In addition to new [RoamJS Query Builder](#roamjs-query-builder) components, this extension enhances Roam's native querying experience by providing features such as an intuitive UI for creating and editing queries, sorting and randomizing query results, and displaying more context in these results.
+### Creating Native Roam Queries
+In a block, type `{{qb}}`.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSNq4QmaRxy.png?alt=media&token=5b7c1173-da57-4d83-851b-1719edffab02)
+
+ Similar to date picker, there will be an overlay that appears next to the QUERY button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
+
+The overlay is fully keyboard accessible. Each input is focusable and you can `tab` and `shift+tab` through them. For the query component dropdown, you could use the following key strokes to navigate:
 
 - Arrow Up/Arrow Down - Navigate Options
 - Enter - Open Dropdown
@@ -189,13 +247,12 @@ The Overlay is fully keyboard accessible. Each input is focusable and you can `t
 - n - Select 'NOT'
 
 On any deletable component, you could hit `ctrl+Backspace` or `cmd+Backspace` to delete the icon. Hitting `enter` on the save button will output the query into the block.
-There will also be an edit button rendered on any existing query. Clicking the builder will overlay the Query Builder to edit the existing query!
 
-[Demo](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2)
+There will also be an edit button rendered on any existing query. Clicking the edit icon will overlay the builder to edit the existing query!
 
----
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FPjJhLRaE28.png?alt=media&token=a94026f9-b7f7-494b-af74-15c93aa0f500)
 
-## Manipulating Native Roam Queries
+### Manipulating Native Roam Queries
 
 The legacy Query Tools extension was merged with this one to bring all native query manipulation features under Query Builder. These features could be configured within the Roam Depot Settings for Query Builder.
 
@@ -203,7 +260,11 @@ The legacy Query Tools extension was merged with this one to bring all native qu
 - `Sort Blocks` - If set to 'True', sort the query results by blocks instead of pages.
 - `Context` - The default value for Context for all queries. See below.
 
-### Sorting
+<video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2" controls="controls"></video>
+
+[Direct Link to Video](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKSJOK_DMOD.mp4?alt=media&token=4ffea2b3-c6d8-4ec6-aa39-7186333a4be2)
+
+#### Sorting
 
 On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user with the following options:
 
@@ -222,15 +283,15 @@ To persist a particular sort on a query, create a block on the page with the tex
 
 To configure sorting by blocks on a single query instead of on all queries in your DB, add a block that says `Sort Blocks` as a child to the specific query.
 
-### Randomization
+#### Randomization
 
 Sometimes we have queries with hundreds of results and want to return a random element from that query. Returning random results from multiple queries could lead to serendipitous connections. To return a random result from a query, add a block that says `Random` as a child of the query. Nest the value representing the number of random results you'd like returned from the query.
 
-### Context
+#### Context
 
 By default, query results only display the most nested block in the result. To display more context in a given query, add a block that says `Context` as a child block of the query. Set the value to the number of levels you'd like displayed, or `Top` to display full context, as a child of this Context block.
 
-### Aliases
+#### Aliases
 
 By default, query results display the query logic itself for the label. To display an alias for the given query, add a block that says Alias as a child block of the query, with the value of the alias nested below that.
 
@@ -247,10 +308,12 @@ In your Roam Depot Settings, there is a flag called `Sortable Linked References`
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
+
 ## Discourse Graphs
 
 This extension implements the Discourse Graph protocol, developed by Joel Chan. To enable the features associated with this protocol, toggle the `Discourse Graphs Enabled` switch.
 
 For more about the suite of tools this mode brings, checkout our documentation for how to use this extension at https://oasis-lab.gitbook.io/roamresearch-discourse-graph-extension/.
 
-Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the #discourse-graph channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
+Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelchan86) on Twitter or in the `#discourse-graph` channel on the [Academia Roamana Discord](https://discord.gg/FHrtGe25AJt)) for more details!
