@@ -9,8 +9,8 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
 ## Table of Contents <!-- omit in toc -->
 - [Nomenclature](#nomenclature)
 - [RoamJS Query Builder](#roamjs-query-builder)
-  - [Query Pages](#query-pages)
   - [Query Blocks](#query-blocks)
+  - [Query Pages](#query-pages)
   - [Query Drawer](#query-drawer)
   - [Usage](#usage)
   - [Conditions](#conditions)
