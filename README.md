@@ -41,11 +41,16 @@ There are some important terms to know and have exact definitions on since they 
 
 ## RoamJS Query Builder
 
-Query Builder can be used to create queries via [Query Pages](#query-pages), a [Query Block](#query-blocks), or the [Query Drawer](#query-drawer).
+Query Builder can be used to create queries via a [Query Block](#query-blocks), [Query Pages](#query-pages), or the [Query Drawer](#query-drawer).
 
 These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fn8yTiwZTl3.png?alt=media&token=98c0bafe-694f-4c27-bf49-7ab1935564d0)
+
+### Query Blocks
+The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
+
+To create one, simply add `{{query block}}` to any block on the page.
 ### Query Pages
 
 With Query Pages, you designate certain pages in your Roam graph as "views" into your data. 
@@ -56,16 +61,14 @@ By default, Query Pages is set to be titled with `queries/*`. This means any pag
 
 Example: `[[queries/Demo]]`
 
-### Query Blocks
-
-The above UI is also available as a block component. This allows you to create several on a page, wherever on the page you want. To create one, simply add `{{query block}}` to any block on the page.
-
 ### Query Drawer
 
-The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. To open, enter `Open Query Drawer` from the Roam Command Palette.
+The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. 
+
+To open, enter `Open Query Drawer` from the Roam Command Palette.
 ### Usage
 
-Navigate to a [Query Page](#query-pages), create a [Query Block](#query-blocks), or open the [Query Drawer](#query-drawer) to begin to create your query.  You can use this editor to create and save a query. 
+Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query.  You can use this editor to create and save a query. 
 
 There are two important parts to a query: [Conditions](#conditions) and [Selections](#selections).
 
@@ -182,7 +185,7 @@ Next to the save button is a button that will allow you to export your results. 
 - Markdown - The columns will become frontmatter data and the children of the block or page will become markdown content.
 ### Styling
 
-Every [Query Page](#query-pages) or [Query Block](#query-blocks) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
+Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
 
 ### Discourse Graphs
 
@@ -215,7 +218,7 @@ For developers of other extensions who want to use the queries defined by users,
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
 ### Demos
-Demo showing [Query Pages](#query-pages), [Query Block](#query-blocks), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
+Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
 
@@ -232,6 +235,7 @@ About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 m
 [View on Grain](https://grain.com/share/recording/9d0e349b-bb0d-4267-a362-e2a79667b787/UOW64KlylDapMRhDJjwuTrDl8bzMOcQ3tUGECdhR)
 
 ## Native Roam Queries
+In addition to new [RoamJS Query Builder](#roamjs-query-builder) components, this extension enhances Roam's native querying experience by providing features such as an intuitive UI for creating and editing queries, sorting and randomizing query results, and displaying more context in these results.
 ### Creating Native Roam Queries
 In a block, type `{{qb}}`.
 
