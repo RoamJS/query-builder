@@ -553,6 +553,8 @@ const getEnglishQuery = (args: FireQueryArgs) => {
                   Object.entries(output).forEach(([k, v]) => {
                     p[label + k] = v;
                   });
+                } else if (typeof output === "number") {
+                  p[label] = output.toString();
                 } else {
                   p[label] = output;
                 }
