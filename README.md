@@ -31,6 +31,7 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
     - [Aliases](#aliases)
 - [Sortable Linked References](#sortable-linked-references)
 - [Discourse Graphs](#discourse-graphs)
+
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs.
@@ -51,6 +52,7 @@ These queries are far more powerful than vanilla Roam queries, as it taps into R
 The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
 
 To create one, simply add `{{query block}}` to any block on the page.
+
 ### Query Pages
 
 With Query Pages, you designate certain pages in your Roam graph as "views" into your data. 
@@ -66,6 +68,7 @@ Example: `[[queries/Demo]]`
 The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. 
 
 To open, enter `Open Query Drawer` from the Roam Command Palette.
+
 ### Usage
 
 Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query.  You can use this editor to create and save a query. 
@@ -166,16 +169,19 @@ You can also use the aliases in previous selects to derive values for future col
 After you fire a query, the results will output in a table view. There are multiple ways to post process these results after they output to the screen.
 
 #### Sort<!-- omit in toc -->
+
 Clicking on the table header for a given column will trigger an alphabetical sort. Clicking again will toggle descending order. Clicking once more will toggle the sort off. You could have multiple columns selected for sorting:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FP1-KDvuRhS.png?alt=media&token=b85999f9-f9a6-4a36-acc9-bb15724507a3)
 
 #### Filter<!-- omit in toc -->
+
 Each column is also filterable. The filter works just like the page and reference filters in native Roam, where you could pick values to include and remove:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FG7d1TrIzNq.png?alt=media&token=8df90fc5-5e8d-4347-9721-bd067ac7616a)
 
 #### View Type<!-- omit in toc -->
+
 Each column also has a view type. Choosing a view type will change how the cell is displayed in the table. 
 
 The supported view types are:
@@ -202,6 +208,7 @@ Next to the save button is a button that will allow you to export your results. 
 
 - CSV - All the columns in the table will become columns in the CSV
 - Markdown - The columns will become frontmatter data and the children of the block or page will become markdown content.
+
 ### Styling
 
 Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
@@ -233,6 +240,7 @@ For developers of other extensions who want to use the queries defined by users,
 ### Demos
 
 #### General Demo<!-- omit in toc -->
+
 Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
@@ -250,8 +258,11 @@ About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 m
 [View on Grain](https://grain.com/share/recording/9d0e349b-bb0d-4267-a362-e2a79667b787/UOW64KlylDapMRhDJjwuTrDl8bzMOcQ3tUGECdhR)
 
 ## Native Roam Queries
+
 In addition to new [RoamJS Query Builder](#roamjs-query-builder) components, this extension enhances Roam's native querying experience by providing features such as an intuitive UI for creating and editing queries, sorting and randomizing query results, and displaying more context in these results.
+
 ### Creating Native Roam Queries
+
 In a block, type `{{qb}}`.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSNq4QmaRxy.png?alt=media&token=5b7c1173-da57-4d83-851b-1719edffab02)
@@ -346,8 +357,6 @@ Here are the options you can sort by:
 - **Sort By Daily Note Descending** - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
 
 </details>
-
-
 
 ## Discourse Graphs
 
