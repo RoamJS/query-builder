@@ -1,4 +1,4 @@
-# Query Builder <!-- omit in toc -->
+# Query Builder<!-- omit in toc -->
 
 Introduces new user interfaces for building queries in Roam.
 
@@ -6,7 +6,7 @@ Introduces new user interfaces for building queries in Roam.
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
-## Table of Contents <!-- omit in toc -->
+## Table of Contents<!-- omit in toc -->
 - [Nomenclature](#nomenclature)
 - [RoamJS Query Builder](#roamjs-query-builder)
   - [Query Blocks](#query-blocks)
@@ -92,7 +92,10 @@ You can use a combination of multiple **conditions** to select the data you want
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FdM2m9nT_4G.png?alt=media&token=aded28a9-2971-4a4c-9ad2-3014f971f0ea)
 
-Here are all the supported `relationship`s:
+<details>
+<summary>
+Here are all the supported relationships:
+</summary>
 
 - `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP to resolve a single date, e.g. `{date:today}`. The `target` also supports Regular Expressions by starting and ending the value with a `/`.
 - `references` - The `source` block or page references the `target` block or page.
@@ -115,13 +118,20 @@ Here are all the supported `relationship`s:
 - `titled before` - The `source` page is a DNP that is before the naturally specified `target`
 - `titled after` - The `source` page is a DNP that is after the naturally specified `target`
 
+</details>
+
 ### Selections
 
 **Selections** specify what data from the blocks that match your conditions get returned. They determine the **columns** of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FRfEkGB3PWo.png?alt=media&token=3d48fe9e-6fab-4a5e-846a-be426a4ab18c)
 
-The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
+The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. 
+
+<details>
+<summary>
+The following data types are supported:
+</summary>
 
 - `Created Date` - The date the block or page was created
 - `Created Time` - Same as above, but in `hh:mm` format
@@ -149,19 +159,26 @@ You can also use the aliases in previous selects to derive values for future col
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
 
+</details>
+
 ### Manipulating Results
 
 After you fire a query, the results will output in a table view. There are multiple ways to post process these results after they output to the screen.
 
+#### Sort<!-- omit in toc -->
 Clicking on the table header for a given column will trigger an alphabetical sort. Clicking again will toggle descending order. Clicking once more will toggle the sort off. You could have multiple columns selected for sorting:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FP1-KDvuRhS.png?alt=media&token=b85999f9-f9a6-4a36-acc9-bb15724507a3)
 
+#### Filter<!-- omit in toc -->
 Each column is also filterable. The filter works just like the page and reference filters in native Roam, where you could pick values to include and remove:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FG7d1TrIzNq.png?alt=media&token=8df90fc5-5e8d-4347-9721-bd067ac7616a)
 
-Each column also has a view type. Choosing a view type will change how the cell is displayed in the table. The supported view types are:
+#### View Type<!-- omit in toc -->
+Each column also has a view type. Choosing a view type will change how the cell is displayed in the table. 
+
+The supported view types are:
 
 - `plain` - Outputted as just plain text
 - `link` - If the column is a block, cells will be outputted as a link to the block. If the column is a page, cells will be outputted as a link to the page.
@@ -171,7 +188,9 @@ All changes to the outputted results are saved automatically.
 
 ### Layouts
 
-By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. The following values are also supported:
+By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. 
+
+The following values are also supported:
 
 - `Line` - Displays your data as a line chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
 - `Bar` - Displays your data as a bar chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
@@ -199,6 +218,7 @@ This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` co
 > In this example the block reference is `qYlSTLyhT`
 >
 > `https://roamresearch.com/#/app/your-graph/page/qYlSTLyhT`
+
 ### Developer API
 
 For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
@@ -211,13 +231,15 @@ For developers of other extensions who want to use the queries defined by users,
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
 ### Demos
+
+#### General Demo<!-- omit in toc -->
 Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
 
 [Direct Video Link](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820)
 
-**Conversation with Conor White-Sullivan**
+#### Conversation with Conor White-Sullivan<!-- omit in toc -->
 
 About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 minutes.
 
@@ -266,22 +288,30 @@ The legacy Query Tools extension was merged with this one to bring all native qu
 
 #### Sorting
 
-On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user with the following options:
+On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user.
 
-- Sort By Page Title - This will sort all the query results in ascending alphabetical order of the page title.
-- Sort By Page Title Descending - This will sort all the query results in descending alphabetical order of the page title.
-- Sort By Word Count - This will sort all the query results in ascending order of the word count.
-- Sort By Word Count Descending - This will sort all the query results in descending alphabetical order of the word count.
-- Sort By Created Date - This will sort all the query results in ascending order that the page was created.
-- Sort By Created Date Descending - This will sort all the query results in descending order that the page was created.
-- Sort By Edited Date - This will sort all the query results in ascending order that the page was last edited.
-- Sort By Edited Date Descending - This will sort all the query results in descending order that the page was last edited.
-- Sort By Daily Note - This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.
-- Sort By Daily Note Descending - This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages.
 
 To persist a particular sort on a query, create a block on the page with the text `Default Sort`. Nest the value under that block.
 
 To configure sorting by blocks on a single query instead of on all queries in your DB, add a block that says `Sort Blocks` as a child to the specific query.
+
+<details>
+<summary>
+Here are the options you can sort by:
+</summary>
+
+- **Sort By Page Title** - This will sort all the query results in ascending alphabetical order of the page title.
+- **Sort By Page Title Descending** - This will sort all the query results in descending alphabetical order of the page title.
+- **Sort By Word Count** - This will sort all the query results in ascending order of the word count.
+- **Sort By Word Count Descending** - This will sort all the query results in descending alphabetical order of the word count.
+- **Sort By Created Date** - This will sort all the query results in ascending order that the page was created.
+- **Sort By Created Date Descending** - This will sort all the query results in descending order that the page was created.
+- **Sort By Edited Date** - This will sort all the query results in ascending order that the page was last edited.
+- **Sort By Edited Date Descending** - This will sort all the query results in descending order that the page was last edited.
+- **Sort By Daily Note** - This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.
+- **Sort By Daily Note Descending** - This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages.
+
+</details>
 
 #### Randomization
 
@@ -297,18 +327,27 @@ By default, query results display the query logic itself for the label. To displ
 
 ## Sortable Linked References
 
-In your Roam Depot Settings, there is a flag called `Sortable Linked References`. When enabled, there will appear a sort icon next to the filter icon near the linked references. Clicking on the sort icon will make a sort menu visible to the user with the following options:
+In your Roam Depot Settings, there is a flag called `Sortable Linked References`. When enabled, there will appear a sort icon next to the filter icon near the linked references. Clicking on the sort icon will make a sort menu visible to the user.
 
-- Sort By Page Title - This will sort all the linked references in ascending alphabetical order of the page title.
-- Sort By Page Title Descending - This will sort all the linked references in descending alphabetical order of the page title.
-- Sort By Created Date - This will sort all the linked references in ascending order that the page was created.
-- Sort By Created Date Descending - This will sort all the linked references in descending order that the page was created.
-- Sort By Daily Note - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
-- Sort By Daily Note Descending - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
+<details>
+<summary>
+Here are the options you can sort by:
+</summary>
+
+- **Sort By Page Title** - This will sort all the linked references in ascending alphabetical order of the page title.
+- **Sort By Page Title Descending** - This will sort all the linked references in descending alphabetical order of the page title.
+- **Sort By Created Date** - This will sort all the linked references in ascending order that the page was created.
+- **Sort By Created Date Descending** - This will sort all the linked references in descending order that the page was created.
+- **Sort By Daily Note** - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
+- **Sort By Daily Note Descending** - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
+
+</details>
+
+
 
 ## Discourse Graphs
 
