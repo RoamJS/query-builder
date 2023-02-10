@@ -204,7 +204,7 @@ const ResultView = ({
         {rowCells.map((k) => {
           const uid = (r[`${k}-uid`] || "").toString();
           const val = r[k] || "";
-          const { mode: view, value: viewValue } = viewsByColumn[k];
+          const { mode: view, value: viewValue } = viewsByColumn[k] || {};
           return (
             <td
               style={{
