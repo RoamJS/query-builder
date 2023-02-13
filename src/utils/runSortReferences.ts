@@ -2,7 +2,6 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageTitlesReferencingBlockUid from "roamjs-components/queries/getPageTitlesReferencingBlockUid";
-import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
 import createIconButton from "roamjs-components/dom/createIconButton";
 
@@ -176,18 +175,20 @@ const runSortReferences = () => {
         return node.substring(attr.length + 2).trim();
       };
 
-      const menuItemCallback = (
+      const menuItemCallback = async (
         sortContainer: Element,
         sortBy: (
           a: { title: string; time: number },
           b: { title: string; time: number }
         ) => number
       ) => {
-        const currentPageUID = getCurrentPageUid();
-        const pageUID = 
-          /^([0-9]{2}-){2}[0-9]{4}$/.test(currentPageUID)  
-            ? getPageUidByPageTitle(getPageTitleValueByHtmlElement(sortContainer))
-            : currentPageUID
+        const sidebarWindow = sortContainer.closest(".rm-sidebar-window");
+        const currentPageUID = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+        const pageUID = !!sidebarWindow
+          ? getPageUidByPageTitle(sidebarWindow.querySelector("div > a").textContent)
+          : !currentPageUID
+          ? getPageUidByPageTitle(getPageTitleValueByHtmlElement(sortContainer))
+          : currentPageUID;
         if (!pageUID) {
           return;
         }
