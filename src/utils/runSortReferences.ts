@@ -184,8 +184,12 @@ const runSortReferences = () => {
       ) => {
         const sidebarWindow = sortContainer.closest(".rm-sidebar-window");
         const currentPageUID = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+        const allSidebarWindows = document.body.querySelectorAll(".rm-sidebar-window");
+        const sidebarWindowIndex = Array.from(allSidebarWindows).indexOf(sidebarWindow);
+        const sidebarWindowData = window.roamAlphaAPI.ui.rightSidebar.getWindows()[sidebarWindowIndex]
         const pageUID = !!sidebarWindow
-          ? getPageUidByPageTitle(sidebarWindow.querySelector("div > a").textContent)
+        //  @ts-ignore Roam has an API inconsistency - https://roamresearch.slack.com/archives/C02TMKXNVS6/p1676389252784269
+          ? sidebarWindowData["page-uid"] || sidebarWindowData["mentions-uid"]
           : !currentPageUID
           ? getPageUidByPageTitle(getPageTitleValueByHtmlElement(sortContainer))
           : currentPageUID;
