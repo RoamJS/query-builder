@@ -1,7 +1,7 @@
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
-import getLinkedPageReferences from "roamjs-components/queries/getPageTitleReferencesByPageTitle";
+import getPageTitlesReferencingBlockUid from "roamjs-components/queries/getPageTitlesReferencingBlockUid";
 import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
 import createIconButton from "roamjs-components/dom/createIconButton";
 
@@ -175,18 +175,28 @@ const runSortReferences = () => {
         return node.substring(attr.length + 2).trim();
       };
 
-      const menuItemCallback = (
+      const menuItemCallback = async (
         sortContainer: Element,
         sortBy: (
           a: { title: string; time: number },
           b: { title: string; time: number }
         ) => number
       ) => {
-        const pageTitle = getPageTitleValueByHtmlElement(sortContainer);
-        if (!pageTitle) {
+        const sidebarWindow = sortContainer.closest(".rm-sidebar-window");
+        const currentPageUID = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+        const allSidebarWindows = document.body.querySelectorAll(".rm-sidebar-window");
+        const sidebarWindowIndex = Array.from(allSidebarWindows).indexOf(sidebarWindow);
+        const sidebarWindowData = window.roamAlphaAPI.ui.rightSidebar.getWindows()[sidebarWindowIndex]
+        const pageUID = !!sidebarWindow
+        //  @ts-ignore Roam has an API inconsistency - https://roamresearch.slack.com/archives/C02TMKXNVS6/p1676389252784269
+          ? sidebarWindowData["page-uid"] || sidebarWindowData["mentions-uid"]
+          : !currentPageUID
+          ? getPageUidByPageTitle(getPageTitleValueByHtmlElement(sortContainer))
+          : currentPageUID;
+        if (!pageUID) {
           return;
         }
-        const linkedReferences = getLinkedPageReferences(pageTitle).map(
+        const linkedReferences = getPageTitlesReferencingBlockUid(pageUID).map(
           (title) => ({
             title,
             time:
