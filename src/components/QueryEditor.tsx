@@ -483,7 +483,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
               onChange={(e) => {
                 returnNodeOnChange(e.target.value);
               }}
-              placeholder={"Enter Alias..."}
+              placeholder={"Enter Label..."}
               className="roamjs-query-return-node"
             />
             <span
@@ -503,6 +503,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
         <div>
         {isEditingLabel ? (
           <InputGroup
+            placeholder={"Enter Alias"}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             onKeyDown={(e) => {
