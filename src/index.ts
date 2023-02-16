@@ -428,10 +428,7 @@ export default runExtension({
                  [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
                  ${getQueryPages(extensionAPI).map(
                    (p) =>
-                     `[and [?b :node/title ?t] [[re-pattern "^${p.replace(
-                       /\*/,
-                       queryRef
-                     )}$"] ?regex] [[re-find ?regex ?t]]]`
+                   `[and [?b :node/title "^${p.replace(/\*/, queryRef)}$"]]`
                  )}
             ]]`
           )[0]?.toString();
