@@ -428,8 +428,9 @@ export default runExtension({
                  [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
                  ${getQueryPages(extensionAPI).map(
                    (p) =>
-                   `[and [?b :node/title "^${p.replace(/\*/, queryRef)}$"]]`
-                 )}
+                   `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
+                   )}
+                  [and [?b :node/title "${queryRef}"]]
             ]]`
           )[0]?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
