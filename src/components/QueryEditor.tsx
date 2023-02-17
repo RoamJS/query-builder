@@ -40,7 +40,6 @@ import {
   getDatalogQueryComponents,
 } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import { SMALL } from "@blueprintjs/core/lib/esm/common/classes";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
