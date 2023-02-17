@@ -40,6 +40,7 @@ import {
   getDatalogQueryComponents,
 } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import { SMALL } from "@blueprintjs/core/lib/esm/common/classes";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -529,8 +530,9 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
             style={{display: "inline-block"}}
             tabIndex={-1} 
             onClick={() => setIsEditingLabel(true)}
+            className={!!label ? "" : "italic opacity-25 text-sm"}
           >
-            {!!label ? label : "Query Alias"}
+            {!!label ? label : "edit alias"}
           </span>
         )}
         <Switch
