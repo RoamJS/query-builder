@@ -7,6 +7,7 @@ Introduces new user interfaces for building queries in Roam.
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
 ## Table of Contents<!-- omit in toc -->
+
 - [Nomenclature](#nomenclature)
 - [RoamJS Query Builder](#roamjs-query-builder)
   - [Query Blocks](#query-blocks)
@@ -49,6 +50,7 @@ These queries are far more powerful than vanilla Roam queries, as it taps into R
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FkZkUZkpxWj.png?alt=media&token=c836a4a9-0e1d-41ca-a2a0-aad0c34afcf2)
 
 ### Query Blocks
+
 The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
 
 To create one, simply add `{{query block}}` to any block on the page.
@@ -226,7 +228,6 @@ The end of the title of a [Query Page](#query-pages) works as well.
 
 `<%QUERYBUILDER:queries/myQuery%>`
 
-
 ### Developer API
 
 For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
@@ -261,6 +262,7 @@ About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 m
 ## Native Roam Queries
 
 In addition to new [RoamJS Query Builder](#roamjs-query-builder) components, this extension enhances Roam's native querying experience by providing features such as an intuitive UI for creating and editing queries, sorting and randomizing query results, and displaying more context in these results.
+
 ### Creating Native Roam Queries
 
 In a block, type `{{qb}}`.
