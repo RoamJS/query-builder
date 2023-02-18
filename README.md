@@ -1,4 +1,4 @@
-# Query Builder <!-- omit in toc -->
+# Query Builder<!-- omit in toc -->
 
 Introduces new user interfaces for building queries in Roam.
 
@@ -6,7 +6,7 @@ Introduces new user interfaces for building queries in Roam.
 
 For more information, check out our docs at [https://roamjs.com/extensions/query-builder](https://roamjs.com/extensions/query-builder)
 
-## Table of Contents <!-- omit in toc -->
+## Table of Contents<!-- omit in toc -->
 - [Nomenclature](#nomenclature)
 - [RoamJS Query Builder](#roamjs-query-builder)
   - [Query Blocks](#query-blocks)
@@ -31,6 +31,7 @@ For more information, check out our docs at [https://roamjs.com/extensions/query
     - [Aliases](#aliases)
 - [Sortable Linked References](#sortable-linked-references)
 - [Discourse Graphs](#discourse-graphs)
+
 ## Nomenclature
 
 There are some important terms to know and have exact definitions on since they will be used throughout the docs.
@@ -51,6 +52,7 @@ These queries are far more powerful than vanilla Roam queries, as it taps into R
 The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
 
 To create one, simply add `{{query block}}` to any block on the page.
+
 ### Query Pages
 
 With Query Pages, you designate certain pages in your Roam graph as "views" into your data. 
@@ -66,6 +68,7 @@ Example: `[[queries/Demo]]`
 The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. 
 
 To open, enter `Open Query Drawer` from the Roam Command Palette.
+
 ### Usage
 
 Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query.  You can use this editor to create and save a query. 
@@ -121,7 +124,9 @@ Here are all the supported `relationship`s:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FRfEkGB3PWo.png?alt=media&token=3d48fe9e-6fab-4a5e-846a-be426a4ab18c)
 
-The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. The following data types are supported:
+The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. 
+
+The following data types are supported:
 
 - `Created Date` - The date the block or page was created
 - `Created Time` - Same as above, but in `hh:mm` format
@@ -153,13 +158,19 @@ You can also use the aliases in previous selects to derive values for future col
 
 After you fire a query, the results will output in a table view. There are multiple ways to post process these results after they output to the screen.
 
+#### Sort<!-- omit in toc -->
+
 Clicking on the table header for a given column will trigger an alphabetical sort. Clicking again will toggle descending order. Clicking once more will toggle the sort off. You could have multiple columns selected for sorting:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FP1-KDvuRhS.png?alt=media&token=b85999f9-f9a6-4a36-acc9-bb15724507a3)
 
+#### Filter<!-- omit in toc -->
+
 Each column is also filterable. The filter works just like the page and reference filters in native Roam, where you could pick values to include and remove:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FG7d1TrIzNq.png?alt=media&token=8df90fc5-5e8d-4347-9721-bd067ac7616a)
+
+#### View Type<!-- omit in toc -->
 
 Each column also has a view type. Choosing a view type will change how the cell is displayed in the table. The supported view types are:
 
@@ -171,7 +182,9 @@ All changes to the outputted results are saved automatically.
 
 ### Layouts
 
-By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. The following values are also supported:
+By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. 
+
+The following values are also supported:
 
 - `Line` - Displays your data as a line chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
 - `Bar` - Displays your data as a bar chart. You need to have at least **two** selections for this layout to work, where the first is a selection that returns date values and all subsequent selections return numeric values.
@@ -183,6 +196,7 @@ Next to the save button is a button that will allow you to export your results. 
 
 - CSV - All the columns in the table will become columns in the CSV
 - Markdown - The columns will become frontmatter data and the children of the block or page will become markdown content.
+
 ### Styling
 
 Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with a `div` that has an `id` of `roamjs-query-page-${uid}` where `uid` is the block reference of the query block or the page reference of the page. You could use this id to style individual queries with affecting other ones.
@@ -211,13 +225,16 @@ For developers of other extensions who want to use the queries defined by users,
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
 ### Demos
+
+#### General Demo<!-- omit in toc -->
+
 Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query Drawer](#query-drawer), [Conditions](#conditions), [Selections](#selections) and a few example queries.
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820" controls="controls"></video>
 
 [Direct Video Link](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fj0Li5mCafX.mp4?alt=media&token=58ee51b2-9a7b-4547-81ad-01672b3b5820)
 
-**Conversation with Conor White-Sullivan**
+#### Conversation with Conor White-Sullivan<!-- omit in toc -->
 
 About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 minutes.
 
@@ -228,8 +245,10 @@ About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 m
 [View on Grain](https://grain.com/share/recording/9d0e349b-bb0d-4267-a362-e2a79667b787/UOW64KlylDapMRhDJjwuTrDl8bzMOcQ3tUGECdhR)
 
 ## Native Roam Queries
+
 In addition to new [RoamJS Query Builder](#roamjs-query-builder) components, this extension enhances Roam's native querying experience by providing features such as an intuitive UI for creating and editing queries, sorting and randomizing query results, and displaying more context in these results.
 ### Creating Native Roam Queries
+
 In a block, type `{{qb}}`.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSNq4QmaRxy.png?alt=media&token=5b7c1173-da57-4d83-851b-1719edffab02)
@@ -266,22 +285,24 @@ The legacy Query Tools extension was merged with this one to bring all native qu
 
 #### Sorting
 
-On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user with the following options:
-
-- Sort By Page Title - This will sort all the query results in ascending alphabetical order of the page title.
-- Sort By Page Title Descending - This will sort all the query results in descending alphabetical order of the page title.
-- Sort By Word Count - This will sort all the query results in ascending order of the word count.
-- Sort By Word Count Descending - This will sort all the query results in descending alphabetical order of the word count.
-- Sort By Created Date - This will sort all the query results in ascending order that the page was created.
-- Sort By Created Date Descending - This will sort all the query results in descending order that the page was created.
-- Sort By Edited Date - This will sort all the query results in ascending order that the page was last edited.
-- Sort By Edited Date Descending - This will sort all the query results in descending order that the page was last edited.
-- Sort By Daily Note - This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.
-- Sort By Daily Note Descending - This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages.
+On expanded queries, there will be a sort icon that appears next to the results text. Clicking on the sort icon will make a sort menu visible to the user.
 
 To persist a particular sort on a query, create a block on the page with the text `Default Sort`. Nest the value under that block.
 
 To configure sorting by blocks on a single query instead of on all queries in your DB, add a block that says `Sort Blocks` as a child to the specific query.
+
+Here are the options you can sort by:
+
+- **Sort By Page Title** - This will sort all the query results in ascending alphabetical order of the page title.
+- **Sort By Page Title Descending** - This will sort all the query results in descending alphabetical order of the page title.
+- **Sort By Word Count** - This will sort all the query results in ascending order of the word count.
+- **Sort By Word Count Descending** - This will sort all the query results in descending alphabetical order of the word count.
+- **Sort By Created Date** - This will sort all the query results in ascending order that the page was created.
+- **Sort By Created Date Descending** - This will sort all the query results in descending order that the page was created.
+- **Sort By Edited Date** - This will sort all the query results in ascending order that the page was last edited.
+- **Sort By Edited Date Descending** - This will sort all the query results in descending order that the page was last edited.
+- **Sort By Daily Note** - This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.
+- **Sort By Daily Note Descending** - This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages.
 
 #### Randomization
 
@@ -297,18 +318,20 @@ By default, query results display the query logic itself for the label. To displ
 
 ## Sortable Linked References
 
-In your Roam Depot Settings, there is a flag called `Sortable Linked References`. When enabled, there will appear a sort icon next to the filter icon near the linked references. Clicking on the sort icon will make a sort menu visible to the user with the following options:
+In your Roam Depot Settings, there is a flag called `Sortable Linked References`. When enabled, there will appear a sort icon next to the filter icon near the linked references. Clicking on the sort icon will make a sort menu visible to the user.
 
-- Sort By Page Title - This will sort all the linked references in ascending alphabetical order of the page title.
-- Sort By Page Title Descending - This will sort all the linked references in descending alphabetical order of the page title.
-- Sort By Created Date - This will sort all the linked references in ascending order that the page was created.
-- Sort By Created Date Descending - This will sort all the linked references in descending order that the page was created.
-- Sort By Daily Note - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
-- Sort By Daily Note Descending - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FrH9xJYbsTn.png?alt=media&token=863e38d5-03bd-4b33-95fe-a62254d271dd)
+Here are the options you can sort by:
+
+- **Sort By Page Title** - This will sort all the linked references in ascending alphabetical order of the page title.
+- **Sort By Page Title Descending** - This will sort all the linked references in descending alphabetical order of the page title.
+- **Sort By Created Date** - This will sort all the linked references in ascending order that the page was created.
+- **Sort By Created Date Descending** - This will sort all the linked references in descending order that the page was created.
+- **Sort By Daily Note** - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
+- **Sort By Daily Note Descending** - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
 
 ## Discourse Graphs
 
