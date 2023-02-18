@@ -422,8 +422,18 @@ export default runExtension({
       handler:
         ({ proccessBlockText, variables }) =>
         (arg, format = "(({uid}))") => {
-          const queryUid = variables[arg] || arg;
-          const parentUid = extractRef(queryUid);
+          const queryRef = variables[arg] || arg;
+          const aliasOrPage = window.roamAlphaAPI.data.fast.q(
+            `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
+                 [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
+                 ${getQueryPages(extensionAPI).map(
+                   (p) =>
+                   `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
+                   )}
+                  [and [?b :node/title "${queryRef}"]]
+            ]]`
+          )[0]?.toString();
+          const parentUid = aliasOrPage || extractRef(queryRef);
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
             return allResults
               .map((r) =>

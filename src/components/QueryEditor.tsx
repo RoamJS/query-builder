@@ -39,6 +39,7 @@ import {
   getDatalogQuery,
   getDatalogQueryComponents,
 } from "../utils/fireQuery";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -450,6 +451,11 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
   const [isBackendEnabled, setIsBackendEnabled] = useState(
     initialIsBackendEnabled
   );
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [label, setLabel] = useState(() => {
+    const aliasMatch = getTextByBlockUid(parentUid).match(/{{query block:(.*?)}}/);
+    return (!!aliasMatch && aliasMatch[1] !== "") ? aliasMatch[1] : "";
+  });
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
@@ -494,6 +500,40 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
         <style>{`.roamjs-query-custom-enabled .bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
     height: 0;
 }`}</style>
+        <div>
+        {isEditingLabel ? (
+          <InputGroup
+            placeholder={"Enter Alias"}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                setIsEditingLabel(false);
+              }
+            }}
+            autoFocus
+            rightElement={
+              <Button
+                minimal
+                icon={"confirm"}
+                onClick={() => {
+                  updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                  setIsEditingLabel(false);
+                }}
+              />
+            }
+          />
+        ) : (
+          <span 
+            style={{display: "inline-block"}}
+            tabIndex={-1} 
+            onClick={() => setIsEditingLabel(true)}
+            className={!!label ? "" : "italic opacity-25 text-sm"}
+          >
+            {!!label ? label : "edit alias"}
+          </span>
+        )}
         <Switch
           checked={!isCustomEnabled}
           className={"mr-8 roamjs-query-custom-enabled"}
@@ -543,6 +583,7 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
           innerLabelChecked={"ENG"}
           innerLabel={"DATA"}
         />
+        </div>
       </H6>
       {isCustomEnabled ? (
         <TextArea
