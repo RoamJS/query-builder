@@ -46,7 +46,7 @@ Query Builder can be used to create queries via a [Query Block](#query-blocks), 
 
 These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fn8yTiwZTl3.png?alt=media&token=98c0bafe-694f-4c27-bf49-7ab1935564d0)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FkZkUZkpxWj.png?alt=media&token=c836a4a9-0e1d-41ca-a2a0-aad0c34afcf2)
 
 ### Query Blocks
 The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
@@ -205,14 +205,28 @@ Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with 
 
 This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in two arguments:
 
-1. The block reference of the query instance
+1. The block reference, alias, or page title of the query instance
 1. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
 
-> The block reference of a `Query Page` can be found at the end of the `URL`
->
-> In this example the block reference is `qYlSTLyhT`
->
-> `https://roamresearch.com/#/app/your-graph/page/qYlSTLyhT`
+#### Alias
+
+You can set the alias of a [Query Block](#query-blocks) in the top right corner of the UI.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FN_YUvsTh-w.png?alt=media&token=f734f73b-7fa4-48f6-97e0-d6c3671ca02c)
+
+The end of the title of a [Query Page](#query-pages) works as well.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FNVOH1yVd5x.png?alt=media&token=e9698dc6-0c48-4cbb-bc47-46bf3959eb27)
+
+#### Examples
+
+`<%QUERYBUILDER:6-qLCJsSb,{text}%>`
+
+`<%QUERYBUILDER:myQuery,{uid}%>`
+
+`<%QUERYBUILDER:queries/myQuery%>`
+
+
 ### Developer API
 
 For developers of other extensions who want to use the queries defined by users, we expose the following API, available on the global `window.roamjs.extension.queryBuilder` object:
