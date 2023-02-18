@@ -32,6 +32,8 @@ import initializeDiscourseGraphsMode, {
 import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
+import apiPost from "roamjs-components/util/apiPost";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -498,6 +500,37 @@ export default runExtension({
             onloadArgs,
           })
         ),
+    });
+
+    getSamePageAPI().then(({ addNotebookListener }) => {
+      console.log("same page loaded");
+      addNotebookListener({
+        operation: "REQUEST",
+        handler: (data) => {
+          console.log("requested", data);
+        },
+      });
+      addNotebookListener({
+        operation: "RESPONSE",
+        handler: (data) => {
+          console.log("response", data);
+        },
+      });
+      document.body.addEventListener("click", (e) => {
+        if (e.shiftKey && e.metaKey) {
+          apiPost({
+            domain: "http://localhost:3003",
+            path: "page",
+            data: {
+              method: "notebook-request",
+              request: { hello: "world" },
+              targets: ["8a80ee8c-de3e-4173-b305-90bf4c3401a8"],
+              notebookUuid: "d6c17f76-09d9-4f2d-b2a0-dc29e520cfb2",
+              token: "w+LrMnXSuM0VMNNH",
+            },
+          });
+        }
+      });
     });
 
     return {

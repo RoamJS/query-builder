@@ -669,7 +669,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                   uid,
                 }),
                 p,
-                args,
+                args
               );
             }
           }
@@ -742,10 +742,8 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
         });
       }
 
-      const samePageLoadedListener = async () => {
-        const { addNotebookListener, sendToNotebook, removeNotebookListener } =
-          await getSamePageApi();
-        addNotebookListener({
+      getSamePageApi().then(({ addNotebookListener, sendToNotebook }) => {
+        const removeImportDiscourseGraphListener = addNotebookListener({
           operation: "IMPORT_DISCOURSE_GRAPH",
           handler: (
             data: Parameters<typeof importDiscourseGraph>[0],
@@ -769,11 +767,11 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           },
         });
         unloads.add(function removeImportDgOperation() {
-          removeNotebookListener({ operation: "IMPORT_DISCOURSE_GRAPH" });
+          removeImportDiscourseGraphListener();
           unloads.delete(removeImportDgOperation);
         });
 
-        addNotebookListener({
+        const removeImportDiscourseGraphConfirmListener = addNotebookListener({
           operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
           handler: (_, graph) =>
             renderToast({
@@ -782,13 +780,11 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             }),
         });
         unloads.add(function removeImportConfirmOperation() {
-          removeNotebookListener({
-            operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
-          });
+          removeImportDiscourseGraphConfirmListener();
           unloads.delete(removeImportConfirmOperation);
         });
 
-        addNotebookListener({
+        const removeQueryRequestListener = addNotebookListener({
           operation: "QUERY_REQUEST",
           handler: (json, source) => {
             const { page, requestId } = json as {
@@ -824,7 +820,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           },
         });
         unloads.add(function removeQueryRequestOperation() {
-          removeNotebookListener({ operation: "QUERY_REQUEST" });
+          removeQueryRequestListener();
           unloads.delete(removeQueryRequestOperation);
         });
 
@@ -878,7 +874,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                   },
                 });
                 const operation = `QUERY_RESPONSE_RECEIVED/${requestId}`;
-                addNotebookListener({
+                const removeQueryResponseListener = addNotebookListener({
                   operation,
                   handler: (_, source) => {
                     if (source.workspace === graph) {
@@ -887,9 +883,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                         content: `Graph ${source.workspace} Successfully Received the query`,
                         intent: "success",
                       });
-                      removeNotebookListener({
-                        operation,
-                      });
+                      removeQueryResponseListener();
                       updateBlock({ uid: blockUid, text: "Sent" });
                     }
                   },
@@ -902,23 +896,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           acceptButtonObserver.disconnect();
           unloads.delete(removeAcceptObserver);
         });
-
-        document.body.removeEventListener(
-          "roamjs:samepage:loaded",
-          samePageLoadedListener
-        );
-      };
-      if (window.roamjs.loaded.has("samepage")) {
-        samePageLoadedListener();
-      } else {
-        unloads.add(function removeSamePageListener() {
-          document.body.removeEventListener(
-            "roamjs:samepage:loaded",
-            samePageLoadedListener
-          );
-          unloads.delete(removeSamePageListener);
-        });
-      }
+      });
     } else if (!flag && enabled) {
       unloads.forEach((u) => u());
       unloads.clear();
