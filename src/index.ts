@@ -5,7 +5,6 @@ import getUidsFromId from "roamjs-components/dom/getUidsFromId";
 import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
 import addStyle from "roamjs-components/dom/addStyle";
-import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import {
@@ -335,7 +334,7 @@ export default runExtension({
     if (!!extensionAPI.settings.get("sort-references")) {
       toggleSortReferences(true);
     }
-    
+
     const globalRefs = {
       clearOnClick: ({
         parentUid,
@@ -425,16 +424,18 @@ export default runExtension({
         ({ proccessBlockText, variables }) =>
         (arg, format = "(({uid}))") => {
           const queryRef = variables[arg] || arg;
-          const aliasOrPage = window.roamAlphaAPI.data.fast.q(
-            `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
+          const aliasOrPage = window.roamAlphaAPI.data.fast
+            .q(
+              `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
                  [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
                  ${getQueryPages(extensionAPI).map(
                    (p) =>
-                   `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
-                   )}
+                     `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
+                 )}
                   [and [?b :node/title "${queryRef}"]]
             ]]`
-          )[0]?.toString();
+            )[0]
+            ?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
             return allResults
@@ -502,36 +503,28 @@ export default runExtension({
         ),
     });
 
-    getSamePageAPI().then(({ addNotebookListener }) => {
-      console.log("same page loaded");
-      addNotebookListener({
-        operation: "REQUEST",
-        handler: (data) => {
-          console.log("requested", data);
-        },
-      });
-      addNotebookListener({
-        operation: "RESPONSE",
-        handler: (data) => {
-          console.log("response", data);
-        },
-      });
-      document.body.addEventListener("click", (e) => {
-        if (e.shiftKey && e.metaKey) {
-          apiPost({
-            domain: "http://localhost:3003",
-            path: "page",
-            data: {
-              method: "notebook-request",
-              request: { hello: "world" },
-              targets: ["8a80ee8c-de3e-4173-b305-90bf4c3401a8"],
-              notebookUuid: "d6c17f76-09d9-4f2d-b2a0-dc29e520cfb2",
-              token: "w+LrMnXSuM0VMNNH",
-            },
-          });
-        }
-      });
-    });
+    getSamePageAPI().then(
+      ({ sendNotebookRequest, listNotebooks }) => {
+        window.roamAlphaAPI.ui.commandPalette.addCommand({
+          label: "Cross notebook request",
+          callback: () => {
+            listNotebooks().then(({ notebooks }) => {
+              const targets = notebooks
+                .map((n) => n.uuid)
+                .filter((n) => n.startsWith("8a80"));
+              console.log("targets", targets);
+              sendNotebookRequest({
+                request: { hello: "world" },
+                targets,
+                onResponse: (r) => {
+                  console.log("notebook request response", r);
+                },
+              });
+            });
+          },
+        });
+      }
+    );
 
     return {
       elements: [style],

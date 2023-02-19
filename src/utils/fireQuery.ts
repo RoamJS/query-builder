@@ -14,6 +14,7 @@ import compileDatalog from "roamjs-components/queries/compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiPost from "roamjs-components/util/apiPost";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
 type PredefinedSelection = {
   test: RegExp;
@@ -348,7 +349,9 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.at(-1)
+        ? new RegExp(match.slice(1, -1))
+            .exec(r?.[":block/string"] || r?.[":node/title"])
+            ?.at(-1)
         : match
         ? getBlockAttribute(match, r)
         : {
@@ -359,8 +362,10 @@ const predefinedSelections: PredefinedSelection[] = [
   },
   {
     test: ALIAS_TEST,
-    pull: () => '',
-    mapper: (r) => {return ''},
+    pull: () => "",
+    mapper: (r) => {
+      return "";
+    },
   },
   {
     test: SUBTRACT_TEST,
@@ -480,7 +485,7 @@ export const getDatalogQueryComponents = ({
         };
       },
       pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
-      label: selections.find(s => s.text === "node")?.label || "text",
+      label: selections.find((s) => s.text === "node")?.label || "text",
       key: "",
     },
     {
@@ -597,6 +602,28 @@ const fireQuery: FireQuery = async (args) => {
       console.log("Query to Roam:");
       console.log(query);
     }
+    const response = await getSamePageAPI().then(
+      ({ sendNotebookRequest, listNotebooks }) => {
+        return listNotebooks().then(({ notebooks }) => {
+          const targets = notebooks
+            .map((n) => n.uuid)
+            .filter((n) => n.startsWith("8a80"));
+          console.log("targets", targets);
+          let respondedOnce = false;
+          return new Promise((resolve) =>
+            sendNotebookRequest({
+              request: { method: "FIRE_QUERY", args },
+              targets,
+              onResponse: (response) => {
+                if (respondedOnce) resolve(response);
+                else respondedOnce = true;
+              },
+            })
+          );
+        });
+      }
+    );
+    console.log("fire query request response", response);
     return args.isBackendEnabled && backendToken
       ? apiPost<{ result: PullBlock[][] }>({
           domain: "https://lambda.roamjs.com",
@@ -607,7 +634,16 @@ const fireQuery: FireQuery = async (args) => {
             query,
           },
         }).then((r) => Promise.all(r.result.map(formatResult)))
-      : Promise.all(window.roamAlphaAPI.data.fast.q(query).map(formatResult));
+      : Promise.all(
+          window.roamAlphaAPI.data.fast.q(query).map(formatResult)
+        ).then((res) => {
+          return res.concat(
+            Object.values(response)
+              // @ts-ignore
+              .map((v) => v.results.map((r) => ({ ...r, "text-uid": r.uid })))
+              .flat()
+          );
+        });
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);
