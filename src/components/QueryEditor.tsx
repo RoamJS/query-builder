@@ -348,6 +348,7 @@ const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
 };
 
 const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
+  showAlias = false,
   parentUid,
   onQuery,
   defaultReturnNode, // returnNodeDisabled
@@ -501,88 +502,93 @@ const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
     height: 0;
 }`}</style>
         <div>
-        {isEditingLabel ? (
-          <InputGroup
-            placeholder={"Enter Alias"}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
-                setIsEditingLabel(false);
+          {showAlias && (
+            <>
+              {isEditingLabel ? (
+                <InputGroup
+                  placeholder={"Enter Alias"}
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                      setIsEditingLabel(false);
+                    }
+                  }}
+                  autoFocus
+                  rightElement={
+                    <Button
+                      minimal
+                      icon={"confirm"}
+                      onClick={() => {
+                        updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                        setIsEditingLabel(false);
+                      }}
+                    />
+                  }
+                />
+              ) : (
+                <span 
+                  style={{display: "inline-block"}}
+                  tabIndex={-1} 
+                  onClick={() => setIsEditingLabel(true)}
+                  className={!!label ? "" : "italic opacity-25 text-sm"}
+                >
+                  {!!label ? label : "edit alias"}
+                </span>
+              )}
+            </>
+          )}
+          <Switch
+            checked={!isCustomEnabled}
+            className={"mr-8 roamjs-query-custom-enabled"}
+            onChange={(e) => {
+              const enabled = !(e.target as HTMLInputElement).checked;
+              const contentUid = getNthChildUidByBlockUid({
+                blockUid: customNodeUid,
+                order: 0,
+              });
+              const enabledUid = getNthChildUidByBlockUid({
+                blockUid: customNodeUid,
+                order: 1,
+              });
+              if (enabled) {
+                const text = getDatalogQuery(
+                  getDatalogQueryComponents({
+                    conditions,
+                    selections,
+                    returnNode,
+                  })
+                );
+                if (contentUid) updateBlock({ text, uid: contentUid });
+                else
+                  createBlock({
+                    parentUid: customNodeUid,
+                    order: 0,
+                    node: {
+                      text,
+                    },
+                  });
+                setCustom(text);
+                if (enabledUid)
+                  updateBlock({ text: "enabled", uid: enabledUid });
+                else
+                  createBlock({
+                    parentUid: customNodeUid,
+                    order: 1,
+                    node: { text: "enabled" },
+                  });
+              } else {
+                if (contentUid) {
+                  // TODO - translate from custom back into english - seems very hard!
+                }
+                if (enabledUid) deleteBlock(enabledUid);
               }
+              setIsCustomEnabled(enabled);
             }}
-            autoFocus
-            rightElement={
-              <Button
-                minimal
-                icon={"confirm"}
-                onClick={() => {
-                  updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
-                  setIsEditingLabel(false);
-                }}
-              />
-            }
+            innerLabelChecked={"ENG"}
+            innerLabel={"DATA"}
           />
-        ) : (
-          <span 
-            style={{display: "inline-block"}}
-            tabIndex={-1} 
-            onClick={() => setIsEditingLabel(true)}
-            className={!!label ? "" : "italic opacity-25 text-sm"}
-          >
-            {!!label ? label : "edit alias"}
-          </span>
-        )}
-        <Switch
-          checked={!isCustomEnabled}
-          className={"mr-8 roamjs-query-custom-enabled"}
-          onChange={(e) => {
-            const enabled = !(e.target as HTMLInputElement).checked;
-            const contentUid = getNthChildUidByBlockUid({
-              blockUid: customNodeUid,
-              order: 0,
-            });
-            const enabledUid = getNthChildUidByBlockUid({
-              blockUid: customNodeUid,
-              order: 1,
-            });
-            if (enabled) {
-              const text = getDatalogQuery(
-                getDatalogQueryComponents({
-                  conditions,
-                  selections,
-                  returnNode,
-                })
-              );
-              if (contentUid) updateBlock({ text, uid: contentUid });
-              else
-                createBlock({
-                  parentUid: customNodeUid,
-                  order: 0,
-                  node: {
-                    text,
-                  },
-                });
-              setCustom(text);
-              if (enabledUid) updateBlock({ text: "enabled", uid: enabledUid });
-              else
-                createBlock({
-                  parentUid: customNodeUid,
-                  order: 1,
-                  node: { text: "enabled" },
-                });
-            } else {
-              if (contentUid) {
-                // TODO - translate from custom back into english - seems very hard!
-              }
-              if (enabledUid) deleteBlock(enabledUid);
-            }
-            setIsCustomEnabled(enabled);
-          }}
-          innerLabelChecked={"ENG"}
-          innerLabel={"DATA"}
-        />
         </div>
       </H6>
       {isCustomEnabled ? (

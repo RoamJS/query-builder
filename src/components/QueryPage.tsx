@@ -176,6 +176,7 @@ const QueryPage = ({
         {isEdit && (
           <>
             <QueryEditor
+              showAlias={true}
               parentUid={pageUid}
               onQuery={() => setIsEdit(false)}
               defaultReturnNode={defaultReturnNode}
