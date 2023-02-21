@@ -3,8 +3,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import type {
-  QueryPageComponent,
-  Result as SearchResult,
+  ExportTypes,
+  Result,
 } from "roamjs-components/types/query-builder";
 import ResultsView from "./ResultsView";
 import ReactDOM from "react-dom";
@@ -19,6 +19,18 @@ import { OnloadArgs } from "roamjs-components/types/native";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
+import { Filters } from "roamjs-components/components/Filter";
+
+type QueryPageComponent = (props: {
+  showAlias?: boolean;
+  pageUid: string;
+  configUid?: string;
+  defaultReturnNode?: string;
+  getExportTypes?: (r: Result[]) => ExportTypes;
+  globalFiltersData?: Record<string, Filters>;
+  globalPageSize?: number;
+  hideMetadata?: boolean;
+  }) => JSX.Element;
 
 type Props = Parameters<QueryPageComponent>[0];
 
@@ -48,6 +60,7 @@ const ensureSetting = ({
 };
 
 const QueryPage = ({
+  showAlias,
   pageUid,
   defaultReturnNode,
   getExportTypes,
@@ -81,7 +94,7 @@ const QueryPage = ({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const onRefresh = useCallback(() => {
     setError("");
@@ -176,6 +189,7 @@ const QueryPage = ({
         {isEdit && (
           <>
             <QueryEditor
+              showAlias={showAlias}
               parentUid={pageUid}
               onQuery={() => setIsEdit(false)}
               defaultReturnNode={defaultReturnNode}
@@ -212,6 +226,7 @@ const QueryPage = ({
 export const renderQueryBlock = createComponentRender(
   ({ blockUid }) => (
     <QueryPage
+      showAlias={true}
       pageUid={blockUid}
       defaultReturnNode={"node"}
       //@ts-ignore

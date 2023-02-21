@@ -348,7 +348,7 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.at(-1)
+        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.slice(-1)[0]
         : match
         ? getBlockAttribute(match, r)
         : {
