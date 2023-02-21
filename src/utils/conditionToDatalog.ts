@@ -399,10 +399,10 @@ const translator: Record<string, Translator> = {
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":block/refs" },
-          { type: "variable", value: target },
+          { type: "variable", value: `${target}-Ref` },
         ],
       },
-      ...getTitleDatalog({ source: target, target }),
+      ...getTitleDatalog({ source: `${target}-Ref`, target }),
     ],
     targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
     placeholder: "Enter a page name or {date} for any DNP",
