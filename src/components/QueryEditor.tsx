@@ -347,8 +347,15 @@ const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
   return undefined;
 };
 
-const QueryEditor: typeof window.roamjs.extension.queryBuilder.QueryEditor = ({
-  showAlias = false,
+type QueryEditorComponent = (props: {
+  showAlias?: boolean,
+  parentUid: string;
+  onQuery?: () => void;
+  defaultReturnNode?: string;
+}) => JSX.Element;
+
+const QueryEditor: QueryEditorComponent = ({
+  showAlias,
   parentUid,
   onQuery,
   defaultReturnNode, // returnNodeDisabled
