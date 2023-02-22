@@ -151,8 +151,8 @@ The following data types are supported:
 
 You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:
 
-- `add({alias1}, {alias2})` - Add the values of two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used. - `subtract({alias1}, {alias2})`
-- Subtract the values betweenn two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used.
+- `add({alias1}, {alias2})` - Add the values of two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used. 
+- `subtract({alias1}, {alias2})`- Subtract the values betweenn two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
 
