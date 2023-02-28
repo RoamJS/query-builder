@@ -291,28 +291,15 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         fontSize: 10,
         position: "relative",
         display: "flex",
-        padding: "8px 4px",
+        padding: "8px",
       }}
     >
       <div
         style={{
-          width: 240,
-          marginRight: 16,
+          flexShrink: 0,
+          width: 100,
         }}
       >
-        {isEnglish
-          ? englishQuery.map((q, i) => (
-              <p key={i} style={{ margin: 0 }}>
-                {q}
-              </p>
-            ))
-          : datalogQuery.split("\n").map((q, i) => (
-              <p key={i} style={{ margin: 0 }}>
-                {q}
-              </p>
-            ))}
-      </div>
-      <div>
         <style>{`.roamjs-query-results-lang.bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
     height: 0;
 }`}</style>
@@ -323,6 +310,36 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
           innerLabelChecked={"ENG"}
           innerLabel={"DATA"}
         />
+        <Tooltip
+          content={isEnglish ? "Copy English Query" : "Copy Datalog Query"}
+          position={"right"}
+          openOnTargetFocus={false}
+          lazy={true}
+          hoverOpenDelay={250}
+          autoFocus={false}
+        >
+          <Button
+            icon={"clipboard"}
+            onClick={() => {
+              navigator.clipboard.writeText(
+                document.getElementById("roamjs-query-used").innerText
+              );
+            }}
+          />
+        </Tooltip>
+      </div>
+      <div id={"roamjs-query-used"}>
+        {isEnglish
+          ? englishQuery.map((q, i) => (
+              <span key={i} style={{ margin: 0, display: "block" }}>
+                {q}
+              </span>
+            ))
+          : datalogQuery.split("\n").map((q, i) => (
+              <span key={i} style={{ margin: 0, display: "block" }}>
+                {q}
+              </span>
+            ))}
       </div>
     </div>
   );
