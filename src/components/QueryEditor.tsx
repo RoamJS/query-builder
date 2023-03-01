@@ -7,6 +7,7 @@ import {
   Tabs,
   Tab,
   TextArea,
+  Tooltip,
 } from "@blueprintjs/core";
 import React, { useMemo, useRef, useState } from "react";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -505,9 +506,28 @@ const QueryEditor: QueryEditorComponent = ({
             </span>
           </>
         )}
-        <style>{`.roamjs-query-custom-enabled .bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
+        <style>{`.roamjs-query-custom-enabled.bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
     height: 0;
 }`}</style>
+        {isCustomEnabled && (
+          <div style={{ paddingRight: "20px" }}>
+            <Tooltip
+              content={"Copy Datalog Query"}
+              position={"left"}
+              openOnTargetFocus={false}
+              lazy={true}
+              hoverOpenDelay={250}
+              autoFocus={false}
+            >
+              <Button
+                icon={"clipboard"}
+                onClick={() => {
+                  navigator.clipboard.writeText(custom);
+                }}
+              />
+            </Tooltip>
+          </div>
+        )}
         <div>
           {showAlias && (
             <>
@@ -518,7 +538,10 @@ const QueryEditor: QueryEditorComponent = ({
                   onChange={(e) => setLabel(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                      updateBlock({
+                        uid: parentUid,
+                        text: `{{query block:${label}}}`,
+                      });
                       setIsEditingLabel(false);
                     }
                   }}
@@ -528,16 +551,19 @@ const QueryEditor: QueryEditorComponent = ({
                       minimal
                       icon={"confirm"}
                       onClick={() => {
-                        updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                        updateBlock({
+                          uid: parentUid,
+                          text: `{{query block:${label}}}`,
+                        });
                         setIsEditingLabel(false);
                       }}
                     />
                   }
                 />
               ) : (
-                <span 
-                  style={{display: "inline-block"}}
-                  tabIndex={-1} 
+                <span
+                  style={{ display: "inline-block" }}
+                  tabIndex={-1}
                   onClick={() => setIsEditingLabel(true)}
                   className={!!label ? "" : "italic opacity-25 text-sm"}
                 >
