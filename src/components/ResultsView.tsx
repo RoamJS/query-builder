@@ -293,6 +293,7 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         display: "flex",
         padding: "8px",
       }}
+      className={"roamjs-query-used"}
     >
       <div
         style={{
@@ -320,15 +321,16 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         >
           <Button
             icon={"clipboard"}
-            onClick={() => {
-              navigator.clipboard.writeText(
-                document.getElementById("roamjs-query-used").innerText
-              );
+            onClick={(e) => {
+              const queryEl = (e.target as HTMLInputElement)
+                .closest(".roamjs-query-used")
+                .querySelector(".roamjs-query-used-text") as HTMLElement;
+              navigator.clipboard.writeText(queryEl.innerText);
             }}
           />
         </Tooltip>
       </div>
-      <div id={"roamjs-query-used"}>
+      <div className={"roamjs-query-used-text"} style={{whiteSpace:"pre-wrap"}}>
         {isEnglish
           ? englishQuery.map((q, i) => (
               <span key={i} style={{ margin: 0, display: "block" }}>
