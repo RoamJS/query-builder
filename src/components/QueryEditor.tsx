@@ -509,11 +509,9 @@ const QueryEditor: QueryEditorComponent = ({
         <style>{`.roamjs-query-custom-enabled.bp3-control.bp3-switch .bp3-control-indicator-child:first-child {
     height: 0;
 }`}</style>
-          {isCustomEnabled && (
-          <div
-            style={{paddingRight: "20px"}}
-            >
-          <Tooltip
+        {isCustomEnabled && (
+          <div style={{ paddingRight: "20px" }}>
+            <Tooltip
               content={"Copy Datalog Query"}
               position={"left"}
               openOnTargetFocus={false}
@@ -528,8 +526,8 @@ const QueryEditor: QueryEditorComponent = ({
                 }}
               />
             </Tooltip>
-        </div>
-            )}
+          </div>
+        )}
         <div>
           {showAlias && (
             <>
@@ -540,7 +538,10 @@ const QueryEditor: QueryEditorComponent = ({
                   onChange={(e) => setLabel(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                      updateBlock({
+                        uid: parentUid,
+                        text: `{{query block:${label}}}`,
+                      });
                       setIsEditingLabel(false);
                     }
                   }}
@@ -550,16 +551,19 @@ const QueryEditor: QueryEditorComponent = ({
                       minimal
                       icon={"confirm"}
                       onClick={() => {
-                        updateBlock({ uid: parentUid, text: `{{query block:${label}}}` });
+                        updateBlock({
+                          uid: parentUid,
+                          text: `{{query block:${label}}}`,
+                        });
                         setIsEditingLabel(false);
                       }}
                     />
                   }
                 />
               ) : (
-                <span 
-                  style={{display: "inline-block"}}
-                  tabIndex={-1} 
+                <span
+                  style={{ display: "inline-block" }}
+                  tabIndex={-1}
                   onClick={() => setIsEditingLabel(true)}
                   className={!!label ? "" : "italic opacity-25 text-sm"}
                 >
