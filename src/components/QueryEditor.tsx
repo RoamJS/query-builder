@@ -27,7 +27,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import parseQuery from "../utils/parseQuery";
-import { backendToken, getDatalogQuery } from "../utils/fireQuery";
+import { getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import {
   Condition,
@@ -368,7 +368,7 @@ const QueryEditor: QueryEditorComponent = ({
     customNodeUid,
     customNode: initialCustom,
     isCustomEnabled: initialIsCustomEnabled,
-    isBackendEnabled: initialIsBackendEnabled,
+    isSamePageEnabled: initialIsSamePageEnabled,
   } = useMemo(() => parseQuery(parentUid), [parentUid]);
   const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
@@ -453,8 +453,8 @@ const QueryEditor: QueryEditorComponent = ({
   const [isCustomEnabled, setIsCustomEnabled] = useState(
     initialIsCustomEnabled
   );
-  const [isBackendEnabled, setIsBackendEnabled] = useState(
-    initialIsBackendEnabled
+  const [isSamePageEnabled, setIsSamePageEnabled] = useState(
+    initialIsSamePageEnabled
   );
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [label, setLabel] = useState(() => {
@@ -704,10 +704,16 @@ const QueryEditor: QueryEditorComponent = ({
           {showDisabledMessage && (
             <span className="text-red-700 inline-block">{disabledMessage}</span>
           )}
-          {backendToken && (
+          {window.samepage && (
             <Checkbox
-              label="BE"
-              checked={isBackendEnabled}
+              labelElement={
+                <img
+                  src="https://samepage.network/images/logo.png"
+                  height={24}
+                  width={24}
+                />
+              }
+              checked={isSamePageEnabled}
               onChange={(e) => {
                 const enabled = (e.target as HTMLInputElement).checked;
                 const scratchNode = getSubTree({ parentUid, key: "scratch" });
@@ -726,7 +732,7 @@ const QueryEditor: QueryEditorComponent = ({
                 } else if (!enabled && enabledUid) {
                   deleteBlock(enabledUid);
                 }
-                setIsBackendEnabled(enabled);
+                setIsSamePageEnabled(enabled);
               }}
             />
           )}

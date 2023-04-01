@@ -23,8 +23,12 @@
     "widgets"
   ],
   "dependencies": {
+<<<<<<< HEAD
     "@samepage/external": "^0.52.6",
     "@tldraw/tldraw": "^1.29.2",
+=======
+    "@samepage/external": "^0.53.1",
+>>>>>>> 0ef49ab (Converting isBackEndEnabled => isSamePageEnabled)
     "cytoscape-navigator": "^2.0.1",
     "react-charts": "^3.0.0-beta.48",
     "react-in-viewport": "^1.0.0-alpha.20",

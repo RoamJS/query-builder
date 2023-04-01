@@ -1,5 +1,4 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
-import type { Result as QueryResult } from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
   PullBlock,
@@ -10,18 +9,17 @@ import compileDatalog from "./compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiPost from "roamjs-components/util/apiPost";
-import type { Condition, Selection } from "./types";
+import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
-export type QueryArgs = {
+type QueryArgs = {
   returnNode: string;
   conditions: Condition[];
   selections: Selection[];
-  inputs?: Record<string, string | number>;
 };
 
 type FireQueryArgs = QueryArgs & {
-  isBackendEnabled?: boolean;
+  isSamePageEnabled?: boolean;
   isCustomEnabled?: boolean;
   customNode?: string;
 };
@@ -447,7 +445,7 @@ export const registerSelection = (args: PredefinedSelection) => {
 export const getWhereClauses = ({
   conditions,
   returnNode,
-}: Omit<FireQueryArgs, "selections">) => {
+}: Omit<QueryArgs, "selections">) => {
   return conditions.length
     ? conditions.flatMap(conditionToDatalog)
     : conditionToDatalog({
@@ -576,15 +574,16 @@ export const getDatalogQuery = ({
   };
 };
 
-export let backendToken = "";
-export const setBackendToken = (t: string) => (backendToken = t);
-
-const fireQuery: FireQuery = async (args) => {
-  // @ts-ignore
-  const { isCustomEnabled, customNode } = args as {
-    isCustomEnabled: boolean;
-    custom: string;
-  };
+const fireQuery: FireQuery = async (_args) => {
+  const { isCustomEnabled, customNode, isSamePageEnabled, ...args } = _args;
+  if (isSamePageEnabled) {
+    return getSamePageAPI()
+      .then((api) =>
+        api.postToAppBackend<{ results: QueryResult[] }>("query", args)
+      )
+      .then((r) => r.results)
+      .catch(() => []);
+  }
   const { query, formatResult, inputs } = isCustomEnabled
     ? {
         query: customNode as string,
@@ -608,19 +607,9 @@ const fireQuery: FireQuery = async (args) => {
       console.log("Query to Roam:");
       console.log(query, ...inputs);
     }
-    return args.isBackendEnabled && backendToken
-      ? apiPost<{ result: PullBlock[][] }>({
-          domain: "https://lambda.roamjs.com",
-          path: "query",
-          authorization: `Bearer ${backendToken}`,
-          data: {
-            graph: window.roamAlphaAPI.graph.name,
-            query,
-          },
-        }).then((r) => Promise.all(r.result.map(formatResult)))
-      : Promise.all(
-          window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
-        );
+    return Promise.all(
+      window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
+    );
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);

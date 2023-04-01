@@ -5,7 +5,6 @@ export type QBClauseData = {
   relation: string;
   source: string;
   target: string;
-  uid: string;
   not?: boolean;
 } & QBBase;
 export type QBNestedData = {
@@ -36,6 +35,12 @@ export type ExportTypes = {
   callback: (args: {
     filename: string;
     graph: string;
-    isBackendEnabled: boolean;
+    isSamePageEnabled: boolean;
   }) => Promise<{ title: string; content: string }[]>;
 }[];
+
+export type Result = {
+  text: string;
+  uid: string;
+} & Record<`${string}-uid`, string> &
+  Record<string, string | number | Date>;

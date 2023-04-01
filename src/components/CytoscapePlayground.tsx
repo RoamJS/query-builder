@@ -178,7 +178,6 @@ const LabelDialog = ({
             type: "clause",
           },
         ],
-        isBackendEnabled: false,
       }).then((results) => setOptions(results.map((r) => r.text)));
     }
   }, [nodeType]);

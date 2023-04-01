@@ -11,7 +11,6 @@ import {
   render as renderQueryPage,
   renderQueryBlock,
 } from "./components/QueryPage";
-import { setBackendToken } from "./utils/fireQuery";
 import runQueryTools from "./utils/runQueryTools";
 import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
@@ -323,31 +322,17 @@ export default runExtension({
             },
           },
         },
-        {
-          id: "token",
-          name: "Backend Token (EXPERIMENTAL)",
-          description:
-            "Add your backend graph token to perform queries in the background instead of blocking the UI",
-          action: {
-            type: "input",
-            placeholder: "roam-graph-token-xxxx",
-            onChange: (e) => setBackendToken(e.target.value),
-          },
-        },
       ],
     });
     if (loadedElsewhere) {
       await extensionAPI.settings.set(SETTING, true);
       setTimeout(() => {
-        setBackendToken((extensionAPI.settings.get("token") as string) || "");
         toggleDiscourseGraphsMode(true).then(() =>
           document
             .querySelectorAll(`h1.rm-title-display`)
             .forEach(h1ObserverCallback)
         );
       }, 1000);
-    } else {
-      setBackendToken((extensionAPI.settings.get("token") as string) || "");
     }
     const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
       onloadArgs

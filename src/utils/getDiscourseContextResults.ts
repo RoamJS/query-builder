@@ -13,13 +13,13 @@ const getDiscourseContextResults = async ({
   relations = getDiscourseRelations(),
   nodes = getDiscourseNodes(relations),
   ignoreCache,
-  isBackendEnabled = false,
+  isSamePageEnabled = false,
 }: {
   uid: string;
   nodes?: ReturnType<typeof getDiscourseNodes>;
   relations?: ReturnType<typeof getDiscourseRelations>;
   ignoreCache?: true;
-  isBackendEnabled?: boolean;
+  isSamePageEnabled?: boolean;
 }) => {
   const discourseNode = findDiscourseNode(uid);
   if (!discourseNode) return [];
@@ -82,7 +82,7 @@ const getDiscourseContextResults = async ({
                   },
                 ],
                 selections,
-                isBackendEnabled,
+                isSamePageEnabled,
               }).then((results) => {
                 resultCache[cacheKey] = results;
                 setTimeout(() => {

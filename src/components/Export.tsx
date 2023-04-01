@@ -16,18 +16,8 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import getSubTree from "roamjs-components/util/getSubTree";
-import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
-
-type ExportDialogComponent = (props: {
-  onClose: () => void;
-  isOpen: boolean;
-  exportTypes: ExportTypes;
-  results: Result[] | ((isBackendEnabled: boolean) => Promise<Result[]>);
-}) => JSX.Element;
 
 const viewTypeToPrefix = {
   bullet: "- ",
@@ -73,6 +63,13 @@ const toMarkdown = ({
     )
     .join("")}`;
 
+type ExportDialogComponent = (props: {
+  onClose: () => void;
+  isOpen: boolean;
+  exportTypes: ExportTypes;
+  results: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
+}) => JSX.Element;
+
 export const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
@@ -80,10 +77,10 @@ export const ExportDialog: ExportDialogComponent = ({
   exportTypes = [
     {
       name: "CSV",
-      callback: async ({ filename, isBackendEnabled }) => {
+      callback: async ({ filename, isSamePageEnabled }) => {
         const resolvedResults = Array.isArray(results)
           ? results
-          : await results(isBackendEnabled);
+          : await results(isSamePageEnabled);
         const keys = Object.keys(resolvedResults[0]).filter(
           (u) => !/uid/i.test(u)
         );
@@ -105,8 +102,8 @@ export const ExportDialog: ExportDialogComponent = ({
     },
     {
       name: "Markdown",
-      callback: async ({ isBackendEnabled }) =>
-        (Array.isArray(results) ? results : await results(isBackendEnabled))
+      callback: async ({ isSamePageEnabled }) =>
+        (Array.isArray(results) ? results : await results(isSamePageEnabled))
           .map(({ uid, ...rest }) => {
             const v = (
               (
@@ -151,15 +148,7 @@ export const ExportDialog: ExportDialogComponent = ({
     exportTypes[0].name
   );
   const [graph, setGraph] = useState<string>("");
-  const hasToken = useMemo(() => {
-    return !!getSubTree({
-      tree: getShallowTreeByParentUid(
-        getPageUidByPageTitle("roam/js/query-builder")
-      ).map((n) => ({ ...n, children: [] })),
-      key: "token",
-    }).uid;
-  }, []);
-  const [isBackendEnabled, setIsBackendEnabled] = useState(false);
+  const [isSamePageEnabled, setIsSamePageEnabled] = useState(false);
   useEffect(() => {
     const body = document.querySelector(".roamjs-export-dialog-body");
     if (body) {
@@ -222,13 +211,15 @@ export const ExportDialog: ExportDialogComponent = ({
           results
         </span>
 
-        {hasToken && (
+        {window.samepage && (
           <Checkbox
-            checked={isBackendEnabled}
+            checked={isSamePageEnabled}
             onChange={(e) =>
-              setIsBackendEnabled((e.target as HTMLInputElement).checked)
+              setIsSamePageEnabled((e.target as HTMLInputElement).checked)
             }
-            label={"BE"}
+            labelElement={
+              <img src="https://samepage.network/images/logo.png" height={24} width={24} />
+            }
           />
         )}
       </div>
@@ -255,7 +246,7 @@ export const ExportDialog: ExportDialogComponent = ({
                     const files = await exportType.callback({
                       filename,
                       graph,
-                      isBackendEnabled,
+                      isSamePageEnabled,
                     });
                     if (!files.length) {
                       onClose();

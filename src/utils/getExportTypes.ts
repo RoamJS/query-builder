@@ -202,10 +202,10 @@ const getExportTypes = ({
   );
   nodeLabelByType["*"] = "Any";
   const getPageData = async (
-    isBackendEnabled: boolean
+    isSamePageEnabled: boolean
   ): Promise<(Result & { type: string })[]> => {
     const allResults =
-      typeof results === "function" ? await results(isBackendEnabled) : results;
+      typeof results === "function" ? await results(isSamePageEnabled) : results;
     return allNodes.flatMap((n) =>
       (allResults
         ? allResults.flatMap((r) =>
@@ -234,7 +234,7 @@ const getExportTypes = ({
         .map((node) => ({ ...node, type: n.text }))
     );
   };
-  const getRelationData = (isBackendEnabled: boolean) =>
+  const getRelationData = (isSamePageEnabled: boolean) =>
     relations
       ? Promise.resolve(relations)
       : Promise.all(
@@ -267,7 +267,7 @@ const getExportTypes = ({
                         label: "target",
                       },
                     ],
-                    isBackendEnabled,
+                    isSamePageEnabled,
                   }).then((results) =>
                     results.map((result) => ({
                       source: result.uid,
@@ -277,13 +277,13 @@ const getExportTypes = ({
                   );
             })
         ).then((r) => r.flat());
-  const getJsonData = async (isBackendEnabled: boolean) => {
+  const getJsonData = async (isSamePageEnabled: boolean) => {
     const grammar = allRelations.map(({ label, destination, source }) => ({
       label,
       destination: nodeLabelByType[destination],
       source: nodeLabelByType[source],
     }));
-    const nodes = (await getPageData(isBackendEnabled)).map(({ text, uid }) => {
+    const nodes = (await getPageData(isSamePageEnabled)).map(({ text, uid }) => {
       const { date, displayName } = getPageMetadata(text);
       const { children } = getFullTreeByParentUid(uid);
       return {
@@ -295,7 +295,7 @@ const getExportTypes = ({
       };
     });
     const nodeSet = new Set(nodes.map((n) => n.uid));
-    return getRelationData(isBackendEnabled).then((rels) => {
+    return getRelationData(isSamePageEnabled).then((rels) => {
       const relations = uniqJsonArray(
         rels.filter((r) => nodeSet.has(r.source) && nodeSet.has(r.target))
       );
@@ -306,7 +306,7 @@ const getExportTypes = ({
   return [
     {
       name: "Markdown",
-      callback: async ({ isBackendEnabled }) => {
+      callback: async ({ isSamePageEnabled }) => {
         const configTree = getBasicTreeByParentUid(
           getPageUidByPageTitle("roam/js/discourse-graph")
         );
@@ -352,7 +352,7 @@ const getExportTypes = ({
               `author: {author}`,
               "date: {date}",
             ];
-        const allPages = await getPageData(isBackendEnabled);
+        const allPages = await getPageData(isSamePageEnabled);
         const progressBody = document.querySelector(
           ".roamjs-export-dialog-body"
         );
@@ -501,8 +501,8 @@ const getExportTypes = ({
     },
     {
       name: "JSON",
-      callback: async ({ filename, isBackendEnabled }) => {
-        const data = await getJsonData(isBackendEnabled);
+      callback: async ({ filename, isSamePageEnabled }) => {
+        const data = await getJsonData(isSamePageEnabled);
         return [
           {
             title: `${filename.replace(/\.json$/, "")}.json`,
@@ -513,8 +513,8 @@ const getExportTypes = ({
     },
     {
       name: "graph",
-      callback: async ({ filename, graph, isBackendEnabled }) => {
-        const data = await getJsonData(isBackendEnabled);
+      callback: async ({ filename, graph, isSamePageEnabled }) => {
+        const data = await getJsonData(isSamePageEnabled);
         const { sendToNotebook } = await getSamePageApi();
         sendToNotebook({
           operation: "IMPORT_DISCOURSE_GRAPH",
@@ -529,9 +529,9 @@ const getExportTypes = ({
     },
     {
       name: "Neo4j",
-      callback: async ({ filename, isBackendEnabled }) => {
+      callback: async ({ filename, isSamePageEnabled }) => {
         const nodeHeader = "uid:ID,label:LABEL,title,author,date\n";
-        const nodeData = (await getPageData(isBackendEnabled))
+        const nodeData = (await getPageData(isSamePageEnabled))
           .map(({ text, uid, type }) => {
             const value = text.replace(new RegExp(`^\\[\\[\\w*\\]\\] - `), "");
             const { displayName, date } = getPageMetadata(text);
@@ -541,7 +541,7 @@ const getExportTypes = ({
           })
           .join("\n");
         const relationHeader = "start:START_ID,end:END_ID,label:TYPE\n";
-        return getRelationData(isBackendEnabled).then((rels) => {
+        return getRelationData(isSamePageEnabled).then((rels) => {
           const relationData = rels.map(
             ({ source, target, label }) =>
               `${source},${target},${label.toUpperCase()}`
