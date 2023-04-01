@@ -348,7 +348,9 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp((match.slice(1,-1))).exec((r?.[":block/string"] || r?.[":node/title"] ))?.slice(-1)[0]
+        ? new RegExp(match.slice(1, -1))
+            .exec(r?.[":block/string"] || r?.[":node/title"])
+            ?.slice(-1)[0]
         : match
         ? getBlockAttribute(match, r)
         : {
@@ -359,8 +361,10 @@ const predefinedSelections: PredefinedSelection[] = [
   },
   {
     test: ALIAS_TEST,
-    pull: () => '',
-    mapper: (r) => {return ''},
+    pull: () => "",
+    mapper: (r) => {
+      return "";
+    },
   },
   {
     test: SUBTRACT_TEST,
@@ -480,7 +484,7 @@ export const getDatalogQueryComponents = ({
         };
       },
       pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
-      label: selections.find(s => s.text === "node")?.label || "text",
+      label: selections.find((s) => s.text === "node")?.label || "text",
       key: "",
     },
     {
@@ -526,7 +530,7 @@ export const getDatalogQuery = (
   }  ${where}\n]`;
 };
 
-const getEnglishQuery = (args: FireQueryArgs) => {
+const getQueryStringAndFormatter = (args: FireQueryArgs) => {
   const parts = getDatalogQueryComponents(args);
   return {
     query: getDatalogQuery(parts),
@@ -591,7 +595,7 @@ const fireQuery: FireQuery = async (args) => {
             ),
           }),
       }
-    : getEnglishQuery(args);
+    : getQueryStringAndFormatter(args);
   try {
     if (getNodeEnv() === "development") {
       console.log("Query to Roam:");

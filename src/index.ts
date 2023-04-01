@@ -5,7 +5,6 @@ import getUidsFromId from "roamjs-components/dom/getUidsFromId";
 import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
 import addStyle from "roamjs-components/dom/addStyle";
-import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import {
@@ -333,7 +332,7 @@ export default runExtension({
     if (!!extensionAPI.settings.get("sort-references")) {
       toggleSortReferences(true);
     }
-    
+
     const globalRefs = {
       clearOnClick: ({
         parentUid,
@@ -423,16 +422,18 @@ export default runExtension({
         ({ proccessBlockText, variables }) =>
         (arg, format = "(({uid}))") => {
           const queryRef = variables[arg] || arg;
-          const aliasOrPage = window.roamAlphaAPI.data.fast.q(
-            `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
+          const aliasOrPage = window.roamAlphaAPI.data.fast
+            .q(
+              `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
                  [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
                  ${getQueryPages(extensionAPI).map(
                    (p) =>
-                   `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
-                   )}
+                     `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
+                 )}
                   [and [?b :node/title "${queryRef}"]]
             ]]`
-          )[0]?.toString();
+            )[0]
+            ?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
             return allResults
