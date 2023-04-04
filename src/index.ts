@@ -443,7 +443,7 @@ export default runExtension({
                 )
               )
               .map((r) =>
-                format.replace(/{([^}]+)}/, (_, i: string) => {
+                format.replace(/{([^}]+)}/g, (_, i: string) => {
                   const value = r[i.toLowerCase()];
                   return typeof value === "string"
                     ? value

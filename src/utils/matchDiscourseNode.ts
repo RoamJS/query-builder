@@ -1,4 +1,4 @@
-import compileDatalog from "roamjs-components/queries/compileDatalog";
+import compileDatalog from "./compileDatalog";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import conditionToDatalog from "./conditionToDatalog";

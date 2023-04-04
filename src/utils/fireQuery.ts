@@ -10,7 +10,7 @@ import type {
   DatalogAndClause,
   DatalogClause,
 } from "roamjs-components/types";
-import compileDatalog from "roamjs-components/queries/compileDatalog";
+import compileDatalog from "./compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiPost from "roamjs-components/util/apiPost";

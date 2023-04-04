@@ -16,7 +16,7 @@ import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import { getCoordsFromTextarea } from "roamjs-components/components/CursorMenu";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
-import compileDatalog from "roamjs-components/queries/compileDatalog";
+import compileDatalog from "../utils/compileDatalog";
 import getSubTree from "roamjs-components/util/getSubTree";
 import {
   InputTextNode,
