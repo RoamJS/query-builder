@@ -417,7 +417,7 @@ export default runExtension({
     registerSmartBlocksCommand({
       text: "QUERYBUILDER",
       delayArgs: true,
-      help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
+      help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result\n3. (Optional) The number of results returned",
       handler:
         ({ proccessBlockText, variables }) =>
         (arg, ...args) => {
