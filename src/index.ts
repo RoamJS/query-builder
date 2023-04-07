@@ -417,10 +417,15 @@ export default runExtension({
     registerSmartBlocksCommand({
       text: "QUERYBUILDER",
       delayArgs: true,
-      help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result",
+      help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result\n3. (Optional) The number of results returned",
       handler:
         ({ proccessBlockText, variables }) =>
-        (arg, format = "(({uid}))") => {
+        (arg, ...args) => {
+          const lastArg = args[args.length - 1];
+          const lastArgIsLimitArg = !Number.isNaN(Number(lastArg));
+          const { format, limit } = lastArgIsLimitArg
+            ? { format: args.slice(0, -1).join(","), limit: Number(lastArg) }
+            : { format: args.join(","), limit: 0 };
           const queryRef = variables[arg] || arg;
           const aliasOrPage = window.roamAlphaAPI.data.fast
             .q(
@@ -436,7 +441,8 @@ export default runExtension({
             ?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
           return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
-            return allResults
+            const results = limit ? allResults.slice(0, limit) : allResults;
+            return results
               .map((r) =>
                 Object.fromEntries(
                   Object.entries(r).map(([k, v]) => [k.toLowerCase(), v])
