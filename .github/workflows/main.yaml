@@ -9,7 +9,6 @@ on:
       - ".github/workflows/main.yaml"
 
 env:
-  ROAMJS_DEVELOPER_TOKEN: ${{ secrets.ROAMJS_DEVELOPER_TOKEN }}
   ROAMJS_EMAIL: support@roamjs.com
   ROAMJS_EXTENSION_ID: query-builder
   GITHUB_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
@@ -23,8 +22,3 @@ jobs:
         run: npm install
       - name: build
         run: npx roamjs-scripts build --labs
-      # this is for discourse graph
-      - name: build
-        run: npx roamjs-scripts build
-      - name: publish
-        run: npx roamjs-scripts publish
