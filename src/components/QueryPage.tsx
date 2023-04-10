@@ -1,11 +1,14 @@
 import { Card, Spinner } from "@blueprintjs/core";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
-import type {
-  ExportTypes,
-  Result,
-} from "roamjs-components/types/query-builder";
+import type { Result } from "roamjs-components/types/query-builder";
 import ResultsView from "./ResultsView";
 import ReactDOM from "react-dom";
 import QueryEditor from "./QueryEditor";
@@ -20,6 +23,7 @@ import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
 import { Filters } from "roamjs-components/components/Filter";
+import { ExportTypes } from "../utils/types";
 
 type QueryPageComponent = (props: {
   showAlias?: boolean;
@@ -30,7 +34,7 @@ type QueryPageComponent = (props: {
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
   hideMetadata?: boolean;
-  }) => JSX.Element;
+}) => JSX.Element;
 
 type Props = Parameters<QueryPageComponent>[0];
 

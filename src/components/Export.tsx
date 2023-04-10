@@ -3,15 +3,10 @@ import {
   Checkbox,
   Classes,
   Dialog,
-  Icon,
   InputGroup,
   Intent,
   Label,
-  MenuItem,
   ProgressBar,
-  Spinner,
-  SpinnerSize,
-  Tooltip,
 } from "@blueprintjs/core";
 import React, { useState, useMemo, useEffect } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
@@ -21,10 +16,18 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import { ExportDialogComponent } from "roamjs-components/types/query-builder";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
+import { ExportTypes } from "../utils/types";
+import { Result } from "roamjs-components/types/query-builder";
+
+type ExportDialogComponent = (props: {
+  onClose: () => void;
+  isOpen: boolean;
+  exportTypes: ExportTypes;
+  results: Result[] | ((isBackendEnabled: boolean) => Promise<Result[]>);
+}) => JSX.Element;
 
 const viewTypeToPrefix = {
   bullet: "- ",

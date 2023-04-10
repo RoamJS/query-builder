@@ -255,7 +255,7 @@ const ContextTab = ({
       parentUid={parentUid}
       results={Object.values(results).map(
         ({ target, complement, id, ...a }) =>
-          a as Parameters<typeof ResultsView>[0]["results"][number]
+          a as Result
       )}
       header={
         <>

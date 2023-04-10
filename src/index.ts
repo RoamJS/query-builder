@@ -420,7 +420,7 @@ export default runExtension({
       delayArgs: true,
       help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result\n3. (Optional) The number of results returned",
       handler:
-        ({ proccessBlockText, variables }) =>
+        ({ proccessBlockText, variables, processBlock }) =>
         (arg, ...args) => {
           const lastArg = args[args.length - 1];
           const lastArgIsLimitArg = !Number.isNaN(Number(lastArg));
@@ -467,19 +467,21 @@ export default runExtension({
                 )
               )
               .map((r) => {
-                // TODO - this instead once roamjs-components/smartblocks update is live
-                /**
-                Object.entries(r).forEach(([k, v]) => {
-                  variables[k] = v;
-                });
-                 return processBlock(format);
-                 */
-                return format.text.replace(
+                if (processBlock) {
+                  return () => {
+                    Object.entries(r).forEach(([k, v]) => {
+                      variables[k] = v;
+                    });
+                    return processBlock(format);
+                  };
+                }
+
+                const s = format.text.replace(
                   /{([^}]+)}/g,
                   (_, i: string) => r[i.toLowerCase()]
                 );
+                return () => proccessBlockText(s);
               })
-              .map((s) => () => proccessBlockText(s))
               .reduce(
                 (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
                 Promise.resolve([] as InputTextNode[])

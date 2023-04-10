@@ -23,14 +23,6 @@ import {
   sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
 import getSubTree from "roamjs-components/util/getSubTree";
-import {
-  Condition,
-  QBClause,
-  QBClauseData,
-  QBNestedData,
-  QBNot,
-  Selection,
-} from "roamjs-components/types/query-builder";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
@@ -41,6 +33,14 @@ import {
   getDatalogQueryComponents,
 } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import {
+  Condition,
+  QBClause,
+  QBNot,
+  QBNestedData,
+  QBClauseData,
+  Selection,
+} from "../utils/types";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -349,7 +349,7 @@ const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
 };
 
 type QueryEditorComponent = (props: {
-  showAlias?: boolean,
+  showAlias?: boolean;
   parentUid: string;
   onQuery?: () => void;
   defaultReturnNode?: string;
@@ -462,8 +462,10 @@ const QueryEditor: QueryEditorComponent = ({
   );
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [label, setLabel] = useState(() => {
-    const aliasMatch = getTextByBlockUid(parentUid).match(/{{query block:(.*?)}}/);
-    return (!!aliasMatch && aliasMatch[1] !== "") ? aliasMatch[1] : "";
+    const aliasMatch = getTextByBlockUid(parentUid).match(
+      /{{query block:(.*?)}}/
+    );
+    return !!aliasMatch && aliasMatch[1] !== "" ? aliasMatch[1] : "";
   });
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
   return view.uid === parentUid ? (

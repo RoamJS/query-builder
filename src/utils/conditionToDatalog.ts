@@ -5,7 +5,21 @@ import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
 import type { DatalogClause, PullBlock } from "roamjs-components/types";
-import type { RegisterDatalogTranslator } from "roamjs-components/types/query-builder";
+import { Condition } from "./types";
+
+type RegisterDatalogTranslator = (args: {
+  key: string;
+  callback: (args: {
+    source: string;
+    target: string;
+    uid: string;
+  }) => DatalogClause[];
+  targetOptions?: string[] | ((source: string) => string[]);
+  placeholder?: string;
+  isVariable?: true;
+}) => void;
+
+type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
 const getTitleDatalog = ({
   source,
@@ -586,34 +600,33 @@ export const getConditionLabels = () =>
     .filter((k) => k !== "self")
     .sort((a, b) => b.length - a.length);
 
-const conditionToDatalog: typeof window.roamjs.extension.queryBuilder.conditionToDatalog =
-  (con) => {
-    if (con.type === "or" || con.type === "not or") {
-      const datalog = [
-        {
-          type: "or-join-clause",
-          clauses: con.conditions.map((branch) => ({
-            type: "and-clause",
-            clauses: branch.flatMap((c) => conditionToDatalog(c)),
-          })),
-          variables: [],
-        },
-      ] as DatalogClause[];
-      if (con.type === "not or")
-        return [{ type: "not-clause", clauses: datalog }];
-      return datalog;
-    }
-    const { relation, ...condition } = con;
-    const datalogTranslator =
-      translator[relation] ||
-      Object.entries(translator).find(([k]) =>
-        new RegExp(relation, "i").test(k)
-      )?.[1];
-    const datalog = datalogTranslator?.callback?.(condition) || [];
-    if (datalog.length && (con.type === "not" || con.not))
+const conditionToDatalog: ConditionToDatalog = (con) => {
+  if (con.type === "or" || con.type === "not or") {
+    const datalog = [
+      {
+        type: "or-join-clause",
+        clauses: con.conditions.map((branch) => ({
+          type: "and-clause",
+          clauses: branch.flatMap((c) => conditionToDatalog(c)),
+        })),
+        variables: [],
+      },
+    ] as DatalogClause[];
+    if (con.type === "not or")
       return [{ type: "not-clause", clauses: datalog }];
     return datalog;
-  };
+  }
+  const { relation, ...condition } = con;
+  const datalogTranslator =
+    translator[relation] ||
+    Object.entries(translator).find(([k]) =>
+      new RegExp(relation, "i").test(k)
+    )?.[1];
+  const datalog = datalogTranslator?.callback?.(condition) || [];
+  if (datalog.length && (con.type === "not" || con.not))
+    return [{ type: "not-clause", clauses: datalog }];
+  return datalog;
+};
 
 export const sourceToTargetOptions = ({
   source,

@@ -1,9 +1,5 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
-import type {
-  FireQuery,
-  RegisterSelection,
-  Result as QueryResult,
-} from "roamjs-components/types/query-builder";
+import type { Result as QueryResult } from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
   PullBlock,
@@ -14,6 +10,22 @@ import compileDatalog from "./compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiPost from "roamjs-components/util/apiPost";
+import type { Condition, Selection } from "./types";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
+
+type QueryArgs = {
+  returnNode: string;
+  conditions: Condition[];
+  selections: Selection[];
+};
+
+type FireQueryArgs = QueryArgs & {
+  isBackendEnabled?: boolean;
+  isCustomEnabled?: boolean;
+  customNode?: string;
+};
+
+type FireQuery = (query: FireQueryArgs) => Promise<QueryResult[]>;
 
 type PredefinedSelection = {
   test: RegExp;
@@ -430,11 +442,6 @@ export const registerSelection = (args: PredefinedSelection) => {
     }
   };
 };
-
-type FireQueryArgs = Omit<
-  Parameters<typeof window.roamjs.extension.queryBuilder.fireQuery>[0],
-  "isBackendEnabled"
->;
 
 export const getWhereClauses = ({
   conditions,
