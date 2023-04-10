@@ -33,6 +33,8 @@ import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import { renderTldrawCanvas } from "./components/TldrawCanvas";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
+import { registerDatalogTranslator } from "./utils/conditionToDatalog";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -552,6 +554,18 @@ export default runExtension({
             onloadArgs,
           })
         ),
+    });
+
+    getSamePageAPI().then((api) => {
+      api.listNotebooks().then(({ notebooks }) => {
+        registerDatalogTranslator({
+          key: "is in notebook",
+          callback: () => [],
+          isVariable: true,
+          placeholder: `Roam ${window.roamAlphaAPI.graph.name}`,
+          targetOptions: notebooks.map((n) => `${n.appName} ${n.workspace}`),
+        });
+      });
     });
 
     return {
