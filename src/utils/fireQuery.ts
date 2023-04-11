@@ -13,10 +13,11 @@ import apiPost from "roamjs-components/util/apiPost";
 import type { Condition, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
-type QueryArgs = {
+export type QueryArgs = {
   returnNode: string;
   conditions: Condition[];
   selections: Selection[];
+  inputs?: Record<string, string | number>;
 };
 
 type FireQueryArgs = QueryArgs & {
@@ -459,20 +460,24 @@ export const getWhereClauses = ({
       });
 };
 
-export const getDatalogQueryComponents = ({
+const getConditionTargets = (conditions: Condition[]): string[] =>
+  conditions.flatMap((c) =>
+    c.type === "clause" || c.type === "not"
+      ? [c.target]
+      : getConditionTargets(c.conditions.flat())
+  );
+
+export const getDatalogQuery = ({
   conditions,
-  returnNode,
   selections,
-}: FireQueryArgs): {
-  where: DatalogClause[];
-  definedSelections: {
-    mapper: PredefinedSelection["mapper"];
-    pull: string;
-    label: string;
-    key: string;
-  }[];
-} => {
-  const where = optimizeQuery(
+  returnNode,
+  inputs = {},
+}: FireQueryArgs) => {
+  const expectedInputs = getConditionTargets(conditions)
+    .filter((c) => /^:in /.test(c))
+    .map((c) => c.substring(4))
+    .filter((c) => !!inputs[c]);
+  const whereClauses = optimizeQuery(
     getWhereClauses({ conditions, returnNode }),
     new Set([])
   ) as DatalogClause[];
@@ -513,7 +518,7 @@ export const getDatalogQueryComponents = ({
       .map((p) => ({
         mapper: p.defined.mapper,
         pull: p.defined.pull({
-          where,
+          where: whereClauses,
           returnNode,
           match: p.defined.test.exec(p.s.text),
         }),
@@ -522,27 +527,20 @@ export const getDatalogQueryComponents = ({
       }))
       .filter((p) => !!p.pull)
   );
-  return { definedSelections, where };
-};
-
-export const getDatalogQuery = (
-  args: ReturnType<typeof getDatalogQueryComponents>
-) => {
-  const find = args.definedSelections.map((p) => p.pull).join("\n  ");
-  const where = args.where.map((c) => compileDatalog(c, 0)).join("\n  ");
-  return `[:find\n  ${find}\n:where\n${
-    args.where.length === 1 && args.where[0].type === "not-clause"
-      ? `[?node :block/uid _]`
-      : ""
-  }  ${where}\n]`;
-};
-
-const getQueryStringAndFormatter = (args: FireQueryArgs) => {
-  const parts = getDatalogQueryComponents(args);
+  const find = definedSelections.map((p) => p.pull).join("\n  ");
+  const where = whereClauses.map((c) => compileDatalog(c, 0)).join("\n  ");
   return {
-    query: getDatalogQuery(parts),
+    query: `[:find\n  ${find}\n${
+      expectedInputs.length
+        ? `  :in $ ${expectedInputs.map((i) => `?${i}`).join(" ")}\n`
+        : ""
+    }:where\n${
+      whereClauses.length === 1 && whereClauses[0].type === "not-clause"
+        ? `[?node :block/uid _]`
+        : ""
+    }  ${where}\n]`,
     formatResult: (result: unknown[]) =>
-      parts.definedSelections
+      definedSelections
         .map((c, i) => (prev: QueryResult) => {
           const pullResult = result[i];
           return typeof pullResult === "object" && pullResult !== null
@@ -574,6 +572,7 @@ const getQueryStringAndFormatter = (args: FireQueryArgs) => {
             ),
           Promise.resolve({} as QueryResult)
         ),
+    inputs: expectedInputs.map((i) => inputs[i]),
   };
 };
 
@@ -586,7 +585,7 @@ const fireQuery: FireQuery = async (args) => {
     isCustomEnabled: boolean;
     custom: string;
   };
-  const { query, formatResult } = isCustomEnabled
+  const { query, formatResult, inputs } = isCustomEnabled
     ? {
         query: customNode as string,
         formatResult: (r: unknown[]): Promise<QueryResult> =>
@@ -601,8 +600,9 @@ const fireQuery: FireQuery = async (args) => {
               )
             ),
           }),
+        inputs: [],
       }
-    : getQueryStringAndFormatter(args);
+    : getDatalogQuery(args);
   try {
     if (getNodeEnv() === "development") {
       console.log("Query to Roam:");
@@ -618,7 +618,9 @@ const fireQuery: FireQuery = async (args) => {
             query,
           },
         }).then((r) => Promise.all(r.result.map(formatResult)))
-      : Promise.all(window.roamAlphaAPI.data.fast.q(query).map(formatResult));
+      : Promise.all(
+          window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
+        );
   } catch (e) {
     console.error("Error from Roam:");
     console.error(e.message);

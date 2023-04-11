@@ -27,11 +27,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import parseQuery from "../utils/parseQuery";
-import {
-  backendToken,
-  getDatalogQuery,
-  getDatalogQueryComponents,
-} from "../utils/fireQuery";
+import { backendToken, getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import {
   Condition,
@@ -588,13 +584,11 @@ const QueryEditor: QueryEditorComponent = ({
                 order: 1,
               });
               if (enabled) {
-                const text = getDatalogQuery(
-                  getDatalogQueryComponents({
-                    conditions,
-                    selections,
-                    returnNode,
-                  })
-                );
+                const { query: text } = getDatalogQuery({
+                  conditions,
+                  selections,
+                  returnNode,
+                });
                 if (contentUid) updateBlock({ text, uid: contentUid });
                 else
                   createBlock({

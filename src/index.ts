@@ -422,11 +422,16 @@ export default runExtension({
       handler:
         ({ proccessBlockText, variables, processBlock }) =>
         (arg, ...args) => {
-          const lastArg = args[args.length - 1];
+          const inputArgs = args.filter((a) => a.includes("="));
+          const regularArgs = args.filter((a) => !a.includes("="));
+          const lastArg = regularArgs[regularArgs.length - 1];
           const lastArgIsLimitArg = !Number.isNaN(Number(lastArg));
           const { format: formatArg, limit } = lastArgIsLimitArg
-            ? { format: args.slice(0, -1).join(","), limit: Number(lastArg) }
-            : { format: args.join(","), limit: 0 };
+            ? {
+                format: regularArgs.slice(0, -1).join(","),
+                limit: Number(lastArg),
+              }
+            : { format: regularArgs.join(","), limit: 0 };
           const formatFromUid = getTextByBlockUid(formatArg);
           const format = formatFromUid
             ? {
@@ -449,7 +454,13 @@ export default runExtension({
             )[0]
             ?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
-          return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
+          return runQuery({
+            parentUid,
+            extensionAPI,
+            inputs: Object.fromEntries(
+              inputArgs.map((i) => i.split("=").slice(0, 2) as [string, string])
+            ),
+          }).then(({ allResults }) => {
             const results = limit ? allResults.slice(0, limit) : allResults;
             return results
               .map((r) =>
@@ -467,7 +478,7 @@ export default runExtension({
                 )
               )
               .map((r) => {
-                if (processBlock) {
+                if (processBlock && format.uid) {
                   return () => {
                     Object.entries(r).forEach(([k, v]) => {
                       variables[k] = v;
@@ -493,7 +504,9 @@ export default runExtension({
     // @ts-ignore
     window.roamjs.extension.queryBuilder = {
       runQuery: (parentUid: string) =>
-        runQuery(parentUid, extensionAPI).then(({ allResults }) => allResults),
+        runQuery({ parentUid, extensionAPI }).then(
+          ({ allResults }) => allResults
+        ),
       listActiveQueries: () =>
         (
           window.roamAlphaAPI.data.fast.q(

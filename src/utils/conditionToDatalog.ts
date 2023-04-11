@@ -115,6 +115,18 @@ const getTitleDatalog = ({
       },
     ];
   }
+  if (/^:in /.test(target)) {
+    return [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":node/title" },
+          { type: "variable", value: target.replace(/^:in /, "") },
+        ],
+      },
+    ];
+  }
   return [
     {
       type: "data-pattern",
