@@ -1,8 +1,8 @@
 import { RoamBasicNode } from "roamjs-components/types/native";
-import { Condition, ParseQuery } from "roamjs-components/types/query-builder";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import createBlock from "roamjs-components/writes/createBlock";
+import { Condition, Selection } from "./types";
 
 const roamNodeToCondition = ({
   uid,
@@ -37,6 +37,19 @@ const roamNodeToCondition = ({
           node.children.map(roamNodeToCondition)
         ),
       };
+};
+
+type ParseQuery = (q: RoamBasicNode | string) => {
+  returnNode: string;
+  conditions: Condition[];
+  selections: Selection[];
+  customNode: string;
+  returnNodeUid: string;
+  conditionsNodesUid: string;
+  selectionsNodesUid: string;
+  customNodeUid: string;
+  isCustomEnabled: boolean;
+  isBackendEnabled: boolean;
 };
 
 const parseQuery: ParseQuery = (parentUidOrNode) => {

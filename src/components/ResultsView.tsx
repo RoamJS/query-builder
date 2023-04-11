@@ -25,10 +25,7 @@ import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import type {
-  QBClauseData,
-  Result,
-} from "roamjs-components/types/query-builder";
+import type { Result } from "roamjs-components/types/query-builder";
 import parseResultSettings from "../utils/parseResultSettings";
 import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import postProcessResults from "../utils/postProcessResults";
@@ -39,6 +36,7 @@ import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { ExportTypes, QBClauseData } from "../utils/types";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -124,7 +122,7 @@ const ResultHeader = ({
 
 const CellEmbed = ({ uid }: { uid: string }) => {
   const title = getPageTitleByPageUid(uid);
-  const isPage = !!title ? "page-embed" : "block-embed"
+  const isPage = !!title ? "page-embed" : "block-embed";
   const contentRef = useRef(null);
   useEffect(() => {
     window.roamAlphaAPI.ui.components.renderBlock({
@@ -132,10 +130,16 @@ const CellEmbed = ({ uid }: { uid: string }) => {
       el: contentRef.current,
     });
   }, [contentRef]);
-  return <div className="roamjs-query-embed">
-      {isPage === "page-embed" ? <h1 className="rm-page-title">{title}</h1> : ""}
-      <div ref={contentRef} className={isPage}/>
+  return (
+    <div className="roamjs-query-embed">
+      {isPage === "page-embed" ? (
+        <h1 className="rm-page-title">{title}</h1>
+      ) : (
+        ""
+      )}
+      <div ref={contentRef} className={isPage} />
     </div>
+  );
 };
 
 const ResultView = ({
@@ -330,7 +334,10 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
           />
         </Tooltip>
       </div>
-      <div className={"roamjs-query-used-text"} style={{whiteSpace:"pre-wrap"}}>
+      <div
+        className={"roamjs-query-used-text"}
+        style={{ whiteSpace: "pre-wrap" }}
+      >
         {isEnglish
           ? englishQuery.map((q, i) => (
               <span key={i} style={{ margin: 0, display: "block" }}>
@@ -354,7 +361,24 @@ const SUPPORTED_LAYOUTS = [
   { id: "timeline", icon: "timeline-events" },
 ] as const;
 
-const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
+type ResultsViewComponent = (props: {
+  parentUid: string;
+  header?: React.ReactNode;
+  results: Result[];
+  hideResults?: boolean;
+  resultFilter?: (r: Result) => boolean;
+  ctrlClick?: (e: Result) => void;
+  preventSavingSettings?: boolean;
+  preventExport?: boolean;
+  onEdit?: () => void;
+  onRefresh?: () => void;
+  getExportTypes?: (r: Result[]) => ExportTypes;
+  onResultsInViewChange?: (r: Result[]) => void;
+  globalFiltersData?: Record<string, Filters>;
+  globalPageSize?: number;
+}) => JSX.Element;
+
+const ResultsView: ResultsViewComponent = ({
   parentUid,
   header,
   results,
@@ -650,7 +674,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                       onEdit();
                     }}
                   />
-                  )}
+                )}
                 <MenuItem
                   icon={"layout"}
                   text={"Layout"}
@@ -699,27 +723,40 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
                     }}
                   />
                 )}
-                 <MenuItem
-                    icon={"clipboard"}
-                    text={"Copy Query"}
-                    onClick={() => {
-                      const getTextFromTreeToPaste = (items: RoamBasicNode[], indentLevel = 0): string => {
-                        const indentation = "    ".repeat(indentLevel);
+                <MenuItem
+                  icon={"clipboard"}
+                  text={"Copy Query"}
+                  onClick={() => {
+                    const getTextFromTreeToPaste = (
+                      items: RoamBasicNode[],
+                      indentLevel = 0
+                    ): string => {
+                      const indentation = "    ".repeat(indentLevel);
 
-                        return items.map(item => {
-                          const childrenText = item.children.length > 0 ? getTextFromTreeToPaste(item.children, indentLevel + 1) : "";
+                      return items
+                        .map((item) => {
+                          const childrenText =
+                            item.children.length > 0
+                              ? getTextFromTreeToPaste(
+                                  item.children,
+                                  indentLevel + 1
+                                )
+                              : "";
                           return `${indentation}- ${item.text}\n${childrenText}`;
-                        }).join("")
-                      };
-                      const tree = getBasicTreeByParentUid(parentUid);
-                      navigator.clipboard.writeText("- {{query block}}\n" + getTextFromTreeToPaste(tree, 1));
-                      renderToast({
-                        id: "query-copy",
-                        content: "Copied Query",
-                        intent: Intent.PRIMARY,
-                      });
-                    }}
-                  />
+                        })
+                        .join("");
+                    };
+                    const tree = getBasicTreeByParentUid(parentUid);
+                    navigator.clipboard.writeText(
+                      "- {{query block}}\n" + getTextFromTreeToPaste(tree, 1)
+                    );
+                    renderToast({
+                      id: "query-copy",
+                      content: "Copied Query",
+                      intent: Intent.PRIMARY,
+                    });
+                  }}
+                />
               </Menu>
             )
           }
@@ -963,7 +1000,7 @@ const ResultsView: typeof window.roamjs.extension.queryBuilder.ResultsView = ({
             <p className="px-2 py-3 flex justify-between items-center mb-0">
               <i>No Results Found</i>
             </p>
-            <div style={{ background: "#eeeeee80"}}>
+            <div style={{ background: "#eeeeee80" }}>
               <div
                 className="flex justify-between items-center"
                 style={{

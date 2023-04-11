@@ -1,8 +1,5 @@
-import React, { useMemo, useState } from "react";
-import {
-  ExportDialogComponent,
-  Result,
-} from "roamjs-components/types/query-builder";
+import React, { useMemo } from "react";
+import { Result } from "roamjs-components/types/query-builder";
 import getExportTypes from "../utils/getExportTypes";
 // TODO POST MIGRATE - merge with ./Export.tsx
 import { ExportDialog as QBExportDialog } from "./Export";

@@ -1,4 +1,4 @@
-import { Condition, QBClauseData } from "roamjs-components/types/query-builder";
+import { Condition, QBClauseData } from "./types";
 
 const getQBClauses = (cs: Condition[]): QBClauseData[] =>
   cs.flatMap((c) => {

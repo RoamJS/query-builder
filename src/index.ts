@@ -31,6 +31,7 @@ import initializeDiscourseGraphsMode, {
 import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -419,13 +420,21 @@ export default runExtension({
       delayArgs: true,
       help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result\n3. (Optional) The number of results returned",
       handler:
-        ({ proccessBlockText, variables }) =>
+        ({ proccessBlockText, variables, processBlock }) =>
         (arg, ...args) => {
           const lastArg = args[args.length - 1];
           const lastArgIsLimitArg = !Number.isNaN(Number(lastArg));
-          const { format, limit } = lastArgIsLimitArg
+          const { format: formatArg, limit } = lastArgIsLimitArg
             ? { format: args.slice(0, -1).join(","), limit: Number(lastArg) }
             : { format: args.join(","), limit: 0 };
+          const formatFromUid = getTextByBlockUid(formatArg);
+          const format = formatFromUid
+            ? {
+                text: formatFromUid,
+                children: getBasicTreeByParentUid(formatArg),
+                uid: formatArg,
+              }
+            : { text: formatArg, children: [], uid: "" };
           const queryRef = variables[arg] || arg;
           const aliasOrPage = window.roamAlphaAPI.data.fast
             .q(
@@ -445,22 +454,34 @@ export default runExtension({
             return results
               .map((r) =>
                 Object.fromEntries(
-                  Object.entries(r).map(([k, v]) => [k.toLowerCase(), v])
+                  Object.entries(r).map(([k, v]) => [
+                    k.toLowerCase(),
+                    typeof v === "string"
+                      ? v
+                      : typeof v === "number"
+                      ? v.toString()
+                      : v instanceof Date
+                      ? window.roamAlphaAPI.util.dateToPageTitle(v)
+                      : "",
+                  ])
                 )
               )
-              .map((r) =>
-                format.replace(/{([^}]+)}/g, (_, i: string) => {
-                  const value = r[i.toLowerCase()];
-                  return typeof value === "string"
-                    ? value
-                    : typeof value === "number"
-                    ? value.toString()
-                    : value instanceof Date
-                    ? window.roamAlphaAPI.util.dateToPageTitle(value)
-                    : "";
-                })
-              )
-              .map((s) => () => proccessBlockText(s))
+              .map((r) => {
+                if (processBlock) {
+                  return () => {
+                    Object.entries(r).forEach(([k, v]) => {
+                      variables[k] = v;
+                    });
+                    return processBlock(format);
+                  };
+                }
+
+                const s = format.text.replace(
+                  /{([^}]+)}/g,
+                  (_, i: string) => r[i.toLowerCase()]
+                );
+                return () => proccessBlockText(s);
+              })
               .reduce(
                 (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
                 Promise.resolve([] as InputTextNode[])
