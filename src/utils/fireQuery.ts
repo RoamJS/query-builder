@@ -606,7 +606,7 @@ const fireQuery: FireQuery = async (args) => {
   try {
     if (getNodeEnv() === "development") {
       console.log("Query to Roam:");
-      console.log(query);
+      console.log(query, ...inputs);
     }
     return args.isBackendEnabled && backendToken
       ? apiPost<{ result: PullBlock[][] }>({

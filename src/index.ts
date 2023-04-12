@@ -32,6 +32,7 @@ import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -432,12 +433,12 @@ export default runExtension({
                 limit: Number(lastArg),
               }
             : { format: regularArgs.join(","), limit: 0 };
-          const formatFromUid = getTextByBlockUid(formatArg);
-          const format = formatFromUid
+          const formatArgAsUid = extractRef(formatArg);
+          const format = isLiveBlock(formatArgAsUid)
             ? {
-                text: formatFromUid,
-                children: getBasicTreeByParentUid(formatArg),
-                uid: formatArg,
+                text: getTextByBlockUid(formatArgAsUid),
+                children: getBasicTreeByParentUid(formatArgAsUid),
+                uid: formatArgAsUid,
               }
             : { text: formatArg, children: [], uid: "" };
           const queryRef = variables[arg] || arg;
@@ -458,7 +459,9 @@ export default runExtension({
             parentUid,
             extensionAPI,
             inputs: Object.fromEntries(
-              inputArgs.map((i) => i.split("=").slice(0, 2) as [string, string])
+              inputArgs
+                .map((i) => i.split("=").slice(0, 2) as [string, string])
+                .map(([k, v]) => [k, variables[v] || v])
             ),
           }).then(({ allResults }) => {
             const results = limit ? allResults.slice(0, limit) : allResults;
@@ -477,21 +480,24 @@ export default runExtension({
                   ])
                 )
               )
-              .map((r) => {
+              .flatMap((r) => {
                 if (processBlock && format.uid) {
-                  return () => {
+                  const blockFormatter = (node: InputTextNode) => () => {
                     Object.entries(r).forEach(([k, v]) => {
                       variables[k] = v;
                     });
-                    return processBlock(format);
+                    return processBlock(node);
                   };
+                  return format.text
+                    ? blockFormatter(format)
+                    : format.children.map(blockFormatter);
                 }
 
                 const s = format.text.replace(
                   /{([^}]+)}/g,
                   (_, i: string) => r[i.toLowerCase()]
                 );
-                return () => proccessBlockText(s);
+                return [() => proccessBlockText(s)];
               })
               .reduce(
                 (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
