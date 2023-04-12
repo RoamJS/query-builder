@@ -10,3 +10,5 @@ extension.css
 report.html
 stats.json
 analyze.txt
+*.woff2
+*.woff

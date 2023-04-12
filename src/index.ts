@@ -33,10 +33,13 @@ import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
+import { renderTldrawCanvas } from "./components/TldrawCanvas";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
+
+const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
 
 export default runExtension({
   migratedTo: loadedElsewhere ? undefined : "Query Builder",
@@ -129,6 +132,14 @@ export default runExtension({
 .roamjs-view-select > span {
   width: 100%;
 }`);
+    const isCanvasPage = (title: string) => {
+      const canvasPageFormat =
+        (extensionAPI.settings.get("canvas-page-format") as string) ||
+        DEFAULT_CANVAS_PAGE_FORMAT;
+      return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(
+        title
+      );
+    };
     const h1ObserverCallback = (h1: HTMLHeadingElement) => {
       const title = getPageTitleValueByHtmlElement(h1);
       if (!!extensionAPI.settings.get("show-page-metadata")) {
@@ -187,6 +198,8 @@ export default runExtension({
         !!h1.closest(".roam-article")
       ) {
         renderPlayground(title, globalRefs);
+      } else if (isCanvasPage(title)) {
+        renderTldrawCanvas(title, globalRefs);
       }
     };
     extensionAPI.settings.panel.create({
@@ -281,6 +294,15 @@ export default runExtension({
             "Show page metadata below each page title, such as the author and when it was created.",
           action: {
             type: "switch",
+          },
+        },
+        {
+          id: "canvas-page-format",
+          name: "Canvas Page Format",
+          description: "The page format for canvas pages",
+          action: {
+            type: "input",
+            placeholder: DEFAULT_CANVAS_PAGE_FORMAT,
           },
         },
         {
