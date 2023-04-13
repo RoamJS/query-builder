@@ -32,6 +32,7 @@ import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -422,17 +423,22 @@ export default runExtension({
       handler:
         ({ proccessBlockText, variables, processBlock }) =>
         (arg, ...args) => {
-          const lastArg = args[args.length - 1];
+          const inputArgs = args.filter((a) => a.includes("="));
+          const regularArgs = args.filter((a) => !a.includes("="));
+          const lastArg = regularArgs[regularArgs.length - 1];
           const lastArgIsLimitArg = !Number.isNaN(Number(lastArg));
           const { format: formatArg, limit } = lastArgIsLimitArg
-            ? { format: args.slice(0, -1).join(","), limit: Number(lastArg) }
-            : { format: args.join(","), limit: 0 };
-          const formatFromUid = getTextByBlockUid(formatArg);
-          const format = formatFromUid
             ? {
-                text: formatFromUid,
-                children: getBasicTreeByParentUid(formatArg),
-                uid: formatArg,
+                format: regularArgs.slice(0, -1).join(","),
+                limit: Number(lastArg),
+              }
+            : { format: regularArgs.join(","), limit: 0 };
+          const formatArgAsUid = extractRef(formatArg);
+          const format = isLiveBlock(formatArgAsUid)
+            ? {
+                text: getTextByBlockUid(formatArgAsUid),
+                children: getBasicTreeByParentUid(formatArgAsUid),
+                uid: formatArgAsUid,
               }
             : { text: formatArg, children: [], uid: "" };
           const queryRef = variables[arg] || arg;
@@ -449,7 +455,15 @@ export default runExtension({
             )[0]
             ?.toString();
           const parentUid = aliasOrPage || extractRef(queryRef);
-          return runQuery(parentUid, extensionAPI).then(({ allResults }) => {
+          return runQuery({
+            parentUid,
+            extensionAPI,
+            inputs: Object.fromEntries(
+              inputArgs
+                .map((i) => i.split("=").slice(0, 2) as [string, string])
+                .map(([k, v]) => [k, variables[v] || v])
+            ),
+          }).then(({ allResults }) => {
             const results = limit ? allResults.slice(0, limit) : allResults;
             return results
               .map((r) =>
@@ -466,21 +480,24 @@ export default runExtension({
                   ])
                 )
               )
-              .map((r) => {
-                if (processBlock) {
-                  return () => {
+              .flatMap((r) => {
+                if (processBlock && format.uid) {
+                  const blockFormatter = (node: InputTextNode) => () => {
                     Object.entries(r).forEach(([k, v]) => {
                       variables[k] = v;
                     });
-                    return processBlock(format);
+                    return processBlock(node);
                   };
+                  return format.text
+                    ? blockFormatter(format)
+                    : format.children.map(blockFormatter);
                 }
 
                 const s = format.text.replace(
                   /{([^}]+)}/g,
                   (_, i: string) => r[i.toLowerCase()]
                 );
-                return () => proccessBlockText(s);
+                return [() => proccessBlockText(s)];
               })
               .reduce(
                 (prev, cur) => prev.then((p) => cur().then((c) => p.concat(c))),
@@ -493,7 +510,9 @@ export default runExtension({
     // @ts-ignore
     window.roamjs.extension.queryBuilder = {
       runQuery: (parentUid: string) =>
-        runQuery(parentUid, extensionAPI).then(({ allResults }) => allResults),
+        runQuery({ parentUid, extensionAPI }).then(
+          ({ allResults }) => allResults
+        ),
       listActiveQueries: () =>
         (
           window.roamAlphaAPI.data.fast.q(

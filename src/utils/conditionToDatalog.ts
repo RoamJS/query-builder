@@ -7,19 +7,9 @@ import endOfDay from "date-fns/endOfDay";
 import type { DatalogClause, PullBlock } from "roamjs-components/types";
 import { Condition } from "./types";
 
-type RegisterDatalogTranslator = (args: {
-  key: string;
-  callback: (args: {
-    source: string;
-    target: string;
-    uid: string;
-  }) => DatalogClause[];
-  targetOptions?: string[] | ((source: string) => string[]);
-  placeholder?: string;
-  isVariable?: true;
-}) => void;
-
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
+
+const INPUT_REGEX = /^:in /;
 
 const getTitleDatalog = ({
   source,
@@ -111,6 +101,18 @@ const getTitleDatalog = ({
         arguments: [
           { type: "variable", value: `${target}-regex` },
           { type: "variable", value: `${source}-Title` },
+        ],
+      },
+    ];
+  }
+  if (INPUT_REGEX.test(target)) {
+    return [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":node/title" },
+          { type: "variable", value: target.replace(INPUT_REGEX, "") },
         ],
       },
     ];
@@ -535,51 +537,119 @@ const translator: Record<string, Translator> = {
     placeholder: "Enter any natural language date value",
   },
   "titled before": {
-    callback: ({ source, target }) => [
-      {
+    callback: ({ source, target }) => {
+      const sourceLog: DatalogClause = {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":log/id" },
           { type: "variable", value: `${source}-Log` },
         ],
-      },
-      {
-        type: "pred-expr",
-        pred: ">",
-        arguments: [
-          {
-            type: "constant",
-            value: `${startOfDay(parseNlpDate(target)).valueOf()}`,
-          },
-          { type: "variable", value: `${source}-Log` },
-        ],
-      },
-    ],
+      };
+      return INPUT_REGEX.test(target)
+        ? [
+            sourceLog,
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${target}-Date` },
+                { type: "constant", value: ":node/title" },
+                { type: "variable", value: target.replace(INPUT_REGEX, "") },
+              ],
+            },
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${target}-Date` },
+                { type: "constant", value: ":log/id" },
+                { type: "variable", value: `${target}-Log` },
+              ],
+            },
+            {
+              type: "pred-expr",
+              pred: ">",
+              arguments: [
+                {
+                  type: "variable",
+                  value: `${target}-Log`,
+                },
+                { type: "variable", value: `${source}-Log` },
+              ],
+            },
+          ]
+        : [
+            sourceLog,
+            {
+              type: "pred-expr",
+              pred: ">",
+              arguments: [
+                {
+                  type: "constant",
+                  value: `${startOfDay(parseNlpDate(target)).valueOf()}`,
+                },
+                { type: "variable", value: `${source}-Log` },
+              ],
+            },
+          ];
+    },
     placeholder: "Enter any natural language date value",
   },
   "titled after": {
-    callback: ({ source, target }) => [
-      {
+    callback: ({ source, target }) => {
+      const sourceLog: DatalogClause = {
         type: "data-pattern",
         arguments: [
           { type: "variable", value: source },
           { type: "constant", value: ":log/id" },
           { type: "variable", value: `${source}-Log` },
         ],
-      },
-      {
-        type: "pred-expr",
-        pred: "<",
-        arguments: [
-          {
-            type: "constant",
-            value: `${endOfDay(parseNlpDate(target)).valueOf()}`,
-          },
-          { type: "variable", value: `${source}-Log` },
-        ],
-      },
-    ],
+      };
+      return INPUT_REGEX.test(target)
+        ? [
+            sourceLog,
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${target}-Date` },
+                { type: "constant", value: ":node/title" },
+                { type: "variable", value: target.replace(INPUT_REGEX, "") },
+              ],
+            },
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${target}-Date` },
+                { type: "constant", value: ":log/id" },
+                { type: "variable", value: `${target}-Log` },
+              ],
+            },
+            {
+              type: "pred-expr",
+              pred: "<",
+              arguments: [
+                {
+                  type: "variable",
+                  value: `${target}-Log`,
+                },
+                { type: "variable", value: `${source}-Log` },
+              ],
+            },
+          ]
+        : [
+            sourceLog,
+            {
+              type: "pred-expr",
+              pred: "<",
+              arguments: [
+                {
+                  type: "constant",
+                  value: `${endOfDay(parseNlpDate(target)).valueOf()}`,
+                },
+                { type: "variable", value: `${source}-Log` },
+              ],
+            },
+          ];
+    },
     placeholder: "Enter any natural language date value",
   },
 };

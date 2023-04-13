@@ -23,7 +23,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import extractTag from "roamjs-components/util/extractTag";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
-import { getDatalogQuery, getDatalogQueryComponents } from "../utils/fireQuery";
+import { getDatalogQuery } from "../utils/fireQuery";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import type { Result } from "roamjs-components/types/query-builder";
 import parseResultSettings from "../utils/parseResultSettings";
@@ -278,7 +278,7 @@ const toCellValue = (v: number | Date | string) =>
 const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
     const args = parseQuery(parentUid);
-    const datalogQuery = getDatalogQuery(getDatalogQueryComponents(args));
+    const { query: datalogQuery } = getDatalogQuery(args);
     const englishQuery = [
       `Find ${args.returnNode} Where`,
       ...(args.conditions as QBClauseData[]).map(
