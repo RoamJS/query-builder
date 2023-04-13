@@ -198,7 +198,7 @@ export default runExtension({
         !!h1.closest(".roam-article")
       ) {
         renderPlayground(title, globalRefs);
-      } else if (isCanvasPage(title)) {
+      } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
         renderTldrawCanvas(title, globalRefs);
       }
     };

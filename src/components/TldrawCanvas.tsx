@@ -1,7 +1,18 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
-import { Tldraw } from "@tldraw/tldraw";
+import { Tldraw, TDDocument, TldrawApp } from "@tldraw/tldraw";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import createBlock from "roamjs-components/writes/createBlock";
+import setInputSetting from "roamjs-components/util/setInputSetting";
+
+declare global {
+  interface Window {
+    tldrawApps: Record<string, TldrawApp>;
+  }
+}
 
 type Props = {
   title: string;
@@ -9,7 +20,29 @@ type Props = {
   globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
-const TldrawCanvas = (props: Props) => {
+const TldrawCanvas = ({ title }: Props) => {
+  const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
+  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
+  const initialDocument = useMemo<TDDocument | undefined>(() => {
+    const persisted = getSettingValueFromTree({
+      parentUid: pageUid,
+      tree,
+      key: "State",
+      defaultValue: "",
+    });
+    if (!persisted) {
+      createBlock({
+        node: { text: "State", children: [{ text: "" }] },
+        parentUid: pageUid,
+      });
+      return undefined;
+    }
+    try {
+      return JSON.parse(window.atob(persisted));
+    } catch (e) {
+      return undefined;
+    }
+  }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, _setMaximized] = useState(false);
   return (
@@ -24,7 +57,26 @@ const TldrawCanvas = (props: Props) => {
       <style>{`.roam-article .rm-block-children {
   display: none;
 }`}</style>
-      <Tldraw id={props.title} autofocus />
+      <Tldraw
+        id={title}
+        autofocus
+        document={initialDocument}
+        onMount={(app) => {
+          if (process.env.NODE_ENV !== "production") {
+            if (!window.tldrawApps)
+              window.tldrawApps = {};
+            const { tldrawApps } = window;
+            tldrawApps[title] = app;
+          }
+        }}
+        onPersist={(app) => {
+          setInputSetting({
+            blockUid: pageUid,
+            key: "State",
+            value: window.btoa(JSON.stringify(app.document)),
+          });
+        }}
+      />
     </div>
   );
 };
