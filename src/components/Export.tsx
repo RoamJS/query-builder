@@ -19,6 +19,13 @@ import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
 
+type ExportDialogComponent = (props: {
+  onClose: () => void;
+  isOpen: boolean;
+  exportTypes: ExportTypes;
+  results: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
+}) => JSX.Element;
+
 const viewTypeToPrefix = {
   bullet: "- ",
   document: "",
@@ -62,13 +69,6 @@ const toMarkdown = ({
         `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v })}`
     )
     .join("")}`;
-
-type ExportDialogComponent = (props: {
-  onClose: () => void;
-  isOpen: boolean;
-  exportTypes: ExportTypes;
-  results: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
-}) => JSX.Element;
 
 export const ExportDialog: ExportDialogComponent = ({
   onClose,

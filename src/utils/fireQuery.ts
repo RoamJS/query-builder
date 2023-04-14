@@ -8,14 +8,14 @@ import type {
 import compileDatalog from "./compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
-import apiPost from "roamjs-components/util/apiPost";
 import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
-type QueryArgs = {
+export type QueryArgs = {
   returnNode: string;
   conditions: Condition[];
   selections: Selection[];
+  inputs?: Record<string, string | number>;
 };
 
 type FireQueryArgs = QueryArgs & {
@@ -582,7 +582,11 @@ const fireQuery: FireQuery = async (_args) => {
         api.postToAppBackend<{ results: QueryResult[] }>("query", args)
       )
       .then((r) => r.results)
-      .catch(() => []);
+      .catch((e) => {
+        console.error("Error from SamePage:");
+        console.error(e.message);
+        return [];
+      });
   }
   const { query, formatResult, inputs } = isCustomEnabled
     ? {
