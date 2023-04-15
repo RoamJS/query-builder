@@ -21,4 +21,4 @@ jobs:
       - name: install
         run: npm install
       - name: build
-        run: npx roamjs-scripts build --labs
+        run: npx samepage build
