@@ -37,6 +37,8 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { ExportTypes, QBClauseData } from "../utils/types";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -424,6 +426,7 @@ const ResultsView: ResultsViewComponent = ({
   const [pageSize, setPageSize] = useState(settings.pageSize);
   const pageSizeTimeoutRef = useRef(0);
   const [views, setViews] = useState(settings.views);
+  const [searchFilter, setSearchFilter] = useState("");
 
   const preProcessedResults = useMemo(
     () => (resultFilter ? results.filter(resultFilter) : results),
@@ -436,8 +439,17 @@ const ResultsView: ResultsViewComponent = ({
       random: random.count,
       page,
       pageSize,
+      searchFilter,
     });
-  }, [preProcessedResults, activeSort, filters, page, pageSize, random.count]);
+  }, [
+    preProcessedResults,
+    activeSort,
+    filters,
+    page,
+    pageSize,
+    random.count,
+    searchFilter,
+  ]);
 
   const [showContent, setShowContent] = useState(false);
   useEffect(() => {
@@ -449,6 +461,7 @@ const ResultsView: ResultsViewComponent = ({
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
+  const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
@@ -482,11 +495,54 @@ const ResultsView: ResultsViewComponent = ({
         })
       );
   };
+  const debounceRef = useRef(0);
   return (
     <div
       className="roamjs-query-results-view w-full relative"
       ref={containerRef}
     >
+      {isEditSearchFilter && (
+        <div
+          className="flex flex-row items-center p-4 w-full pr-24"
+          style={{
+            background: "#eeeeee80",
+          }}
+        >
+          <InputGroup
+            fill={true}
+            placeholder="Search"
+            onChange={(e) => {
+              window.clearTimeout(debounceRef.current);
+              setSearchFilter(e.target.value);
+              if (preventSavingSettings) return;
+              const resultNode = getSubTree({
+                key: "results",
+                parentUid,
+              });
+              const searchFilterNode = getSubTree({
+                key: "searchFilter",
+                parentUid: resultNode.uid,
+              });
+              debounceRef.current = window.setTimeout(() => {
+                const searchFilter = getFirstChildUidByBlockUid(
+                  searchFilterNode.uid
+                );
+                if (searchFilter)
+                  updateBlock({
+                    uid: searchFilter,
+                    text: e.target.value,
+                  });
+                else
+                  createBlock({
+                    parentUid: searchFilterNode.uid,
+                    node: { text: e.target.value },
+                  });
+              }, 1000);
+            }}
+            defaultValue={settings.searchFilter}
+          />
+        </div>
+      )}
       <Export
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
@@ -723,6 +779,14 @@ const ResultsView: ResultsViewComponent = ({
                     }}
                   />
                 )}
+                <MenuItem
+                  icon={"search"}
+                  text={"Search"}
+                  onClick={() => {
+                    setMoreMenuOpen(false);
+                    setIsEditSearchFilter((prevState) => !prevState);
+                  }}
+                />
                 <MenuItem
                   icon={"clipboard"}
                   text={"Copy Query"}

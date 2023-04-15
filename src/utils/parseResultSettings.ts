@@ -66,6 +66,14 @@ const parseResultSettings = (
   const resultNode = getSubTree({ tree, key: "results" });
   const sortsNode = getSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = getSubTree({ tree: resultNode.children, key: "filters" });
+  const searchFilterNode = getSubTree({
+    tree: resultNode.children,
+    key: "searchFilter",
+  });
+  const searchFilter = searchFilterNode.children[0]?.text;
+  console.log("parseResultsSettings searchFilterNode", searchFilterNode);
+  console.log("parseResultsSettings searchFilter", searchFilter);
+
   const filterEntries = getFilterEntries(filtersNode);
   const savedFilterData = filterEntries.length
     ? Object.fromEntries(filterEntries)
@@ -96,6 +104,7 @@ const parseResultSettings = (
       key: s.text,
       descending: toFlexRegex("true").test(s.children[0]?.text || ""),
     })),
+    searchFilter,
     filters: Object.fromEntries(
       columns.map((key) => [
         key,

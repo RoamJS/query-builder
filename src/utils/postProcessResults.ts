@@ -36,6 +36,9 @@ const postProcessResults = (
   results: Result[],
   settings: Omit<ReturnType<typeof parseResultSettings>, "views" | "layout">
 ) => {
+  console.log("settings", settings);
+  console.log("settings searchFilter", settings.searchFilter);
+
   const sortedResults = results
     .filter((r) => {
       return Object.keys(settings.filters).every((filterKey) => {
@@ -61,6 +64,15 @@ const postProcessResults = (
           includeValues.has(r[filterKey] as string)
         );
       });
+    })
+    .filter((r) => {
+      return settings.searchFilter
+        ? Object.values(r).some((value) =>
+            String(value)
+              .toLowerCase()
+              .includes(settings.searchFilter.toLowerCase())
+          )
+        : true;
     })
     .sort((a, b) => {
       for (const sort of settings.activeSort) {
