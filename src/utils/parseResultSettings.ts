@@ -31,11 +31,11 @@ const getFilterEntries = (
     },
   ]);
 
-const getSettings = (extensionAPI: OnloadArgs["extensionAPI"]) => {
+const getSettings = (extensionAPI?: OnloadArgs["extensionAPI"]) => {
   return {
     globalFiltersData: Object.fromEntries(
       Object.entries(
-        (extensionAPI.settings.get("default-filters") as Record<
+        (extensionAPI?.settings.get("default-filters") as Record<
           string,
           StoredFilters
         >) || {}
@@ -52,14 +52,14 @@ const getSettings = (extensionAPI: OnloadArgs["extensionAPI"]) => {
       ])
     ),
     globalPageSize:
-      Number(extensionAPI.settings.get("default-page-size")) || 10,
+      Number(extensionAPI?.settings.get("default-page-size")) || 10,
   };
 };
 
 const parseResultSettings = (
   parentUid: string,
   columns: string[],
-  extensionAPI: OnloadArgs["extensionAPI"]
+  extensionAPI?: OnloadArgs["extensionAPI"]
 ) => {
   const { globalFiltersData, globalPageSize } = getSettings(extensionAPI);
   const tree = getBasicTreeByParentUid(parentUid);

@@ -1,7 +1,10 @@
 import { Drawer, Position, Classes } from "@blueprintjs/core";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-const getPixelValue = (el: HTMLElement, field: "width" | "paddingLeft") =>
+const getPixelValue = (
+  el: HTMLElement | null,
+  field: "width" | "paddingLeft"
+) =>
   el ? Number((getComputedStyle(el)[field] || "0px").replace(/px$/, "")) : 0;
 
 const ResizableDrawer = ({
@@ -28,10 +31,11 @@ const ResizableDrawer = ({
   }, [calculateWidth]);
   const onMouseMove = useCallback(
     (e: MouseEvent) => {
-      drawerRef.current.parentElement.style.width = `${Math.max(
-        e.clientX,
-        100
-      )}px`;
+      if (drawerRef.current?.parentElement)
+        drawerRef.current.parentElement.style.width = `${Math.max(
+          e.clientX,
+          100
+        )}px`;
       calculateWidth();
     },
     [calculateWidth, drawerRef]

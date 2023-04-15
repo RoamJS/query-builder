@@ -22,8 +22,8 @@ import { Result } from "roamjs-components/types/query-builder";
 type ExportDialogComponent = (props: {
   onClose: () => void;
   isOpen: boolean;
-  exportTypes: ExportTypes;
-  results: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
+  exportTypes?: ExportTypes;
+  results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
 }) => JSX.Element;
 
 const viewTypeToPrefix = {
@@ -152,9 +152,9 @@ export const ExportDialog: ExportDialogComponent = ({
   useEffect(() => {
     const body = document.querySelector(".roamjs-export-dialog-body");
     if (body) {
-      const listener: EventListener = (e: CustomEvent) => {
+      const listener = ((e: CustomEvent) => {
         setLoadingProgress(e.detail.progress);
-      };
+      }) as EventListener;
       body.addEventListener("roamjs:loading:progress", listener);
       return () =>
         body.removeEventListener("roamjs:loading:progress", listener);
@@ -218,7 +218,11 @@ export const ExportDialog: ExportDialogComponent = ({
               setIsSamePageEnabled((e.target as HTMLInputElement).checked)
             }
             labelElement={
-              <img src="https://samepage.network/images/logo.png" height={24} width={24} />
+              <img
+                src="https://samepage.network/images/logo.png"
+                height={24}
+                width={24}
+              />
             }
           />
         )}
@@ -239,7 +243,7 @@ export const ExportDialog: ExportDialogComponent = ({
                   const exportType = exportTypes.find(
                     (e) => e.name === activeExportType
                   );
-                  if (exportType) {
+                  if (exportType && window.RoamLazy) {
                     const zip = await window.RoamLazy.JSZip().then(
                       (j) => new j()
                     );
@@ -262,7 +266,7 @@ export const ExportDialog: ExportDialogComponent = ({
                   }
                 } catch (e) {
                   console.error(e);
-                  setError(e.message);
+                  setError((e as Error).message);
                   setLoading(false);
                   setLoadingProgress(0);
                 }

@@ -46,9 +46,10 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
   const onSelect = useCallback(
     (index) => {
       const menuItem =
-        menuRef.current.children[index].querySelector(".bp3-menu-item");
-      const format = menuItem.getAttribute("data-format");
-      const nodeUid = menuItem.getAttribute("data-node");
+        menuRef.current?.children[index].querySelector(".bp3-menu-item");
+      if (!menuItem) return;
+      const format = menuItem.getAttribute("data-format") || "";
+      const nodeUid = menuItem.getAttribute("data-node") || "";
       const highlighted = textarea.value.substring(
         textarea.selectionStart,
         textarea.selectionEnd
@@ -112,7 +113,7 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
                   const sidebarTitle = document.querySelector(
                     ".rm-sidebar-outline .rm-title-display"
                   );
-                  sidebarTitle.dispatchEvent(
+                  sidebarTitle?.dispatchEvent(
                     new MouseEvent("mousedown", { bubbles: true })
                   );
                   setTimeout(() => {
@@ -133,15 +134,21 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
   const keydownListener = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        const index = Number(menuRef.current.getAttribute("data-active-index"));
-        const count = menuRef.current.childElementCount;
+        const index = Number(
+          menuRef.current?.getAttribute("data-active-index")
+        );
+        const count = menuRef.current?.childElementCount || 0;
         setActiveIndex((index + 1) % count);
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        const index = Number(menuRef.current.getAttribute("data-active-index"));
-        const count = menuRef.current.childElementCount;
+        const index = Number(
+          menuRef.current?.getAttribute("data-active-index")
+        );
+        const count = menuRef.current?.childElementCount || 0;
         setActiveIndex((index - 1 + count) % count);
       } else if (e.key === "Enter") {
-        const index = Number(menuRef.current.getAttribute("data-active-index"));
+        const index = Number(
+          menuRef.current?.getAttribute("data-active-index")
+        );
         onSelect(index);
       } else if (shortcuts.has(e.key.toUpperCase())) {
         onSelect(indexBySC[e.key.toUpperCase()]);
@@ -202,7 +209,7 @@ export const render = (props: Props) => {
   parent.style.position = "absolute";
   parent.style.left = `${coords.left}px`;
   parent.style.top = `${coords.top}px`;
-  props.textarea.parentElement.insertBefore(parent, props.textarea);
+  props.textarea.parentElement?.insertBefore(parent, props.textarea);
   ReactDOM.render(
     <NodeMenu
       {...props}

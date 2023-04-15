@@ -26,13 +26,13 @@ export const getEditTimeByTitle = (title: string): number => {
       '\\"'
     )}"]]`
   )[0][0] as RoamBlock;
-  return result?.time;
+  return result?.time || 0;
 };
 
 export const getWordCount = (str = ""): number =>
   str.trim().split(/\s+/).length;
 
-const getWordCountByBlockId = (blockId: number): number => {
+const getWordCountByBlockId = (blockId = 0): number => {
   const block = window.roamAlphaAPI.pull(
     "[:block/children, :block/string]",
     blockId
@@ -93,28 +93,30 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
       refsInView.forEach((r) => refContainer.removeChild(r));
       if (isSortByBlocks) {
         const blocksInView = refsInView.flatMap((r) =>
-          Array.from(r.lastElementChild.children).filter(
+          Array.from(r.lastElementChild?.children || []).filter(
             (c) => (c as HTMLDivElement).style.display !== "none"
           ).length === 1
             ? [r]
-            : Array.from(r.lastElementChild.children).map((c) => {
+            : Array.from(r.lastElementChild?.children || []).map((c) => {
                 const refClone = r.cloneNode(true) as HTMLDivElement;
-                Array.from(refClone.lastElementChild.children).forEach((cc) => {
-                  const ccDiv = cc as HTMLDivElement;
-                  if (
-                    cc.getElementsByClassName("roam-block")[0]?.id ===
-                    c.getElementsByClassName("roam-block")[0]?.id
-                  ) {
-                    ccDiv.style.display = "flex";
-                  } else {
-                    ccDiv.style.display = "none";
+                Array.from(refClone.lastElementChild?.children || []).forEach(
+                  (cc) => {
+                    const ccDiv = cc as HTMLDivElement;
+                    if (
+                      cc.getElementsByClassName("roam-block")[0]?.id ===
+                      c.getElementsByClassName("roam-block")[0]?.id
+                    ) {
+                      ccDiv.style.display = "flex";
+                    } else {
+                      ccDiv.style.display = "none";
+                    }
                   }
-                });
+                );
                 return refClone;
               })
         );
         const getRoamBlock = (e: Element) =>
-          Array.from(e.lastElementChild.children)
+          Array.from(e.lastElementChild?.children || [])
             .filter((c) => (c as HTMLDivElement).style.display != "none")[0]
             .getElementsByClassName("roam-block")[0] as HTMLDivElement;
         blocksInView.sort((a, b) => {
@@ -131,7 +133,7 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
           const bTitle = (b.getElementsByClassName(
             "rm-ref-page-view-title"
           )[0] || b.querySelector(".rm-zoom-item-content")) as HTMLDivElement;
-          return sortBy(aTitle.textContent, bTitle.textContent);
+          return sortBy(aTitle.textContent || "", bTitle.textContent || "");
         });
         refsInView.forEach((r) => refContainer.appendChild(r));
       }
@@ -252,19 +254,19 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
     const selected = allChildren
       .sort(() => 0.5 - Math.random())
       .slice(0, numRandomResults);
-    Array.from(refsByPageView.children).forEach((c: HTMLElement) => {
+    Array.from(refsByPageView?.children || []).forEach((c: Element) => {
       if (selected.find((s) => c.contains(s))) {
         const itemContainer = c.lastElementChild;
-        Array.from(itemContainer.children).forEach((cc: HTMLElement) => {
+        Array.from(itemContainer?.children || []).forEach((cc: Element) => {
           if (selected.find((s) => cc.contains(s))) {
-            cc.style.display = "flex";
-            c.style.display = "block";
+            (cc as HTMLDivElement).style.display = "flex";
+            (c as HTMLDivElement).style.display = "block";
           } else {
-            cc.style.display = "none";
+            (cc as HTMLDivElement).style.display = "none";
           }
         });
       } else {
-        c.style.display = "none";
+        (c as HTMLDivElement).style.display = "none";
       }
     });
   };
@@ -335,7 +337,7 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
         sortCallback();
         aMenuItem.style.fontWeight = "600";
         if (selectedMenuItem) {
-          selectedMenuItem.style.fontWeight = null;
+          selectedMenuItem.style.fontWeight = "";
         }
         selectedMenuItem = aMenuItem;
         e.stopImmediatePropagation();
@@ -470,7 +472,7 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
         );
         const configContext =
           getSettingValueFromTree({ tree: config, key: "Context" }) ||
-          extensionAPI.settings.get("context") as string;
+          (extensionAPI.settings.get("context") as string);
         if (configContext) {
           q.setAttribute("data-is-contexted-results", "true");
           const context = Number.isNaN(configContext)

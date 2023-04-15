@@ -10,7 +10,8 @@ const sortFunction =
     const transform = (_val: Result[string]) =>
       typeof _val === "string"
         ? DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_val))
-          ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val))
+          ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val)) ||
+            new Date()
           : /^(-)?\d+(\.\d*)?$/.test(_val)
           ? Number(_val)
           : _val

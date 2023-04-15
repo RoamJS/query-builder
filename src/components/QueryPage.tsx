@@ -73,7 +73,7 @@ const QueryPage = ({
 }: Props) => {
   const extensionAPI = useExtensionAPI();
   const hideMetadata = useMemo(
-    () => !!extensionAPI.settings.get("hide-metadata"),
+    () => !!extensionAPI && !!extensionAPI.settings.get("hide-metadata"),
     [extensionAPI]
   );
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -150,7 +150,7 @@ const QueryPage = ({
     }
   }, [isEdit, onRefresh]);
   useEffect(() => {
-    const roamBlock = containerRef.current.closest(".rm-block-main");
+    const roamBlock = containerRef.current?.closest(".rm-block-main");
     if (roamBlock) {
       const sep = roamBlock.querySelector<HTMLDivElement>(
         ".rm-block-separator"
@@ -162,15 +162,16 @@ const QueryPage = ({
   }, []);
   useEffect(() => {
     const main =
-      containerRef.current.closest(".rm-block-main") ||
-      containerRef.current.closest(".roamjs-query-page")?.parentElement;
+      containerRef.current?.closest(".rm-block-main") ||
+      containerRef.current?.closest(".roamjs-query-page")?.parentElement;
     if (
+      main &&
       main.nextElementSibling &&
       main.nextElementSibling.classList.contains("rm-block-children")
     ) {
       main.nextElementSibling.classList.add("roamjs-query-builder-metadata");
     }
-    const container = containerRef.current.closest<HTMLDivElement>(
+    const container = containerRef.current?.closest<HTMLDivElement>(
       "div.roamjs-query-builder-parent"
     );
     if (container) {

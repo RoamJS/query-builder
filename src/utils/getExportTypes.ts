@@ -32,7 +32,7 @@ const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   props: { imageResize: {}, iframe: {} },
   textAlign: n[":block/text-align"] || "left",
   children: ((n[":block/children"] || []) as PullBlock[])
-    .sort(({ [":block/order"]: a }, { [":block/order"]: b }) => a - b)
+    .sort(({ [":block/order"]: a = 0 }, { [":block/order"]: b = 0 }) => a - b)
     .map((r) => pullBlockToTreeNode(r, n[":children/view-type"] || v)),
   parents: (n[":block/parents"] || []).map((p) => p[":db/id"]),
 });
@@ -59,13 +59,13 @@ const getContentFromNodes = ({
 };
 
 const getFilename = ({
-  title,
+  title = "",
   maxFilenameLength,
   simplifiedFilename,
   allNodes,
   removeSpecialCharacters,
 }: {
-  title: string;
+  title?: string;
   maxFilenameLength: number;
   simplifiedFilename: boolean;
   allNodes: ReturnType<typeof getDiscourseNodes>;
@@ -88,7 +88,7 @@ const getFilename = ({
     : name;
 };
 
-const uniqJsonArray = <T extends unknown>(arr: T[]) =>
+const uniqJsonArray = <T extends Record<string, unknown>>(arr: T[]) =>
   Array.from(
     new Set(
       arr.map((r) =>
@@ -205,7 +205,9 @@ const getExportTypes = ({
     isSamePageEnabled: boolean
   ): Promise<(Result & { type: string })[]> => {
     const allResults =
-      typeof results === "function" ? await results(isSamePageEnabled) : results;
+      typeof results === "function"
+        ? await results(isSamePageEnabled)
+        : results;
     return allNodes.flatMap((n) =>
       (allResults
         ? allResults.flatMap((r) =>
@@ -221,14 +223,14 @@ const getExportTypes = ({
                 uid: r.uid,
               })
           )
-        : window.roamAlphaAPI
-            .q(
+        : (
+            window.roamAlphaAPI.q(
               "[:find (pull ?e [:block/uid :node/title]) :where [?e :node/title _]]"
-            )
-            .map(([{ title, uid }]: [Record<string, string>]) => ({
-              text: title,
-              uid,
-            }))
+            ) as [Record<string, string>][]
+          ).map(([{ title, uid }]) => ({
+            text: title,
+            uid,
+          }))
       )
         .filter(({ text }) => matchDiscourseNode({ title: text, ...n }))
         .map((node) => ({ ...node, type: n.text }))
@@ -283,17 +285,19 @@ const getExportTypes = ({
       destination: nodeLabelByType[destination],
       source: nodeLabelByType[source],
     }));
-    const nodes = (await getPageData(isSamePageEnabled)).map(({ text, uid }) => {
-      const { date, displayName } = getPageMetadata(text);
-      const { children } = getFullTreeByParentUid(uid);
-      return {
-        uid,
-        title: text,
-        children,
-        date: date.toJSON(),
-        createdBy: displayName,
-      };
-    });
+    const nodes = (await getPageData(isSamePageEnabled)).map(
+      ({ text, uid }) => {
+        const { date, displayName } = getPageMetadata(text);
+        const { children } = getFullTreeByParentUid(uid);
+        return {
+          uid,
+          title: text,
+          children,
+          date: date.toJSON(),
+          createdBy: displayName,
+        };
+      }
+    );
     const nodeSet = new Set(nodes.map((n) => n.uid));
     return getRelationData(isSamePageEnabled).then((rels) => {
       const relations = uniqJsonArray(
@@ -509,22 +513,6 @@ const getExportTypes = ({
             content: JSON.stringify(data),
           },
         ];
-      },
-    },
-    {
-      name: "graph",
-      callback: async ({ filename, graph, isSamePageEnabled }) => {
-        const data = await getJsonData(isSamePageEnabled);
-        const { sendToNotebook } = await getSamePageApi();
-        sendToNotebook({
-          operation: "IMPORT_DISCOURSE_GRAPH",
-          data: {
-            ...data,
-            title: filename,
-          },
-          target: { app: 1, workspace: graph },
-        });
-        return [];
       },
     },
     {

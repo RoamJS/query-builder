@@ -5,12 +5,14 @@ import type { PullBlock } from "roamjs-components/types/native";
 type Props = { title: string };
 
 const Content = ({ title, uid }: { title: string; uid: string }) => {
-  const sectionRef = useRef();
+  const sectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    window.roamAlphaAPI.ui.components.renderBlock({
-      el: sectionRef.current,
-      uid,
-    });
+    const el = sectionRef.current;
+    if (el)
+      window.roamAlphaAPI.ui.components.renderBlock({
+        el,
+        uid,
+      });
   }, [uid]);
   return (
     <div>
@@ -40,7 +42,7 @@ const ContextContent = ({ title }: Props) => {
   return (
     <>
       {queryResults.map(
-        ([{ [":node/title"]: title }, { [":block/uid"]: uid }]) => (
+        ([{ [":node/title"]: title = "" }, { [":block/uid"]: uid = "" }]) => (
           <Content title={title} uid={uid} />
         )
       )}

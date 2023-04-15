@@ -9,15 +9,17 @@ import getDiscourseRelations from "./getDiscourseRelations";
 
 export const ANY_RELATION_REGEX = /Has Any Relation To/i;
 
-const evaluate = (s: string) =>
-  window.RoamLazy.Insect().then((insect) =>
-    Number(insect.repl(insect.fmtPlain)(insect.initialEnvironment)(s).msg)
-  );
+const evaluate = async (s: string) =>
+  window.RoamLazy
+    ? window.RoamLazy.Insect().then((insect) =>
+        Number(insect.repl(insect.fmtPlain)(insect.initialEnvironment)(s).msg)
+      )
+    : 0;
 
 const getRelatedResults = ({
   uid,
   nodes,
-  relations,
+  relations = [],
   relationLabel,
   target,
 }: Parameters<typeof getDiscourseContextResults>[0] & {
@@ -94,7 +96,7 @@ const deriveNodeAttribute = async ({
             .then((results) =>
               Promise.all(
                 results.map((r) =>
-                  deriveNodeAttribute({ attribute: args[2], uid: r.uid })
+                  deriveNodeAttribute({ attribute: args[2], uid: r.uid || "" })
                 )
               )
             )
@@ -112,7 +114,7 @@ const deriveNodeAttribute = async ({
             .then((results) =>
               Promise.all(
                 results.map((r) =>
-                  deriveNodeAttribute({ attribute: args[2], uid: r.uid })
+                  deriveNodeAttribute({ attribute: args[2], uid: r.uid || "" })
                 )
               )
             )
@@ -124,9 +126,9 @@ const deriveNodeAttribute = async ({
         : "0";
     const postOp = `${postProcess.slice(
       0,
-      match.index + totalOffset
+      (match.index || 0) + totalOffset
     )}${value}${postProcess.slice(
-      match.index + match[0].length + totalOffset
+      (match.index || 0) + match[0].length + totalOffset
     )}`;
     totalOffset = totalOffset + postOp.length - postProcess.length;
     postProcess = postOp;

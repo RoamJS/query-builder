@@ -31,7 +31,7 @@ const ImportDialog = ({ onClose }: { onClose: () => void }) => {
           text="Choose file..."
           onInputChange={(e) => {
             setValue((e.target as HTMLInputElement).value);
-            setFile((e.target as HTMLInputElement).files[0]);
+            setFile((e.target as HTMLInputElement).files?.[0]);
           }}
           inputProps={{
             accept: "application/json",
@@ -53,7 +53,7 @@ const ImportDialog = ({ onClose }: { onClose: () => void }) => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                   importDiscourseGraph({
-                    ...JSON.parse(event.target.result as string),
+                    ...JSON.parse(event.target?.result as string),
                     title,
                   })
                     .then(() => {
@@ -68,7 +68,7 @@ const ImportDialog = ({ onClose }: { onClose: () => void }) => {
                     })
                     .then(onClose);
                 };
-                reader.readAsText(file);
+                if (file) reader.readAsText(file);
               }, 1);
             }}
           />

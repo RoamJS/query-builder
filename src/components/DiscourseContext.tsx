@@ -20,12 +20,10 @@ import { Result } from "roamjs-components/types/query-builder";
 import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import ResultsView from "./ResultsView";
-import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
-import { OnloadArgs } from "roamjs-components/types/native";
 
 type Props = {
   uid: string;
-  results?: Awaited<ReturnType<typeof getDiscourseContextResults>>;
+  results: Awaited<ReturnType<typeof getDiscourseContextResults>>;
 };
 
 const ExtraColumnRow = (r: Result) => {
@@ -60,22 +58,21 @@ const ExtraColumnRow = (r: Result) => {
   );
   const contextChildren = useMemo(
     () =>
-      r["context-uid"] &&
-      (contextPageTitle
+      r["context-uid"] && contextPageTitle
         ? getShallowTreeByParentUid(r["context-uid"].toString()).map(
             ({ uid }) => uid
           )
-        : [r["context-uid"].toString()]),
+        : [r["context-uid"].toString()],
     [r["context-uid"], contextPageTitle, r.uid]
   );
   useEffect(() => {
-    if (contextOpen) {
+    if (contextOpen && containerRef.current) {
       const row = containerRef.current.closest("tr");
       const contextElement = document.createElement("tr");
       const contextTd = document.createElement("td");
-      contextTd.colSpan = row.childElementCount;
+      contextTd.colSpan = row?.childElementCount || 0;
       contextElement.id = contextId;
-      row.parentElement.insertBefore(contextElement, row.nextElementSibling);
+      row?.parentElement?.insertBefore(contextElement, row.nextElementSibling);
       contextElement.append(contextTd);
       setContextRowReady(true);
     } else {
@@ -87,24 +84,26 @@ const ExtraColumnRow = (r: Result) => {
     if (contextRowReady) {
       setTimeout(() => {
         contextChildren.forEach((uid) => {
-          window.roamAlphaAPI.ui.components.renderBlock({
-            uid,
-            el: document.querySelector(
-              `tr#${contextId} div[data-uid="${uid}"]`
-            ),
-          });
+          const el = document.querySelector<HTMLElement>(
+            `tr#${contextId} div[data-uid="${uid}"]`
+          );
+          if (el)
+            window.roamAlphaAPI.ui.components.renderBlock({
+              uid,
+              el,
+            });
         });
       }, 1);
     }
   }, [contextRowReady]);
   useEffect(() => {
     if (anchorOpen) {
-      const row = containerRef.current.closest("tr");
+      const row = containerRef.current?.closest("tr");
       const anchorElement = document.createElement("tr");
       const anchorTd = document.createElement("td");
-      anchorTd.colSpan = row.childElementCount;
+      anchorTd.colSpan = row?.childElementCount || 0;
       anchorElement.id = anchorId;
-      row.parentElement.insertBefore(anchorElement, row.nextElementSibling);
+      row?.parentElement?.insertBefore(anchorElement, row.nextElementSibling);
       anchorElement.append(anchorTd);
       setAnchorRowReady(true);
     } else {
@@ -204,7 +203,7 @@ const ExtraColumnRow = (r: Result) => {
               ?.firstElementChild as HTMLDataElement
           }
         >
-          <ContextContent uid={r["anchor-uid"] as string} />
+          <ContextContent uid={r["anchor-uid"] as string} results={[]} />
         </Portal>
       )}
     </span>
@@ -224,8 +223,7 @@ const ContextTab = ({
 }) => {
   const [subTabId, setSubTabId] = useState(0);
   const hasExtra = useMemo(
-    () =>
-      Object.values(r.results).some((r: Result) => !!(r.context || r.anchor)),
+    () => Object.values(r.results).some((r) => !!(r.context || r.anchor)),
     [r]
   );
   const subTabs = useMemo(
@@ -254,8 +252,7 @@ const ContextTab = ({
       preventSavingSettings
       parentUid={parentUid}
       results={Object.values(results).map(
-        ({ target, complement, id, ...a }) =>
-          a as Result
+        ({ target, complement, id, ...a }) => a as Result
       )}
       header={
         <>
@@ -307,7 +304,7 @@ const ContextTab = ({
 };
 
 export const ContextContent = ({ uid, results }: Props) => {
-  const [queryResults, setQueryResults] = useState([]);
+  const [queryResults, setQueryResults] = useState<Props["results"]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     (results ? Promise.resolve(results) : getDiscourseContextResults({ uid }))
@@ -383,7 +380,7 @@ const DiscourseContext = ({ uid }: Props) => {
         </div>
       </div>
       <div style={{ paddingLeft: 16 }}>
-        {caretOpen && <ContextContent uid={uid} />}
+        {caretOpen && <ContextContent uid={uid} results={[]} />}
       </div>
     </>
   );

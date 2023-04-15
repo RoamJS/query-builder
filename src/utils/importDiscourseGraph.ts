@@ -2,32 +2,24 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import type { InputTextNode } from "roamjs-components/types";
 import createPage from "roamjs-components/writes/createPage";
 
-const pruneNodes = (
-  nodes: { children?: InputTextNode[]; uid?: string }[]
-): {}[] =>
+const pruneNodes = (nodes: InputTextNode[]): InputTextNode[] =>
   nodes
-    .filter((n) => !getPageTitleByPageUid(n.uid))
+    .filter((n) => !getPageTitleByPageUid(n.uid || ""))
     .map((n) => ({ ...n, children: pruneNodes(n.children || []) }));
 
 const importDiscourseGraph = ({
   title,
-  grammar,
+  grammar: _grammar,
   nodes,
   relations,
 }: {
   title: string;
   grammar: { source: string; label: string; destination: string }[];
-  nodes: {
-    uid: string;
-    title: string;
-    children: InputTextNode[];
-    date: string;
-    createdBy: string;
-  }[];
+  nodes: InputTextNode[];
   relations: { source: string; label: string; target: string }[];
 }) => {
   const pagesByUids = Object.fromEntries(
-    nodes.map(({ uid, title }) => [uid, title])
+    nodes.map(({ uid, text }) => [uid, text])
   );
   return createPage({
     title,
@@ -46,9 +38,8 @@ const importDiscourseGraph = ({
     })),
   }).then(() =>
     Promise.all(
-      pruneNodes(nodes).map(
-        (node: { title: string; children: InputTextNode[]; uid: string }) =>
-          createPage({ title: node.title, tree: node.children, uid: node.uid })
+      pruneNodes(nodes).map((node) =>
+        createPage({ title: node.text, tree: node.children, uid: node.uid })
       )
     )
   );

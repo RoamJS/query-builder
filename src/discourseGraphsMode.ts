@@ -44,18 +44,6 @@ import DiscourseNodeIndex from "./components/DiscourseNodeIndex";
 import DiscourseNodeSpecification from "./components/DiscourseNodeSpecification";
 import DiscourseNodeAttributes from "./components/DiscourseNodeAttributes";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { render as queryRequestRender } from "./components/SendQueryRequest";
-import getSamePageApi from "@samepage/external/getSamePageAPI";
-import importDiscourseGraph from "./utils/importDiscourseGraph";
-import createButtonObserver from "roamjs-components/dom/createButtonObserver";
-import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import createBlock from "roamjs-components/writes/createBlock";
-import { render as renderToast } from "roamjs-components/components/Toast";
-import updateBlock from "roamjs-components/writes/updateBlock";
-import { render as importRender } from "./components/ImportDialog";
-import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
@@ -692,6 +680,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
               renderWithUnmount(
                 React.createElement(DiscourseContext, {
                   uid,
+                  results: [],
                 }),
                 p,
                 args

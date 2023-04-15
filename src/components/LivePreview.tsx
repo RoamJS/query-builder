@@ -35,7 +35,11 @@ const TooltipContent = ({
       .getElementById("roamjs-discourse-live-preview-container")
       ?.remove?.();
     let newIsEmpty = true;
-    if (numChildren) {
+    if (
+      numChildren &&
+      containerRef.current &&
+      containerRef.current.parentElement
+    ) {
       const el = document.createElement("div");
       el.id = "roamjs-discourse-live-preview-container";
       window.roamAlphaAPI.ui.components.renderBlock({
@@ -46,7 +50,7 @@ const TooltipContent = ({
       containerRef.current.parentElement.style.padding = "0";
       newIsEmpty = false;
     }
-    if (isDiscourseNode(uid)) {
+    if (isDiscourseNode(uid) && containerRef.current) {
       const refs = renderReferenceContext({ title: tag });
       containerRef.current.appendChild(refs);
       newIsEmpty = newIsEmpty && !refs.childElementCount;
@@ -91,7 +95,7 @@ export type Props = {
   registerMouseEvents: (a: {
     open: (ctrl: boolean) => void;
     close: () => void;
-    span: HTMLSpanElement;
+    span: HTMLSpanElement | null;
   }) => void;
 };
 
@@ -100,15 +104,15 @@ const LivePreview = ({ tag, registerMouseEvents }: Props) => {
   const [loaded, setLoaded] = useState(false);
   const spanRef = useRef<HTMLSpanElement>(null);
   const openRef = useRef<boolean>(false);
-  const timeoutRef = useRef(null);
+  const timeoutRef = useRef(0);
   const open = useCallback(
     (ctrlKey: boolean) => {
       if (ctrlKey || timeoutRef.current) {
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = window.setTimeout(() => {
           setIsOpen(true);
           openRef.current = true;
-          timeoutRef.current = null;
+          timeoutRef.current = 0;
         }, 100);
       }
     },
@@ -117,10 +121,10 @@ const LivePreview = ({ tag, registerMouseEvents }: Props) => {
   const close = useCallback(() => {
     clearTimeout(timeoutRef.current);
     if (openRef.current) {
-      timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         setIsOpen(false);
         openRef.current = false;
-        timeoutRef.current = null;
+        timeoutRef.current = 0;
       }, 1000);
     }
   }, [setIsOpen, timeoutRef, openRef]);
@@ -134,7 +138,7 @@ const LivePreview = ({ tag, registerMouseEvents }: Props) => {
   }, [spanRef, loaded, close, open, registerMouseEvents]);
   const ref = useRef<Tooltip>(null);
   useEffect(() => {
-    ref.current.reposition();
+    ref.current?.reposition();
   }, [tag]);
   return (
     <Tooltip

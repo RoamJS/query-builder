@@ -333,7 +333,10 @@ const QuerySelection = ({
   );
 };
 
-const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
+const getConditionByUid = (
+  uid: string,
+  conditions: Condition[]
+): Condition | undefined => {
   for (const con of conditions) {
     if (con.uid === uid) return con;
     if (con.type === "or" || con.type === "not or") {
@@ -765,40 +768,41 @@ const QueryEditor: QueryEditorComponent = ({
             )
           }
         >
-          {Array(viewCondition.conditions.length)
-            .fill(null)
-            .map((_, j) => (
-              <Tab
-                key={j}
-                id={j}
-                title={`${j + 1}`}
-                panel={
-                  <>
-                    {viewConditions.map((con, index) => (
-                      <QueryCondition
-                        key={con.uid}
-                        con={con}
-                        index={index}
-                        conditions={viewConditions}
-                        availableSources={[
-                          returnNode,
-                          ...conditions
-                            .filter(
-                              (c) => c.type === "clause" || c.type === "not"
-                            )
-                            .map((c) => (c as QBClauseData).target),
-                        ]}
-                        setConditions={(cons) => {
-                          viewCondition.conditions[view.branch] = cons;
-                          setConditions([...conditions]);
-                        }}
-                        setView={(v) => setViews([...views, v])}
-                      />
-                    ))}
-                  </>
-                }
-              />
-            ))}
+          {viewCondition &&
+            Array(viewCondition.conditions.length)
+              .fill(null)
+              .map((_, j) => (
+                <Tab
+                  key={j}
+                  id={j}
+                  title={`${j + 1}`}
+                  panel={
+                    <>
+                      {viewConditions.map((con, index) => (
+                        <QueryCondition
+                          key={con.uid}
+                          con={con}
+                          index={index}
+                          conditions={viewConditions}
+                          availableSources={[
+                            returnNode,
+                            ...conditions
+                              .filter(
+                                (c) => c.type === "clause" || c.type === "not"
+                              )
+                              .map((c) => (c as QBClauseData).target),
+                          ]}
+                          setConditions={(cons) => {
+                            viewCondition.conditions[view.branch] = cons;
+                            setConditions([...conditions]);
+                          }}
+                          setView={(v) => setViews([...views, v])}
+                        />
+                      ))}
+                    </>
+                  }
+                />
+              ))}
         </Tabs>
         <div style={{ display: "flex" }}>
           <span style={{ minWidth: 144, display: "inline-block" }}>
@@ -824,7 +828,7 @@ const QueryEditor: QueryEditorComponent = ({
                     text: `AND`,
                   },
                 }).then(() => {
-                  viewCondition.conditions.push([]);
+                  viewCondition?.conditions.push([]);
                   setConditions([...conditions]);
                 });
               }}
@@ -858,6 +862,7 @@ const QueryEditor: QueryEditorComponent = ({
                     })
                   )
                   .then((uid) => {
+                    if (!viewCondition) return;
                     viewCondition.conditions[view.branch] = [
                       ...viewConditions,
                       {

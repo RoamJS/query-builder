@@ -30,7 +30,7 @@ type PredefinedSelection = {
   test: RegExp;
   pull: (a: {
     returnNode: string;
-    match: RegExpExecArray;
+    match: RegExpExecArray | null;
     where: DatalogClause[];
   }) => string;
   mapper: (
@@ -66,7 +66,9 @@ const isVariableExposed = (
     }
   });
 
-const firstVariable = (clause: DatalogClause | DatalogAndClause): string => {
+const firstVariable = (
+  clause: DatalogClause | DatalogAndClause
+): string | undefined => {
   if (
     clause.type === "data-pattern" ||
     clause.type === "fn-expr" ||
@@ -86,6 +88,7 @@ const firstVariable = (clause: DatalogClause | DatalogAndClause): string => {
   ) {
     return clause.variables[0]?.value;
   }
+  return undefined;
 };
 
 const getVariables = (
@@ -114,6 +117,7 @@ const getVariables = (
   ) {
     return new Set(clause.variables.map((c) => c.value));
   }
+  return new Set();
 };
 
 const optimizeQuery = (
@@ -227,7 +231,7 @@ const getArgValue = (key: string, result: QueryResult) => {
   const val = result[key];
   if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
     return window.roamAlphaAPI.util.pageTitleToDate(
-      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0]
+      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0] || ""
     );
   return val;
 };
@@ -277,7 +281,7 @@ const getBlockAttribute = (key: string, r: PullBlock) => {
   )?.[0]?.[0] as PullBlock;
   return {
     "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
-    "-uid": block?.[":block/uid"],
+    "-uid": block?.[":block/uid"] || "",
   };
 };
 
@@ -321,8 +325,8 @@ const predefinedSelections: PredefinedSelection[] = [
   {
     test: NODE_TEST,
     pull: ({ match, returnNode, where }) => {
-      const node = (match[1] || returnNode)?.trim();
-      const field = (match[2] || "").trim().substring(1);
+      const node = (match?.[1] || returnNode)?.trim();
+      const field = (match?.[2] || "").trim().substring(1);
       const fields = CREATE_BY_TEST.test(field)
         ? `[:create/user]`
         : EDIT_BY_TEST.test(field)
@@ -360,13 +364,13 @@ const predefinedSelections: PredefinedSelection[] = [
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
         ? new RegExp(match.slice(1, -1))
-            .exec(r?.[":block/string"] || r?.[":node/title"])
-            ?.slice(-1)[0]
+            .exec(r?.[":block/string"] || r?.[":node/title"] || "")
+            ?.slice(-1)[0] || ""
         : match
         ? getBlockAttribute(match, r)
         : {
             "": r?.[":node/title"] || r[":block/string"] || "",
-            "-uid": r[":block/uid"],
+            "-uid": r?.[":block/uid"] || "",
           };
     },
   },
@@ -490,7 +494,7 @@ export const getDatalogQuery = ({
       mapper: (r) => {
         return {
           "": r?.[":node/title"] || r?.[":block/string"] || "",
-          "-uid": r[":block/uid"],
+          "-uid": r[":block/uid"] || "",
         };
       },
       pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
@@ -512,7 +516,9 @@ export const getDatalogQuery = ({
         defined: predefinedSelections.find((p) => p.test.test(s.text)),
         s,
       }))
-      .filter((p) => !!p.defined)
+      .filter(
+        (p): p is { defined: PredefinedSelection; s: Selection } => !!p.defined
+      )
       .map((p) => ({
         mapper: p.defined.mapper,
         pull: p.defined.pull({
@@ -597,7 +603,7 @@ const fireQuery: FireQuery = async (_args) => {
             uid: "",
             ...Object.fromEntries(
               r.flatMap((p, index) =>
-                typeof p === "object"
+                typeof p === "object" && p !== null
                   ? Object.entries(p)
                   : [[index.toString(), p]]
               )
@@ -616,7 +622,7 @@ const fireQuery: FireQuery = async (_args) => {
     );
   } catch (e) {
     console.error("Error from Roam:");
-    console.error(e.message);
+    console.error((e as Error).message);
     return [];
   }
 };
