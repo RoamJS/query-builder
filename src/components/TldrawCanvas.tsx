@@ -1,12 +1,13 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useCallback } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
-import { Tldraw, TDDocument, TldrawApp } from "@tldraw/tldraw";
+import { Tldraw, TDDocument, TldrawApp, TDShapeType } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
+import nanoid from "nanoid";
 
 declare global {
   interface Window {
@@ -20,9 +21,16 @@ type Props = {
   globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
+/**
+ * TODO:
+    "@tldraw/core": "2.0.0-alpha.1",
+    "@tldraw/react": "2.0.0-alpha.1",
+    "@tldraw/vec": "2.0.0-alpha.1",
+ */
 const TldrawCanvas = ({ title }: Props) => {
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
+  const appRef = useRef<TldrawApp>();
   const initialDocument = useMemo<TDDocument | undefined>(() => {
     const persisted = getSettingValueFromTree({
       parentUid: pageUid,
@@ -45,6 +53,22 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, _setMaximized] = useState(false);
+  const createNode = useCallback(
+    (position: number[]) => {
+      // (text: string, position: { x: number; y: number }, color: string) => {
+      if (!appRef.current) return;
+      appRef.current.createShapes({
+        id: nanoid(),
+        type: TDShapeType.Rectangle,
+        size: [100, 100],
+      });
+      // nodeInitCallback(node);
+    },
+    [
+      //nodeInitCallback,
+      appRef,
+    ]
+  );
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -67,6 +91,19 @@ const TldrawCanvas = ({ title }: Props) => {
             const { tldrawApps } = window;
             tldrawApps[title] = app;
           }
+          appRef.current = app;
+          const oldOnDoubleClickCanvas = app.tools.select.onDoubleClickCanvas;
+          app.tools.select.onDoubleClickCanvas = (info, e) => {
+            oldOnDoubleClickCanvas(info, e);
+            createNode(info.point);
+            // nodeFormatTextByType[nodeType] || "Click to edit text",
+            // e.position,
+            // nodeColorRef.current
+            /**
+            const nodeType = nodeTypeByColor[nodeColorRef.current];
+        });
+             */
+          };
         }}
         onPersist={(app) => {
           setInputSetting({
