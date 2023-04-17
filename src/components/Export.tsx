@@ -7,8 +7,9 @@ import {
   Intent,
   Label,
   ProgressBar,
+  Tooltip,
 } from "@blueprintjs/core";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
@@ -217,12 +218,19 @@ export const ExportDialog: ExportDialogComponent = ({
             onChange={(e) =>
               setIsSamePageEnabled((e.target as HTMLInputElement).checked)
             }
+            style={{ marginBottom: 0 }}
             labelElement={
-              <img
-                src="https://samepage.network/images/logo.png"
-                height={24}
-                width={24}
-              />
+              <Tooltip
+                content={
+                  "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+                }
+              >
+                <img
+                  src="https://samepage.network/images/logo.png"
+                  height={24}
+                  width={24}
+                />
+              </Tooltip>
             }
           />
         )}

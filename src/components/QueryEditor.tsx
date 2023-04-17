@@ -710,26 +710,33 @@ const QueryEditor: QueryEditorComponent = ({
           {window.samepage && (
             <Checkbox
               labelElement={
-                <img
-                  src="https://samepage.network/images/logo.png"
-                  height={24}
-                  width={24}
-                />
+                <Tooltip
+                  content={
+                    "Use SamePage's backend to fire this query [EXPERIMENTAL]."
+                  }
+                >
+                  <img
+                    src="https://samepage.network/images/logo.png"
+                    height={24}
+                    width={24}
+                  />
+                </Tooltip>
               }
+              style={{ marginBottom: 0 }}
               checked={isSamePageEnabled}
               onChange={(e) => {
                 const enabled = (e.target as HTMLInputElement).checked;
                 const scratchNode = getSubTree({ parentUid, key: "scratch" });
                 const enabledUid = getSubTree({
                   tree: scratchNode.children,
-                  key: "backend",
+                  key: "samepage",
                 }).uid;
                 if (enabled && !enabledUid) {
                   createBlock({
                     parentUid: scratchNode.uid,
                     order: 0,
                     node: {
-                      text: "backend",
+                      text: "samepage",
                     },
                   });
                 } else if (!enabled && enabledUid) {
