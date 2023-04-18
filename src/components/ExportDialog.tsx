@@ -28,7 +28,7 @@ const ExportDialog = ({
     if (fromQuery) return fromQuery;
     const discourseNodes = getDiscourseNodes();
     return {
-      nodes: (isBackendEnabled: boolean) =>
+      nodes: (isSamePageEnabled: boolean) =>
         Promise.all(
           discourseNodes.map((d) =>
             fireQuery({
@@ -43,7 +43,7 @@ const ExportDialog = ({
                 },
               ],
               selections: [],
-              isBackendEnabled,
+              isSamePageEnabled,
             })
           )
         ).then((r) => r.flat()),

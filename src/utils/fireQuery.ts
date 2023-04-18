@@ -1,5 +1,4 @@
 import conditionToDatalog from "../utils/conditionToDatalog";
-import type { Result as QueryResult } from "roamjs-components/types/query-builder";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import type {
   PullBlock,
@@ -9,8 +8,7 @@ import type {
 import compileDatalog from "./compileDatalog";
 import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
-import apiPost from "roamjs-components/util/apiPost";
-import type { Condition, Selection } from "./types";
+import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
 export type QueryArgs = {
@@ -21,7 +19,7 @@ export type QueryArgs = {
 };
 
 type FireQueryArgs = QueryArgs & {
-  isBackendEnabled?: boolean;
+  isSamePageEnabled?: boolean;
   isCustomEnabled?: boolean;
   customNode?: string;
 };
@@ -32,7 +30,7 @@ type PredefinedSelection = {
   test: RegExp;
   pull: (a: {
     returnNode: string;
-    match: RegExpExecArray;
+    match: RegExpExecArray | null;
     where: DatalogClause[];
   }) => string;
   mapper: (
@@ -68,7 +66,9 @@ const isVariableExposed = (
     }
   });
 
-const firstVariable = (clause: DatalogClause | DatalogAndClause): string => {
+const firstVariable = (
+  clause: DatalogClause | DatalogAndClause
+): string | undefined => {
   if (
     clause.type === "data-pattern" ||
     clause.type === "fn-expr" ||
@@ -88,6 +88,7 @@ const firstVariable = (clause: DatalogClause | DatalogAndClause): string => {
   ) {
     return clause.variables[0]?.value;
   }
+  return undefined;
 };
 
 const getVariables = (
@@ -116,6 +117,7 @@ const getVariables = (
   ) {
     return new Set(clause.variables.map((c) => c.value));
   }
+  return new Set();
 };
 
 const optimizeQuery = (
@@ -229,7 +231,7 @@ const getArgValue = (key: string, result: QueryResult) => {
   const val = result[key];
   if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
     return window.roamAlphaAPI.util.pageTitleToDate(
-      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0]
+      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0] || ""
     );
   return val;
 };
@@ -279,7 +281,7 @@ const getBlockAttribute = (key: string, r: PullBlock) => {
   )?.[0]?.[0] as PullBlock;
   return {
     "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
-    "-uid": block?.[":block/uid"],
+    "-uid": block?.[":block/uid"] || "",
   };
 };
 
@@ -323,8 +325,8 @@ const predefinedSelections: PredefinedSelection[] = [
   {
     test: NODE_TEST,
     pull: ({ match, returnNode, where }) => {
-      const node = (match[1] || returnNode)?.trim();
-      const field = (match[2] || "").trim().substring(1);
+      const node = (match?.[1] || returnNode)?.trim();
+      const field = (match?.[2] || "").trim().substring(1);
       const fields = CREATE_BY_TEST.test(field)
         ? `[:create/user]`
         : EDIT_BY_TEST.test(field)
@@ -362,13 +364,13 @@ const predefinedSelections: PredefinedSelection[] = [
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
         ? new RegExp(match.slice(1, -1))
-            .exec(r?.[":block/string"] || r?.[":node/title"])
-            ?.slice(-1)[0]
+            .exec(r?.[":block/string"] || r?.[":node/title"] || "")
+            ?.slice(-1)[0] || ""
         : match
         ? getBlockAttribute(match, r)
         : {
             "": r?.[":node/title"] || r[":block/string"] || "",
-            "-uid": r[":block/uid"],
+            "-uid": r?.[":block/uid"] || "",
           };
     },
   },
@@ -447,7 +449,7 @@ export const registerSelection = (args: PredefinedSelection) => {
 export const getWhereClauses = ({
   conditions,
   returnNode,
-}: Omit<FireQueryArgs, "selections">) => {
+}: Omit<QueryArgs, "selections">) => {
   return conditions.length
     ? conditions.flatMap(conditionToDatalog)
     : conditionToDatalog({
@@ -492,7 +494,7 @@ export const getDatalogQuery = ({
       mapper: (r) => {
         return {
           "": r?.[":node/title"] || r?.[":block/string"] || "",
-          "-uid": r[":block/uid"],
+          "-uid": r[":block/uid"] || "",
         };
       },
       pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
@@ -514,7 +516,9 @@ export const getDatalogQuery = ({
         defined: predefinedSelections.find((p) => p.test.test(s.text)),
         s,
       }))
-      .filter((p) => !!p.defined)
+      .filter(
+        (p): p is { defined: PredefinedSelection; s: Selection } => !!p.defined
+      )
       .map((p) => ({
         mapper: p.defined.mapper,
         pull: p.defined.pull({
@@ -576,15 +580,20 @@ export const getDatalogQuery = ({
   };
 };
 
-export let backendToken = "";
-export const setBackendToken = (t: string) => (backendToken = t);
-
-const fireQuery: FireQuery = async (args) => {
-  // @ts-ignore
-  const { isCustomEnabled, customNode } = args as {
-    isCustomEnabled: boolean;
-    custom: string;
-  };
+const fireQuery: FireQuery = async (_args) => {
+  const { isCustomEnabled, customNode, isSamePageEnabled, ...args } = _args;
+  if (isSamePageEnabled) {
+    return getSamePageAPI()
+      .then((api) =>
+        api.postToAppBackend<{ results: QueryResult[] }>("query", args)
+      )
+      .then((r) => r.results)
+      .catch((e) => {
+        console.error("Error from SamePage:");
+        console.error(e.message);
+        return [];
+      });
+  }
   const { query, formatResult, inputs } = isCustomEnabled
     ? {
         query: customNode as string,
@@ -594,7 +603,7 @@ const fireQuery: FireQuery = async (args) => {
             uid: "",
             ...Object.fromEntries(
               r.flatMap((p, index) =>
-                typeof p === "object"
+                typeof p === "object" && p !== null
                   ? Object.entries(p)
                   : [[index.toString(), p]]
               )
@@ -608,22 +617,12 @@ const fireQuery: FireQuery = async (args) => {
       console.log("Query to Roam:");
       console.log(query, ...inputs);
     }
-    return args.isBackendEnabled && backendToken
-      ? apiPost<{ result: PullBlock[][] }>({
-          domain: "https://lambda.roamjs.com",
-          path: "query",
-          authorization: `Bearer ${backendToken}`,
-          data: {
-            graph: window.roamAlphaAPI.graph.name,
-            query,
-          },
-        }).then((r) => Promise.all(r.result.map(formatResult)))
-      : Promise.all(
-          window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
-        );
+    return Promise.all(
+      window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
+    );
   } catch (e) {
     console.error("Error from Roam:");
-    console.error(e.message);
+    console.error((e as Error).message);
     return [];
   }
 };

@@ -2,6 +2,8 @@ import React from "react";
 import { Chart, AxisOptions, AxisOptionsBase } from "react-charts";
 import { Result } from "roamjs-components/types/query-builder";
 
+type ChartData = [Result[string], Result[string]];
+
 const Charts = ({
   data,
   type,
@@ -16,14 +18,12 @@ const Charts = ({
       columns.slice(1).map((col) => {
         return {
           label: col,
-          data: data.map((d) => [d[columns[0]], d[col]]),
+          data: data.map((d) => [d[columns[0]], d[col]] as ChartData),
         };
       }),
     [data, columns]
   );
-  const primaryAxis = React.useMemo<
-    AxisOptions<[Result[string], Result[string]]>
-  >(
+  const primaryAxis = React.useMemo<AxisOptions<ChartData>>(
     () => ({
       primary: true,
       type: "timeLocal",
@@ -37,9 +37,7 @@ const Charts = ({
     }),
     []
   );
-  const secondaryAxes = React.useMemo<
-    AxisOptions<[Result[string], Result[string]]>[]
-  >(
+  const secondaryAxes = React.useMemo<AxisOptions<ChartData>[]>(
     () =>
       columns.slice(1).map(() => ({
         type: "linear",

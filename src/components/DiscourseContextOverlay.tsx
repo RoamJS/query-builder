@@ -37,32 +37,6 @@ const overlayQueue: {
   id: string;
 }[] = [];
 
-if (getNodeEnv() === "development") {
-  document.body.addEventListener("roamjs:discourse-graph:loaded", () => {
-    window.roamjs.extension.discourseGraph = {
-      ...(window.roamjs.extension.discourseGraph || {}),
-      overlayQueue,
-      getDiscourseContextResults: (
-        args: { uid: string } | { title: string }
-      ) => {
-        const uid =
-          "uid" in args ? args.uid : getPageUidByPageTitle(args.title);
-        window.roamjs.extension.discourseGraph[uid] = {
-          start: new Date().valueOf(),
-        };
-        return getDiscourseContextResults({ uid, ignoreCache: true }).then(
-          (res) => {
-            // @ts-ignore
-            window.roamjs.extension.discourseGraph[uid].end =
-              new Date().valueOf();
-            return res;
-          }
-        );
-      },
-    };
-  });
-}
-
 const getOverlayInfo = (tag: string, id: string): Promise<DiscourseData> => {
   if (cache[tag]) return Promise.resolve(cache[tag]);
   const relations = getDiscourseRelations();

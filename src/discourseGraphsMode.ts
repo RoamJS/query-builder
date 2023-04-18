@@ -44,23 +44,10 @@ import DiscourseNodeIndex from "./components/DiscourseNodeIndex";
 import DiscourseNodeSpecification from "./components/DiscourseNodeSpecification";
 import DiscourseNodeAttributes from "./components/DiscourseNodeAttributes";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { render as queryRequestRender } from "./components/SendQueryRequest";
-import getSamePageApi from "@samepage/external/getSamePageAPI";
-import importDiscourseGraph from "./utils/importDiscourseGraph";
-import createButtonObserver from "roamjs-components/dom/createButtonObserver";
-import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import createBlock from "roamjs-components/writes/createBlock";
-import { render as renderToast } from "roamjs-components/components/Toast";
-import updateBlock from "roamjs-components/writes/updateBlock";
-import { render as importRender } from "./components/ImportDialog";
-import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
-import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 
 export const SETTING = "discourse-graphs";
 
@@ -79,7 +66,7 @@ const enablePageRefObserver = () =>
     },
   }));
 const disablePageRefObserver = () => {
-  pageRefObserverRef.current.disconnect();
+  pageRefObserverRef.current?.disconnect();
   pageRefObserverRef.current = undefined;
 };
 const onPageRefObserverChange =
@@ -96,8 +83,8 @@ const onPageRefObserverChange =
 const previewPageRefHandler = (s: HTMLSpanElement) => {
   const tag =
     s.getAttribute("data-tag") ||
-    s.parentElement.getAttribute("data-link-title");
-  if (!s.getAttribute("data-roamjs-discourse-augment-tag")) {
+    s.parentElement?.getAttribute("data-link-title");
+  if (tag && !s.getAttribute("data-roamjs-discourse-augment-tag")) {
     s.setAttribute("data-roamjs-discourse-augment-tag", "true");
     const parent = document.createElement("span");
     previewRender({
@@ -122,7 +109,11 @@ export const renderPlayground = (
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
-  if (!children.hasAttribute("data-roamjs-discourse-playground")) {
+  if (
+    children &&
+    children.parentElement &&
+    !children.hasAttribute("data-roamjs-discourse-playground")
+  ) {
     children.setAttribute("data-roamjs-discourse-playground", "true");
     const parent = document.createElement("div");
     children.parentElement.appendChild(parent);
@@ -155,6 +146,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
         h,
         title,
         config: [
+          // @ts-ignore
           {
             title: "Index",
             description: "Index of all of the pages in your graph of this type",
@@ -168,6 +160,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
                 }),
             },
           } as Field<CustomField>,
+          // @ts-ignore
           {
             title: "Format",
             description: `The format ${nodeText} pages should have.`,
@@ -177,6 +170,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
               placeholder: `Include "{content}" in format`,
             },
           } as Field<TextField>,
+          // @ts-ignore
           {
             title: "Specification",
             description: `The conditions specified to identify a ${nodeText} node.`,
@@ -193,18 +187,22 @@ export const renderDiscourseNodeTypeConfigPage = ({
             title: "Shortcut",
             description: `The trigger to quickly create a ${nodeText} page from the node menu.`,
             defaultValue: "\\",
+            // @ts-ignore
             Panel: TextPanel,
           },
           {
             title: "Description",
             description: `Describing what the ${nodeText} node represents in your graph.`,
+            // @ts-ignore
             Panel: TextPanel,
           },
           {
             title: "Template",
             description: `The template that auto fills ${nodeText} page when generated.`,
+            // @ts-ignore
             Panel: BlocksPanel,
           },
+          // @ts-ignore
           {
             title: "Attributes",
             description: `A set of derived properties about the node based on queryable data.`,
@@ -213,6 +211,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
               component: DiscourseNodeAttributes,
             },
           } as Field<CustomField>,
+          // @ts-ignore
           {
             title: "Overlay",
             description: `Select which attribute is used for the Discourse Overlay`,
@@ -414,6 +413,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             s.getAttribute("data-tag") ||
             s.parentElement.getAttribute("data-link-title");
           if (
+            tag &&
             !s.getAttribute("data-roamjs-discourse-overlay") &&
             isDiscourseNode(getPageUidByPageTitle(tag))
           ) {
@@ -445,8 +445,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                   description:
                     "The trigger to create the node menu. Must refresh after editing.",
                   defaultValue: "\\",
+                  // @ts-ignore
                   Panel: TextPanel,
                 },
+                // @ts-ignore
                 {
                   title: "preview",
                   description:
@@ -461,6 +463,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             {
               id: "grammar",
               fields: [
+                // @ts-ignore
                 {
                   title: "nodes",
                   Panel: CustomPanel,
@@ -469,6 +472,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                     component: DiscourseNodeConfigPanel,
                   },
                 } as Field<CustomField>,
+                // @ts-ignore
                 {
                   title: "relations",
                   Panel: CustomPanel,
@@ -478,6 +482,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                     component: DiscourseRelationConfigPanel,
                   },
                 } as Field<CustomField>,
+                // @ts-ignore
                 {
                   title: "overlay",
                   Panel: FlagPanel,
@@ -496,6 +501,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
               fields: [
                 {
                   title: "max filename length",
+                  // @ts-ignore
                   Panel: NumberPanel,
                   description:
                     "Set the maximum name length for markdown file exports",
@@ -503,34 +509,40 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 },
                 {
                   title: "remove special characters",
+                  // @ts-ignore
                   Panel: FlagPanel,
                   description:
                     "Whether or not to remove the special characters in a file name",
                 },
                 {
                   title: "simplified filename",
+                  // @ts-ignore
                   Panel: FlagPanel,
                   description:
                     "For discourse nodes, extract out the {content} from the page name to become the file name",
                 },
                 {
                   title: "frontmatter",
+                  // @ts-ignore
                   Panel: MultiTextPanel,
                   description:
                     "Specify all the lines that should go to the Frontmatter of the markdown file",
                 },
                 {
                   title: "resolve block references",
+                  // @ts-ignore
                   Panel: FlagPanel,
                   description:
                     "Replaces block references in the markdown content with the block's content",
                 },
                 {
                   title: "resolve block embeds",
+                  // @ts-ignore
                   Panel: FlagPanel,
                   description:
                     "Replaces block embeds in the markdown content with the block's content tree",
                 },
+                // @ts-ignore
                 {
                   title: "link type",
                   Panel: SelectPanel,
@@ -545,7 +557,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
         },
       });
       unloads.add(function configObserverDisconnect() {
-        observer.disconnect();
+        observer?.disconnect();
         unloads.delete(configObserverDisconnect);
       });
 
@@ -649,24 +661,26 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
         tag: "DIV",
         useBody: true,
         className: "rm-reference-main",
-        callback: async (d: HTMLDivElement) => {
+        callback: async (d: HTMLElement) => {
           const isMain = !!d.closest(".roam-article");
           const uid = isMain
             ? await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid()
             : getPageUidByPageTitle(getPageTitleValueByHtmlElement(d));
           if (
+            uid &&
             isDiscourseNode(uid) &&
             !d.getAttribute("data-roamjs-discourse-context")
           ) {
             d.setAttribute("data-roamjs-discourse-context", "true");
             const parent =
               d.querySelector("div.rm-reference-container") || d.children[0];
-            if (parent) {
+            if (parent && parent.parentElement) {
               const p = document.createElement("div");
               parent.parentElement.insertBefore(p, parent);
               renderWithUnmount(
                 React.createElement(DiscourseContext, {
                   uid,
+                  results: [],
                 }),
                 p,
                 args
@@ -730,10 +744,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
               ".window-headers div span"
             );
             if (label && label.innerText.startsWith("Outline")) {
-              const title = getPageTitleValueByHtmlElement(
-                d.querySelector<HTMLHeadingElement>(".rm-title-display")
-              );
-              if (isDiscourseNode(getPageUidByPageTitle(title))) {
+              const titleEl =
+                d.querySelector<HTMLHeadingElement>(".rm-title-display");
+              const title = titleEl && getPageTitleValueByHtmlElement(titleEl);
+              if (title && isDiscourseNode(getPageUidByPageTitle(title))) {
                 const container = renderReferenceContext({ title });
                 d.appendChild(container);
               }
@@ -741,162 +755,6 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           },
         });
       }
-
-      getSamePageApi().then(({ addNotebookListener, sendToNotebook }) => {
-        const removeImportDiscourseGraphListener = addNotebookListener({
-          operation: "IMPORT_DISCOURSE_GRAPH",
-          handler: (
-            data: Parameters<typeof importDiscourseGraph>[0],
-            source
-          ) => {
-            importDiscourseGraph(data);
-            const todayUid = window.roamAlphaAPI.util.dateToPageUid(new Date());
-            const todayOrder = getChildrenLengthByPageUid(todayUid);
-            createBlock({
-              parentUid: todayUid,
-              order: todayOrder,
-              node: {
-                text: `Imported discourse graph from [[${source.workspace}]]`,
-                children: [{ text: `[[${data.title}]]` }],
-              },
-            });
-            sendToNotebook({
-              operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
-              target: source.uuid,
-            });
-          },
-        });
-        unloads.add(function removeImportDgOperation() {
-          removeImportDiscourseGraphListener();
-          unloads.delete(removeImportDgOperation);
-        });
-
-        const removeImportDiscourseGraphConfirmListener = addNotebookListener({
-          operation: "IMPORT_DISCOURSE_GRAPH_CONFIRM",
-          handler: (_, graph) =>
-            renderToast({
-              id: "import-p2p-success",
-              content: `${graph} successfully imported your discourse graph!`,
-            }),
-        });
-        unloads.add(function removeImportConfirmOperation() {
-          removeImportDiscourseGraphConfirmListener();
-          unloads.delete(removeImportConfirmOperation);
-        });
-
-        const removeQueryRequestListener = addNotebookListener({
-          operation: "QUERY_REQUEST",
-          handler: (json, source) => {
-            const { page, requestId } = json as {
-              page: string;
-              requestId: string;
-            };
-            const todayUid = window.roamAlphaAPI.util.dateToPageUid(new Date());
-            const bottom = getChildrenLengthByPageUid(todayUid);
-            createBlock({
-              parentUid: todayUid,
-              order: bottom,
-              node: {
-                text: `New [[query request]] from [[${source.workspace}]]`,
-                children: [
-                  {
-                    text: `Get full page contents of [[${page}]]`,
-                  },
-                  {
-                    text: `{{Accept:${source.workspace}:${requestId}:${page}}}`,
-                  },
-                ],
-              },
-            });
-            renderToast({
-              id: "new-query-request",
-              content: `New query request from ${source.uuid}`,
-              intent: "primary",
-            });
-            sendToNotebook({
-              operation: "QUERY_REQUEST_RECEIVED",
-              target: source.uuid,
-            });
-          },
-        });
-        unloads.add(function removeQueryRequestOperation() {
-          removeQueryRequestListener();
-          unloads.delete(removeQueryRequestOperation);
-        });
-
-        window.roamAlphaAPI.ui.commandPalette.addCommand({
-          label: "Send Query Request",
-          callback: () => {
-            queryRequestRender({
-              uid: window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"],
-            });
-          },
-        });
-        unloads.add(function removeQueryCommand() {
-          window.roamAlphaAPI.ui.commandPalette.removeCommand({
-            label: "Send Query Request",
-          });
-          unloads.delete(removeQueryCommand);
-        });
-
-        window.roamAlphaAPI.ui.commandPalette.addCommand({
-          label: "Import Discourse Graph",
-          callback: () => importRender({}),
-        });
-        unloads.add(function removeImportCommand() {
-          window.roamAlphaAPI.ui.commandPalette.removeCommand({
-            label: "Import Discourse Graph",
-          });
-          unloads.delete(removeImportCommand);
-        });
-
-        const acceptButtonObserver = createButtonObserver({
-          attribute: "accept",
-          render: (b) => {
-            b.onclick = () => {
-              const { blockUid } = getUidsFromButton(b);
-              const text = getTextByBlockUid(blockUid);
-              const parts = (/{{([^}]+)}}/.exec(text)?.[1] || "").split(":");
-              if (parts.length >= 4) {
-                const [, graph, requestId, ...page] = parts;
-                const title = page.join(":");
-                const uid = getPageUidByPageTitle(title);
-                const tree = getFullTreeByParentUid(uid).children;
-                sendToNotebook({
-                  target: { app: 1, workspace: graph },
-                  operation: `QUERY_RESPONSE/${requestId}`,
-                  data: {
-                    page: {
-                      tree,
-                      title,
-                      uid,
-                    },
-                  },
-                });
-                const operation = `QUERY_RESPONSE_RECEIVED/${requestId}`;
-                const removeQueryRequestListener = addNotebookListener({
-                  operation,
-                  handler: (_, source) => {
-                    if (source.workspace === graph) {
-                      renderToast({
-                        id: "query-response-success",
-                        content: `Graph ${source.workspace} Successfully Received the query`,
-                        intent: "success",
-                      });
-                      removeQueryRequestListener();
-                      updateBlock({ uid: blockUid, text: "Sent" });
-                    }
-                  },
-                });
-              }
-            };
-          },
-        });
-        unloads.add(function removeAcceptObserver() {
-          acceptButtonObserver.disconnect();
-          unloads.delete(removeAcceptObserver);
-        });
-      });
     } else if (!flag && enabled) {
       unloads.forEach((u) => u());
       unloads.clear();

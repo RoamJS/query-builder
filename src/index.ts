@@ -11,7 +11,6 @@ import {
   render as renderQueryPage,
   renderQueryBlock,
 } from "./components/QueryPage";
-import { setBackendToken } from "./utils/fireQuery";
 import runQueryTools from "./utils/runQueryTools";
 import DefaultFilters from "./components/DefaultFilters";
 import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
@@ -34,6 +33,9 @@ import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import { renderTldrawCanvas } from "./components/TldrawCanvas";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
+import { registerDatalogTranslator } from "./utils/conditionToDatalog";
+import { QBGlobalRefs } from "./utils/types";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -42,7 +44,7 @@ const loadedElsewhere = document.currentScript
 const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
 
 export default runExtension({
-  migratedTo: loadedElsewhere ? undefined : "Query Builder",
+  extensionId: "query-builder",
   run: async (onloadArgs) => {
     const { extensionAPI } = onloadArgs;
     const style = addStyle(`.bp3-button:focus {
@@ -155,10 +157,12 @@ export default runExtension({
           displayName || "Anonymous"
         } on ${date.toLocaleString()}`;
         container.appendChild(label);
-        if (h1.parentElement.lastChild === h1) {
-          h1.parentElement.appendChild(container);
-        } else {
-          h1.parentElement.insertBefore(container, h1.nextSibling);
+        if (h1.parentElement) {
+          if (h1.parentElement.lastChild === h1) {
+            h1.parentElement.appendChild(container);
+          } else {
+            h1.parentElement.insertBefore(container, h1.nextSibling);
+          }
         }
       }
 
@@ -317,21 +321,10 @@ export default runExtension({
               toggleDiscourseGraphsMode(flag).then(() => {
                 if (flag)
                   document
-                    .querySelectorAll(`h1.rm-title-display`)
+                    .querySelectorAll<HTMLHeadingElement>(`h1.rm-title-display`)
                     .forEach(h1ObserverCallback);
               });
             },
-          },
-        },
-        {
-          id: "token",
-          name: "Backend Token (EXPERIMENTAL)",
-          description:
-            "Add your backend graph token to perform queries in the background instead of blocking the UI",
-          action: {
-            type: "input",
-            placeholder: "roam-graph-token-xxxx",
-            onChange: (e) => setBackendToken(e.target.value),
           },
         },
       ],
@@ -339,15 +332,12 @@ export default runExtension({
     if (loadedElsewhere) {
       await extensionAPI.settings.set(SETTING, true);
       setTimeout(() => {
-        setBackendToken((extensionAPI.settings.get("token") as string) || "");
         toggleDiscourseGraphsMode(true).then(() =>
           document
-            .querySelectorAll(`h1.rm-title-display`)
+            .querySelectorAll<HTMLHeadingElement>(`h1.rm-title-display`)
             .forEach(h1ObserverCallback)
         );
       }, 1000);
-    } else {
-      setBackendToken((extensionAPI.settings.get("token") as string) || "");
     }
     const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
       onloadArgs
@@ -357,14 +347,8 @@ export default runExtension({
       toggleSortReferences(true);
     }
 
-    const globalRefs = {
-      clearOnClick: ({
-        parentUid,
-        text,
-      }: {
-        parentUid: string;
-        text: string;
-      }) => {
+    const globalRefs: QBGlobalRefs = {
+      clearOnClick: ({ parentUid, text }) => {
         const order = getChildrenLengthByPageUid(parentUid);
         createBlock({ parentUid, node: { text }, order });
       },
@@ -392,7 +376,7 @@ export default runExtension({
     const h1Observer = createHTMLObserver({
       tag: "H1",
       className: "rm-title-display",
-      callback: h1ObserverCallback,
+      callback: (e) => h1ObserverCallback(e as HTMLHeadingElement),
     });
 
     const queryBlockObserver = createButtonObserver({
@@ -403,11 +387,16 @@ export default runExtension({
     const originalQueryBuilderObserver = createButtonObserver({
       shortcut: "qb",
       attribute: "query-builder",
-      render: (b: HTMLButtonElement) =>
-        renderQueryBuilder({
-          blockId: b.closest(".roam-block").id,
-          parent: b.parentElement,
-        }),
+      render: (b: HTMLButtonElement) => {
+        const blockId = b.closest<HTMLDivElement>(".roam-block")?.id;
+        const parent = b.parentElement;
+        if (blockId && parent) {
+          renderQueryBuilder({
+            blockId,
+            parent,
+          });
+        }
+      },
     });
 
     const dataAttribute = "data-roamjs-edit-query";
@@ -417,19 +406,24 @@ export default runExtension({
           b.setAttribute(dataAttribute, "true");
           const editButtonRoot = document.createElement("div");
           b.appendChild(editButtonRoot);
-          const blockId = b.closest(".roam-block").id;
+          const blockId = b.closest(".roam-block")?.id;
           const initialValue = getTextByBlockUid(
             getUidsFromId(blockId).blockUid
           );
-          renderQueryBuilder({
-            blockId,
-            parent: editButtonRoot,
-            initialValue,
-          });
-          const editButton = document.getElementById(
-            `roamjs-query-builder-button-${blockId}`
-          );
-          editButton.addEventListener("mousedown", (e) => e.stopPropagation());
+          if (blockId) {
+            renderQueryBuilder({
+              blockId,
+              parent: editButtonRoot,
+              initialValue,
+            });
+            const editButton = document.getElementById(
+              `roamjs-query-builder-button-${blockId}`
+            );
+            if (editButton)
+              editButton.addEventListener("mousedown", (e) =>
+                e.stopPropagation()
+              );
+          }
         }
       },
       tag: "DIV",
@@ -549,7 +543,7 @@ export default runExtension({
                  )}
             ]]`
           ) as [PullBlock][]
-        ).map((b) => ({ uid: b[0][":block/uid"] })),
+        ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
     };
 
     window.roamAlphaAPI.ui.commandPalette.addCommand({
@@ -567,6 +561,18 @@ export default runExtension({
             onloadArgs,
           })
         ),
+    });
+
+    getSamePageAPI().then((api) => {
+      api.listNotebooks().then(({ notebooks }) => {
+        registerDatalogTranslator({
+          key: "is in notebook",
+          callback: () => [],
+          isVariable: true,
+          placeholder: `Roam ${window.roamAlphaAPI.graph.name}`,
+          targetOptions: notebooks.map((n) => `${n.appName} ${n.workspace}`),
+        });
+      });
     });
 
     return {

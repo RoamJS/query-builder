@@ -63,7 +63,7 @@ export const createSortIcon = (
       sortCallback();
       aMenuItem.style.fontWeight = "600";
       if (selectedMenuItem) {
-        selectedMenuItem.style.fontWeight = null;
+        selectedMenuItem.style.fontWeight = "";
       }
       selectedMenuItem = aMenuItem;
       e.stopImmediatePropagation();
@@ -167,7 +167,8 @@ const runSortReferences = () => {
       );
       const getAttribute = (attr: string) => {
         const page =
-          document.getElementsByClassName("rm-title-display")[0]?.textContent;
+          document.getElementsByClassName("rm-title-display")[0]?.textContent ||
+          "";
         const node =
           getFullTreeByParentUid(getPageUidByPageTitle(page)).children.find(
             (t) => new RegExp(`${attr}::`, "i").test(t.text)
@@ -183,13 +184,18 @@ const runSortReferences = () => {
         ) => number
       ) => {
         const sidebarWindow = sortContainer.closest(".rm-sidebar-window");
-        const currentPageUID = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
-        const allSidebarWindows = document.body.querySelectorAll(".rm-sidebar-window");
-        const sidebarWindowIndex = Array.from(allSidebarWindows).indexOf(sidebarWindow);
-        const sidebarWindowData = window.roamAlphaAPI.ui.rightSidebar.getWindows()[sidebarWindowIndex]
+        const currentPageUID =
+          await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+        const allSidebarWindows =
+          document.body.querySelectorAll(".rm-sidebar-window");
+        const sidebarWindowIndex = sidebarWindow
+          ? Array.from(allSidebarWindows).indexOf(sidebarWindow)
+          : -1;
+        const sidebarWindowData =
+          window.roamAlphaAPI.ui.rightSidebar.getWindows()[sidebarWindowIndex];
         const pageUID = !!sidebarWindow
-        //  @ts-ignore Roam has an API inconsistency - https://roamresearch.slack.com/archives/C02TMKXNVS6/p1676389252784269
-          ? sidebarWindowData["page-uid"] || sidebarWindowData["mentions-uid"]
+          ? //  @ts-ignore Roam has an API inconsistency - https://roamresearch.slack.com/archives/C02TMKXNVS6/p1676389252784269
+            sidebarWindowData["page-uid"] || sidebarWindowData["mentions-uid"]
           : !currentPageUID
           ? getPageUidByPageTitle(getPageTitleValueByHtmlElement(sortContainer))
           : currentPageUID;
@@ -219,10 +225,10 @@ const runSortReferences = () => {
         };
 
         const refContainer = sortContainer.parentElement
-          .closest(".rm-reference-container")
+          ?.closest(".rm-reference-container")
           ?.getElementsByClassName("refs-by-page-view")?.[0];
-        const refsInView = Array.from(refContainer.children);
-        refsInView.forEach((r) => refContainer.removeChild(r));
+        const refsInView = Array.from(refContainer?.children || []);
+        refsInView.forEach((r) => refContainer?.removeChild(r));
         refsInView.sort((a, b) => {
           const aTitle = a.getElementsByClassName(
             "rm-ref-page-view-title"
@@ -235,7 +241,7 @@ const runSortReferences = () => {
             getRefIndexByTitle(bTitle?.textContent || "")
           );
         });
-        refsInView.forEach((r) => refContainer.appendChild(r));
+        refsInView.forEach((r) => refContainer?.appendChild(r));
       };
 
       const sortCallbacks = {
@@ -333,7 +339,7 @@ const runSortReferences = () => {
           undefined,
           (container: HTMLDivElement) =>
             !!container.parentElement
-              .closest(".rm-reference-container")
+              ?.closest(".rm-reference-container")
               ?.getElementsByClassName("refs-by-page-view")?.[0]
         );
       const observer = createOverlayObserver(observerCallback);

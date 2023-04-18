@@ -63,8 +63,7 @@ const TldrawCanvas = ({ title }: Props) => {
         document={initialDocument}
         onMount={(app) => {
           if (process.env.NODE_ENV !== "production") {
-            if (!window.tldrawApps)
-              window.tldrawApps = {};
+            if (!window.tldrawApps) window.tldrawApps = {};
             const { tldrawApps } = window;
             tldrawApps[title] = app;
           }
@@ -88,7 +87,11 @@ export const renderTldrawCanvas = (
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
-  if (!children.hasAttribute("data-roamjs-discourse-playground")) {
+  if (
+    children &&
+    children.parentElement &&
+    !children.hasAttribute("data-roamjs-discourse-playground")
+  ) {
     children.setAttribute("data-roamjs-discourse-playground", "true");
     const parent = document.createElement("div");
     children.parentElement.appendChild(parent);

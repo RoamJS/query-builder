@@ -54,12 +54,14 @@ const DEFAULT_SELECTED_RELATION = {
 };
 
 const RelationEditPreview = ({ previewUid }: { previewUid: string }) => {
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    window.roamAlphaAPI.ui.components.renderBlock({
-      el: containerRef.current,
-      uid: previewUid,
-    });
+    const el = containerRef.current;
+    if (el)
+      window.roamAlphaAPI.ui.components.renderBlock({
+        el,
+        uid: previewUid,
+      });
   }, [previewUid, containerRef]);
   return (
     <div ref={containerRef} className={"roamjs-discourse-editor-preview"}></div>
@@ -94,9 +96,9 @@ const RelationEditPanel = ({
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
-  const cyRef = useRef<cytoscape.Core>(null);
-  const sourceRef = useRef<cytoscape.NodeSingular>(null);
-  const editingRef = useRef<cytoscape.NodeSingular>(null);
+  const cyRef = useRef<cytoscape.Core>();
+  const sourceRef = useRef<cytoscape.NodeSingular>();
+  const editingRef = useRef<cytoscape.NodeSingular>();
   const blockClickRef = useRef(false);
   const showBackWarning = useRef(false);
   const unsavedChanges = useCallback(
@@ -108,14 +110,14 @@ const RelationEditPanel = ({
     if (editingRef.current) {
       editingRef.current.style("border-width", 0);
       editingRef.current.unlock();
-      editingRef.current = null;
+      editingRef.current = undefined;
     }
   }, [editingRef]);
   const clearSourceRef = useCallback(() => {
     if (sourceRef.current) {
       sourceRef.current.style("background-color", "#888888");
       sourceRef.current.unlock();
-      sourceRef.current = null;
+      sourceRef.current = undefined;
     }
   }, [sourceRef]);
   const [selectedRelation, setSelectedRelation] = useState(
@@ -164,7 +166,7 @@ const RelationEditPanel = ({
         clearEditingRef();
         clearSourceRef();
         if (e.originalEvent.ctrlKey) {
-          cyRef.current.remove(edge);
+          cyRef.current?.remove(edge);
           unsavedChanges();
         } else {
           setSelectedRelation({
@@ -200,7 +202,7 @@ const RelationEditPanel = ({
         ) {
           clearSourceRef();
           clearEditingRef();
-          cyRef.current.remove(n);
+          cyRef.current?.remove(n);
           unsavedChanges();
         } else if (e.originalEvent.shiftKey) {
           clearEditingRef();
@@ -215,12 +217,13 @@ const RelationEditPanel = ({
                 relation: "references",
               };
               if (
+                cyRef.current &&
                 cyRef.current
                   .edges()
-                  .every((e: cytoscape.EdgeSingular) => e.id() !== data.id)
+                  .every((e) => (e as cytoscape.EdgeSingular).id() !== data.id)
               ) {
-                const edge = cyRef.current.add({ data })[0];
-                edgeCallback(edge);
+                const edge = cyRef.current?.add({ data })[0];
+                if (edge) edgeCallback(edge);
               }
             }
             clearSourceRef();
@@ -236,7 +239,7 @@ const RelationEditPanel = ({
           } else if (!["source", "destination"].includes(n.id())) {
             editingRef.current = n;
             editingRef.current.lock();
-            containerRef.current.focus();
+            containerRef.current?.focus();
             n.style("border-width", 4);
           }
         }
@@ -373,8 +376,8 @@ const RelationEditPanel = ({
   );
   const saveCyToElementRef = useCallback(
     (t: number) => {
-      const nodes = cyRef.current.nodes();
-      const edges = cyRef.current.edges();
+      const nodes = cyRef.current?.nodes() || [];
+      const edges = cyRef.current?.edges() || [];
       elementsRef.current[t] = [
         ...nodes.map((n) => ({ data: n.data(), position: n.position() })),
         ...edges.map((n) => ({ data: n.data() })),
@@ -388,8 +391,9 @@ const RelationEditPanel = ({
 
   const loadCytoscape = useCallback(async () => {
     cyRef.current?.destroy?.();
-    const cytoscape = await window.RoamLazy.Cytoscape();
-    cyRef.current = cytoscape({
+    const cytoscape = await window.RoamLazy?.Cytoscape();
+    if (!cytoscape) return;
+    const cy = cytoscape({
       container: containerRef.current,
       elements: elementsRef.current[tab],
       style: [
@@ -433,13 +437,14 @@ const RelationEditPanel = ({
       userPanningEnabled: false,
       boxSelectionEnabled: false,
     });
-    cyRef.current.on("click", (e) => {
+    cyRef.current = cy;
+    cy.on("click", (e) => {
       if (blockClickRef.current) {
         return;
       }
       const { position } = e;
       const id = (idRef.current++).toString();
-      const node = cyRef.current.add({
+      const node = cy.add({
         data: { id, node: `Block${id}` },
         position,
       });
@@ -544,12 +549,14 @@ const RelationEditPanel = ({
           <MenuItemSelect
             activeItem={source}
             onItemSelect={(e) => {
-              unsavedChanges();
-              setSource(e);
-              (cyRef.current.nodes("#source") as cytoscape.NodeSingular).data(
-                "node",
-                nodes[e]?.label
-              );
+              if (cyRef.current) {
+                unsavedChanges();
+                setSource(e);
+                (cyRef.current.nodes("#source") as cytoscape.NodeSingular).data(
+                  "node",
+                  nodes[e]?.label
+                );
+              }
             }}
             items={Object.keys(nodes)}
             transformItem={(u) => nodes[u]?.label}
@@ -561,11 +568,13 @@ const RelationEditPanel = ({
           <MenuItemSelect
             activeItem={destination}
             onItemSelect={(e) => {
-              unsavedChanges();
-              setDestination(e);
-              (
-                cyRef.current.nodes("#destination") as cytoscape.NodeSingular
-              ).data("node", nodes[e]?.label);
+              if (cyRef.current) {
+                unsavedChanges();
+                setDestination(e);
+                (
+                  cyRef.current.nodes("#destination") as cytoscape.NodeSingular
+                ).data("node", nodes[e]?.label);
+              }
             }}
             items={Object.keys(nodes)}
             transformItem={(u) => nodes[u]?.label}
@@ -634,7 +643,7 @@ const RelationEditPanel = ({
               if (e.key === "Enter") {
                 editingRef.current.style("border-width", 0);
                 editingRef.current.unlock();
-                editingRef.current = null;
+                editingRef.current = undefined;
               } else if (e.key === "Backspace") {
                 editingRef.current.data(
                   "node",
@@ -669,14 +678,16 @@ const RelationEditPanel = ({
                 text={k}
                 onMouseDown={() => (blockClickRef.current = true)}
                 onClick={(e: React.MouseEvent) => {
-                  blockClickRef.current = false;
-                  (
-                    cyRef.current.edges(
-                      `#${selectedRelation.id}`
-                    ) as cytoscape.EdgeSingular
-                  ).data("relation", k);
-                  setSelectedRelation(DEFAULT_SELECTED_RELATION);
-                  e.stopPropagation();
+                  if (cyRef.current) {
+                    blockClickRef.current = false;
+                    (
+                      cyRef.current.edges(
+                        `#${selectedRelation.id}`
+                      ) as cytoscape.EdgeSingular
+                    ).data("relation", k);
+                    setSelectedRelation(DEFAULT_SELECTED_RELATION);
+                    e.stopPropagation();
+                  }
                 }}
               />
             ))}
@@ -721,7 +732,8 @@ const RelationEditPanel = ({
                 style={{ marginRight: 8 }}
                 onClick={() => {
                   elementsRef.current[tab] = JSON.parse(
-                    localStorage.getItem("roamjs:discourse-relation-copy")
+                    localStorage.getItem("roamjs:discourse-relation-copy") ||
+                      "{}"
                   ).map((n: { data: { id: string } }) =>
                     n.data.id === "source"
                       ? {
@@ -919,7 +931,8 @@ const DiscourseRelationConfigPanel: CustomField["options"]["component"] = ({
   const [editingRelation, setEditingRelation] = useState("");
   const [newRelation, setNewRelation] = useState("");
   const editingRelationInfo = useMemo(
-    () => editingRelation && getFullTreeByParentUid(editingRelation),
+    () =>
+      editingRelation ? getFullTreeByParentUid(editingRelation) : undefined,
     [editingRelation]
   );
   const onNewRelation = () => {
@@ -941,7 +954,7 @@ const DiscourseRelationConfigPanel: CustomField["options"]["component"] = ({
       setEditingRelation(relationUid);
     });
   };
-  return editingRelation ? (
+  return editingRelationInfo ? (
     <RelationEditPanel
       nodes={nodes}
       editingRelationInfo={editingRelationInfo}
@@ -987,8 +1000,8 @@ const DiscourseRelationConfigPanel: CustomField["options"]["component"] = ({
                   {rel.text}
                 </span>
                 <span style={{ fontSize: 10 }}>
-                  ({nodes[rel.source]?.label}) {"=>"} (
-                  {nodes[rel.destination]?.label})
+                  ({nodes[rel.source || ""]?.label}) {"=>"} (
+                  {nodes[rel.destination || ""]?.label})
                 </span>
               </span>
               <span>

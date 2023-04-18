@@ -7,8 +7,9 @@ import {
   Intent,
   Label,
   ProgressBar,
+  Tooltip,
 } from "@blueprintjs/core";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
@@ -16,17 +17,14 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import getSubTree from "roamjs-components/util/getSubTree";
-import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
 
 type ExportDialogComponent = (props: {
   onClose: () => void;
   isOpen: boolean;
-  exportTypes: ExportTypes;
-  results: Result[] | ((isBackendEnabled: boolean) => Promise<Result[]>);
+  exportTypes?: ExportTypes;
+  results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
 }) => JSX.Element;
 
 const viewTypeToPrefix = {
@@ -80,10 +78,10 @@ export const ExportDialog: ExportDialogComponent = ({
   exportTypes = [
     {
       name: "CSV",
-      callback: async ({ filename, isBackendEnabled }) => {
+      callback: async ({ filename, isSamePageEnabled }) => {
         const resolvedResults = Array.isArray(results)
           ? results
-          : await results(isBackendEnabled);
+          : await results(isSamePageEnabled);
         const keys = Object.keys(resolvedResults[0]).filter(
           (u) => !/uid/i.test(u)
         );
@@ -105,8 +103,8 @@ export const ExportDialog: ExportDialogComponent = ({
     },
     {
       name: "Markdown",
-      callback: async ({ isBackendEnabled }) =>
-        (Array.isArray(results) ? results : await results(isBackendEnabled))
+      callback: async ({ isSamePageEnabled }) =>
+        (Array.isArray(results) ? results : await results(isSamePageEnabled))
           .map(({ uid, ...rest }) => {
             const v = (
               (
@@ -151,21 +149,13 @@ export const ExportDialog: ExportDialogComponent = ({
     exportTypes[0].name
   );
   const [graph, setGraph] = useState<string>("");
-  const hasToken = useMemo(() => {
-    return !!getSubTree({
-      tree: getShallowTreeByParentUid(
-        getPageUidByPageTitle("roam/js/query-builder")
-      ).map((n) => ({ ...n, children: [] })),
-      key: "token",
-    }).uid;
-  }, []);
-  const [isBackendEnabled, setIsBackendEnabled] = useState(false);
+  const [isSamePageEnabled, setIsSamePageEnabled] = useState(false);
   useEffect(() => {
     const body = document.querySelector(".roamjs-export-dialog-body");
     if (body) {
-      const listener: EventListener = (e: CustomEvent) => {
+      const listener = ((e: CustomEvent) => {
         setLoadingProgress(e.detail.progress);
-      };
+      }) as EventListener;
       body.addEventListener("roamjs:loading:progress", listener);
       return () =>
         body.removeEventListener("roamjs:loading:progress", listener);
@@ -222,13 +212,26 @@ export const ExportDialog: ExportDialogComponent = ({
           results
         </span>
 
-        {hasToken && (
+        {window.samepage && (
           <Checkbox
-            checked={isBackendEnabled}
+            checked={isSamePageEnabled}
             onChange={(e) =>
-              setIsBackendEnabled((e.target as HTMLInputElement).checked)
+              setIsSamePageEnabled((e.target as HTMLInputElement).checked)
             }
-            label={"BE"}
+            style={{ marginBottom: 0 }}
+            labelElement={
+              <Tooltip
+                content={
+                  "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+                }
+              >
+                <img
+                  src="https://samepage.network/images/logo.png"
+                  height={24}
+                  width={24}
+                />
+              </Tooltip>
+            }
           />
         )}
       </div>
@@ -248,14 +251,14 @@ export const ExportDialog: ExportDialogComponent = ({
                   const exportType = exportTypes.find(
                     (e) => e.name === activeExportType
                   );
-                  if (exportType) {
+                  if (exportType && window.RoamLazy) {
                     const zip = await window.RoamLazy.JSZip().then(
                       (j) => new j()
                     );
                     const files = await exportType.callback({
                       filename,
                       graph,
-                      isBackendEnabled,
+                      isSamePageEnabled,
                     });
                     if (!files.length) {
                       onClose();
@@ -271,7 +274,7 @@ export const ExportDialog: ExportDialogComponent = ({
                   }
                 } catch (e) {
                   console.error(e);
-                  setError(e.message);
+                  setError((e as Error).message);
                   setLoading(false);
                   setLoadingProgress(0);
                 }
