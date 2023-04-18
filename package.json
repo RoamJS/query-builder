@@ -10,7 +10,7 @@
   "scripts": {
     "start": "samepage dev",
     "postinstall": "patch-package",
-    "prebuild:roam": "npm install",
+    "prebuild:roam": "npm install -f",
     "build:roam": "samepage build --dry"
   },
   "license": "MIT",

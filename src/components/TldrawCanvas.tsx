@@ -1,13 +1,22 @@
 import React, { useRef, useState, useMemo, useCallback } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
-import { Tldraw, TDDocument, TldrawApp, TDShapeType } from "@tldraw/tldraw";
+import {
+  Tldraw,
+  App as TldrawApp,
+  TldrawUiContextProvider,
+  useLocalSyncClient,
+  TLInstance,
+  TLUser,
+} from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import createBlock from "roamjs-components/writes/createBlock";
-import setInputSetting from "roamjs-components/util/setInputSetting";
+import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import nanoid from "nanoid";
+import "@tldraw/tldraw/editor.css";
+import "@tldraw/tldraw/ui.css";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 declare global {
   interface Window {
@@ -31,24 +40,40 @@ const TldrawCanvas = ({ title }: Props) => {
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
-  const initialDocument = useMemo<TDDocument | undefined>(() => {
-    const persisted = getSettingValueFromTree({
+  const initialState = useMemo(() => {
+    const persisted = getSubTree({
       parentUid: pageUid,
       tree,
       key: "State",
-      defaultValue: "",
     });
-    if (!persisted) {
+    const instanceId = TLInstance.createCustomId(pageUid);
+    const userId = TLUser.createCustomId(getCurrentUserUid());
+    if (!persisted.uid) {
+      const universalPersistanceKey = window.roamAlphaAPI.util.generateUID();
       createBlock({
-        node: { text: "State", children: [{ text: "" }] },
+        node: {
+          text: "State",
+          children: [{ text: "" }],
+          uid: universalPersistanceKey,
+        },
         parentUid: pageUid,
       });
-      return undefined;
+      return { instanceId, data: undefined, userId, universalPersistanceKey };
     }
     try {
-      return JSON.parse(window.atob(persisted));
+      return {
+        data: JSON.parse(window.atob(persisted.text)),
+        instanceId,
+        userId,
+        universalPersistanceKey: persisted.uid,
+      };
     } catch (e) {
-      return undefined;
+      return {
+        data: undefined,
+        instanceId,
+        userId,
+        universalPersistanceKey: persisted.uid,
+      };
     }
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,11 +82,13 @@ const TldrawCanvas = ({ title }: Props) => {
     (position: number[]) => {
       // (text: string, position: { x: number; y: number }, color: string) => {
       if (!appRef.current) return;
-      appRef.current.createShapes({
-        id: nanoid(),
-        type: TDShapeType.Rectangle,
-        size: [100, 100],
-      });
+      appRef.current.createShapes([
+        {
+          id: appRef.current.createShapeId(nanoid()),
+          type: "rectangle",
+          // size: [100, 100],
+        },
+      ]);
       // nodeInitCallback(node);
     },
     [
@@ -69,51 +96,62 @@ const TldrawCanvas = ({ title }: Props) => {
       appRef,
     ]
   );
+  const store = useLocalSyncClient({
+    instanceId: initialState.instanceId,
+    userId: initialState.userId,
+    initialDataRef: {
+      current: initialState.data,
+    },
+    universalPersistenceKey: initialState.universalPersistanceKey,
+  });
   return (
-    <div
-      className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
-        maximized ? "absolute inset-0" : "relative"
-      }`}
-      id={`roamjs-tldraw-canvas-container`}
-      ref={containerRef}
-      tabIndex={-1}
-    >
-      <style>{`.roam-article .rm-block-children {
+    <TldrawUiContextProvider>
+      <div
+        className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
+          maximized ? "absolute inset-0" : "relative"
+        }`}
+        id={`roamjs-tldraw-canvas-container`}
+        ref={containerRef}
+        tabIndex={-1}
+      >
+        <style>{`.roam-article .rm-block-children {
   display: none;
 }`}</style>
-      <Tldraw
-        id={title}
-        autofocus
-        document={initialDocument}
-        onMount={(app) => {
-          if (process.env.NODE_ENV !== "production") {
-            if (!window.tldrawApps) window.tldrawApps = {};
-            const { tldrawApps } = window;
-            tldrawApps[title] = app;
-          }
-          appRef.current = app;
-          const oldOnDoubleClickCanvas = app.tools.select.onDoubleClickCanvas;
-          app.tools.select.onDoubleClickCanvas = (info, e) => {
-            oldOnDoubleClickCanvas(info, e);
-            createNode(info.point);
-            // nodeFormatTextByType[nodeType] || "Click to edit text",
-            // e.position,
-            // nodeColorRef.current
-            /**
-            const nodeType = nodeTypeByColor[nodeColorRef.current];
-        });
-             */
-          };
-        }}
-        onPersist={(app) => {
-          setInputSetting({
-            blockUid: pageUid,
-            key: "State",
-            value: window.btoa(JSON.stringify(app.document)),
-          });
-        }}
-      />
-    </div>
+        <Tldraw
+          store={store}
+          instanceId={initialState.instanceId}
+          userId={initialState.userId}
+          onMount={(app) => {
+            if (process.env.NODE_ENV !== "production") {
+              if (!window.tldrawApps) window.tldrawApps = {};
+              const { tldrawApps } = window;
+              tldrawApps[title] = app;
+            }
+            appRef.current = app;
+
+        //     const oldOnDoubleClickCanvas = app.tools.select.onDoubleClickCanvas;
+        //     app.tools.select.onDoubleClickCanvas = (info, e) => {
+        //       oldOnDoubleClickCanvas(info, e);
+        //       createNode(info.point);
+        //       // nodeFormatTextByType[nodeType] || "Click to edit text",
+        //       // e.position,
+        //       // nodeColorRef.current
+        //       /**
+        //     const nodeType = nodeTypeByColor[nodeColorRef.current];
+        // });
+        //      */
+        //     };
+          }}
+          // onPersist={(app) => {
+          //   setInputSetting({
+          //     blockUid: pageUid,
+          //     key: "State",
+          //     value: window.btoa(JSON.stringify(app.document)),
+          //   });
+          // }}
+        />
+      </div>
+    </TldrawUiContextProvider>
   );
 };
 
