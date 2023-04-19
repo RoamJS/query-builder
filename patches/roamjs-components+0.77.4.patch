@@ -1,0 +1,13 @@
+diff --git a/node_modules/roamjs-components/scripts/publishToRoamDepot.js b/node_modules/roamjs-components/scripts/publishToRoamDepot.js
+index 5dbadd1..ec38c09 100644
+--- a/node_modules/roamjs-components/scripts/publishToRoamDepot.js
++++ b/node_modules/roamjs-components/scripts/publishToRoamDepot.js
+@@ -13,7 +13,7 @@ const opts = () => ({
+         Authorization: `token ${process.env.GITHUB_TOKEN}`,
+     },
+ });
+-const publishToRoamDepot = ({ owner = process.env.GITHUB_REPOSITORY_OWNER, repo = path_1.default.basename(process.cwd()), branch = repo, proxy = owner, }) => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
++const publishToRoamDepot = ({ owner = process.env.GITHUB_REPOSITORY_OWNER, repo = path_1.default.basename(process.cwd()), branch = repo, proxy = owner, } = {}) => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
+     console.log("Attempting to publish to Roam Depot...");
+     const pr = yield axios_1.default
+         .get(`https://api.github.com/repos/Roam-Research/roam-depot/pulls?head=${owner}:${branch}`, opts())
