@@ -1,12 +1,21 @@
-import React, { useRef, useState, useMemo, useCallback } from "react";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+} from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
 import {
-  Tldraw,
   App as TldrawApp,
   TLInstance,
   TLUser,
   TldrawEditorConfig,
+  Canvas,
+  TldrawEditor,
+  ContextMenu,
+  TldrawUi,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -18,6 +27,7 @@ import "@tldraw/tldraw/ui.css";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
+import { AddPullWatch } from "roamjs-components/types";
 
 declare global {
   interface Window {
@@ -31,7 +41,11 @@ type Props = {
   globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
+const THROTTLE = 350;
+
 const TldrawCanvas = ({ title }: Props) => {
+  const serializeRef = useRef(0);
+  const deserializeRef = useRef(0);
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
@@ -44,26 +58,40 @@ const TldrawCanvas = ({ title }: Props) => {
     const instanceId = TLInstance.createCustomId(pageUid);
     const userId = TLUser.createCustomId(getCurrentUserUid());
     if (!persisted.uid) {
+      const uid = window.roamAlphaAPI.util.generateUID();
       createBlock({
         node: {
           text: "State",
-          children: [{ text: "" }],
+          children: [{ text: "", uid }],
         },
         parentUid: pageUid,
       });
-      return { instanceId, data: undefined, userId };
+      return { instanceId, data: undefined, userId, uid };
+    }
+    if (!persisted.children.length) {
+      const uid = window.roamAlphaAPI.util.generateUID();
+      createBlock({
+        node: {
+          text: "",
+          uid,
+        },
+        parentUid: persisted.uid,
+      });
+      return { instanceId, data: undefined, userId, uid };
     }
     try {
       return {
-        data: JSON.parse(window.atob(persisted.text)),
+        data: JSON.parse(window.atob(persisted.children[0].text || "")),
         instanceId,
         userId,
+        uid: persisted.children[0].uid,
       };
     } catch (e) {
       return {
         data: undefined,
         instanceId,
         userId,
+        uid: persisted.children[0].uid,
       };
     }
   }, [tree, pageUid]);
@@ -95,17 +123,53 @@ const TldrawCanvas = ({ title }: Props) => {
     });
     _store.listen((rec) => {
       if (rec.source === "user") {
-        debugger;
-        const state = _store.serialize();
-        setInputSetting({
-          blockUid: pageUid,
-          key: "State",
-          value: window.btoa(JSON.stringify(state)),
-        });
+        clearTimeout(serializeRef.current);
+        serializeRef.current = window.setTimeout(() => {
+          const state = _store.serialize();
+          setInputSetting({
+            blockUid: pageUid,
+            key: "State",
+            value: window.btoa(JSON.stringify(state)),
+          });
+        }, THROTTLE);
       }
     });
     return _store;
-  }, [initialState]);
+  }, [initialState, serializeRef]);
+
+  useEffect(() => {
+    const props: Parameters<AddPullWatch> = [
+      "[:edit/user :block/string]",
+      `[:block/uid "${initialState.uid}"]`,
+      (_, after) => {
+        const state = after?.[":block/string"];
+        const editingUser = after?.[":edit/user"]?.[":db/id"];
+        if (!state || !editingUser) return;
+        const editingUserUid = window.roamAlphaAPI.pull(
+          "[:user/uid]",
+          editingUser
+        )?.[":user/uid"];
+        if (
+          !editingUserUid ||
+          TLUser.createCustomId(editingUserUid) === initialState.userId
+        )
+          return;
+        clearTimeout(deserializeRef.current);
+        deserializeRef.current = window.setTimeout(() => {
+          store.deserialize(JSON.parse(window.atob(state)));
+        }, THROTTLE);
+      },
+    ];
+    window.roamAlphaAPI.data.addPullWatch(...props);
+    return () => {
+      window.roamAlphaAPI.data.removePullWatch(...props);
+    };
+  }, [initialState, store]);
+
+  // const store = useLocalSyncClient({
+  //   ...initialState,
+  //   universalPersistenceKey,
+  // });
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -118,12 +182,11 @@ const TldrawCanvas = ({ title }: Props) => {
       <style>{`.roam-article .rm-block-children {
   display: none;
 }`}</style>
-      <Tldraw
+      <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
-        assetBaseUrl="https://samepage.network/assets/tldraw/"
-        store={store}
         instanceId={initialState.instanceId}
         userId={initialState.userId}
+        store={store}
         onMount={(app) => {
           if (process.env.NODE_ENV !== "production") {
             if (!window.tldrawApps) window.tldrawApps = {};
@@ -145,7 +208,13 @@ const TldrawCanvas = ({ title }: Props) => {
           //      */
           //     };
         }}
-      />
+      >
+        <TldrawUi assetBaseUrl="https://samepage.network/assets/tldraw/">
+          <ContextMenu>
+            <Canvas />
+          </ContextMenu>
+        </TldrawUi>
+      </TldrawEditor>
     </div>
   );
 };
