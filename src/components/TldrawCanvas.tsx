@@ -3,6 +3,7 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useContext,
   useEffect,
 } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
@@ -28,6 +29,8 @@ import {
   OnDoubleClickHandler,
   TLTranslationKey,
   OnTranslateEndHandler,
+  TL_COLOR_TYPES,
+  TLColorType,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -55,6 +58,10 @@ import fireQuery from "../utils/fireQuery";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import PageInput from "roamjs-components/components/PageInput";
 import createOverlayRender from "roamjs-components/util/createOverlayRender";
+import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
+import getDiscourseRelations, {
+  DiscourseRelation,
+} from "../utils/getDiscourseRelations";
 
 declare global {
   interface Window {
@@ -70,6 +77,11 @@ type Props = {
 
 const THROTTLE = 350;
 const TEXT_TYPE = "&TEX-node";
+
+const discourseContext: {
+  nodes: DiscourseNode[];
+  relations: DiscourseRelation[];
+} = { nodes: [], relations: [] };
 
 type NodeDialogProps = {
   label: string;
@@ -115,7 +127,7 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={true}
-        title={"Edit Playground Node Label"}
+        title={"Edit Discourse Node Label"}
         onClose={onClose}
         canOutsideClickClose
         canEscapeKeyClose
@@ -165,9 +177,13 @@ type DiscourseNodeShape = TLBaseShape<
     uid: string;
     title: string;
     alias: string;
+    // TODO: color will be a proxy to node type, until we could insert our own picker
+    color: TLColorType;
     nodeType: string;
   }
 >;
+
+const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   static type = "node";
@@ -193,6 +209,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       uid: window.roamAlphaAPI.util.generateUID(),
       title: "",
       alias: "",
+      color: COLOR_ARRAY[0],
       nodeType: TEXT_TYPE,
     };
   }
@@ -213,6 +230,20 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       },
     });
   };
+  override onBeforeCreate = (shape: DiscourseNodeShape) => {
+    if (shape.props.color !== COLOR_ARRAY[0]) {
+      const index = COLOR_ARRAY.indexOf(shape.props.color);
+      if (index <= discourseContext.nodes.length) {
+        return {
+          ...shape,
+          props: {
+            ...shape.props,
+            nodeType: discourseContext.nodes[index - 1].type,
+          },
+        };
+      }
+    }
+  };
 
   // TODO: onDelete - remove connected edges
 
@@ -220,7 +251,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     return (
       <HTMLContainer
         id={shape.id}
-        className="border border-black flex items-center justify-center pointer-events-auto rounded-xl"
+        className="flex border-4 border-solid items-center justify-center pointer-events-auto rounded-xl"
         onClick={async (e) => {
           if (e.shiftKey) {
             if (!isLiveBlock(shape.props.uid)) {
@@ -234,6 +265,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             }
             openBlockInSidebar(shape.props.uid);
           }
+        }}
+        style={{
+          borderColor: shape.props.color,
         }}
       >
         {shape.props.alias || shape.props.title}
@@ -264,6 +298,7 @@ class DiscourseNodeTool extends TLBoxTool {
   static id = "node";
   static initial = "idle";
   shapeType = "node";
+  override styles = ["opacity" as const, "color" as const];
 }
 
 const customTldrawConfig = new TldrawEditorConfig({
@@ -275,6 +310,14 @@ const customTldrawConfig = new TldrawEditorConfig({
 const TldrawCanvas = ({ title }: Props) => {
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
+  const allRelations = useMemo(
+    () => (discourseContext.relations = getDiscourseRelations()),
+    []
+  );
+  const allNodes = useMemo(
+    () => (discourseContext.nodes = getDiscourseNodes(allRelations)),
+    [allRelations]
+  );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
@@ -418,7 +461,9 @@ const TldrawCanvas = ({ title }: Props) => {
                 label: "shape.node" as TLTranslationKey,
                 kbd: "n",
                 readonlyOk: false,
-                onSelect: () => app.setSelectedTool("node"),
+                onSelect: () => {
+                  app.setSelectedTool("node");
+                },
               };
               return tools;
             },
