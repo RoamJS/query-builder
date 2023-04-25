@@ -169,7 +169,7 @@ const LabelDialog = ({
 };
 
 type DiscourseNodeShape = TLBaseShape<
-  "node",
+  string,
   {
     w: number;
     h: number;
@@ -177,18 +177,14 @@ type DiscourseNodeShape = TLBaseShape<
     uid: string;
     title: string;
     alias: string;
-    // TODO: color will be a proxy to node type, until we could insert our own picker
-    color: TLColorType;
-    nodeType: string;
   }
 >;
 
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
-  static type = "node";
-  constructor(app: TldrawApp) {
-    super(app, "node");
+  constructor(app: TldrawApp, type = TEXT_TYPE) {
+    super(app, type);
     this.onDoubleClick = this.onDoubleClick.bind(this);
     this.onDoubleClickEdge = this.onDoubleClickEdge.bind(this);
   }
@@ -204,13 +200,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   override defaultProps(): DiscourseNodeShape["props"] {
     return {
       opacity: "1",
-      w: 150,
-      h: 150,
+      w: 160,
+      h: 64,
       uid: window.roamAlphaAPI.util.generateUID(),
       title: "",
       alias: "",
-      color: COLOR_ARRAY[0],
-      nodeType: TEXT_TYPE,
     };
   }
   override onDoubleClick: OnDoubleClickHandler<DiscourseNodeShape> = (e) => {
@@ -224,34 +218,23 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       LabelDialog
     )({
       label: shape.props.title,
-      nodeType: shape.props.nodeType,
+      nodeType: this.type,
       onSuccess: (label) => {
         this.updateProps(shape.id, { title: label });
       },
     });
   };
-  override onBeforeCreate = (shape: DiscourseNodeShape) => {
-    if (shape.props.color !== COLOR_ARRAY[0]) {
-      const index = COLOR_ARRAY.indexOf(shape.props.color);
-      if (index <= discourseContext.nodes.length) {
-        return {
-          ...shape,
-          props: {
-            ...shape.props,
-            nodeType: discourseContext.nodes[index - 1].type,
-          },
-        };
-      }
-    }
-  };
 
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
+    const discourseNodeIndex = discourseContext.nodes.findIndex(
+      (n) => n.type === this.type
+    );
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex border-4 border-solid items-center justify-center pointer-events-auto rounded-xl"
+        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black px-8 py-2"
         onClick={async (e) => {
           if (e.shiftKey) {
             if (!isLiveBlock(shape.props.uid)) {
@@ -267,7 +250,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           }
         }}
         style={{
-          borderColor: shape.props.color,
+          background: `var(--palette-${
+            COLOR_ARRAY[
+              discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
+                ? discourseNodeIndex + 1
+                : 0
+            ]
+          })`,
         }}
       >
         {shape.props.alias || shape.props.title}
@@ -288,25 +277,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 }
 
-const discourseNodeShape = defineShape<DiscourseNodeShape>({
-  type: "node",
-  getShapeUtil: () => DiscourseNodeUtil,
-  // validator: createShapeValidator({ ... })
-});
-
-class DiscourseNodeTool extends TLBoxTool {
-  static id = "node";
-  static initial = "idle";
-  shapeType = "node";
-  override styles = ["opacity" as const, "color" as const];
-}
-
-const customTldrawConfig = new TldrawEditorConfig({
-  tools: [DiscourseNodeTool],
-  shapes: [discourseNodeShape],
-  allowUnknownShapes: true,
-});
-
 const TldrawCanvas = ({ title }: Props) => {
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
@@ -317,6 +287,44 @@ const TldrawCanvas = ({ title }: Props) => {
   const allNodes = useMemo(
     () => (discourseContext.nodes = getDiscourseNodes(allRelations)),
     [allRelations]
+  );
+  const allNodesWithTextNode = useMemo(
+    () =>
+      [
+        {
+          type: TEXT_TYPE,
+          shortcut: "t",
+        },
+      ].concat(allNodes),
+    [allNodes]
+  );
+  const customTldrawConfig = useMemo(
+    () =>
+      new TldrawEditorConfig({
+        tools: allNodesWithTextNode.map(
+          (n) =>
+            class extends TLBoxTool {
+              static id = n.type;
+              static initial = "idle";
+              shapeType = n.type;
+              override styles = ["opacity" as const];
+            }
+        ),
+        shapes: allNodesWithTextNode.map((n) =>
+          defineShape<DiscourseNodeShape>({
+            type: n.type,
+            getShapeUtil: () =>
+              class extends DiscourseNodeUtil {
+                constructor(app: TldrawApp) {
+                  super(app, n.type);
+                }
+              },
+            // validator: createShapeValidator({ ... })
+          })
+        ),
+        allowUnknownShapes: true,
+      }),
+    [allNodesWithTextNode]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -451,31 +459,43 @@ const TldrawCanvas = ({ title }: Props) => {
           overrides={{
             translations: {
               en: {
-                "shape.node": "Discourse Node",
+                [`shape.node.${TEXT_TYPE}`]: "Text Node",
+                ...Object.fromEntries(
+                  allNodes.map((node) => [`shape.node.${node.type}`, node.text])
+                ),
               },
             },
             tools(app, tools) {
-              tools.node = {
-                id: "node",
-                icon: "color",
-                label: "shape.node" as TLTranslationKey,
-                kbd: "n",
-                readonlyOk: false,
-                onSelect: () => {
-                  app.setSelectedTool("node");
-                },
-              };
+              allNodesWithTextNode.forEach((node, index) => {
+                tools[node.type] = {
+                  id: node.type,
+                  icon: "color",
+                  label: `shape.node.${node.type}` as TLTranslationKey,
+                  kbd: node.shortcut,
+                  readonlyOk: true,
+                  onSelect: () => {
+                    app.setSelectedTool(node.type);
+                  },
+                  style: {
+                    color: `var(--palette-${COLOR_ARRAY[index]})`,
+                  },
+                };
+              });
               return tools;
             },
             toolbar(_app, toolbar, { tools }) {
-              toolbar.splice(4, 0, toolbarItem(tools.node));
+              toolbar.push(
+                ...allNodesWithTextNode.map((n) => toolbarItem(tools[n.type]))
+              );
               return toolbar;
             },
             keyboardShortcutsMenu(_app, keyboardShortcutsMenu, { tools }) {
               const toolsGroup = keyboardShortcutsMenu.find(
                 (group) => group.id === "shortcuts-dialog.tools"
               ) as MenuGroup;
-              toolsGroup.children.push(menuItem(tools.node));
+              toolsGroup.children.push(
+                ...allNodesWithTextNode.map((n) => menuItem(tools[n.type]))
+              );
               return keyboardShortcutsMenu;
             },
           }}
