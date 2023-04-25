@@ -127,10 +127,13 @@ const CellEmbed = ({ uid }: { uid: string }) => {
   const isPage = !!title ? "page-embed" : "block-embed";
   const contentRef = useRef(null);
   useEffect(() => {
-    window.roamAlphaAPI.ui.components.renderBlock({
-      uid,
-      el: contentRef.current,
-    });
+    const el = contentRef.current;
+    if (el) {
+      window.roamAlphaAPI.ui.components.renderBlock({
+        uid,
+        el,
+      });
+    }
   }, [contentRef]);
   return (
     <div className="roamjs-query-embed">
@@ -329,8 +332,8 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
             icon={"clipboard"}
             onClick={(e) => {
               const queryEl = (e.target as HTMLInputElement)
-                .closest(".roamjs-query-used")
-                .querySelector(".roamjs-query-used-text") as HTMLElement;
+                ?.closest(".roamjs-query-used")
+                ?.querySelector(".roamjs-query-used-text") as HTMLElement;
               navigator.clipboard.writeText(queryEl.innerText);
             }}
           />
@@ -766,7 +769,7 @@ const ResultsView: ResultsViewComponent = ({
                     text={"Edit Block"}
                     onClick={() => {
                       const location = getUids(
-                        containerRef.current.closest(
+                        containerRef.current?.closest(
                           ".roam-block"
                         ) as HTMLDivElement
                       );

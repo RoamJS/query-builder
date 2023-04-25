@@ -30,7 +30,9 @@ const toQueryString = (queryState: QueryState): string => {
     return `[[${queryState.value}]]`;
   } else {
     const operator = queryState.type.toLocaleString().toLowerCase();
-    const children = queryState.children.map((q) => toQueryString(q)).join(" ");
+    const children = (queryState.children || [])
+      .map((q) => toQueryString(q))
+      .join(" ");
     return `{${operator}:${children}}`;
   }
 };
@@ -42,8 +44,8 @@ const areEqual = (a: QueryState, b: QueryState): boolean => {
   if (a.type === NODES.TAG) {
     return a.value === b.value;
   }
-  const aChildren = a.children;
-  const bChildren = b.children;
+  const aChildren = a.children || [];
+  const bChildren = b.children || [];
   return (
     aChildren.length === bChildren.length &&
     aChildren.every((aa, i) => areEqual(aa, bChildren[i]))
@@ -115,7 +117,7 @@ const SubqueryContent = ({
       setQueryState({
         type: queryState.type,
         children: [
-          ...queryState.children,
+          ...(queryState.children || []),
           { type: NODES.TAG, children: [], key: incrementKey() },
         ],
         key: queryState.key,
@@ -155,7 +157,7 @@ const SubqueryContent = ({
         {queryState.type === NODES.TAG && (
           <span style={{ marginLeft: 8 }}>
             <PageInput
-              value={queryState.value}
+              value={queryState.value || ""}
               setValue={(value) =>
                 setQueryState({
                   type: queryState.type,
@@ -184,11 +186,11 @@ const SubqueryContent = ({
             borderLeft: `1px solid ${colors[level % colors.length]}`,
           }}
         >
-          {queryState.children.map((q, i) => (
+          {(queryState.children || []).map((q, i) => (
             <SubqueryContent
               value={q}
               onChange={(newQ) => {
-                const children = queryState.children;
+                const children = queryState.children || [];
                 children[i] = newQ;
                 setQueryState({
                   type: queryState.type,
@@ -199,9 +201,9 @@ const SubqueryContent = ({
               level={level + 1}
               key={q.key}
               onDelete={() => {
-                const children = queryState.children;
+                const children = queryState.children || [];
                 if (i === children.length - 1) {
-                  addChildButtonRef.current.focus();
+                  addChildButtonRef.current?.focus();
                 }
                 delete children[i];
                 setQueryState({
@@ -269,7 +271,7 @@ const toQueryStateChildren = (v: string): QueryState[] => {
 };
 
 const QUERY_REGEX = /{{(?:query|\[\[query\]\]):(.*)}}/;
-const toQueryState = (v: string): QueryState => {
+const toQueryState = (v = ""): QueryState => {
   if (!v) {
     return {
       type: NODES.AND,
@@ -278,8 +280,8 @@ const toQueryState = (v: string): QueryState => {
     };
   }
   if (QUERY_REGEX.test(v)) {
-    const content = v.match(QUERY_REGEX)[1];
-    return toQueryState(content.trim());
+    const content = v.match(QUERY_REGEX)?.[1];
+    return toQueryState(content?.trim());
   } else if (v.startsWith("{and:")) {
     const andContent = v.substring("{and:".length, v.length - "}".length);
     const children = toQueryStateChildren(andContent.trim());

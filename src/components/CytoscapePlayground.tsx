@@ -49,8 +49,9 @@ import getDiscourseRelationTriples from "../utils/getDiscourseRelationTriples";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
+import { QBGlobalRefs } from "../utils/types";
 
-window.RoamLazy.Cytoscape().then(navigator);
+if (window.RoamLazy) window.RoamLazy.Cytoscape().then(navigator);
 const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
 const trashCursor =
@@ -178,7 +179,6 @@ const LabelDialog = ({
             type: "clause",
           },
         ],
-        isBackendEnabled: false,
       }).then((results) => setOptions(results.map((r) => r.text)));
     }
   }, [nodeType]);
@@ -328,7 +328,7 @@ const NodeIcon = ({
 type Props = {
   title: string;
   previewEnabled: boolean;
-  globalRefs: { [key: string]: (args: Record<string, string>) => void };
+  globalRefs: QBGlobalRefs;
 };
 
 const useTreeFieldUid = ({
@@ -465,7 +465,7 @@ const CytoscapePlayground = ({
       const onWatch: Parameters<
         typeof window.roamAlphaAPI.data.addPullWatch
       >[2] = (_, a) => {
-        callback(a?.[":block/string"]);
+        callback(a?.[":block/string"] || "");
       };
       const pullPattern = `[:block/string]`;
       const entityId = `[:block/uid "${uid}"]`;
@@ -476,8 +476,8 @@ const CytoscapePlayground = ({
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const containerRef = useRef<HTMLDivElement>(null);
   const shadowInputRef = useRef<HTMLInputElement>(null);
-  const cyRef = useRef<cytoscape.Core>(null);
-  const sourceRef = useRef<cytoscape.NodeSingular>(null);
+  const cyRef = useRef<cytoscape.Core>();
+  const sourceRef = useRef<cytoscape.NodeSingular>();
   const allRelations = useMemo(getDiscourseRelations, []);
   const allNodes = useMemo(
     () => getDiscourseNodes(allRelations),
@@ -529,7 +529,7 @@ const CytoscapePlayground = ({
     if (sourceRef.current) {
       sourceRef.current.style("border-width", 0);
       sourceRef.current.unlock();
-      sourceRef.current = null;
+      sourceRef.current = undefined;
     }
   }, [sourceRef]);
   const allRelationTriples = useMemo(getDiscourseRelationTriples, []);
@@ -552,7 +552,7 @@ const CytoscapePlayground = ({
         clearSourceRef();
         if (selectionModeRef.current === "DELETE") {
           deleteBlock(edge.id());
-          cyRef.current.remove(edge);
+          cyRef.current?.remove(edge);
         } else {
           createOverlayRender<EdgeDialogProps>(
             "playground-edge",
@@ -574,37 +574,39 @@ const CytoscapePlayground = ({
     LivePreviewProps["registerMouseEvents"]
   >(
     ({ open, close, span }) => {
-      const register = () => {
+      const register = (cy: cytoscape.Core) => {
         const root = span.closest<HTMLSpanElement>(".bp3-popover-wrapper");
-        root.style.position = "absolute";
-        cyRef.current.on("mousemove", (e) => {
-          if (
-            e.target === cyRef.current &&
-            cyRef.current.scratch("roamjs_preview_tag")
-          ) {
-            cyRef.current.scratch("roamjs_preview_tag", "");
+        if (root) root.style.position = "absolute";
+        cy.on("mousemove", (e) => {
+          if (e.target === cy && cy.scratch("roamjs_preview_tag")) {
+            cy.scratch("roamjs_preview_tag", "");
           }
-          const tag = cyRef.current.scratch("roamjs_preview_tag");
-          const isOpen = cyRef.current.scratch("roamjs_preview");
+          const tag = cy.scratch("roamjs_preview_tag");
+          const isOpen = cy.scratch("roamjs_preview");
 
           if (isOpen && !tag) {
-            cyRef.current.scratch("roamjs_preview", false);
+            cy.scratch("roamjs_preview", false);
             close();
           } else if (tag) {
-            const { x1, y1 } = cyRef.current.extent();
-            const zoom = cyRef.current.zoom();
-            root.style.top = `${(e.position.y - y1) * zoom}px`;
-            root.style.left = `${(e.position.x - x1) * zoom}px`;
+            const { x1, y1 } = cy.extent();
+            const zoom = cy.zoom();
+            if (root) {
+              root.style.top = `${(e.position.y - y1) * zoom}px`;
+              root.style.left = `${(e.position.x - x1) * zoom}px`;
+            }
             setLivePreviewTag(tag);
             if (!isOpen) {
-              cyRef.current.scratch("roamjs_preview", true);
+              cy.scratch("roamjs_preview", true);
               open(e.originalEvent.ctrlKey);
             }
           }
         });
       };
-      if (cyRef.current) register();
-      else containerRef.current.addEventListener("cytoscape:loaded", register);
+      if (cyRef.current) register(cyRef.current);
+      else if (containerRef.current)
+        containerRef.current.addEventListener("cytoscape:loaded", () =>
+          register(cyRef.current!)
+        );
     },
     [cyRef, containerRef]
   );
@@ -620,9 +622,9 @@ const CytoscapePlayground = ({
         },
         parentUid: elementsUid,
       }).then((id) => {
-        const edge = cyRef.current.add({
+        const edge = cyRef.current?.add({
           data: { id, label: text, ...rest },
-        });
+        })!;
         edgeCallback(edge);
       }),
     [edgeCallback, cyRef]
@@ -633,21 +635,22 @@ const CytoscapePlayground = ({
     Record<string, { top: number; left: number; label: string }>
   >({});
   const refreshNodeOverlays = useCallback(() => {
-    setNodeOverlays(
-      Object.fromEntries(
-        cyRef.current
-          .nodes()
-          .filter((t) => t.data("color") !== TEXT_COLOR)
-          .filter((t) => t.style("display") === "element")
-          .map((n) => [
-            `roamjs-cytoscape-node-overlay-${n.id()}`,
-            {
-              label: n.data("label"),
-              ...getStyle(n as cytoscape.NodeSingular),
-            },
-          ])
-      )
-    );
+    if (cyRef.current)
+      setNodeOverlays(
+        Object.fromEntries(
+          cyRef.current
+            .nodes()
+            .filter((t) => t.data("color") !== TEXT_COLOR)
+            .filter((t) => t.style("display") === "element")
+            .map((n) => [
+              `roamjs-cytoscape-node-overlay-${n.id()}`,
+              {
+                label: n.data("label"),
+                ...getStyle(n as cytoscape.NodeSingular),
+              },
+            ])
+        )
+      );
   }, [setNodeOverlays, cyRef]);
   useEffect(() => {
     overlaysShownRef.current = overlaysShown;
@@ -682,7 +685,7 @@ const CytoscapePlayground = ({
           n.connectedEdges().forEach((edge) => {
             deleteBlock(edge.id());
           });
-          cyRef.current.remove(n);
+          cyRef.current?.remove(n);
           if (overlaysShownRef.current) refreshNodeOverlays();
         } else if (selectionModeRef.current === "CONNECT") {
           if (sourceRef.current) {
@@ -735,24 +738,26 @@ const CytoscapePlayground = ({
         setInputSetting({ blockUid: uid, value: `${x},${y}`, key: "position" });
       });
       n.on("mousemove", () => {
-        if (selectionModeRef.current === "ALIAS") {
-          containerRef.current.style.cursor = "alias";
-        } else if (selectionModeRef.current === "DELETE") {
-          containerRef.current.style.cursor = `url(${trashCursor}), auto`;
-        } else if (selectionModeRef.current === "EDIT") {
-          containerRef.current.style.cursor = `url(${editCursor}), auto`;
-        } else if (selectionModeRef.current === "CONNECT") {
-          containerRef.current.style.cursor = "cell";
+        if (containerRef.current) {
+          if (selectionModeRef.current === "ALIAS") {
+            containerRef.current.style.cursor = "alias";
+          } else if (selectionModeRef.current === "DELETE") {
+            containerRef.current.style.cursor = `url(${trashCursor}), auto`;
+          } else if (selectionModeRef.current === "EDIT") {
+            containerRef.current.style.cursor = `url(${editCursor}), auto`;
+          } else if (selectionModeRef.current === "CONNECT") {
+            containerRef.current.style.cursor = "cell";
+          }
         }
       });
       n.on("mouseover", () => {
         const tag = n.data("label");
-        cyRef.current.scratch("roamjs_preview_tag", tag);
+        cyRef.current?.scratch("roamjs_preview_tag", tag);
       });
       n.on("mouseout", () => {
-        cyRef.current.scratch("roamjs_preview_tag", "");
+        cyRef.current?.scratch("roamjs_preview_tag", "");
         n.style("color", "#EEEEEE");
-        containerRef.current.style.cursor = "unset";
+        if (containerRef.current) containerRef.current.style.cursor = "unset";
       });
       n.on("drag", () => {
         if (overlaysShownRef.current) refreshNodeOverlays();
@@ -808,10 +813,10 @@ const CytoscapePlayground = ({
         },
         parentUid: elementsUid,
       }).then((uid) => {
-        const node = cyRef.current.add({
+        const node = cyRef.current?.add({
           data: { id: uid, label: text, color, alias: text },
           position,
-        })[0];
+        })[0]!;
         nodeInitCallback(node);
       });
     },
@@ -822,8 +827,9 @@ const CytoscapePlayground = ({
     const oldClearOnClick = globalRefs.clearOnClick;
     Promise.all(elementsChildren.map(getCyElementFromRoamNode)).then(
       async (elements) => {
-        const cytoscape = await window.RoamLazy.Cytoscape();
-        cyRef.current = cytoscape({
+        const cytoscape = await window.RoamLazy?.Cytoscape();
+        if (!cytoscape || !containerRef.current) return;
+        const cy = cytoscape({
           container: containerRef.current,
           elements,
 
@@ -866,7 +872,8 @@ const CytoscapePlayground = ({
           maxZoom,
           minZoom,
         });
-        cyRef.current.on("click", (e) => {
+        cyRef.current = cy;
+        cy.on("click", (e) => {
           if (
             e.target !== cyRef.current ||
             (e.originalEvent.target as HTMLElement).tagName !== "CANVAS"
@@ -884,11 +891,11 @@ const CytoscapePlayground = ({
             clearSourceRef();
           }
         });
-        cyRef.current.nodes().forEach(nodeInitCallback);
-        cyRef.current.edges().forEach(edgeCallback);
+        cy.nodes().forEach(nodeInitCallback);
+        cy.edges().forEach(edgeCallback);
         globalRefs.clearOnClick = ({ text }) => {
-          const { x1, x2, y1, y2 } = cyRef.current.extent();
-          const lastTime = cyRef.current.scratch("last_insert") as {
+          const { x1, x2, y1, y2 } = cy.extent();
+          const lastTime = cy.scratch("last_insert") as {
             x: number;
             y: number;
           } | null;
@@ -909,21 +916,21 @@ const CytoscapePlayground = ({
               })
             )?.color || TEXT_COLOR
           );
-          cyRef.current.scratch("last_insert", position);
+          cy.scratch("last_insert", position);
         };
         // @ts-ignore
         cyRef.current.navigator({
           container: `.cytoscape-navigator`,
         });
 
-        cyRef.current.on("zoom", () => {
+        cy.on("zoom", () => {
           if (overlaysShownRef.current) refreshNodeOverlays();
-          cyRef.current.scratch("last_insert", null);
+          cy.scratch("last_insert", null);
         });
 
-        cyRef.current.on("pan", () => {
+        cy.on("pan", () => {
           if (overlaysShownRef.current) refreshNodeOverlays();
-          cyRef.current.scratch("last_insert", null);
+          cy.scratch("last_insert", null);
         });
 
         containerRef.current.dispatchEvent(new Event("cytoscape:loaded"));
@@ -935,7 +942,7 @@ const CytoscapePlayground = ({
               (b?.[":block/children"] || []).map((c) => c[":db/id"])
             );
             const after = (a?.[":block/children"] || []).map(
-              (c) => c[":db/id"]
+              (c) => c[":db/id"] || 0
             );
             const newNodes = after
               .filter((c) => !before.has(c))
@@ -943,15 +950,15 @@ const CytoscapePlayground = ({
                 window.roamAlphaAPI.pull("[:block/uid :block/string]", n)
               )
               .filter(
-                (n) => !!n && !cyRef.current.hasElementWithId(n?.[":block/uid"])
+                (n) => !!n && !cy.hasElementWithId(n?.[":block/uid"] || "")
               );
             newNodes.forEach((n) => {
               getCyElementFromRoamNode({
-                uid: n[":block/uid"],
-                text: n[":block/string"],
-                children: getBasicTreeByParentUid(n[":block/uid"]),
+                uid: n[":block/uid"] || "",
+                text: n[":block/string"] || "",
+                children: getBasicTreeByParentUid(n[":block/uid"] || ""),
               }).then((element) => {
-                const cyNode = cyRef.current.add(element);
+                const cyNode = cy.add(element);
                 if (element.position) {
                   nodeInitCallback(cyNode);
                 } else {
@@ -997,11 +1004,15 @@ const CytoscapePlayground = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchOptions = useMemo(
-    () => (searchOpen ? cyRef.current.nodes().map((n) => n.data("alias")) : []),
+    () =>
+      searchOpen && cyRef.current
+        ? cyRef.current.nodes().map((n) => n.data("alias"))
+        : [],
     [searchOpen, cyRef]
   );
   const getStyle = useCallback(
     (e: cytoscape.NodeSingular) => {
+      if (!cyRef.current) return { top: 0, left: 0, transform: "scale(1)" };
       const { x1, y1 } = cyRef.current.extent();
       const zoom = cyRef.current.zoom();
       const { x, y } = e.position();
@@ -1016,7 +1027,7 @@ const CytoscapePlayground = ({
 
   useEffect(() => {
     if (cyRef.current) {
-      const isNodeValid = (other: cytoscape.NodeSingular) => {
+      const isNodeValid = (other: cytoscape.CollectionArgument) => {
         const otherText = nodeTextByColor[other.data("color")];
         return (
           (filters.includes.nodes.size === 0 &&
@@ -1026,7 +1037,7 @@ const CytoscapePlayground = ({
         );
       };
 
-      const isEdgeValid = (other: cytoscape.EdgeSingular) =>
+      const isEdgeValid = (other: cytoscape.CollectionArgument) =>
         (filters.includes.edges.size === 0 &&
           filters.includes.nodes.size === 0 &&
           !filters.excludes.edges.has(other.data("label"))) ||
@@ -1214,7 +1225,7 @@ const CytoscapePlayground = ({
                   icon={"search"}
                   onClick={() => {
                     setSearchOpen(true);
-                    const input = searchRef.current.querySelector("input");
+                    const input = searchRef.current?.querySelector("input");
                     if (input) {
                       setTimeout(() => input.focus({ preventScroll: true }), 1);
                     }
@@ -1312,7 +1323,7 @@ const CytoscapePlayground = ({
                       nodes.map((n) => [n.uid, n.cyId])
                     );
                     const edgeCache = new Set(
-                      Array.from(cyRef.current.edges()).map((e) =>
+                      Array.from(cyRef.current?.edges() || []).map((e) =>
                         JSON.stringify([
                           e.source().id(),
                           e.data("label"),
@@ -1393,11 +1404,11 @@ const CytoscapePlayground = ({
                       const targetUid = n.children.find((c) =>
                         toFlexRegex("target").test(c.text)
                       )?.children?.[0]?.text;
-                      const getNodeType = (t: RoamBasicNode) =>
+                      const getNodeType = (t?: RoamBasicNode) =>
                         nodeTypeByColor[
                           (t?.children || []).find((s) =>
                             toFlexRegex("color").test(s.text)
-                          )?.children?.[0]?.text
+                          )?.children?.[0]?.text || ""
                         ];
                       if (sourceUid && targetUid) {
                         const sourceNode = elementsTree.find(
@@ -1428,7 +1439,7 @@ const CytoscapePlayground = ({
                     })
                     .map((e) => {
                       if (!e.relation)
-                        return connectedNodeUids.has(e.uid)
+                        return connectedNodeUids.has(e.uid || "")
                           ? []
                           : e.type === TEXT_TYPE
                           ? [
@@ -1447,7 +1458,7 @@ const CytoscapePlayground = ({
                               {
                                 source: "page",
                                 relation: "has title",
-                                target: e.node,
+                                target: e.node || "",
                               },
                             ];
                       const found = relationData.find(
@@ -1577,9 +1588,9 @@ const CytoscapePlayground = ({
                       relations: nodesOrRelations
                         .filter((n) => !n.node)
                         .map((n) => ({
-                          source: nodeUids[n.source],
-                          target: nodeUids[n.target],
-                          label: n.relation,
+                          source: nodeUids[n.source || ""],
+                          target: nodeUids[n.target || ""],
+                          label: n.relation || "",
                         })),
                     },
                     ...exportRenderProps,
@@ -1618,7 +1629,7 @@ const CytoscapePlayground = ({
             ref={searchRef}
             // TODO - why is the search input not clickable?!
             onClick={() => {
-              const input = searchRef.current.querySelector("input");
+              const input = searchRef.current?.querySelector("input");
               if (input) {
                 setTimeout(() => input.focus({ preventScroll: true }), 1);
               }
@@ -1629,9 +1640,9 @@ const CytoscapePlayground = ({
             <AutocompleteInput
               onConfirm={() => {
                 const node = cyRef.current
-                  .nodes()
+                  ?.nodes()
                   .filter((n) => n.data("alias") === searchValue);
-                if (node) cyRef.current.center(node);
+                if (node && cyRef.current) cyRef.current.center(node);
               }}
               value={searchValue}
               setValue={setSearchValue}

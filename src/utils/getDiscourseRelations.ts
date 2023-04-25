@@ -4,6 +4,8 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import DEFAULT_RELATION_VALUES from "../data/defaultDiscourseRelations";
 import discourseConfigRef from "./discourseConfigRef";
 
+export type DiscourseRelation = ReturnType<typeof getDiscourseRelations>[number];
+
 const getDiscourseRelations = () =>
   (
     (

@@ -19,9 +19,9 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) =>
         text,
         shortcut: getSettingValueFromTree({ tree: children, key: "shortcut" }),
         type,
-        specification:
-          !!getSubTree({ tree: specTree, key: "enabled" }).uid &&
-          parseQuery(spec.uid).conditions,
+        specification: !!getSubTree({ tree: specTree, key: "enabled" }).uid
+          ? parseQuery(spec.uid).conditions
+          : [],
         isRelationBacked: false,
       };
     })

@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "1.4.0",
+  "version": "1.5.5",
   "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
   "author": {
@@ -8,9 +8,10 @@
     "email": "support@roamjs.com"
   },
   "scripts": {
-    "start": "roamjs-scripts dev --labs",
-    "prebuild:roam": "npm install",
-    "build:roam": "roamjs-scripts build --labs --dry"
+    "postinstall": "patch-package",
+    "start": "samepage dev",
+    "prebuild:roam": "npm install -f",
+    "build:roam": "samepage build --dry"
   },
   "license": "MIT",
   "devDependencies": {
@@ -23,13 +24,15 @@
     "widgets"
   ],
   "dependencies": {
-    "@samepage/external": "^0.52.6",
-    "@tldraw/tldraw": "^1.29.2",
+    "@samepage/external": "^0.62.3",
+    "@tldraw/tldraw": "^2.0.0-alpha.12",
     "cytoscape-navigator": "^2.0.1",
     "react-charts": "^3.0.0-beta.48",
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.76.2",
-    "roamjs-scripts": "^0.27.0"
+    "roamjs-components": "^0.77.14"
+  },
+  "samepage": {
+    "extends": "node_modules/roamjs-components/package.json"
   }
 }

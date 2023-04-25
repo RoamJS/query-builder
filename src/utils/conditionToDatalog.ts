@@ -370,9 +370,11 @@ const translator: Record<string, Translator> = {
       },
     ],
     targetOptions: () =>
-      window.roamAlphaAPI.data.fast
-        .q(`[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`)
-        .map((d: [PullBlock]) => d[0][":node/title"]),
+      (
+        window.roamAlphaAPI.data.fast.q(
+          `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
+        ) as [PullBlock][]
+      ).map((d) => d[0][":node/title"] || ""),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "edited by": {
@@ -403,9 +405,11 @@ const translator: Record<string, Translator> = {
       },
     ],
     targetOptions: () =>
-      window.roamAlphaAPI.data.fast
-        .q(`[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`)
-        .map((d: [PullBlock]) => d[0][":node/title"]),
+      (
+        window.roamAlphaAPI.data.fast.q(
+          `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
+        ) as [PullBlock][]
+      ).map((d) => d[0][":node/title"] || ''),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "references title": {

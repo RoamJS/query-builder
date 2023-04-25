@@ -213,7 +213,13 @@ const registerDiscourseDatalogTranslators = () => {
                 ? { ...r, forward: false }
                 : undefined
             )
-            .filter((r) => !!r);
+            .filter(
+              (
+                r
+              ): r is ReturnType<typeof getDiscourseRelations>[number] & {
+                forward: boolean;
+              } => !!r
+            );
           if (!filteredRelations.length) return [];
           const andParts = filteredRelations.map(({ triples, forward }) => {
             const sourceTriple = triples.find((t) => t[2] === "source");
@@ -394,20 +400,20 @@ const registerDiscourseDatalogTranslators = () => {
                   dr.source === source ||
                   nodeLabelByType[dr.source] === source)
             );
-          return pageNames.filter((p) =>
-            sourcedRelations.some((sr) =>
-              matchDiscourseNode({
-                ...nodeByType[sr.target],
-                title: p,
-              })
-            )
-          ).concat(
-            ...Object.values(nodeLabelByType).filter((p) =>
+          return pageNames
+            .filter((p) =>
               sourcedRelations.some((sr) =>
-                nodeByType[sr.target].text === p
+                matchDiscourseNode({
+                  ...nodeByType[sr.target],
+                  title: p,
+                })
               )
             )
-          );
+            .concat(
+              ...Object.values(nodeLabelByType).filter((p) =>
+                sourcedRelations.some((sr) => nodeByType[sr.target].text === p)
+              )
+            );
         },
         placeholder: "Enter a valid target",
       })

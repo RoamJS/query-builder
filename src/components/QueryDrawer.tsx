@@ -79,7 +79,7 @@ const SavedQuery = ({
         });
     }
   }, [initialQuery, minimized, setInitialQuery, setResults, uid]);
-  const resultsInViewRef = useRef([]);
+  const resultsInViewRef = useRef<Result[]>([]);
   return (
     <div
       style={{
@@ -206,7 +206,7 @@ const SavedQuery = ({
                         minimal
                         onClick={() => {
                           resultsInViewRef.current.map((r) => {
-                            clearOnClick?.(r.text);
+                            clearOnClick?.(r.text || "");
                           });
                           setResultsReferenced(
                             new Set([
@@ -314,7 +314,7 @@ const SavedQueriesContainer = ({
               ) as [PullBlock][]
             )
               .filter((a) => a.length && a[0])
-              .map((a) => a[0][":block/string"])
+              .map((a) => a[0][":block/string"] || "")
           );
         }
         return new Set(
@@ -327,7 +327,7 @@ const SavedQueriesContainer = ({
             ) as [PullBlock][]
           )
             .filter((a) => a.length && a[0])
-            .map((a) => a[0][":node/title"])
+            .map((a) => a[0][":node/title"] || "")
         );
       })
       .then(setResultsReferenced);

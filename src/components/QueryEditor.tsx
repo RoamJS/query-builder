@@ -27,7 +27,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import parseQuery from "../utils/parseQuery";
-import { backendToken, getDatalogQuery } from "../utils/fireQuery";
+import { getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import {
   Condition,
@@ -333,7 +333,10 @@ const QuerySelection = ({
   );
 };
 
-const getConditionByUid = (uid: string, conditions: Condition[]): Condition => {
+const getConditionByUid = (
+  uid: string,
+  conditions: Condition[]
+): Condition | undefined => {
   for (const con of conditions) {
     if (con.uid === uid) return con;
     if (con.type === "or" || con.type === "not or") {
@@ -368,7 +371,7 @@ const QueryEditor: QueryEditorComponent = ({
     customNodeUid,
     customNode: initialCustom,
     isCustomEnabled: initialIsCustomEnabled,
-    isBackendEnabled: initialIsBackendEnabled,
+    isSamePageEnabled: initialIsSamePageEnabled,
   } = useMemo(() => parseQuery(parentUid), [parentUid]);
   const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
@@ -453,8 +456,8 @@ const QueryEditor: QueryEditorComponent = ({
   const [isCustomEnabled, setIsCustomEnabled] = useState(
     initialIsCustomEnabled
   );
-  const [isBackendEnabled, setIsBackendEnabled] = useState(
-    initialIsBackendEnabled
+  const [isSamePageEnabled, setIsSamePageEnabled] = useState(
+    initialIsSamePageEnabled
   );
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [label, setLabel] = useState(() => {
@@ -704,29 +707,42 @@ const QueryEditor: QueryEditorComponent = ({
           {showDisabledMessage && (
             <span className="text-red-700 inline-block">{disabledMessage}</span>
           )}
-          {backendToken && (
+          {window.samepage && (
             <Checkbox
-              label="BE"
-              checked={isBackendEnabled}
+              labelElement={
+                <Tooltip
+                  content={
+                    "Use SamePage's backend to fire this query [EXPERIMENTAL]."
+                  }
+                >
+                  <img
+                    src="https://samepage.network/images/logo.png"
+                    height={24}
+                    width={24}
+                  />
+                </Tooltip>
+              }
+              style={{ marginBottom: 0 }}
+              checked={isSamePageEnabled}
               onChange={(e) => {
                 const enabled = (e.target as HTMLInputElement).checked;
                 const scratchNode = getSubTree({ parentUid, key: "scratch" });
                 const enabledUid = getSubTree({
                   tree: scratchNode.children,
-                  key: "backend",
+                  key: "samepage",
                 }).uid;
                 if (enabled && !enabledUid) {
                   createBlock({
                     parentUid: scratchNode.uid,
                     order: 0,
                     node: {
-                      text: "backend",
+                      text: "samepage",
                     },
                   });
                 } else if (!enabled && enabledUid) {
                   deleteBlock(enabledUid);
                 }
-                setIsBackendEnabled(enabled);
+                setIsSamePageEnabled(enabled);
               }}
             />
           )}
@@ -759,40 +775,41 @@ const QueryEditor: QueryEditorComponent = ({
             )
           }
         >
-          {Array(viewCondition.conditions.length)
-            .fill(null)
-            .map((_, j) => (
-              <Tab
-                key={j}
-                id={j}
-                title={`${j + 1}`}
-                panel={
-                  <>
-                    {viewConditions.map((con, index) => (
-                      <QueryCondition
-                        key={con.uid}
-                        con={con}
-                        index={index}
-                        conditions={viewConditions}
-                        availableSources={[
-                          returnNode,
-                          ...conditions
-                            .filter(
-                              (c) => c.type === "clause" || c.type === "not"
-                            )
-                            .map((c) => (c as QBClauseData).target),
-                        ]}
-                        setConditions={(cons) => {
-                          viewCondition.conditions[view.branch] = cons;
-                          setConditions([...conditions]);
-                        }}
-                        setView={(v) => setViews([...views, v])}
-                      />
-                    ))}
-                  </>
-                }
-              />
-            ))}
+          {viewCondition &&
+            Array(viewCondition.conditions.length)
+              .fill(null)
+              .map((_, j) => (
+                <Tab
+                  key={j}
+                  id={j}
+                  title={`${j + 1}`}
+                  panel={
+                    <>
+                      {viewConditions.map((con, index) => (
+                        <QueryCondition
+                          key={con.uid}
+                          con={con}
+                          index={index}
+                          conditions={viewConditions}
+                          availableSources={[
+                            returnNode,
+                            ...conditions
+                              .filter(
+                                (c) => c.type === "clause" || c.type === "not"
+                              )
+                              .map((c) => (c as QBClauseData).target),
+                          ]}
+                          setConditions={(cons) => {
+                            viewCondition.conditions[view.branch] = cons;
+                            setConditions([...conditions]);
+                          }}
+                          setView={(v) => setViews([...views, v])}
+                        />
+                      ))}
+                    </>
+                  }
+                />
+              ))}
         </Tabs>
         <div style={{ display: "flex" }}>
           <span style={{ minWidth: 144, display: "inline-block" }}>
@@ -818,7 +835,7 @@ const QueryEditor: QueryEditorComponent = ({
                     text: `AND`,
                   },
                 }).then(() => {
-                  viewCondition.conditions.push([]);
+                  viewCondition?.conditions.push([]);
                   setConditions([...conditions]);
                 });
               }}
@@ -852,6 +869,7 @@ const QueryEditor: QueryEditorComponent = ({
                     })
                   )
                   .then((uid) => {
+                    if (!viewCondition) return;
                     viewCondition.conditions[view.branch] = [
                       ...viewConditions,
                       {

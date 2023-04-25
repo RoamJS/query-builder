@@ -10,7 +10,7 @@ const replaceDatalogVariables = (
   )[] = [],
   clauses: DatalogClause[]
 ): DatalogClause[] => {
-  const replaceDatalogVariable = (a: DatalogVariable) => {
+  const replaceDatalogVariable = (a: DatalogVariable): DatalogVariable => {
     const rep = replacements.find(
       (rep) => a.value === rep.from || rep.from === true
     );
@@ -28,8 +28,9 @@ const replaceDatalogVariables = (
         value: rep.to(a.value),
       };
     }
+    return a;
   };
-  return clauses.map((c) => {
+  return clauses.map((c): DatalogClause => {
     switch (c.type) {
       case "data-pattern":
       case "fn-expr":

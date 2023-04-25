@@ -19,6 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: install
-        run: npm install
+        run: npm install -f
       - name: build
-        run: npx roamjs-scripts build --labs
+        run: npx samepage build

@@ -47,6 +47,7 @@ const TimelineElement = ({
 }) => {
   const containerRef = useRef(null);
   useEffect(() => {
+    if (!containerRef.current) return;
     window.roamAlphaAPI.ui.components.renderBlock({
       uid: t.uid,
       el: containerRef.current,
