@@ -37,9 +37,6 @@ const postProcessResults = (
   results: Result[],
   settings: Omit<ReturnType<typeof parseResultSettings>, "views" | "layout">
 ) => {
-  console.log("settings", settings);
-  console.log("settings searchFilter", settings.searchFilter);
-
   const sortedResults = results
     .filter((r) => {
       return Object.keys(settings.filters).every((filterKey) => {

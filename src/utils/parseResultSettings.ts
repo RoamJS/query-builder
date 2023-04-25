@@ -71,9 +71,6 @@ const parseResultSettings = (
     key: "searchFilter",
   });
   const searchFilter = searchFilterNode.children[0]?.text;
-  console.log("parseResultsSettings searchFilterNode", searchFilterNode);
-  console.log("parseResultsSettings searchFilter", searchFilter);
-
   const filterEntries = getFilterEntries(filtersNode);
   const savedFilterData = filterEntries.length
     ? Object.fromEntries(filterEntries)
