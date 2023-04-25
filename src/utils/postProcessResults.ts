@@ -68,11 +68,13 @@ const postProcessResults = (
     })
     .filter((r) => {
       return settings.searchFilter
-        ? Object.values(r).some((value) =>
-            String(value)
-              .toLowerCase()
-              .includes(settings.searchFilter.toLowerCase())
-          )
+        ? Object.keys(r)
+            .filter((key) => !key.endsWith("-uid") || key !== "uid")
+            .some((key) =>
+              String(r[key])
+                .toLowerCase()
+                .includes(settings.searchFilter.toLowerCase())
+            )
         : true;
     })
     .sort((a, b) => {
