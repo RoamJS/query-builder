@@ -66,7 +66,7 @@ const postProcessResults = (
     .filter((r) => {
       return settings.searchFilter
         ? Object.keys(r)
-            .filter((key) => !key.endsWith("-uid") || key !== "uid")
+            .filter((key) => !key.endsWith("-uid") && key !== "uid")
             .some((key) =>
               String(r[key])
                 .toLowerCase()

@@ -543,7 +543,7 @@ const ResultsView: ResultsViewComponent = ({
                   });
               }, 1000);
             }}
-            defaultValue={settings.searchFilter}
+            defaultValue={searchFilter}
           />
         </div>
       )}
@@ -562,7 +562,15 @@ const ResultsView: ResultsViewComponent = ({
           )}
           <Popover
             isOpen={moreMenuOpen}
-            target={<Button minimal icon={"more"} />}
+            target={
+              <Button
+                minimal
+                icon={"more"}
+                className={
+                  searchFilter && !isEditSearchFilter ? "bp-warning" : ""
+                }
+              />
+            }
             onInteraction={(next, e) => {
               if (!e) return;
               const target = e.target as HTMLElement;
@@ -789,6 +797,9 @@ const ResultsView: ResultsViewComponent = ({
                   <MenuItem
                     icon={"search"}
                     text={isEditSearchFilter ? "Hide Search" : "Search"}
+                    className={
+                      searchFilter && !isEditSearchFilter ? "bp-warning" : ""
+                    }
                     onClick={() => {
                       setMoreMenuOpen(false);
                       setIsEditSearchFilter((prevState) => !prevState);

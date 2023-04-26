@@ -51,6 +51,10 @@ export default runExtension({
     outline-width: 2px;
 }
 
+.bp-warning, .bp-warning.bp3-button .bp3-icon {
+  color: #a82a2a;
+}
+
 .roamjs-query-condition-source, 
 .roamjs-query-condition-relation,
 .roamjs-query-return-node {
