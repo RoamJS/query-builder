@@ -48,6 +48,7 @@ import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
+import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
 
 export const SETTING = "discourse-graphs";
 
@@ -224,6 +225,15 @@ export const renderDiscourseNodeTypeConfigPage = ({
                 }).children.map((c) => c.text),
             },
           } as Field<SelectField>,
+          // @ts-ignore
+          {
+            title: "Canvas",
+            description: `Various options for this node in the Discourse Canvas`,
+            Panel: CustomPanel,
+            options: {
+              component: DiscourseNodeCanvasSettings,
+            },
+          } as Field<CustomField>,
         ],
       });
 

@@ -10,30 +10,30 @@ index 0f93cb5..0e42591 100644
  }
  
  /** @public */
-diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/cjs/lib/components/Toolbar/Toolbar.js b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/cjs/lib/components/Toolbar/Toolbar.js
-index 66969e7..772e816 100644
---- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/cjs/lib/components/Toolbar/Toolbar.js
-+++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/cjs/lib/components/Toolbar/Toolbar.js
-@@ -179,7 +179,7 @@ const OverflowToolsContent = (0, import_signia_react.track)(function OverflowToo
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/components/Toolbar/Toolbar.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/components/Toolbar/Toolbar.mjs
+index 8c9610d..03a9b7c 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/components/Toolbar/Toolbar.mjs
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/components/Toolbar/Toolbar.mjs
+@@ -151,7 +151,7 @@ const OverflowToolsContent = track(function OverflowToolsContent2({
    toolbarItems
  }) {
-   const msg = (0, import_hooks.useTranslation)();
--  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tlui-button-grid__four tlui-button-grid__reverse", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon } }) => {
-+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tlui-button-grid__four tlui-button-grid__reverse", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon, style } }) => {
-     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+   const msg = useTranslation();
+-  return /* @__PURE__ */ jsx("div", { className: "tlui-button-grid__four tlui-button-grid__reverse", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon } }) => {
++  return /* @__PURE__ */ jsx("div", { className: "tlui-button-grid__four tlui-button-grid__reverse", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon, style } }) => {
+     return /* @__PURE__ */ jsx(
        M.Item,
        {
-@@ -190,7 +190,8 @@ const OverflowToolsContent = (0, import_signia_react.track)(function OverflowToo
+@@ -162,7 +162,8 @@ const OverflowToolsContent = track(function OverflowToolsContent2({
          "aria-label": label,
          onClick: onSelect,
-         title: label ? `${msg(label)} ${kbd ? (0, import_primitives.kbdStr)(kbd) : ""}` : "",
+         title: label ? `${msg(label)} ${kbd ? kbdStr(kbd) : ""}` : "",
 -        icon
 +        icon,
 +        style
        },
        id
      );
-@@ -216,7 +217,8 @@ function ToolbarButton({
+@@ -188,7 +189,8 @@ function ToolbarButton({
        onTouchStart: (e) => {
          e.preventDefault();
          item.onSelect();

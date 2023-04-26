@@ -23,14 +23,21 @@ import {
   TLBoxUtil,
   HTMLContainer,
   TLBoxTool,
+  TLArrowTool,
   toolbarItem,
   MenuGroup,
   menuItem,
   OnDoubleClickHandler,
   TLTranslationKey,
-  OnTranslateEndHandler,
   TL_COLOR_TYPES,
-  TLColorType,
+  TLLineUtil,
+  StateNode,
+  StateNodeConstructor,
+  TLShapeDef,
+  TLShapeUtil,
+  TLArrowUtil,
+  TLArrowShape,
+  TLArrowShapeProps,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -79,9 +86,9 @@ const THROTTLE = 350;
 const TEXT_TYPE = "&TEX-node";
 
 const discourseContext: {
-  nodes: DiscourseNode[];
+  nodes: Record<string, DiscourseNode & { index: number }>;
   relations: DiscourseRelation[];
-} = { nodes: [], relations: [] };
+} = { nodes: {}, relations: [] };
 
 type NodeDialogProps = {
   label: string;
@@ -168,16 +175,19 @@ const LabelDialog = ({
   );
 };
 
-type DiscourseNodeShape = TLBaseShape<
+type DiscourseProps = {
+  w: number;
+  h: number;
+  opacity: TLOpacityType;
+  uid: string;
+  title: string;
+};
+
+type DiscourseNodeShape = TLBaseShape<string, DiscourseProps>;
+
+type DiscourseRelationShape = TLBaseShape<
   string,
-  {
-    w: number;
-    h: number;
-    opacity: TLOpacityType;
-    uid: string;
-    title: string;
-    alias: string;
-  }
+  Omit<DiscourseProps, "w" | "h"> & TLArrowShapeProps
 >;
 
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
@@ -204,7 +214,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       h: 64,
       uid: window.roamAlphaAPI.util.generateUID(),
       title: "",
-      alias: "",
     };
   }
   override onDoubleClick: OnDoubleClickHandler<DiscourseNodeShape> = (e) => {
@@ -228,9 +237,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
-    const discourseNodeIndex = discourseContext.nodes.findIndex(
-      (n) => n.type === this.type
-    );
+    const discourseNodeIndex = discourseContext.nodes[this.type]?.index ?? -1;
+    const { alias, color } =
+      discourseContext.nodes[this.type].canvasSettings || {};
     return (
       <HTMLContainer
         id={shape.id}
@@ -250,16 +259,21 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           }
         }}
         style={{
-          background: `var(--palette-${
-            COLOR_ARRAY[
-              discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
-                ? discourseNodeIndex + 1
-                : 0
-            ]
-          })`,
+          background:
+            color ||
+            `var(--palette-${
+              COLOR_ARRAY[
+                discourseNodeIndex >= 0 &&
+                discourseNodeIndex < COLOR_ARRAY.length - 1
+                  ? discourseNodeIndex + 1
+                  : 0
+              ]
+            })`,
         }}
       >
-        {shape.props.alias || shape.props.title}
+        {alias
+          ? new RegExp(alias).exec(shape.props.title)?.[1] || shape.props.title
+          : shape.props.title}
       </HTMLContainer>
     );
   }
@@ -277,6 +291,38 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 }
 
+class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
+  constructor(app: TldrawApp, type: string) {
+    super(app, type);
+  }
+  defaultProps() {
+    const colorIndex = discourseContext.relations.findIndex(
+      (r) => r.id === this.type
+    );
+    const color =
+      colorIndex >= 0 && colorIndex < discourseContext.relations.length
+        ? COLOR_ARRAY[colorIndex]
+        : COLOR_ARRAY[0];
+    return {
+      opacity: "1" as const,
+      dash: "draw" as const,
+      size: "m" as const,
+      fill: "none" as const,
+      color,
+      labelColor: color,
+      bend: 0,
+      start: { type: "point" as const, x: 0, y: 0 },
+      end: { type: "point" as const, x: 0, y: 0 },
+      arrowheadStart: "none" as const,
+      arrowheadEnd: "arrow" as const,
+      text: "",
+      font: "draw" as const,
+      uid: window.roamAlphaAPI.util.generateUID(),
+      title: "",
+    };
+  }
+}
+
 const TldrawCanvas = ({ title }: Props) => {
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
@@ -284,16 +330,21 @@ const TldrawCanvas = ({ title }: Props) => {
     () => (discourseContext.relations = getDiscourseRelations()),
     []
   );
-  const allNodes = useMemo(
-    () => (discourseContext.nodes = getDiscourseNodes(allRelations)),
-    [allRelations]
-  );
+  const allNodes = useMemo(() => {
+    const allNodes = getDiscourseNodes(allRelations);
+    discourseContext.nodes = Object.fromEntries(
+      allNodes.map((n, index) => [n.type, { ...n, index }])
+    );
+    return allNodes;
+  }, [allRelations]);
   const allNodesWithTextNode = useMemo(
     () =>
       [
         {
           type: TEXT_TYPE,
           shortcut: "t",
+          canvasSettings: {} as Record<string, string>,
+          text: "Text Node",
         },
       ].concat(allNodes),
     [allNodes]
@@ -301,27 +352,52 @@ const TldrawCanvas = ({ title }: Props) => {
   const customTldrawConfig = useMemo(
     () =>
       new TldrawEditorConfig({
-        tools: allNodesWithTextNode.map(
-          (n) =>
-            class extends TLBoxTool {
-              static id = n.type;
-              static initial = "idle";
-              shapeType = n.type;
-              override styles = ["opacity" as const];
-            }
-        ),
-        shapes: allNodesWithTextNode.map((n) =>
-          defineShape<DiscourseNodeShape>({
-            type: n.type,
-            getShapeUtil: () =>
-              class extends DiscourseNodeUtil {
-                constructor(app: TldrawApp) {
-                  super(app, n.type);
+        tools: allNodesWithTextNode
+          .map(
+            (n): StateNodeConstructor =>
+              class extends TLBoxTool {
+                static id = n.type;
+                static initial = "idle";
+                shapeType = n.type;
+                override styles = ["opacity" as const];
+              }
+          )
+          .concat(
+            allRelations.map(
+              (r) =>
+                class extends TLArrowTool {
+                  static id = r.id;
+                  static initial = "idle";
+                  static children = TLArrowTool.children;
+                  shapeType = r.id;
+                  override styles = ["opacity" as const];
                 }
-              },
-            // validator: createShapeValidator({ ... })
-          })
-        ),
+            )
+          ),
+        shapes: [
+          ...allNodesWithTextNode.map((n) =>
+            defineShape<DiscourseNodeShape>({
+              type: n.type,
+              getShapeUtil: () =>
+                class extends DiscourseNodeUtil {
+                  constructor(app: TldrawApp) {
+                    super(app, n.type);
+                  }
+                },
+            })
+          ),
+          ...allRelations.map((r) =>
+            defineShape<DiscourseRelationShape>({
+              type: r.id,
+              getShapeUtil: () =>
+                class extends DiscourseRelationUtil {
+                  constructor(app: TldrawApp) {
+                    super(app, r.id);
+                  }
+                },
+            })
+          ),
+        ],
         allowUnknownShapes: true,
       }),
     [allNodesWithTextNode]
@@ -459,9 +535,17 @@ const TldrawCanvas = ({ title }: Props) => {
           overrides={{
             translations: {
               en: {
-                [`shape.node.${TEXT_TYPE}`]: "Text Node",
                 ...Object.fromEntries(
-                  allNodes.map((node) => [`shape.node.${node.type}`, node.text])
+                  allNodesWithTextNode.map((node) => [
+                    `shape.node.${node.type}`,
+                    node.text,
+                  ])
+                ),
+                ...Object.fromEntries(
+                  allRelations.map((relation) => [
+                    `shape.relation.${relation.id}`,
+                    relation.label,
+                  ])
                 ),
               },
             },
@@ -477,6 +561,23 @@ const TldrawCanvas = ({ title }: Props) => {
                     app.setSelectedTool(node.type);
                   },
                   style: {
+                    color:
+                      node.canvasSettings.color ||
+                      `var(--palette-${COLOR_ARRAY[index]})`,
+                  },
+                };
+              });
+              allRelations.forEach((relation, index) => {
+                tools[relation.id] = {
+                  id: relation.id,
+                  icon: "tool-arrow",
+                  label: `shape.relation.${relation.id}` as TLTranslationKey,
+                  kbd: "",
+                  readonlyOk: true,
+                  onSelect: () => {
+                    app.setSelectedTool(relation.id);
+                  },
+                  style: {
                     color: `var(--palette-${COLOR_ARRAY[index]})`,
                   },
                 };
@@ -485,7 +586,8 @@ const TldrawCanvas = ({ title }: Props) => {
             },
             toolbar(_app, toolbar, { tools }) {
               toolbar.push(
-                ...allNodesWithTextNode.map((n) => toolbarItem(tools[n.type]))
+                ...allNodesWithTextNode.map((n) => toolbarItem(tools[n.type])),
+                ...allRelations.map((n) => toolbarItem(tools[n.id]))
               );
               return toolbar;
             },
