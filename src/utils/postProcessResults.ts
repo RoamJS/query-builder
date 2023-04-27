@@ -63,6 +63,17 @@ const postProcessResults = (
         );
       });
     })
+    .filter((r) => {
+      return settings.searchFilter
+        ? Object.keys(r)
+            .filter((key) => !key.endsWith("-uid") && key !== "uid")
+            .some((key) =>
+              String(r[key])
+                .toLowerCase()
+                .includes(settings.searchFilter.toLowerCase())
+            )
+        : true;
+    })
     .sort((a, b) => {
       for (const sort of settings.activeSort) {
         const cmpResult = sortFunction(sort.key, sort.descending)(a, b);

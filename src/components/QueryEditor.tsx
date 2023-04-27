@@ -511,7 +511,7 @@ const QueryEditor: QueryEditorComponent = ({
     height: 0;
 }`}</style>
         {isCustomEnabled && (
-          <div style={{ paddingRight: "20px" }}>
+          <div className="pr-4">
             <Tooltip
               content={"Copy Datalog Query"}
               position={"left"}
@@ -521,6 +521,7 @@ const QueryEditor: QueryEditorComponent = ({
               autoFocus={false}
             >
               <Button
+                minimal
                 icon={"clipboard"}
                 onClick={() => {
                   navigator.clipboard.writeText(custom);
