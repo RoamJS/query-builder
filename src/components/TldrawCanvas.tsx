@@ -27,16 +27,10 @@ import {
   toolbarItem,
   MenuGroup,
   menuItem,
-  OnDoubleClickHandler,
   TLTranslationKey,
   TL_COLOR_TYPES,
-  TLLineUtil,
-  StateNode,
   StateNodeConstructor,
-  TLShapeDef,
-  TLShapeUtil,
   TLArrowUtil,
-  TLArrowShape,
   TLArrowShapeProps,
 } from "@tldraw/tldraw";
 import {
@@ -69,6 +63,7 @@ import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../utils/getDiscourseRelations";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 declare global {
   interface Window {
@@ -195,17 +190,12 @@ const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type = TEXT_TYPE) {
     super(app, type);
-    this.onDoubleClick = this.onDoubleClick.bind(this);
-    this.onDoubleClickEdge = this.onDoubleClickEdge.bind(this);
   }
 
   override isAspectRatioLocked = (_shape: DiscourseNodeShape) => false;
   override canResize = (_shape: DiscourseNodeShape) => true;
   override canBind = (_shape: DiscourseNodeShape) => true;
   override canEdit = () => true;
-
-  // TODO: Figure out a way to add these options to the side menu where opacity is:
-  // - Edit alias (AliasDialog)
 
   override defaultProps(): DiscourseNodeShape["props"] {
     return {
@@ -216,23 +206,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       title: "",
     };
   }
-  override onDoubleClick: OnDoubleClickHandler<DiscourseNodeShape> = (e) => {
-    console.log("onDoubleClick", e);
-  };
-  override onDoubleClickEdge: OnDoubleClickHandler<DiscourseNodeShape> = (
-    shape
-  ) => {
-    createOverlayRender<NodeDialogProps>(
-      "playground-alias",
-      LabelDialog
-    )({
-      label: shape.props.title,
-      nodeType: this.type,
-      onSuccess: (label) => {
-        this.updateProps(shape.id, { title: label });
-      },
-    });
-  };
 
   // TODO: onDelete - remove connected edges
 
@@ -243,21 +216,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black px-8 py-2"
-        onClick={async (e) => {
-          if (e.shiftKey) {
-            if (!isLiveBlock(shape.props.uid)) {
-              if (!shape.props.title) {
-                return;
-              }
-              await createPage({
-                uid: shape.props.uid,
-                title: shape.props.title,
-              });
-            }
-            openBlockInSidebar(shape.props.uid);
-          }
-        }}
+        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black"
         style={{
           background:
             color ||
@@ -271,9 +230,44 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             })`,
         }}
       >
-        {alias
-          ? new RegExp(alias).exec(shape.props.title)?.[1] || shape.props.title
-          : shape.props.title}
+        <div
+          className="px-8 py-2"
+          style={{ pointerEvents: "all" }}
+          onClick={(e) => {
+            if (e.shiftKey) {
+              if (
+                !getPageTitleByPageUid(shape.props.uid) &&
+                !isLiveBlock(shape.props.uid)
+              ) {
+                if (!shape.props.title) {
+                  return;
+                }
+                createPage({
+                  uid: shape.props.uid,
+                  title: shape.props.title,
+                });
+              }
+              openBlockInSidebar(shape.props.uid);
+            }
+          }}
+          onDoubleClick={() =>
+            createOverlayRender<NodeDialogProps>(
+              "playground-alias",
+              LabelDialog
+            )({
+              label: shape.props.title,
+              nodeType: this.type,
+              onSuccess: (label) => {
+                this.updateProps(shape.id, { title: label });
+              },
+            })
+          }
+        >
+          {alias
+            ? new RegExp(alias).exec(shape.props.title)?.[1] ||
+              shape.props.title
+            : shape.props.title}
+        </div>
       </HTMLContainer>
     );
   }
