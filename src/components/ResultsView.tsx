@@ -30,6 +30,7 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 import getUids from "roamjs-components/dom/getUids";
 import Charts from "./Charts";
 import Timeline from "./Timeline";
+import Kanban from "./Kanban";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
@@ -196,6 +197,7 @@ const SUPPORTED_LAYOUTS = [
     icon: "timeline-events",
     settings: [],
   },
+  { id: "kanban", icon: "heat-grid", settings: [] },
 ] as const;
 const settingsById = Object.fromEntries(
   SUPPORTED_LAYOUTS.map((l) => [l.id, l.settings])
@@ -754,12 +756,10 @@ const ResultsView: ResultsViewComponent = ({
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
             ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
+            ) : layout.mode === "kanban" ? (
+              <Kanban data={allResults} layout={layout} />
             ) : (
-<<<<<<< HEAD
               <div style={{ padding: "16px 8px" }}>
-=======
-              <div className="py-4 px-1">
->>>>>>> c234d8e (footer stylings now up to snuf)
                 Layout `{layout}` is not supported
               </div>
             )
