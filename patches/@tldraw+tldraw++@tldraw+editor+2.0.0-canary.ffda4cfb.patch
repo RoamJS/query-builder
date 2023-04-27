@@ -1,0 +1,89 @@
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
+index f87764a..b333965 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
+@@ -4066,7 +4066,7 @@ declare class TickManager {
+ /** @public */
+ export declare const TLArrowShapeDef: TLShapeDef<TLArrowShape, TLArrowUtil>;
+ 
+-declare class TLArrowTool extends StateNode {
++export declare class TLArrowTool extends StateNode {
+     static id: string;
+     static initial: string;
+     static children: () => (typeof Idle | typeof Pointing)[];
+@@ -4075,37 +4075,37 @@ declare class TLArrowTool extends StateNode {
+ }
+ 
+ /** @public */
+-export declare class TLArrowUtil extends TLShapeUtil<TLArrowShape> {
++export declare class TLArrowUtil<Shape extends TLArrowShape> extends TLShapeUtil<Shape> {
+     static type: string;
+     canEdit: () => boolean;
+     canBind: () => boolean;
+     isClosed: () => boolean;
+-    hideResizeHandles: TLShapeUtilFlag<TLArrowShape>;
+-    hideRotateHandle: TLShapeUtilFlag<TLArrowShape>;
+-    hideSelectionBoundsFg: TLShapeUtilFlag<TLArrowShape>;
+-    hideSelectionBoundsBg: TLShapeUtilFlag<TLArrowShape>;
+-    defaultProps(): TLArrowShape['props'];
+-    getCenter(shape: TLArrowShape): Vec2d;
+-    getBounds(shape: TLArrowShape): Box2d;
+-    getOutlineWithoutLabel(shape: TLArrowShape): VecLike[];
+-    getOutline(shape: TLArrowShape): Vec2dModel[];
+-    snapPoints(_shape: TLArrowShape): Vec2d[];
++    hideResizeHandles: TLShapeUtilFlag<Shape>;
++    hideRotateHandle: TLShapeUtilFlag<Shape>;
++    hideSelectionBoundsFg: TLShapeUtilFlag<Shape>;
++    hideSelectionBoundsBg: TLShapeUtilFlag<Shape>;
++    defaultProps(): Shape['props'];
++    getCenter(shape: Shape): Vec2d;
++    getBounds(shape: Shape): Box2d;
++    getOutlineWithoutLabel(shape: Shape): VecLike[];
++    getOutline(shape: Shape): Vec2dModel[];
++    snapPoints(_shape: Shape): Vec2d[];
+     private get infoCache();
+-    getArrowInfo(shape: TLArrowShape): ArrowInfo | undefined;
+-    getHandles(shape: TLArrowShape): TLHandle[];
+-    onHandleChange: OnHandleChangeHandler<TLArrowShape>;
+-    onTranslateStart: OnTranslateStartHandler<TLArrowShape>;
+-    onResize: OnResizeHandler<TLArrowShape>;
+-    onDoubleClickHandle: (shape: TLArrowShape, handle: TLHandle) => TLShapePartial<TLArrowShape> | void;
+-    hitTestPoint(shape: TLArrowShape, point: VecLike): boolean;
+-    hitTestLineSegment(shape: TLArrowShape, A: VecLike, B: VecLike): boolean;
+-    render(shape: TLArrowShape): JSX.Element | null;
+-    indicator(shape: TLArrowShape): JSX.Element | null;
+-    get labelBoundsCache(): ComputedCache<Box2d | null, TLArrowShape>;
+-    getLabelBounds(shape: TLArrowShape): Box2d | null;
+-    getEditingBounds: (shape: TLArrowShape) => Box2d;
+-    onEditEnd: OnEditEndHandler<TLArrowShape>;
+-    toSvg(shape: TLArrowShape, font: string, colors: TLExportColors): SVGGElement;
++    getArrowInfo(shape: Shape): ArrowInfo | undefined;
++    getHandles(shape: Shape): TLHandle[];
++    onHandleChange: OnHandleChangeHandler<Shape>;
++    onTranslateStart: OnTranslateStartHandler<Shape>;
++    onResize: OnResizeHandler<Shape>;
++    onDoubleClickHandle: (shape: Shape, handle: TLHandle) => TLShapePartial<Shape> | void;
++    hitTestPoint(shape: Shape, point: VecLike): boolean;
++    hitTestLineSegment(shape: Shape, A: VecLike, B: VecLike): boolean;
++    render(shape: Shape): JSX.Element | null;
++    indicator(shape: Shape): JSX.Element | null;
++    get labelBoundsCache(): ComputedCache<Box2d | null, Shape>;
++    getLabelBounds(shape: Shape): Box2d | null;
++    getEditingBounds: (shape: Shape) => Box2d;
++    onEditEnd: OnEditEndHandler<Shape>;
++    toSvg(shape: Shape, font: string, colors: TLExportColors): SVGGElement;
+ }
+ 
+ /** @public */
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs
+index 57cb723..29cedd0 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs
+@@ -3,6 +3,7 @@ export * from "./app/App.mjs";
+ export * from "./app/shapeutils/index.mjs";
+ export * from "./app/statechart/StateNode.mjs";
+ export * from "./app/statechart/TLBoxTool/index.mjs";
++export * from "./app/statechart/TLArrowTool/index.mjs";
+ export * from "./app/types/clipboard-types.mjs";
+ export * from "./app/types/event-types.mjs";
+ export * from "./app/types/history-types.mjs";

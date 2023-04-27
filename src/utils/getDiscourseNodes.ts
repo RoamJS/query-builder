@@ -23,6 +23,12 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) =>
           ? parseQuery(spec.uid).conditions
           : [],
         isRelationBacked: false,
+        canvasSettings: Object.fromEntries(
+          getSubTree({ tree: children, key: "canvas" }).children.map((c) => [
+            c.text,
+            c.children[0]?.text || "",
+          ] as const)
+        ),
       };
     })
     .concat(
@@ -48,6 +54,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) =>
             uid: window.roamAlphaAPI.util.generateUID(),
           })),
           isRelationBacked: true,
+          canvasSettings: {},
         }))
     );
 
