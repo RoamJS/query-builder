@@ -2,9 +2,59 @@
 import React from "react";
 import { Result } from "../utils/types";
 import { Button, Icon, InputGroup } from "@blueprintjs/core";
+import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 
 const columnKey = "status";
+
+const KanbanCard = (card: { text: string; uid: string }) => {
+  const [isDragging, setIsDragging] = React.useState(false);
+  return (
+    <Draggable
+      onDrag={() => setIsDragging(true)}
+      onStop={(_, _data) => {
+        // set timeout to prevent click handler
+        setTimeout(() => setIsDragging(false));
+      }}
+      bounds={".roamjs-kanban-container"}
+    >
+      <div
+        onClick={(e) => {
+          if (isDragging) return;
+          if (e.shiftKey) {
+            openBlockInSidebar(card.uid);
+            e.preventDefault();
+            e.stopPropagation();
+          } else {
+            window.roamAlphaAPI.ui.mainWindow.openBlock({
+              block: { uid: card.uid },
+            });
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+      >
+        <div
+          className={`rounded-xl bg-white p-4 hover:bg-gray-200`}
+          style={
+            isDragging
+              ? {
+                  transform: "rotate(20deg)",
+                  cursor: "grabbing",
+                }
+              : {
+                  cursor: "pointer",
+                  transform: "rotate(0deg)",
+                }
+          }
+        >
+          {card.text}
+        </div>
+      </div>
+    </Draggable>
+  );
+};
 
 const Kanban = ({
   data,
@@ -34,28 +84,51 @@ const Kanban = ({
     return cards;
   }, [data]);
   return (
-    <div className="flex gap-4 items-start p-4">
+    <div
+      className="gap-4 items-start p-4 relative roamjs-kanban-container overflow-x-scroll"
+      style={{ display: "flex" }}
+    >
       {columns.map((col) => {
         return (
-          <div key={col} className="p-4 rounded-2xl flex flex-col gap-2 bg-gray-100 w-64">
-            <div className="font-bold mb-4">{col}</div>
+          <div
+            key={col}
+            className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0"
+            style={{ display: "flex" }}
+          >
+            <div
+              className="justify-between items-center mb-4"
+              style={{ display: "flex" }}
+            >
+              <span className="font-bold">{col}</span>
+              <Button
+                icon={"trash"}
+                minimal
+                onClick={() => {
+                  const values = columns.filter((c) => c !== col);
+                  setInputSettings({
+                    blockUid: layout.uid as string,
+                    key: "columns",
+                    values,
+                  });
+                  setColumns(values);
+                }}
+              />
+            </div>
             {(cards[col] || [])?.map((d) => (
-              <div key={d.uid} className="rounded-xl bg-white p-4">
-                {d.text}
-              </div>
+              <KanbanCard key={d.uid} {...d} />
             ))}
           </div>
         );
       })}
-      <div className="rounded-2xl w-64">
+      <div className="w-48 flex-shrink-0">
         {isAdding ? (
-          <div className="p-4 bg-gray-100">
+          <div className="rounded-2xl p-4 bg-gray-100">
             <InputGroup
               placeholder="Enter column title..."
               value={newColumn}
               onChange={(e) => setNewColumn(e.target.value)}
             />
-            <div className="flex gap-4">
+            <div className="gap-4" style={{ display: "flex" }}>
               <Button
                 intent="primary"
                 text="Add column"
@@ -80,7 +153,7 @@ const Kanban = ({
           </div>
         ) : (
           <div
-            className="bg-opacity-50 p-8 cursor-pointer hover:bg-opacity-25"
+            className="rounded-2xl bg-opacity-50 p-8 cursor-pointer bg-gray-100 hover:bg-opacity-25"
             onClick={() => setIsAdding(true)}
           >
             <Icon icon={"plus"} /> Add another column
