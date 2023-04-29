@@ -213,7 +213,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   render(shape: DiscourseNodeShape) {
     const discourseNodeIndex = discourseContext.nodes[this.type]?.index ?? -1;
     const { alias, color } =
-      discourseContext.nodes[this.type].canvasSettings || {};
+      discourseContext.nodes[this.type]?.canvasSettings || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
