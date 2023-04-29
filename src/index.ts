@@ -137,6 +137,10 @@ export default runExtension({
 
 .roamjs-view-select > span {
   width: 100%;
+}
+
+svg.rs-svg-container {
+  overflow: visible;
 }`);
     const isCanvasPage = (title: string) => {
       const canvasPageFormat =

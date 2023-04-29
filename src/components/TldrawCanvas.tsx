@@ -27,17 +27,12 @@ import {
   toolbarItem,
   MenuGroup,
   menuItem,
-  OnDoubleClickHandler,
   TLTranslationKey,
   TL_COLOR_TYPES,
-  TLLineUtil,
-  StateNode,
   StateNodeConstructor,
-  TLShapeDef,
-  TLShapeUtil,
   TLArrowUtil,
-  TLArrowShape,
   TLArrowShapeProps,
+  OnClickHandler,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -69,6 +64,9 @@ import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../utils/getDiscourseRelations";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { useValue } from "signia-react";
+import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 
 declare global {
   interface Window {
@@ -97,13 +95,12 @@ type NodeDialogProps = {
 };
 
 const LabelDialog = ({
+  isOpen,
   onClose,
   label: _label,
   onSuccess,
   nodeType,
-}: {
-  onClose: () => void;
-} & NodeDialogProps) => {
+}: RoamOverlayProps<NodeDialogProps>) => {
   const [label, setLabel] = useState(_label);
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
@@ -133,7 +130,7 @@ const LabelDialog = ({
   return (
     <>
       <Dialog
-        isOpen={true}
+        isOpen={isOpen}
         title={"Edit Discourse Node Label"}
         onClose={onClose}
         canOutsideClickClose
@@ -195,17 +192,12 @@ const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type = TEXT_TYPE) {
     super(app, type);
-    this.onDoubleClick = this.onDoubleClick.bind(this);
-    this.onDoubleClickEdge = this.onDoubleClickEdge.bind(this);
   }
 
   override isAspectRatioLocked = (_shape: DiscourseNodeShape) => false;
   override canResize = (_shape: DiscourseNodeShape) => true;
   override canBind = (_shape: DiscourseNodeShape) => true;
   override canEdit = () => true;
-
-  // TODO: Figure out a way to add these options to the side menu where opacity is:
-  // - Edit alias (AliasDialog)
 
   override defaultProps(): DiscourseNodeShape["props"] {
     return {
@@ -216,48 +208,21 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       title: "",
     };
   }
-  override onDoubleClick: OnDoubleClickHandler<DiscourseNodeShape> = (e) => {
-    console.log("onDoubleClick", e);
-  };
-  override onDoubleClickEdge: OnDoubleClickHandler<DiscourseNodeShape> = (
-    shape
-  ) => {
-    createOverlayRender<NodeDialogProps>(
-      "playground-alias",
-      LabelDialog
-    )({
-      label: shape.props.title,
-      nodeType: this.type,
-      onSuccess: (label) => {
-        this.updateProps(shape.id, { title: label });
-      },
-    });
-  };
-
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
     const discourseNodeIndex = discourseContext.nodes[this.type]?.index ?? -1;
     const { alias, color } =
-      discourseContext.nodes[this.type].canvasSettings || {};
+      discourseContext.nodes[this.type]?.canvasSettings || {};
+    const isEditing = useValue(
+      "isEditing",
+      () => this.app.editingId === shape.id,
+      [this.app, shape.id]
+    );
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black px-8 py-2"
-        onClick={async (e) => {
-          if (e.shiftKey) {
-            if (!isLiveBlock(shape.props.uid)) {
-              if (!shape.props.title) {
-                return;
-              }
-              await createPage({
-                uid: shape.props.uid,
-                title: shape.props.title,
-              });
-            }
-            openBlockInSidebar(shape.props.uid);
-          }
-        }}
+        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black"
         style={{
           background:
             color ||
@@ -271,9 +236,28 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             })`,
         }}
       >
-        {alias
-          ? new RegExp(alias).exec(shape.props.title)?.[1] || shape.props.title
-          : shape.props.title}
+        <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
+          {alias
+            ? new RegExp(alias).exec(shape.props.title)?.[1] ||
+              shape.props.title
+            : shape.props.title}
+          <LabelDialog
+            isOpen={isEditing}
+            onClose={() => {
+              this.app.setEditingId(null);
+            }}
+            label={shape.props.title}
+            nodeType={this.type}
+            onSuccess={(label) => {
+              this.updateProps(shape.id, {
+                title: label,
+                uid:
+                  getPageUidByPageTitle(label) ||
+                  window.roamAlphaAPI.util.generateUID(),
+              });
+            }}
+          />
+        </div>
       </HTMLContainer>
     );
   }
@@ -330,6 +314,14 @@ const TldrawCanvas = ({ title }: Props) => {
     () => (discourseContext.relations = getDiscourseRelations()),
     []
   );
+  // TODO: We need to stop splitting a single relation into multiple. Supporting OR solves this.
+  const allRelationsById = useMemo(
+    () => Object.fromEntries(allRelations.map((r) => [r.id, r])),
+    [allRelations]
+  );
+  const allRelationIds = useMemo(() => {
+    return Object.keys(allRelationsById);
+  }, [allRelations]);
   const allNodes = useMemo(() => {
     const allNodes = getDiscourseNodes(allRelations);
     discourseContext.nodes = Object.fromEntries(
@@ -363,13 +355,13 @@ const TldrawCanvas = ({ title }: Props) => {
               }
           )
           .concat(
-            allRelations.map(
-              (r) =>
+            allRelationIds.map(
+              (id) =>
                 class extends TLArrowTool {
-                  static id = r.id;
+                  static id = id;
                   static initial = "idle";
                   static children = TLArrowTool.children;
-                  shapeType = r.id;
+                  shapeType = id;
                   override styles = ["opacity" as const];
                 }
             )
@@ -386,13 +378,13 @@ const TldrawCanvas = ({ title }: Props) => {
                 },
             })
           ),
-          ...allRelations.map((r) =>
+          ...allRelationIds.map((id) =>
             defineShape<DiscourseRelationShape>({
-              type: r.id,
+              type: id,
               getShapeUtil: () =>
                 class extends DiscourseRelationUtil {
                   constructor(app: TldrawApp) {
-                    super(app, r.id);
+                    super(app, id);
                   }
                 },
             })
@@ -528,6 +520,28 @@ const TldrawCanvas = ({ title }: Props) => {
             tldrawApps[title] = app;
           }
           appRef.current = app;
+          app.on("event", (e) => {
+            if (
+              e.shiftKey &&
+              e.shape &&
+              e.shape.props?.uid &&
+              e.name === "pointer_up"
+            ) {
+              if (
+                !getPageTitleByPageUid(e.shape.props.uid) &&
+                !isLiveBlock(e.shape.props.uid)
+              ) {
+                if (!e.shape.props.title) {
+                  return;
+                }
+                createPage({
+                  uid: e.shape.props.uid,
+                  title: e.shape.props.title,
+                });
+              }
+              openBlockInSidebar(e.shape.props.uid);
+            }
+          });
         }}
       >
         <TldrawUi
@@ -542,9 +556,9 @@ const TldrawCanvas = ({ title }: Props) => {
                   ])
                 ),
                 ...Object.fromEntries(
-                  allRelations.map((relation) => [
-                    `shape.relation.${relation.id}`,
-                    relation.label,
+                  allRelationIds.map((id) => [
+                    `shape.relation.${id}`,
+                    allRelationsById[id].label,
                   ])
                 ),
               },
@@ -567,15 +581,15 @@ const TldrawCanvas = ({ title }: Props) => {
                   },
                 };
               });
-              allRelations.forEach((relation, index) => {
-                tools[relation.id] = {
-                  id: relation.id,
+              allRelationIds.forEach((relation, index) => {
+                tools[relation] = {
+                  id: relation,
                   icon: "tool-arrow",
-                  label: `shape.relation.${relation.id}` as TLTranslationKey,
+                  label: `shape.relation.${relation}` as TLTranslationKey,
                   kbd: "",
                   readonlyOk: true,
                   onSelect: () => {
-                    app.setSelectedTool(relation.id);
+                    app.setSelectedTool(relation);
                   },
                   style: {
                     color: `var(--palette-${COLOR_ARRAY[index]})`,
@@ -587,7 +601,7 @@ const TldrawCanvas = ({ title }: Props) => {
             toolbar(_app, toolbar, { tools }) {
               toolbar.push(
                 ...allNodesWithTextNode.map((n) => toolbarItem(tools[n.type])),
-                ...allRelations.map((n) => toolbarItem(tools[n.id]))
+                ...allRelationIds.map((id) => toolbarItem(tools[id]))
               );
               return toolbar;
             },
