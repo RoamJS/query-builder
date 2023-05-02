@@ -266,7 +266,6 @@ const SavedQuery = ({
         resultFilter={resultFilter}
         hideResults={minimized}
         results={results.map(({ id, ...a }) => a)}
-        preventSavingSettings
         preventExport
         ctrlClick={(r) => {
           setResultsReferenced(

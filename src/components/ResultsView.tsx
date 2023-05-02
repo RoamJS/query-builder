@@ -47,7 +47,13 @@ import { Condition } from "../utils/types";
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
 
-const VIEWS = ["link", "plain", "embed", "alias"];
+const VIEWS: Record<string, { value: boolean }> = {
+  link: { value: false },
+  plain: { value: false },
+  embed: { value: false },
+  alias: { value: true },
+  action: { value: true },
+};
 
 const ResultHeader = ({
   c,
@@ -264,6 +270,17 @@ const ResultView = ({
                 </a>
               ) : view === "embed" ? (
                 <CellEmbed uid={uid} />
+              ) : view === "action" ? (
+                <Button
+                  text={viewValue}
+                  onClick={() => {
+                    document.dispatchEvent(
+                      new CustomEvent("roamjs:query-builder:action", {
+                        detail: { action: viewValue, uid, val },
+                      })
+                    );
+                  }}
+                />
               ) : (
                 cell(k)
               )}
@@ -606,7 +623,7 @@ const ResultsView: ResultsViewComponent = ({
         <span className="absolute top-2 right-2 z-10">
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
-              <Button icon={"refresh"} minimal onClick={onRefresh} small />
+              <Button icon={"refresh"} minimal onClick={onRefresh} />
             </Tooltip>
           )}
           <Popover
@@ -730,14 +747,14 @@ const ResultsView: ResultsViewComponent = ({
                           <span style={{ flex: 1 }}>{column}</span>
                           <MenuItemSelect
                             className="roamjs-view-select"
-                            items={VIEWS}
+                            items={Object.keys(VIEWS)}
                             activeItem={mode}
                             onItemSelect={(m) => {
                               onViewChange({ mode: m, column, value }, i);
                             }}
                           />
                         </div>
-                        {mode === "alias" && (
+                        {VIEWS[mode]?.value && (
                           <InputGroup
                             value={value}
                             onChange={(e) => {

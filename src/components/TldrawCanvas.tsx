@@ -33,6 +33,8 @@ import {
   TLArrowUtil,
   TLArrowShapeProps,
   OnClickHandler,
+  Vec2dModel,
+  createShapeId,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -67,6 +69,8 @@ import getDiscourseRelations, {
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
+import matchDiscourseNode from "../utils/matchDiscourseNode";
+import findDiscourseNode from "../utils/findDiscourseNode";
 
 declare global {
   interface Window {
@@ -77,7 +81,6 @@ declare global {
 type Props = {
   title: string;
   previewEnabled: boolean;
-  globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
 const THROTTLE = 350;
@@ -397,6 +400,7 @@ const TldrawCanvas = ({ title }: Props) => {
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
+  const lastInsertRef = useRef<Vec2dModel>();
   const initialState = useMemo(() => {
     const persisted = getSubTree({
       parentUid: pageUid,
@@ -468,7 +472,7 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [initialState, serializeRef]);
 
   useEffect(() => {
-    const props: Parameters<AddPullWatch> = [
+    const pullWatchProps: Parameters<AddPullWatch> = [
       "[:edit/user :block/string]",
       `[:block/uid "${initialState.uid}"]`,
       (_, after) => {
@@ -490,11 +494,48 @@ const TldrawCanvas = ({ title }: Props) => {
         }, THROTTLE);
       },
     ];
-    window.roamAlphaAPI.data.addPullWatch(...props);
+    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
     return () => {
-      window.roamAlphaAPI.data.removePullWatch(...props);
+      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
     };
   }, [initialState, store]);
+  useEffect(() => {
+    const actionListener = ((
+      e: CustomEvent<{ action: string; uid: string; val: string }>
+    ) => {
+      if (!/canvas/i.test(e.detail.action)) return;
+      const app = appRef.current;
+      if (!app) return;
+      const { x, y } = app.pageCenter;
+      const { w, h } = app.pageBounds;
+      const lastTime = lastInsertRef.current;
+      const position = lastTime
+        ? {
+            x: lastTime.x + w * 0.025,
+            y: lastTime.y + h * 0.05,
+          }
+        : { x, y };
+      const nodeType = findDiscourseNode(e.detail.uid, allNodes);
+      app.createShapes([
+        {
+          type: nodeType ? nodeType.type : TEXT_TYPE,
+          id: createShapeId(),
+          props: {
+            uid: e.detail.uid,
+            title: e.detail.val,
+          },
+        },
+      ]);
+      lastInsertRef.current = position;
+    }) as EventListener;
+    document.addEventListener("roamjs:query-builder:action", actionListener);
+    return () => {
+      document.removeEventListener(
+        "roamjs:query-builder:action",
+        actionListener
+      );
+    };
+  }, [appRef, allNodes]);
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -625,10 +666,7 @@ const TldrawCanvas = ({ title }: Props) => {
   );
 };
 
-export const renderTldrawCanvas = (
-  title: string,
-  globalRefs: Props["globalRefs"]
-) => {
+export const renderTldrawCanvas = (title: string) => {
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
@@ -642,11 +680,7 @@ export const renderTldrawCanvas = (
     children.parentElement.appendChild(parent);
     parent.style.height = "500px";
     renderWithUnmount(
-      <TldrawCanvas
-        title={title}
-        globalRefs={globalRefs}
-        previewEnabled={isFlagEnabled("preview")}
-      />,
+      <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />,
       parent
     );
   }
