@@ -61,7 +61,6 @@ import createPage from "roamjs-components/writes/createPage";
 import fireQuery from "../utils/fireQuery";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import PageInput from "roamjs-components/components/PageInput";
-import createOverlayRender from "roamjs-components/util/createOverlayRender";
 import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
@@ -69,7 +68,6 @@ import getDiscourseRelations, {
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
-import matchDiscourseNode from "../utils/matchDiscourseNode";
 import findDiscourseNode from "../utils/findDiscourseNode";
 
 declare global {
