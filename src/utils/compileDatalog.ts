@@ -4,18 +4,17 @@ import type {
   DatalogClause,
 } from "roamjs-components/types/native";
 
+const indent = (n: number) => "".padStart(n * 2, " ");
+
 const toVar = (v = "undefined") => v.replace(/[\s"()[\]{}/\\^@,]/g, "");
 
 const compileDatalog = (
-  d:
-    | Partial<DatalogClause>
-    | Partial<DatalogArgument>
-    | Partial<DatalogBinding>,
-  level: number
+  d: DatalogClause | DatalogArgument | DatalogBinding,
+  level = 0
 ): string => {
   switch (d.type) {
     case "data-pattern":
-      return `[${d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""}${(
+      return `${indent(level)}[${d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""}${(
         d.arguments || []
       )
         .map((a) => compileDatalog(a, level))
@@ -49,15 +48,15 @@ const compileDatalog = (
         .map((a) => compileDatalog(a, level + 1))
         .join(" ")})`;
     case "or-clause":
-      return `(${d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""}or ${(
-        d.clauses || []
-      )
+      return `${indent(level)}(${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }or ${(d.clauses || [])
         .map((a) => compileDatalog(a, level + 1))
         .join("\n")})`;
     case "and-clause":
-      return `${"".padStart(level * 2, " ")}(and\n${(d.clauses || [])
+      return `${indent(level)}(and\n${(d.clauses || [])
         .map((c) => compileDatalog(c, level + 1))
-        .join("\n")}\n${"".padStart(level * 2, " ")})`;
+        .join("\n")}\n${indent(level)})`;
     case "not-join-clause":
       return `(${
         d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
@@ -67,7 +66,7 @@ const compileDatalog = (
         .map((a) => compileDatalog(a, level + 1))
         .join(" ")})`;
     case "or-join-clause":
-      return `(${
+      return `${indent(level)}(${
         d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
       }or-join [${(d.variables || [])
         .map((v) => compileDatalog(v, level))

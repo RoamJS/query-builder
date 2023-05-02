@@ -39,6 +39,10 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import { ExportTypes, QBClauseData } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
+import { QBClause } from "../utils/types";
+import { QBNor } from "../utils/types";
+import { QBNot } from "../utils/types";
+import { Condition } from "../utils/types";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -284,11 +288,22 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
     const args = parseQuery(parentUid);
     const { query: datalogQuery } = getDatalogQuery(args);
+    const toEnglish = (c: Condition, level = 0): string =>
+      c.type === "or" || c.type === "not or"
+        ? `${"".padStart(level * 2, " ")}OR\n${c.conditions
+            .map(
+              (cc) =>
+                `${"".padStart((level + 1) * 2, " ")}AND\n${cc
+                  .map((ccc) => toEnglish(ccc, level + 2))
+                  .join("\n")}`
+            )
+            .join("\n")}`
+        : `${"".padStart(level * 2, " ")}${c.type === "not" ? "NOT " : ""}${
+            c.source
+          } ${c.relation} ${c.target}`;
     const englishQuery = [
-      `Find ${args.returnNode} Where`,
-      ...(args.conditions as QBClauseData[]).map(
-        (c) => `${c.not ? "NOT " : ""}${c.source} ${c.relation} ${c.target}`
-      ),
+      `FIND ${args.returnNode} WHERE`,
+      ...args.conditions.map((c) => toEnglish(c)),
       ...args.selections.map((s) => `Select ${s.text} AS ${s.label}`),
     ];
     return { datalogQuery, englishQuery };
@@ -342,7 +357,10 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
       </div>
       <div
         className={"roamjs-query-used-text"}
-        style={{ whiteSpace: "pre-wrap" }}
+        style={{
+          whiteSpace: "pre-wrap",
+          fontFamily: isEnglish ? "inherit" : "monospace",
+        }}
       >
         {isEnglish
           ? englishQuery.map((q, i) => (
@@ -469,7 +487,7 @@ const ResultsView: ResultsViewComponent = ({
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
-  const onViewChange = (view: (typeof views)[number], i: number) => {
+  const onViewChange = (view: typeof views[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
     setViews(newViews);
 
