@@ -205,7 +205,7 @@ const QueryCondition = ({
           className: "roamjs-query-condition-type",
         }}
         activeItem={con.type}
-        items={["or", "not or", "clause", "not"]}
+        items={["clause", "not", "or", "not or"]}
         onItemSelect={(value) => {
           (((con.type === "or" || con.type === "not or") &&
             (value === "clause" || value === "not")) ||
