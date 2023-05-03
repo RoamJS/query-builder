@@ -11,6 +11,8 @@ import type {
 } from "roamjs-components/types";
 import { Condition } from "./types";
 import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
@@ -75,6 +77,25 @@ const getTitleDatalog = ({
         },
       ];
     }
+  }
+  const currentMatch = /^\s*{current}\s*$/i.test(target);
+  if (currentMatch) {
+    // Can't use this, since it's async
+    // window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+    const uid = getCurrentPageUid();
+    return [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":node/title" },
+          {
+            type: "constant",
+            value: `"${getPageTitleByPageUid(uid)}"`,
+          },
+        ],
+      },
+    ];
   }
   if (target.startsWith("/") && target.endsWith("/")) {
     return [

@@ -438,7 +438,6 @@ type ResultsViewComponent = (props: {
   header?: React.ReactNode;
   results: Result[];
   hideResults?: boolean;
-  resultFilter?: (r: Result) => boolean;
   ctrlClick?: (e: Result) => void;
   preventSavingSettings?: boolean;
   preventExport?: boolean;
@@ -448,6 +447,13 @@ type ResultsViewComponent = (props: {
   onResultsInViewChange?: (r: Result[]) => void;
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
+  extraColumn?: {
+    reserved: RegExp[];
+    width: number;
+    row: (e: Result) => React.ReactNode;
+    header: React.ReactNode;
+  };
+  isEditBlock?: boolean;
 }) => JSX.Element;
 
 const ResultsView: ResultsViewComponent = ({
@@ -455,7 +461,6 @@ const ResultsView: ResultsViewComponent = ({
   header,
   results,
   hideResults = false,
-  resultFilter,
   ctrlClick,
   preventSavingSettings = false,
   preventExport,
@@ -463,10 +468,7 @@ const ResultsView: ResultsViewComponent = ({
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
-
-  // @ts-ignore
   extraColumn,
-  // @ts-ignore
   isEditBlock,
 }) => {
   const extensionAPI = useExtensionAPI();
@@ -498,12 +500,8 @@ const ResultsView: ResultsViewComponent = ({
   const [views, setViews] = useState(settings.views);
   const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
 
-  const preProcessedResults = useMemo(
-    () => (resultFilter ? results.filter(resultFilter) : results),
-    [results, resultFilter]
-  );
   const { allResults, paginatedResults } = useMemo(() => {
-    return postProcessResults(preProcessedResults, {
+    return postProcessResults(results, {
       activeSort,
       filters,
       random: random.count,
@@ -512,7 +510,7 @@ const ResultsView: ResultsViewComponent = ({
       searchFilter,
     });
   }, [
-    preProcessedResults,
+    results,
     activeSort,
     filters,
     page,

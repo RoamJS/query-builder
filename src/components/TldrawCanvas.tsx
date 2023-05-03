@@ -488,7 +488,8 @@ const TldrawCanvas = ({ title }: Props) => {
           return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
-          store.deserialize(JSON.parse(window.atob(state)));
+          const storeState = JSON.parse(window.atob(state));
+          store.deserialize(storeState);
         }, THROTTLE);
       },
     ];
@@ -522,6 +523,7 @@ const TldrawCanvas = ({ title }: Props) => {
             uid: e.detail.uid,
             title: e.detail.val,
           },
+          ...position,
         },
       ]);
       lastInsertRef.current = position;

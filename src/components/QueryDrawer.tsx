@@ -40,46 +40,35 @@ const SavedQuery = ({
   uid,
   isSavedToPage = false,
   onDelete,
-  resultsReferenced,
   clearOnClick,
-  setResultsReferenced,
   editSavedQuery,
   initialResults,
-  onRefresh,
 }: {
   uid: string;
   onDelete?: () => void;
   isSavedToPage?: boolean;
-  resultsReferenced: Set<string>;
   clearOnClick: (s: string) => void;
-  setResultsReferenced: (s: Set<string>) => void;
   editSavedQuery: (s: string) => void;
   initialResults?: Result[];
-  onRefresh: () => void;
 }) => {
   const [results, setResults] = useState<Result[]>(initialResults || []);
-  const resultFilter = useCallback(
-    (r: Result) => !resultsReferenced.has(r.text),
-    [resultsReferenced]
-  );
   const [minimized, setMinimized] = useState(!isSavedToPage && !initialResults);
   const [initialQuery, setInitialQuery] = useState(!!initialResults);
   const [label, setLabel] = useState(() => getTextByBlockUid(uid));
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => {
-    if (!initialQuery && !minimized) {
-      setInitialQuery(true);
+  const resultsInViewRef = useRef<Result[]>([]);
+  const refresh = useCallback(
+    () =>
       fireQuery(parseQuery(uid))
         .then(setResults)
         .catch(() => {
           setError(
             `Query failed to run. Try running a new query from the editor.`
           );
-        });
-    }
-  }, [initialQuery, minimized, setInitialQuery, setResults, uid]);
-  const resultsInViewRef = useRef<Result[]>([]);
+        }),
+    [uid, setResults, setError]
+  );
   return (
     <div
       style={{
@@ -91,7 +80,7 @@ const SavedQuery = ({
     >
       <ResultsView
         parentUid={uid}
-        onRefresh={onRefresh}
+        onRefresh={refresh}
         header={
           error ? (
             <div className="text-red-700 mb-4">{error}</div>
@@ -124,7 +113,7 @@ const SavedQuery = ({
                   {label}
                 </span>
               )}
-              <div className="mr-14 mt-2">
+              <div className="mr-16 mt-2">
                 <Tooltip content={"Edit"}>
                   <Button
                     icon={"edit"}
@@ -208,12 +197,6 @@ const SavedQuery = ({
                           resultsInViewRef.current.map((r) => {
                             clearOnClick?.(r.text || "");
                           });
-                          setResultsReferenced(
-                            new Set([
-                              ...Array.from(resultsReferenced),
-                              ...resultsInViewRef.current.map((r) => r.text),
-                            ])
-                          );
                         }}
                       />
                     </Tooltip>
@@ -249,7 +232,13 @@ const SavedQuery = ({
                     <Tooltip content={minimized ? "Maximize" : "Minimize"}>
                       <Button
                         icon={minimized ? "maximize" : "minimize"}
-                        onClick={() => setMinimized(!minimized)}
+                        onClick={() => {
+                          if (!initialQuery && minimized) {
+                            setInitialQuery(true);
+                            refresh().finally(() => setMinimized(false));
+                          }
+                          setMinimized(!minimized);
+                        }}
                         active={minimized}
                         minimal
                       />
@@ -263,14 +252,10 @@ const SavedQuery = ({
             </>
           )
         }
-        resultFilter={resultFilter}
         hideResults={minimized}
         results={results.map(({ id, ...a }) => a)}
         preventExport
         ctrlClick={(r) => {
-          setResultsReferenced(
-            new Set([...Array.from(resultsReferenced), r.text])
-          );
           clearOnClick?.(r.text);
         }}
         onResultsInViewChange={(r) => (resultsInViewRef.current = r)}
@@ -292,51 +277,6 @@ const SavedQueriesContainer = ({
   clearOnClick: (s: string) => void;
   setQuery: (s: string) => void;
 }) => {
-  const [resultsReferenced, setResultsReferenced] = useState(new Set<string>());
-  const refreshResultsReferenced = useCallback(() => {
-    return window.roamAlphaAPI.ui.mainWindow
-      .getOpenPageOrBlockUid()
-      .then(
-        (uid) => uid || window.roamAlphaAPI.util.dateToPageTitle(new Date())
-      )
-      .then((pageUid) => {
-        const title = getPageTitleByPageUid(pageUid);
-        if (title.startsWith("Playground")) {
-          return new Set(
-            (
-              window.roamAlphaAPI.data.fast.q(
-                `[:find (pull ?c [:block/string]) :where 
-            [?p :block/uid "${pageUid}"] 
-            [?e :block/page ?p] 
-            [?e :block/string "elements"]
-            [?e :block/children ?c]]`
-              ) as [PullBlock][]
-            )
-              .filter((a) => a.length && a[0])
-              .map((a) => a[0][":block/string"] || "")
-          );
-        }
-        return new Set(
-          (
-            window.roamAlphaAPI.q(
-              `[:find (pull ?r [:node/title]) :where 
-            [?p :block/uid "${pageUid}"] 
-            [?b :block/page ?p] 
-            [?b :block/refs ?r]]`
-            ) as [PullBlock][]
-          )
-            .filter((a) => a.length && a[0])
-            .map((a) => a[0][":node/title"] || "")
-        );
-      })
-      .then(setResultsReferenced);
-  }, [setResultsReferenced]);
-  useEffect(() => {
-    window.addEventListener("hashchange", refreshResultsReferenced);
-    refreshResultsReferenced();
-    return () =>
-      window.removeEventListener("hashchange", refreshResultsReferenced);
-  }, [refreshResultsReferenced]);
   return (
     <>
       <hr />
@@ -350,11 +290,8 @@ const SavedQueriesContainer = ({
             setSavedQueries(savedQueries.filter((s) => s !== sq));
             deleteBlock(sq.uid);
           }}
-          resultsReferenced={resultsReferenced}
-          setResultsReferenced={setResultsReferenced}
           editSavedQuery={setQuery}
           initialResults={sq.results}
-          onRefresh={refreshResultsReferenced}
         />
       ))}
     </>

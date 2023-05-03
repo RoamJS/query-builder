@@ -14,11 +14,9 @@ const compileDatalog = (
 ): string => {
   switch (d.type) {
     case "data-pattern":
-      return `${indent(level)}[${d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""}${(
-        d.arguments || []
-      )
-        .map((a) => compileDatalog(a, level))
-        .join(" ")}]`;
+      return `${indent(level)}[${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }${(d.arguments || []).map((a) => compileDatalog(a, level)).join(" ")}]`;
     case "src-var":
       return `$${toVar(d.value)}`;
     case "constant":
@@ -32,7 +30,7 @@ const compileDatalog = (
         .map((a) => compileDatalog(a, level))
         .join(" ")}) ${compileDatalog(d.binding, level)}]`;
     case "pred-expr":
-      return `[(${d.pred} ${(d.arguments || [])
+      return `${indent(level)}[(${d.pred} ${(d.arguments || [])
         .map((a) => compileDatalog(a, level))
         .join(" ")})]`;
     case "rule-expr":
@@ -42,11 +40,11 @@ const compileDatalog = (
         .map((a) => compileDatalog(a, level))
         .join(" ")}]`;
     case "not-clause":
-      return `(${d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""}not ${(
-        d.clauses || []
-      )
+      return `${indent(level)}(${
+        d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
+      }not\n${(d.clauses || [])
         .map((a) => compileDatalog(a, level + 1))
-        .join(" ")})`;
+        .join(" ")}\n${indent(level)})`;
     case "or-clause":
       return `${indent(level)}(${
         d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
@@ -58,7 +56,7 @@ const compileDatalog = (
         .map((c) => compileDatalog(c, level + 1))
         .join("\n")}\n${indent(level)})`;
     case "not-join-clause":
-      return `(${
+      return `${indent(level)}(${
         d.srcVar ? `${compileDatalog(d.srcVar, level)} ` : ""
       }not-join [${(d.variables || [])
         .map((v) => compileDatalog(v, level))
