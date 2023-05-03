@@ -70,7 +70,7 @@ export default runExtension({
 
 .roamjs-query-condition-target { 
   flex-grow: 1;
-  min-width: 260px;
+  min-width: 240px;
 }
 
 .roamjs-query-condition-relation .bp3-popover-target,

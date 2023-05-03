@@ -77,6 +77,9 @@ const QueryClause = ({
         popoverProps={{
           className: "roamjs-query-condition-source",
         }}
+        ButtonProps={{
+          id: `${con.uid}-source`,
+        }}
         activeItem={con.source}
         items={Array.from(
           new Set(getSourceCandidates(conditions.slice(0, index)))
@@ -115,6 +118,8 @@ const QueryClause = ({
           }}
           options={conditionLabels}
           placeholder={"Choose relationship"}
+          // @ts-ignore TODO
+          id={`${con.uid}-relation`}
         />
       </div>
       <div className="roamjs-query-condition-target">
@@ -138,6 +143,8 @@ const QueryClause = ({
           }}
           options={targetOptions}
           placeholder={targetPlaceholder}
+          // @ts-ignore TODO
+          id={`${con.uid}-target`}
         />
       </div>
     </>
@@ -160,6 +167,7 @@ const QueryNestedData = ({
         style={{
           minWidth: 144,
           maxWidth: 144,
+          paddingRight: 8,
         }}
       />
       <span
@@ -169,7 +177,7 @@ const QueryNestedData = ({
           fontWeight: 600,
         }}
       >
-        ({con.conditions.length}) Branches
+        ({con.conditions.length}) BRANCHES
       </span>
       <span
         style={{
@@ -292,6 +300,7 @@ const QuerySelection = ({
       <div style={{ minWidth: 144, paddingRight: 8, maxWidth: 144 }}>
         <InputGroup
           value={sel.label}
+          id={`${sel.uid}-as`}
           onChange={(e) => {
             window.clearTimeout(debounceRef.current);
             const label = e.target.value;
@@ -308,22 +317,23 @@ const QuerySelection = ({
       </div>
       <span
         style={{
-          minWidth: 72,
+          minWidth: 144,
           display: "inline-block",
           fontWeight: 600,
         }}
       >
-        Select
+        SELECT
       </span>
       <div
         style={{
           flexGrow: 1,
-          minWidth: 300,
+          minWidth: 240,
         }}
       >
         <InputGroup
           value={sel.text}
           style={{ width: "100%" }}
+          id={`${sel.uid}-select`}
           onChange={(e) => {
             window.clearTimeout(debounceRef.current);
             setSelections(
@@ -458,7 +468,7 @@ const QueryEditor: QueryEditorComponent = ({
       }
     }
     if (!returnNode) {
-      return `Query must have a value specified in the "Find ... Where" input`;
+      return `Query must have a value specified in the "FIND ... WHERE" input`;
     }
     for (let index = 0; index < selections.length; index++) {
       const selection = selections[index];
@@ -502,7 +512,7 @@ const QueryEditor: QueryEditorComponent = ({
                 display: "inline-block",
               }}
             >
-              Find
+              FIND
             </span>
             <InputGroup
               autoFocus
@@ -518,10 +528,10 @@ const QueryEditor: QueryEditorComponent = ({
               style={{
                 flexGrow: 1,
                 display: "inline-block",
-                minWidth: 260,
+                minWidth: 144,
               }}
             >
-              Where
+              WHERE
             </span>
           </>
         )}
@@ -548,53 +558,57 @@ const QueryEditor: QueryEditorComponent = ({
             </Tooltip>
           </div>
         )}
-        <div>
-          {showAlias && (
-            <>
-              {isEditingLabel ? (
-                <InputGroup
-                  placeholder={"Enter Alias"}
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateBlock({
-                        uid: parentUid,
-                        text: `{{query block:${label}}}`,
-                      });
-                      setIsEditingLabel(false);
-                    }
+        <div
+          style={{
+            minWidth: 240,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          {!showAlias ? (
+            <div />
+          ) : isEditingLabel ? (
+            <InputGroup
+              placeholder={"Enter Alias"}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  updateBlock({
+                    uid: parentUid,
+                    text: `{{query block:${label}}}`,
+                  });
+                  setIsEditingLabel(false);
+                }
+              }}
+              autoFocus
+              rightElement={
+                <Button
+                  minimal
+                  icon={"confirm"}
+                  onClick={() => {
+                    updateBlock({
+                      uid: parentUid,
+                      text: `{{query block:${label}}}`,
+                    });
+                    setIsEditingLabel(false);
                   }}
-                  autoFocus
-                  rightElement={
-                    <Button
-                      minimal
-                      icon={"confirm"}
-                      onClick={() => {
-                        updateBlock({
-                          uid: parentUid,
-                          text: `{{query block:${label}}}`,
-                        });
-                        setIsEditingLabel(false);
-                      }}
-                    />
-                  }
                 />
-              ) : (
-                <span
-                  style={{ display: "inline-block" }}
-                  tabIndex={-1}
-                  onClick={() => setIsEditingLabel(true)}
-                  className={!!label ? "" : "italic opacity-25 text-sm"}
-                >
-                  {!!label ? label : "edit alias"}
-                </span>
-              )}
-            </>
+              }
+            />
+          ) : (
+            <span
+              style={{ display: "inline-block" }}
+              tabIndex={-1}
+              onClick={() => setIsEditingLabel(true)}
+              className={!!label ? "" : "italic opacity-25 text-sm"}
+            >
+              {!!label ? label : "edit alias"}
+            </span>
           )}
           <Switch
             checked={!isCustomEnabled}
-            className={"mr-8 roamjs-query-custom-enabled"}
+            className={"roamjs-query-custom-enabled"}
             onChange={(e) => {
               const enabled = !(e.target as HTMLInputElement).checked;
               const contentUid = getNthChildUidByBlockUid({
@@ -739,9 +753,14 @@ const QueryEditor: QueryEditorComponent = ({
             }}
           />
         </span>
-        <span className="flex-grow flex gap-4 justify-end items-center">
+        <span
+          className="flex-grow flex gap-4 justify-end items-center"
+          style={{ minWidth: 240 }}
+        >
           {showDisabledMessage && (
-            <span className="text-red-700 inline-block">{disabledMessage}</span>
+            <span className="text-red-700 inline-block text-xs">
+              {disabledMessage}
+            </span>
           )}
           {window.samepage && (
             <Checkbox
@@ -758,7 +777,7 @@ const QueryEditor: QueryEditorComponent = ({
                   />
                 </Tooltip>
               }
-              style={{ marginBottom: 0 }}
+              style={{ marginBottom: 0, minWidth: 64, textAlign: "right" }}
               checked={isSamePageEnabled}
               onChange={(e) => {
                 const enabled = (e.target as HTMLInputElement).checked;

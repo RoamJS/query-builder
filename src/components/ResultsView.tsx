@@ -283,28 +283,42 @@ const toCellValue = (v: number | Date | string) =>
     : typeof v === "undefined" || v === null
     ? ""
     : extractTag(v.toString());
+type EnglishQueryPart = { text: string; clickId?: string };
 
 const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   const { datalogQuery, englishQuery } = useMemo(() => {
     const args = parseQuery(parentUid);
     const { query: datalogQuery } = getDatalogQuery(args);
-    const toEnglish = (c: Condition, level = 0): string =>
+    const toEnglish = (c: Condition, level = 0): EnglishQueryPart[][] =>
       c.type === "or" || c.type === "not or"
-        ? `${"".padStart(level * 2, " ")}OR\n${c.conditions
-            .map(
-              (cc) =>
-                `${"".padStart((level + 1) * 2, " ")}AND\n${cc
-                  .map((ccc) => toEnglish(ccc, level + 2))
-                  .join("\n")}`
-            )
-            .join("\n")}`
-        : `${"".padStart(level * 2, " ")}${c.type === "not" ? "NOT " : ""}${
-            c.source
-          } ${c.relation} ${c.target}`;
-    const englishQuery = [
-      `FIND ${args.returnNode} WHERE`,
-      ...args.conditions.map((c) => toEnglish(c)),
-      ...args.selections.map((s) => `Select ${s.text} AS ${s.label}`),
+        ? [
+            [{ text: `${"".padStart(level * 2, " ")}OR` }],
+            ...c.conditions.flatMap((cc) => [
+              [{ text: `${"".padStart((level + 1) * 2, " ")}AND` }],
+              ...cc.flatMap((ccc) => toEnglish(ccc, level + 2)),
+            ]),
+          ]
+        : [
+            [
+              {
+                text: `${"".padStart(level * 2, " ")}${
+                  c.type === "not" ? "NOT " : ""
+                }`,
+              },
+              { text: c.source, clickId: `${c.uid}-source` },
+              { text: c.relation, clickId: `${c.uid}-relation` },
+              { text: c.target, clickId: `${c.uid}-target` },
+            ],
+          ];
+    const englishQuery: EnglishQueryPart[][] = [
+      [{ text: `FIND` }, { text: args.returnNode }, { text: "WHERE" }],
+      ...args.conditions.flatMap((c) => toEnglish(c)),
+      ...args.selections.map((s) => [
+        { text: "SELECT" },
+        { text: s.text, clickId: `${s.uid}-select` },
+        { text: "AS" },
+        { text: s.label, clickId: `${s.uid}-as` },
+      ]),
     ];
     return { datalogQuery, englishQuery };
   }, [parentUid]);
@@ -365,7 +379,24 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
         {isEnglish
           ? englishQuery.map((q, i) => (
               <span key={i} style={{ margin: 0, display: "block" }}>
-                {q}
+                {q.map((p, j) => (
+                  <span
+                    key={j}
+                    style={{
+                      margin: 0,
+                      cursor: p.clickId ? "pointer" : "inherit",
+                    }}
+                    onClick={() => {
+                      if (!p.clickId) return;
+                      const el = document.getElementById(p.clickId);
+                      if (!el) return;
+                      el.focus();
+                    }}
+                  >
+                    {j !== 0 ? " " : ""}
+                    {p.text}
+                  </span>
+                ))}
               </span>
             ))
           : datalogQuery.split("\n").map((q, i) => (
