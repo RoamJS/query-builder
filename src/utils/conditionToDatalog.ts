@@ -4,8 +4,13 @@ import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import normalizePageTitle from "roamjs-components/queries/normalizePageTitle";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
-import type { DatalogClause, PullBlock } from "roamjs-components/types";
+import type {
+  DatalogAndClause,
+  DatalogClause,
+  PullBlock,
+} from "roamjs-components/types";
 import { Condition } from "./types";
+import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
 
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
@@ -409,7 +414,7 @@ const translator: Record<string, Translator> = {
         window.roamAlphaAPI.data.fast.q(
           `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
         ) as [PullBlock][]
-      ).map((d) => d[0][":node/title"] || ''),
+      ).map((d) => d[0][":node/title"] || ""),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "references title": {
@@ -676,14 +681,27 @@ export const getConditionLabels = () =>
 
 const conditionToDatalog: ConditionToDatalog = (con) => {
   if (con.type === "or" || con.type === "not or") {
+    const clauses: DatalogAndClause[] = con.conditions.map((branch) => ({
+      type: "and-clause",
+      clauses: branch.flatMap((c) => conditionToDatalog(c)),
+    }));
+    const variableSet: Record<string, number> = {};
+    clauses.forEach((c) => {
+      const gathered = gatherDatalogVariablesFromClause(c);
+      gathered.forEach((v) => {
+        variableSet[v] = (variableSet[v] || 0) + 1;
+      });
+    });
     const datalog = [
       {
         type: "or-join-clause",
-        clauses: con.conditions.map((branch) => ({
-          type: "and-clause",
-          clauses: branch.flatMap((c) => conditionToDatalog(c)),
-        })),
-        variables: [],
+        clauses,
+        variables: Object.entries(variableSet)
+          .filter(([_, v]) => v === clauses.length)
+          .map(([value]) => ({
+            type: "variable",
+            value,
+          })),
       },
     ] as DatalogClause[];
     if (con.type === "not or")

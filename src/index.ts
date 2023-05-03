@@ -55,6 +55,7 @@ export default runExtension({
   color: #a82a2a;
 }
 
+.roamjs-query-condition-type,
 .roamjs-query-condition-source, 
 .roamjs-query-condition-relation,
 .roamjs-query-return-node {

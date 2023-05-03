@@ -37,6 +37,7 @@ import {
   QBClauseData,
   Selection,
 } from "../utils/types";
+import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -116,31 +117,6 @@ const QueryClause = ({
           placeholder={"Choose relationship"}
         />
       </div>
-      <Switch
-        style={{
-          marginBottom: 0,
-          minWidth: 72,
-        }}
-        innerLabelChecked={"NOT"}
-        checked={con.not}
-        onChange={(e) => {
-          const not = (e.target as HTMLInputElement).checked;
-          setConditions(
-            conditions.map((c) =>
-              c.uid === con.uid
-                ? { ...con, not, type: not ? "not" : "clause" }
-                : c
-            )
-          );
-          if (not)
-            createBlock({
-              parentUid: con.uid,
-              node: { text: "not" },
-              order: 4,
-            });
-          else deleteBlock(getSubTree({ key: "not", parentUid: con.uid }).uid);
-        }}
-      />
       <div className="roamjs-query-condition-target">
         <AutocompleteInput
           value={con.target}
@@ -184,7 +160,6 @@ const QueryNestedData = ({
         style={{
           minWidth: 144,
           maxWidth: 144,
-          paddingRight: 8,
         }}
       />
       <span
@@ -225,6 +200,49 @@ const QueryCondition = ({
 }) => {
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "baseline" }}>
+      <MenuItemSelect
+        popoverProps={{
+          className: "roamjs-query-condition-type",
+        }}
+        activeItem={con.type}
+        items={["clause", "not", "or", "not or"]}
+        onItemSelect={(value) => {
+          (((con.type === "or" || con.type === "not or") &&
+            (value === "clause" || value === "not")) ||
+          ((value === "or" || value === "not or") &&
+            (con.type === "clause" || con.type === "not"))
+            ? Promise.all(
+                getShallowTreeByParentUid(con.uid).map((c) =>
+                  deleteBlock(c.uid)
+                )
+              ).then(() => updateBlock({ uid: con.uid, text: value }))
+            : updateBlock({
+                uid: con.uid,
+                text: value,
+              })
+          ).then(() => {
+            setConditions(
+              conditions.map((c) =>
+                c.uid === con.uid
+                  ? value === "clause" || value === "not"
+                    ? {
+                        uid: c.uid,
+                        type: value,
+                        source: (c as QBClauseData).source || "",
+                        target: (c as QBClauseData).target || "",
+                        relation: (c as QBClauseData).relation || "",
+                      }
+                    : {
+                        uid: c.uid,
+                        type: value,
+                        conditions: (c as QBNestedData).conditions || [],
+                      }
+                  : c
+              )
+            );
+          });
+        }}
+      />
       {(con.type === "clause" || con.type === "not") && (
         <QueryClause
           con={con}
@@ -658,6 +676,23 @@ const QueryEditor: QueryEditorComponent = ({
       <div style={{ display: "flex" }}>
         <span style={{ minWidth: 144, display: "inline-block" }}>
           <Button
+            onMouseEnter={() =>
+              !!disabledMessage && setShowDisabledMessage(true)
+            }
+            onMouseLeave={() => setShowDisabledMessage(false)}
+            text={"Query"}
+            onClick={disabledMessage ? undefined : onQuery}
+            className={disabledMessage ? "bp3-disabled" : ""}
+            style={{
+              maxHeight: 32,
+              outline: disabledMessage ? "none" : "inherit",
+            }}
+            intent={"primary"}
+            rightIcon={"search-around"}
+          />
+        </span>
+        <span style={{ minWidth: 144, display: "inline-block" }}>
+          <Button
             disabled={isCustomEnabled}
             rightIcon={"plus"}
             text={"Add Condition"}
@@ -747,20 +782,6 @@ const QueryEditor: QueryEditorComponent = ({
               }}
             />
           )}
-          <Button
-            onMouseEnter={() =>
-              !!disabledMessage && setShowDisabledMessage(true)
-            }
-            onMouseLeave={() => setShowDisabledMessage(false)}
-            text={"Query"}
-            onClick={disabledMessage ? undefined : onQuery}
-            className={disabledMessage ? "bp3-disabled" : ""}
-            style={{
-              maxHeight: 32,
-              outline: disabledMessage ? "none" : "inherit",
-            }}
-            intent={"primary"}
-          />
         </span>
       </div>
     </div>
@@ -826,25 +847,6 @@ const QueryEditor: QueryEditorComponent = ({
           <span style={{ minWidth: 144, display: "inline-block" }}>
             <Button
               rightIcon={"plus"}
-              text={"Add Branch"}
-              style={{ maxHeight: 32 }}
-              onClick={() => {
-                createBlock({
-                  parentUid: view.uid,
-                  order: viewConditions.length,
-                  node: {
-                    text: `AND`,
-                  },
-                }).then(() => {
-                  viewCondition?.conditions.push([]);
-                  setConditions([...conditions]);
-                });
-              }}
-            />
-          </span>
-          <span style={{ minWidth: 144, display: "inline-block" }}>
-            <Button
-              rightIcon={"plus"}
               text={"Add Condition"}
               style={{ maxHeight: 32 }}
               onClick={() => {
@@ -883,6 +885,25 @@ const QueryEditor: QueryEditorComponent = ({
                     ];
                     setConditions([...conditions]);
                   });
+              }}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              rightIcon={"plus"}
+              text={"Add Branch"}
+              style={{ maxHeight: 32 }}
+              onClick={() => {
+                createBlock({
+                  parentUid: view.uid,
+                  order: viewConditions.length,
+                  node: {
+                    text: `AND`,
+                  },
+                }).then(() => {
+                  viewCondition?.conditions.push([]);
+                  setConditions([...conditions]);
+                });
               }}
             />
           </span>

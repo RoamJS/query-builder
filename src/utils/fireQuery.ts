@@ -10,6 +10,7 @@ import { DAILY_NOTE_PAGE_REGEX } from "roamjs-components/date/constants";
 import { getNodeEnv } from "roamjs-components/util/env";
 import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
+import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
 
 export type QueryArgs = {
   returnNode: string;
@@ -91,35 +92,6 @@ const firstVariable = (
   return undefined;
 };
 
-const getVariables = (
-  clause: DatalogClause | DatalogAndClause
-): Set<string> => {
-  if (
-    clause.type === "data-pattern" ||
-    clause.type === "fn-expr" ||
-    clause.type === "pred-expr" ||
-    clause.type === "rule-expr"
-  ) {
-    return new Set(
-      [...clause.arguments]
-        .filter((v) => v.type === "variable")
-        .map((v) => v.value)
-    );
-  } else if (
-    clause.type === "not-clause" ||
-    clause.type === "or-clause" ||
-    clause.type === "and-clause"
-  ) {
-    return new Set(clause.clauses.flatMap((c) => Array.from(getVariables(c))));
-  } else if (
-    clause.type === "not-join-clause" ||
-    clause.type === "or-join-clause"
-  ) {
-    return new Set(clause.variables.map((c) => c.value));
-  }
-  return new Set();
-};
-
 const optimizeQuery = (
   clauses: (DatalogClause | DatalogAndClause)[],
   capturedVariables: Set<string>
@@ -158,7 +130,7 @@ const optimizeQuery = (
         c.type === "and-clause"
       ) {
         const allVars =
-          variablesByIndex[j] || (variablesByIndex[j] = getVariables(c));
+          variablesByIndex[j] || (variablesByIndex[j] = gatherDatalogVariablesFromClause(c));
         if (Array.from(allVars).every((v) => capturedVariables.has(v))) {
           score = 10;
         } else {
@@ -532,7 +504,7 @@ export const getDatalogQuery = ({
       .filter((p) => !!p.pull)
   );
   const find = definedSelections.map((p) => p.pull).join("\n  ");
-  const where = whereClauses.map((c) => compileDatalog(c, 0)).join("\n  ");
+  const where = whereClauses.map((c) => compileDatalog(c, 1)).join("\n");
   return {
     query: `[:find\n  ${find}\n${
       expectedInputs.length
@@ -542,7 +514,7 @@ export const getDatalogQuery = ({
       whereClauses.length === 1 && whereClauses[0].type === "not-clause"
         ? `[?node :block/uid _]`
         : ""
-    }  ${where}\n]`,
+    }${where}\n]`,
     formatResult: (result: unknown[]) =>
       definedSelections
         .map((c, i) => (prev: QueryResult) => {
