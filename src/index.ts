@@ -40,6 +40,10 @@ import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageRemove from "roamjs-components/util/localStorageRemove";
 import { getNodeEnv } from "roamjs-components/util/env";
+import { render as renderFormDialog } from "roamjs-components/components/FormDialog";
+import createBlockObserver from "roamjs-components/dom/createBlockObserver";
+import getUids from "roamjs-components/dom/getUids";
+import { render as renderMessageBlock } from "./components/MessageBlock";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -572,7 +576,7 @@ svg.rs-svg-container {
         ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
     };
 
-    window.roamAlphaAPI.ui.commandPalette.addCommand({
+    extensionAPI.ui.commandPalette.addCommand({
       label: "Open Query Drawer",
       callback: () =>
         Promise.resolve(
@@ -589,6 +593,63 @@ svg.rs-svg-container {
         ),
     });
 
+    const getBlockProps = (uid: string) =>
+      window.roamAlphaAPI.pull("[:block/props]", [":block/uid", uid])?.[
+        ":block/props"
+      ] || ({} as Required<PullBlock>[":block/props"]);
+
+    const normalizeProps = (props: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(props).map(([k, v]) => [k.replace(/^:/, ""), v])
+      );
+
+    extensionAPI.ui.commandPalette.addCommand({
+      label: "Set Custom View For Block",
+      callback: async () => {
+        const uid =
+          window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"] ||
+          (await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid()) ||
+          window.roamAlphaAPI.util.dateToPageUid(new Date());
+        renderFormDialog({
+          onSubmit: (values) => {
+            const props = getBlockProps(uid);
+            const qbprops = props[":roamjs-query-builder"] || {};
+            window.roamAlphaAPI.updateBlock({
+              block: {
+                uid,
+                props: {
+                  ...normalizeProps(props),
+                  "roamjs-query-builder": {
+                    ...normalizeProps(qbprops),
+                    view: values.view,
+                  },
+                },
+              },
+            });
+          },
+          title: "Set Custom View For Block",
+          fields: {
+            view: {
+              type: "select",
+              label: "View Type",
+              options: ["Standard", "Message"],
+            },
+          },
+        });
+      },
+    });
+
+    const [viewBlockObserver] = createBlockObserver({
+      onBlockLoad: (b) => {
+        const { blockUid } = getUids(b);
+        const props = getBlockProps(blockUid);
+        const qbprops = props[":roamjs-query-builder"] || {};
+        if (qbprops[":view"] === "Message") {
+          renderMessageBlock({ parent: b, onloadArgs, blockUid });
+        }
+      },
+    });
+
     getSamePageAPI().then((api) => {
       api.listNotebooks().then(({ notebooks }) => {
         registerDatalogTranslator({
@@ -603,13 +664,13 @@ svg.rs-svg-container {
 
     return {
       elements: [style],
-      commands: ["Open Query Drawer"],
       observers: [
         h1Observer,
         qtObserver,
         originalQueryBuilderObserver,
         editQueryBuilderObserver,
         queryBlockObserver,
+        // viewBlockObserver,
       ],
       unload: () => {
         window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
