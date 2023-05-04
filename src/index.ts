@@ -598,9 +598,16 @@ svg.rs-svg-container {
         ":block/props"
       ] || ({} as Required<PullBlock>[":block/props"]);
 
-    const normalizeProps = (props: Record<string, unknown>) =>
+    const normalizeProps = (
+      props: Record<string, unknown>
+    ): Record<string, unknown> =>
       Object.fromEntries(
-        Object.entries(props).map(([k, v]) => [k.replace(/^:/, ""), v])
+        Object.entries(props).map(([k, v]) => [
+          k.replace(/^:+/, ""),
+          typeof v === "object" && v !== null
+            ? normalizeProps(v as Record<string, unknown>)
+            : v,
+        ])
       );
 
     extensionAPI.ui.commandPalette.addCommand({
@@ -612,15 +619,15 @@ svg.rs-svg-container {
           window.roamAlphaAPI.util.dateToPageUid(new Date());
         renderFormDialog({
           onSubmit: (values) => {
-            const props = getBlockProps(uid);
-            const qbprops = props[":roamjs-query-builder"] || {};
+            const props = normalizeProps(getBlockProps(uid));
+            const qbprops = props["roamjs-query-builder"] || {};
             window.roamAlphaAPI.updateBlock({
               block: {
                 uid,
                 props: {
                   ...normalizeProps(props),
                   "roamjs-query-builder": {
-                    ...normalizeProps(qbprops),
+                    ...qbprops,
                     view: values.view,
                   },
                 },
@@ -637,6 +644,7 @@ svg.rs-svg-container {
           },
         });
       },
+      
     });
 
     const [viewBlockObserver] = createBlockObserver({
@@ -670,7 +678,7 @@ svg.rs-svg-container {
         originalQueryBuilderObserver,
         editQueryBuilderObserver,
         queryBlockObserver,
-        // viewBlockObserver,
+        viewBlockObserver,
       ],
       unload: () => {
         window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
