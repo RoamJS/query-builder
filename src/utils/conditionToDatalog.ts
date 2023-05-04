@@ -7,12 +7,14 @@ import endOfDay from "date-fns/endOfDay";
 import type {
   DatalogAndClause,
   DatalogClause,
+  DatalogFnExpr,
   PullBlock,
 } from "roamjs-components/types";
 import { Condition } from "./types";
 import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import getPageTitlesStartingWithPrefix from "roamjs-components/queries/getPageTitlesStartingWithPrefix";
 
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
@@ -207,6 +209,30 @@ const translator: Record<string, Translator> = {
     placeholder: "Enter any placeholder for the node",
     isVariable: true,
   },
+  "is referenced by block in page with title": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${target}-RefBy` },
+          { type: "constant", value: ":block/refs" },
+          { type: "variable", value: source },
+        ],
+      },
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${target}-RefBy` },
+          { type: "constant", value: ":block/page" },
+          { type: "variable", value: target },
+        ],
+      },
+      ...getTitleDatalog({ source: target, target }),
+    ],
+    placeholder: "Enter any placeholder for the node",
+    targetOptions: () =>
+      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
+  },
   "is in page": {
     callback: ({ source, target }) => [
       {
@@ -223,7 +249,8 @@ const translator: Record<string, Translator> = {
   },
   "has title": {
     callback: getTitleDatalog,
-    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
+    targetOptions: () =>
+      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
@@ -450,7 +477,8 @@ const translator: Record<string, Translator> = {
       },
       ...getTitleDatalog({ source: `${target}-Ref`, target }),
     ],
-    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
+    targetOptions: () =>
+      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "has heading": {
@@ -479,7 +507,8 @@ const translator: Record<string, Translator> = {
       },
       ...getTitleDatalog({ source: target, target }),
     ],
-    targetOptions: () => getAllPageNames().concat(["{date}", "{date:today}"]),
+    targetOptions: () =>
+      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "created after": {
@@ -681,6 +710,82 @@ const translator: Record<string, Translator> = {
           ];
     },
     placeholder: "Enter any natural language date value",
+  },
+  "is in canvas": {
+    callback: ({ source, target }) => [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":block/uid" },
+          { type: "variable", value: `${source}-uid` },
+        ],
+      },
+      ...getTitleDatalog({ source: `${target}-Canvas`, target }),
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: `${target}-Canvas` },
+          { type: "constant", value: ":block/props" },
+          { type: "variable", value: `${target}-Canvas-Props` },
+        ],
+      },
+      {
+        type: "fn-expr",
+        fn: "get",
+        arguments: [
+          { type: "variable", value: `${target}-Canvas-Props` },
+          { type: "constant", value: ":roamjs-query-builder" },
+        ],
+        binding: {
+          type: "bind-scalar",
+          variable: { type: "variable", value: `${target}-Canvas-RQB` },
+        },
+      },
+      {
+        type: "fn-expr",
+        fn: "get",
+        arguments: [
+          { type: "variable", value: `${target}-Canvas-RQB` },
+          { type: "constant", value: ":tldraw" },
+        ],
+        binding: {
+          type: "bind-rel",
+          args: [
+            { type: "variable", value: `${target}-TLDraw-Key` },
+            { type: "variable", value: `${target}-TLDraw-Value` },
+          ],
+        },
+      }, 
+      {
+        type: "fn-expr",
+        fn: "get",
+        arguments: [
+          { type: "variable", value: `${target}-TLDraw-Value` },
+          { type: "constant", value: ":props" },
+        ],
+        binding: {
+          type: "bind-scalar",
+          variable: { type: "variable", value: `${target}-Shape-Props` },
+        },
+      },
+      {
+        type: "fn-expr",
+        fn: "get",
+        arguments: [
+          { type: "variable", value: `${target}-Shape-Props` },
+          { type: "constant", value: ":uid" },
+        ],
+        binding: {
+          type: "bind-scalar",
+          variable: { type: "variable", value: `${source}-uid` },
+        },
+      },
+    ],
+    targetOptions: () =>
+      // TODO - use roam depot setting
+      getPageTitlesStartingWithPrefix("Canvas/").concat(["{current}"]),
+    placeholder: "Enter a page name",
   },
 };
 

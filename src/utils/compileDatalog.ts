@@ -74,6 +74,8 @@ const compileDatalog = (
     case "bind-scalar":
       if (!d.variable) return "";
       return compileDatalog(d.variable, level);
+    case "bind-rel":
+      return `[[${d.args.map((a) => compileDatalog(a, level)).join(" ")}]]`;
     default:
       return "";
   }

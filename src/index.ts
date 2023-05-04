@@ -36,6 +36,10 @@ import { renderTldrawCanvas } from "./components/TldrawCanvas";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 import { registerDatalogTranslator } from "./utils/conditionToDatalog";
 import { QBGlobalRefs } from "./utils/types";
+import localStorageSet from "roamjs-components/util/localStorageSet";
+import localStorageGet from "roamjs-components/util/localStorageGet";
+import localStorageRemove from "roamjs-components/util/localStorageRemove";
+import { getNodeEnv } from "roamjs-components/util/env";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -212,7 +216,7 @@ svg.rs-svg-container {
       ) {
         renderPlayground(title, globalRefs);
       } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
-        renderTldrawCanvas(title, globalRefs);
+        renderTldrawCanvas(title);
       }
     };
     extensionAPI.settings.panel.create({
@@ -328,10 +332,18 @@ svg.rs-svg-container {
             onChange: (e) => {
               const flag = e.target.checked;
               toggleDiscourseGraphsMode(flag).then(() => {
-                if (flag)
+                if (flag) {
                   document
                     .querySelectorAll<HTMLHeadingElement>(`h1.rm-title-display`)
                     .forEach(h1ObserverCallback);
+                }
+                if (getNodeEnv() === "development") {
+                  if (flag) {
+                    localStorageSet(SETTING, "true");
+                  } else {
+                    localStorageRemove(SETTING);
+                  }
+                }
               });
             },
           },
@@ -351,6 +363,11 @@ svg.rs-svg-container {
     const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
       onloadArgs
     );
+    if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
+      extensionAPI.settings.set(SETTING, true);
+      toggleDiscourseGraphsMode(true);
+    }
+
     const toggleSortReferences = runSortReferences();
     if (!!extensionAPI.settings.get("sort-references")) {
       toggleSortReferences(true);

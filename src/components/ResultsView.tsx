@@ -162,11 +162,13 @@ const ResultView = ({
   ctrlClick,
   views,
   extraColumn,
+  onRefresh,
 }: {
   r: Result;
   ctrlClick?: (e: Result) => void;
   views: { column: string; mode: string; value: string }[];
   extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
+  onRefresh: () => void;
 }) => {
   const rowCells = Object.keys(r).filter(
     (k) =>
@@ -276,7 +278,7 @@ const ResultView = ({
                   onClick={() => {
                     document.dispatchEvent(
                       new CustomEvent("roamjs:query-builder:action", {
-                        detail: { action: viewValue, uid, val },
+                        detail: { action: viewValue, uid, val, onRefresh },
                       })
                     );
                   }}
@@ -442,7 +444,7 @@ type ResultsViewComponent = (props: {
   preventSavingSettings?: boolean;
   preventExport?: boolean;
   onEdit?: () => void;
-  onRefresh?: () => void;
+  onRefresh: () => void;
   getExportTypes?: (r: Result[]) => ExportTypes;
   onResultsInViewChange?: (r: Result[]) => void;
   globalFiltersData?: Record<string, Filters>;
@@ -1035,6 +1037,7 @@ const ResultsView: ResultsViewComponent = ({
                       ctrlClick={ctrlClick}
                       views={views}
                       extraColumn={extraColumn}
+                      onRefresh={onRefresh}
                     />
                   ))}
                 </tbody>
