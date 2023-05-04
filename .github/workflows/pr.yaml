@@ -1,0 +1,19 @@
+name: Publish Extension
+on: pull_request
+
+env:
+  ROAMJS_EXTENSION_ID: query-builder
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: install
+        run: npm install -f
+      - name: build
+        run: npx samepage build --dry
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist

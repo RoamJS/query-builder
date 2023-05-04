@@ -584,6 +584,8 @@ svg.rs-svg-container {
       });
     });
 
+    // TODO - remove
+    document.body.style.background = "red";
     return {
       elements: [style],
       commands: ["Open Query Drawer"],
