@@ -217,7 +217,6 @@ const QueryPage = ({
             }
             results={results.map(({ id, ...a }) => a)}
             onRefresh={onRefresh}
-            // @ts-ignore
             isEditBlock={isEditBlock}
           />
         ) : (

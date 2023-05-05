@@ -21,9 +21,13 @@ import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import ResultsView from "./ResultsView";
 
+type DiscourseContextResults = Awaited<
+  ReturnType<typeof getDiscourseContextResults>
+>;
+
 type Props = {
   uid: string;
-  results: Awaited<ReturnType<typeof getDiscourseContextResults>>;
+  results?: DiscourseContextResults;
 };
 
 const ExtraColumnRow = (r: Result) => {
@@ -215,11 +219,13 @@ const ContextTab = ({
   r,
   groupByTarget,
   setGroupByTarget,
+  onRefresh,
 }: {
   parentUid: string;
-  r: Props["results"][number];
+  r: DiscourseContextResults[number];
   groupByTarget: boolean;
   setGroupByTarget: (b: boolean) => void;
+  onRefresh: () => void;
 }) => {
   const [subTabId, setSubTabId] = useState(0);
   const hasExtra = useMemo(
@@ -254,6 +260,7 @@ const ContextTab = ({
       results={Object.values(results).map(
         ({ target, complement, id, ...a }) => a as Result
       )}
+      onRefresh={onRefresh}
       header={
         <>
           <span>{r.label}</span>
@@ -269,7 +276,6 @@ const ContextTab = ({
           </span>
         </>
       }
-      // @ts-ignore
       extraColumn={
         hasExtra
           ? {
@@ -304,15 +310,22 @@ const ContextTab = ({
 };
 
 export const ContextContent = ({ uid, results }: Props) => {
-  const [queryResults, setQueryResults] = useState<Props["results"]>([]);
+  const [rawQueryResults, setRawQueryResults] = useState(results || []);
+  const queryResults = useMemo(
+    () => rawQueryResults.filter((r) => !!Object.keys(r.results).length),
+    [rawQueryResults]
+  );
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    (results ? Promise.resolve(results) : getDiscourseContextResults({ uid }))
-      .then((q) =>
-        setQueryResults(q.filter((r) => !!Object.keys(r.results).length))
-      )
+  const onRefresh = useCallback(() => {
+    getDiscourseContextResults({ uid })
+      .then(setRawQueryResults)
       .finally(() => setLoading(false));
-  }, [uid, results, setQueryResults, setLoading]);
+  }, [uid, results, setRawQueryResults, setLoading]);
+  useEffect(() => {
+    if (!results) {
+      onRefresh();
+    }
+  }, [onRefresh, results]);
   const [tabId, setTabId] = useState(0);
   const [groupByTarget, setGroupByTarget] = useState(false);
   return queryResults.length ? (
@@ -342,6 +355,7 @@ export const ContextContent = ({ uid, results }: Props) => {
                 r={r}
                 groupByTarget={groupByTarget}
                 setGroupByTarget={setGroupByTarget}
+                onRefresh={onRefresh}
               />
             }
           />
@@ -380,7 +394,7 @@ const DiscourseContext = ({ uid }: Props) => {
         </div>
       </div>
       <div style={{ paddingLeft: 16 }}>
-        {caretOpen && <ContextContent uid={uid} results={[]} />}
+        {caretOpen && <ContextContent uid={uid} />}
       </div>
     </>
   );

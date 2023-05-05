@@ -130,7 +130,8 @@ const optimizeQuery = (
         c.type === "and-clause"
       ) {
         const allVars =
-          variablesByIndex[j] || (variablesByIndex[j] = gatherDatalogVariablesFromClause(c));
+          variablesByIndex[j] ||
+          (variablesByIndex[j] = gatherDatalogVariablesFromClause(c));
         if (Array.from(allVars).every((v) => capturedVariables.has(v))) {
           score = 10;
         } else {
@@ -196,6 +197,7 @@ const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
+const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
@@ -397,6 +399,19 @@ const predefinedSelections: PredefinedSelection[] = [
       } else {
         return (Number(val0) || 0) + (Number(val1) || 0);
       }
+    },
+  },
+  {
+    test: ACTION_TEST,
+    pull: ({ returnNode }) => `(pull ?${returnNode} [:block/uid])`,
+    mapper: (r, key) => {
+      const match = ACTION_TEST.exec(key);
+      if (!match) return "";
+      return {
+        "": match[2],
+        "-uid": r?.[":block/uid"] || "",
+        "-action": match[1],
+      };
     },
   },
   {

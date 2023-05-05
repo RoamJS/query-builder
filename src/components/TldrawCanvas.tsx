@@ -1,11 +1,4 @@
-import React, {
-  useRef,
-  useState,
-  useMemo,
-  useCallback,
-  useContext,
-  useEffect,
-} from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
 import {
@@ -33,6 +26,9 @@ import {
   TLArrowUtil,
   TLArrowShapeProps,
   OnClickHandler,
+  Vec2dModel,
+  createShapeId,
+  TLStore,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -50,7 +46,6 @@ import createBlock from "roamjs-components/writes/createBlock";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
-import setInputSetting from "roamjs-components/util/setInputSetting";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { AddPullWatch } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -59,7 +54,6 @@ import createPage from "roamjs-components/writes/createPage";
 import fireQuery from "../utils/fireQuery";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import PageInput from "roamjs-components/components/PageInput";
-import createOverlayRender from "roamjs-components/util/createOverlayRender";
 import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
@@ -67,6 +61,8 @@ import getDiscourseRelations, {
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
+import findDiscourseNode from "../utils/findDiscourseNode";
+import getBlockProps, { normalizeProps } from "../utils/getBlockProps";
 
 declare global {
   interface Window {
@@ -77,7 +73,6 @@ declare global {
 type Props = {
   title: string;
   previewEnabled: boolean;
-  globalRefs: { [key: string]: (args: Record<string, string>) => void };
 };
 
 const THROTTLE = 350;
@@ -188,6 +183,8 @@ type DiscourseRelationShape = TLBaseShape<
 >;
 
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
+const DEFAULT_WIDTH = 160;
+const DEFAULT_HEIGHT = 64;
 
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type = TEXT_TYPE) {
@@ -397,51 +394,28 @@ const TldrawCanvas = ({ title }: Props) => {
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
+  const lastInsertRef = useRef<Vec2dModel>();
   const initialState = useMemo(() => {
     const persisted = getSubTree({
       parentUid: pageUid,
       tree,
       key: "State",
     });
-    const instanceId = TLInstance.createCustomId(pageUid);
-    const userId = TLUser.createCustomId(getCurrentUserUid());
     if (!persisted.uid) {
-      const uid = window.roamAlphaAPI.util.generateUID();
+      // we create a block so that the page is not garbage collected
       createBlock({
         node: {
           text: "State",
-          children: [{ text: "", uid }],
         },
         parentUid: pageUid,
       });
-      return { instanceId, data: undefined, userId, uid };
     }
-    if (!persisted.children.length) {
-      const uid = window.roamAlphaAPI.util.generateUID();
-      createBlock({
-        node: {
-          text: "",
-          uid,
-        },
-        parentUid: persisted.uid,
-      });
-      return { instanceId, data: undefined, userId, uid };
-    }
-    try {
-      return {
-        data: JSON.parse(window.atob(persisted.children[0].text || "")),
-        instanceId,
-        userId,
-        uid: persisted.children[0].uid,
-      };
-    } catch (e) {
-      return {
-        data: undefined,
-        instanceId,
-        userId,
-        uid: persisted.children[0].uid,
-      };
-    }
+    const instanceId = TLInstance.createCustomId(pageUid);
+    const userId = TLUser.createCustomId(getCurrentUserUid());
+    const props = getBlockProps(pageUid);
+    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+    const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
+    return { instanceId, userId, data };
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, _setMaximized] = useState(false);
@@ -456,10 +430,22 @@ const TldrawCanvas = ({ title }: Props) => {
         clearTimeout(serializeRef.current);
         serializeRef.current = window.setTimeout(() => {
           const state = _store.serialize();
-          setInputSetting({
-            blockUid: pageUid,
-            key: "State",
-            value: window.btoa(JSON.stringify(state)),
+          const props = getBlockProps(pageUid);
+          const rjsqb =
+            typeof props["roamjs-query-builder"] === "object"
+              ? props["roamjs-query-builder"]
+              : {};
+          window.roamAlphaAPI.updateBlock({
+            block: {
+              uid: pageUid,
+              props: {
+                ...props,
+                ["roamjs-query-builder"]: {
+                  ...rjsqb,
+                  tldraw: state,
+                },
+              },
+            },
           });
         }, THROTTLE);
       }
@@ -468,11 +454,13 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [initialState, serializeRef]);
 
   useEffect(() => {
-    const props: Parameters<AddPullWatch> = [
-      "[:edit/user :block/string]",
-      `[:block/uid "${initialState.uid}"]`,
+    const pullWatchProps: Parameters<AddPullWatch> = [
+      "[:edit/user :block/props]",
+      `[:block/uid "${pageUid}"]`,
       (_, after) => {
-        const state = after?.[":block/string"];
+        const props = normalizeProps(after?.[":block/props"] || {});
+        const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+        const state = rjsqb?.tldraw as Parameters<typeof store.deserialize>[0];
         const editingUser = after?.[":edit/user"]?.[":db/id"];
         if (!state || !editingUser) return;
         const editingUserUid = window.roamAlphaAPI.pull(
@@ -486,15 +474,59 @@ const TldrawCanvas = ({ title }: Props) => {
           return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
-          store.deserialize(JSON.parse(window.atob(state)));
+          store.deserialize(state);
         }, THROTTLE);
       },
     ];
-    window.roamAlphaAPI.data.addPullWatch(...props);
+    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
     return () => {
-      window.roamAlphaAPI.data.removePullWatch(...props);
+      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
     };
   }, [initialState, store]);
+  useEffect(() => {
+    const actionListener = ((
+      e: CustomEvent<{
+        action: string;
+        uid: string;
+        val: string;
+        onRefresh: () => void;
+      }>
+    ) => {
+      if (!/canvas/i.test(e.detail.action)) return;
+      const app = appRef.current;
+      if (!app) return;
+      const { x, y } = app.pageCenter;
+      const { w, h } = app.pageBounds;
+      const lastTime = lastInsertRef.current;
+      const position = lastTime
+        ? {
+            x: lastTime.x + w * 0.025,
+            y: lastTime.y + h * 0.05,
+          }
+        : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
+      const nodeType = findDiscourseNode(e.detail.uid, allNodes);
+      app.createShapes([
+        {
+          type: nodeType ? nodeType.type : TEXT_TYPE,
+          id: createShapeId(),
+          props: {
+            uid: e.detail.uid,
+            title: e.detail.val,
+          },
+          ...position,
+        },
+      ]);
+      lastInsertRef.current = position;
+      e.detail.onRefresh();
+    }) as EventListener;
+    document.addEventListener("roamjs:query-builder:action", actionListener);
+    return () => {
+      document.removeEventListener(
+        "roamjs:query-builder:action",
+        actionListener
+      );
+    };
+  }, [appRef, allNodes]);
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -625,10 +657,7 @@ const TldrawCanvas = ({ title }: Props) => {
   );
 };
 
-export const renderTldrawCanvas = (
-  title: string,
-  globalRefs: Props["globalRefs"]
-) => {
+export const renderTldrawCanvas = (title: string) => {
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
@@ -642,11 +671,7 @@ export const renderTldrawCanvas = (
     children.parentElement.appendChild(parent);
     parent.style.height = "500px";
     renderWithUnmount(
-      <TldrawCanvas
-        title={title}
-        globalRefs={globalRefs}
-        previewEnabled={isFlagEnabled("preview")}
-      />,
+      <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />,
       parent
     );
   }

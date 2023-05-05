@@ -14,6 +14,7 @@ import {
   Switch,
   Intent,
 } from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import Filter, { Filters } from "roamjs-components/components/Filter";
@@ -36,18 +37,20 @@ import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { ExportTypes, QBClauseData } from "../utils/types";
+import { ExportTypes } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
-import { QBClause } from "../utils/types";
-import { QBNor } from "../utils/types";
-import { QBNot } from "../utils/types";
 import { Condition } from "../utils/types";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
 
-const VIEWS = ["link", "plain", "embed", "alias"];
+const VIEWS: Record<string, { value: boolean }> = {
+  link: { value: false },
+  plain: { value: false },
+  embed: { value: false },
+  alias: { value: true },
+};
 
 const ResultHeader = ({
   c,
@@ -156,15 +159,17 @@ const ResultView = ({
   ctrlClick,
   views,
   extraColumn,
+  onRefresh,
 }: {
   r: Result;
   ctrlClick?: (e: Result) => void;
   views: { column: string; mode: string; value: string }[];
   extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
+  onRefresh: () => void;
 }) => {
   const rowCells = Object.keys(r).filter(
     (k) =>
-      !UID_REGEX.test(k) &&
+      !META_REGEX.test(k) &&
       !(extraColumn && extraColumn.reserved.some((t) => t.test(k)))
   );
   const namespaceSetting = useMemo(
@@ -182,6 +187,30 @@ const ResultView = ({
   );
   const cell = (key: string) => {
     const value = toCellValue(r[key] || "");
+    const action = r[`${key}-action`];
+    if (typeof action === "string") {
+      const buttonProps =
+        value.toUpperCase().replace(/\s/g, "_") in IconNames
+          ? { icon: value as IconName }
+          : { text: value };
+      return (
+        <Button
+          {...buttonProps}
+          onClick={() => {
+            document.dispatchEvent(
+              new CustomEvent("roamjs:query-builder:action", {
+                detail: {
+                  action,
+                  uid: r[`${key}-uid`],
+                  val: r["text"],
+                  onRefresh,
+                },
+              })
+            );
+          }}
+        />
+      );
+    }
     const formattedValue =
       typeof value === "string" &&
       r[`${key}-uid`] &&
@@ -276,7 +305,7 @@ const ResultView = ({
   );
 };
 
-const UID_REGEX = /uid/;
+const META_REGEX = /(-(uid|action)$|^uid$)/;
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)
@@ -421,16 +450,22 @@ type ResultsViewComponent = (props: {
   header?: React.ReactNode;
   results: Result[];
   hideResults?: boolean;
-  resultFilter?: (r: Result) => boolean;
   ctrlClick?: (e: Result) => void;
   preventSavingSettings?: boolean;
   preventExport?: boolean;
   onEdit?: () => void;
-  onRefresh?: () => void;
+  onRefresh: () => void;
   getExportTypes?: (r: Result[]) => ExportTypes;
   onResultsInViewChange?: (r: Result[]) => void;
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
+  extraColumn?: {
+    reserved: RegExp[];
+    width: number;
+    row: (e: Result) => React.ReactNode;
+    header: React.ReactNode;
+  };
+  isEditBlock?: boolean;
 }) => JSX.Element;
 
 const ResultsView: ResultsViewComponent = ({
@@ -438,7 +473,6 @@ const ResultsView: ResultsViewComponent = ({
   header,
   results,
   hideResults = false,
-  resultFilter,
   ctrlClick,
   preventSavingSettings = false,
   preventExport,
@@ -446,10 +480,7 @@ const ResultsView: ResultsViewComponent = ({
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
-
-  // @ts-ignore
   extraColumn,
-  // @ts-ignore
   isEditBlock,
 }) => {
   const extensionAPI = useExtensionAPI();
@@ -458,7 +489,7 @@ const ResultsView: ResultsViewComponent = ({
       results.length
         ? Object.keys(results[0]).filter(
             (k) =>
-              !UID_REGEX.test(k) &&
+              !META_REGEX.test(k) &&
               !(
                 extraColumn &&
                 extraColumn.reserved.some((t: RegExp) => t.test(k))
@@ -481,12 +512,8 @@ const ResultsView: ResultsViewComponent = ({
   const [views, setViews] = useState(settings.views);
   const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
 
-  const preProcessedResults = useMemo(
-    () => (resultFilter ? results.filter(resultFilter) : results),
-    [results, resultFilter]
-  );
   const { allResults, paginatedResults } = useMemo(() => {
-    return postProcessResults(preProcessedResults, {
+    return postProcessResults(results, {
       activeSort,
       filters,
       random: random.count,
@@ -495,7 +522,7 @@ const ResultsView: ResultsViewComponent = ({
       searchFilter,
     });
   }, [
-    preProcessedResults,
+    results,
     activeSort,
     filters,
     page,
@@ -606,7 +633,7 @@ const ResultsView: ResultsViewComponent = ({
         <span className="absolute top-2 right-2 z-10">
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
-              <Button icon={"refresh"} minimal onClick={onRefresh} small />
+              <Button icon={"refresh"} minimal onClick={onRefresh} />
             </Tooltip>
           )}
           <Popover
@@ -730,14 +757,14 @@ const ResultsView: ResultsViewComponent = ({
                           <span style={{ flex: 1 }}>{column}</span>
                           <MenuItemSelect
                             className="roamjs-view-select"
-                            items={VIEWS}
+                            items={Object.keys(VIEWS)}
                             activeItem={mode}
                             onItemSelect={(m) => {
                               onViewChange({ mode: m, column, value }, i);
                             }}
                           />
                         </div>
-                        {mode === "alias" && (
+                        {VIEWS[mode]?.value && (
                           <InputGroup
                             value={value}
                             onChange={(e) => {
@@ -1020,6 +1047,7 @@ const ResultsView: ResultsViewComponent = ({
                       ctrlClick={ctrlClick}
                       views={views}
                       extraColumn={extraColumn}
+                      onRefresh={onRefresh}
                     />
                   ))}
                 </tbody>
