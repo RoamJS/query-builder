@@ -14,6 +14,7 @@ import {
   Switch,
   Intent,
 } from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import Filter, { Filters } from "roamjs-components/components/Filter";
@@ -36,12 +37,9 @@ import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { ExportTypes, QBClauseData } from "../utils/types";
+import { ExportTypes } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
-import { QBClause } from "../utils/types";
-import { QBNor } from "../utils/types";
-import { QBNot } from "../utils/types";
 import { Condition } from "../utils/types";
 
 type Sorts = { key: string; descending: boolean }[];
@@ -52,7 +50,6 @@ const VIEWS: Record<string, { value: boolean }> = {
   plain: { value: false },
   embed: { value: false },
   alias: { value: true },
-  action: { value: true },
 };
 
 const ResultHeader = ({
@@ -172,7 +169,7 @@ const ResultView = ({
 }) => {
   const rowCells = Object.keys(r).filter(
     (k) =>
-      !UID_REGEX.test(k) &&
+      !META_REGEX.test(k) &&
       !(extraColumn && extraColumn.reserved.some((t) => t.test(k)))
   );
   const namespaceSetting = useMemo(
@@ -190,6 +187,30 @@ const ResultView = ({
   );
   const cell = (key: string) => {
     const value = toCellValue(r[key] || "");
+    const action = r[`${key}-action`];
+    if (typeof action === "string") {
+      const buttonProps =
+        value.toUpperCase().replace(/\s/g, "_") in IconNames
+          ? { icon: value as IconName }
+          : { text: value };
+      return (
+        <Button
+          {...buttonProps}
+          onClick={() => {
+            document.dispatchEvent(
+              new CustomEvent("roamjs:query-builder:action", {
+                detail: {
+                  action,
+                  uid: r[`${key}-uid`],
+                  val: r["text"],
+                  onRefresh,
+                },
+              })
+            );
+          }}
+        />
+      );
+    }
     const formattedValue =
       typeof value === "string" &&
       r[`${key}-uid`] &&
@@ -272,17 +293,6 @@ const ResultView = ({
                 </a>
               ) : view === "embed" ? (
                 <CellEmbed uid={uid} />
-              ) : view === "action" ? (
-                <Button
-                  text={viewValue}
-                  onClick={() => {
-                    document.dispatchEvent(
-                      new CustomEvent("roamjs:query-builder:action", {
-                        detail: { action: viewValue, uid, val, onRefresh },
-                      })
-                    );
-                  }}
-                />
               ) : (
                 cell(k)
               )}
@@ -295,7 +305,7 @@ const ResultView = ({
   );
 };
 
-const UID_REGEX = /uid/;
+const META_REGEX = /(-(uid|action)$|^uid$)/;
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)
@@ -479,7 +489,7 @@ const ResultsView: ResultsViewComponent = ({
       results.length
         ? Object.keys(results[0]).filter(
             (k) =>
-              !UID_REGEX.test(k) &&
+              !META_REGEX.test(k) &&
               !(
                 extraColumn &&
                 extraColumn.reserved.some((t: RegExp) => t.test(k))
