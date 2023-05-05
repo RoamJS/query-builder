@@ -10,11 +10,17 @@ type QueryPageComponent = (props: { blockUid: string }) => JSX.Element;
 
 type Props = Parameters<QueryPageComponent>[0];
 
+/**
+ * This component is hyper custom towards a single user's use case, so we want to keep it mostly hidden for now.
+ * Once Roam releases custom block views, we'll be able to expose a way (via SamePage) to allow users to build
+ * their own custom views (UI) in a No-Code way, similar to SmartBlocks (automations) and Query Builder (Requests) today.
+ */
 const MessageBlock = ({ blockUid }: Props) => {
   const thread = useMemo(() => {
     const allBlockUidsInThread = new Set([blockUid]);
     const getMessageInfo = (uid: string) => {
       const tree = getBasicTreeByParentUid(uid);
+      if (!tree.length) return;
       const pull = window.roamAlphaAPI.pull(
         "[:block/string :create/user :create/time]",
         [":block/uid", uid]
@@ -34,7 +40,17 @@ const MessageBlock = ({ blockUid }: Props) => {
         .filter((s): s is RegExpExecArray => !!s)
         .map(([_, to, status]) => ({ to, status }));
       const body = getSubTree({ tree, key: "body::" }).children[0].text;
-      return { subject, from, when, body, recipients };
+      const { text: actionsText, uid: actionsUid } = getSubTree({
+        tree,
+        key: "actions::",
+      }).children[0];
+      const buttons = Array.from(
+        actionsText.matchAll(/{{([^:]+):SmartBlock:([^:]+)[^}]*}}/g)
+      ).map((m) => ({
+        text: m[1],
+        trigger: m[2],
+      }));
+      return { subject, from, when, body, recipients, buttons, actionsUid };
     };
     const getReplies = (uid: string): string[] => {
       const referringUids = getBlockUidsReferencingBlock(uid).filter(
@@ -46,7 +62,7 @@ const MessageBlock = ({ blockUid }: Props) => {
     const getAncestors = (uid: string): string[] => {
       const refs = (
         window.roamAlphaAPI.data.fast.q(
-          `[:find (pull ?ref [:block/uid]) :where [?block :block/uid ${uid}] [?block :block/refs ?ref]]`
+          `[:find (pull ?ref [:block/uid]) :where [?block :block/uid "${uid}"] [?block :block/refs ?ref]]`
         ) as [PullBlock][]
       )
         .map((r) => r[0]?.[":block/uid"])
@@ -57,7 +73,11 @@ const MessageBlock = ({ blockUid }: Props) => {
     const ancestors = getAncestors(blockUid);
     const replies = getReplies(blockUid);
     const uids = [...ancestors.slice(0, -1), blockUid, ...replies.slice(1)];
-    return uids.map(getMessageInfo);
+    return uids
+      .map(getMessageInfo)
+      .filter(
+        (i): i is Exclude<ReturnType<typeof getMessageInfo>, undefined> => !!i
+      );
   }, [blockUid]);
   return (
     <Card
@@ -94,26 +114,25 @@ const MessageBlock = ({ blockUid }: Props) => {
         </div>
       ))}
       <div className="flex gap-4">
-        <Button
-          icon={
-            <img
-              src="https://raw.githubusercontent.com/dvargas92495/roamjs-smartblocks/main/src/img/lego3blocks.png"
-              height={16}
-              width={16}
-            />
-          }
-          text="Mark Read"
-        />
-        <Button
-          icon={
-            <img
-              src="https://raw.githubusercontent.com/dvargas92495/roamjs-smartblocks/main/src/img/lego3blocks.png"
-              height={16}
-              width={16}
-            />
-          }
-          text="Reply"
-        />
+        {thread.slice(-1)[0].buttons.map((b, i) => (
+          <Button
+            key={i}
+            icon={
+              <img
+                src="https://raw.githubusercontent.com/dvargas92495/roamjs-smartblocks/main/src/img/lego3blocks.png"
+                height={16}
+                width={16}
+              />
+            }
+            text={b.text}
+            onClick={async () =>
+              window.roamjs.extension.smartblocks?.triggerSmartblock({
+                srcName: b.trigger,
+                targetUid: thread.slice(-1)[0].actionsUid,
+              })
+            }
+          />
+        ))}
       </div>
     </Card>
   );

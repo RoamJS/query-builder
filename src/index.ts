@@ -44,6 +44,7 @@ import { render as renderFormDialog } from "roamjs-components/components/FormDia
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
+import getBlockProps from "./utils/getBlockProps";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -593,25 +594,27 @@ svg.rs-svg-container {
         ),
     });
 
-    const getBlockProps = (uid: string) =>
-      window.roamAlphaAPI.pull("[:block/props]", [":block/uid", uid])?.[
-        ":block/props"
-      ] || ({} as Required<PullBlock>[":block/props"]);
+    const renderCustomBlockView = ({
+      view,
+      blockUid,
+      parent,
+    }: {
+      view: string;
+      parent: HTMLElement;
+      blockUid: string;
+    }) => {
+      if (view === "Message") {
+        renderMessageBlock({ parent, onloadArgs, blockUid });
+      }
+    };
 
-    const normalizeProps = (
-      props: Record<string, unknown>
-    ): Record<string, unknown> =>
-      Object.fromEntries(
-        Object.entries(props).map(([k, v]) => [
-          k.replace(/^:+/, ""),
-          typeof v === "object" && v !== null
-            ? normalizeProps(v as Record<string, unknown>)
-            : v,
-        ])
-      );
-
+    /** 
+     * Roam team is working on a way to register custom block views
+     * This is exciting! commented this out so that the feature could stay somewhat hidden
+     * But hint at how we'd like to register our custom view in the future.
+     * The way that users will be able to add custom block views is using SmartBlock's SETPROPS command.
     extensionAPI.ui.commandPalette.addCommand({
-      label: "Set Custom View For Block",
+      label: "(QB) Change Block View",
       callback: async () => {
         const uid =
           window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"] ||
@@ -619,20 +622,30 @@ svg.rs-svg-container {
           window.roamAlphaAPI.util.dateToPageUid(new Date());
         renderFormDialog({
           onSubmit: (values) => {
-            const props = normalizeProps(getBlockProps(uid));
+            const props = getBlockProps(uid);
             const qbprops = props["roamjs-query-builder"] || {};
+            const view = values.view as string;
             window.roamAlphaAPI.updateBlock({
               block: {
                 uid,
                 props: {
-                  ...normalizeProps(props),
+                  ...props,
                   "roamjs-query-builder": {
                     ...qbprops,
-                    view: values.view,
+                    view,
                   },
                 },
               },
             });
+            document
+              .querySelectorAll<HTMLDivElement>(`.roam-block[id*="${uid}"`)
+              .forEach((parent) =>
+                renderCustomBlockView({
+                  view,
+                  blockUid: uid,
+                  parent,
+                })
+              );
           },
           title: "Set Custom View For Block",
           fields: {
@@ -644,17 +657,22 @@ svg.rs-svg-container {
           },
         });
       },
-      
     });
+    */
 
     const [viewBlockObserver] = createBlockObserver({
       onBlockLoad: (b) => {
         const { blockUid } = getUids(b);
         const props = getBlockProps(blockUid);
-        const qbprops = props[":roamjs-query-builder"] || {};
-        if (qbprops[":view"] === "Message") {
-          renderMessageBlock({ parent: b, onloadArgs, blockUid });
-        }
+        const qbprops = (props["roamjs-query-builder"] || {}) as Record<
+          string,
+          unknown
+        >;
+        renderCustomBlockView({
+          view: qbprops["view"] as string,
+          blockUid,
+          parent: b,
+        });
       },
     });
 
