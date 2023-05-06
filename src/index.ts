@@ -40,6 +40,11 @@ import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageRemove from "roamjs-components/util/localStorageRemove";
 import { getNodeEnv } from "roamjs-components/util/env";
+import { render as renderFormDialog } from "roamjs-components/components/FormDialog";
+import createBlockObserver from "roamjs-components/dom/createBlockObserver";
+import getUids from "roamjs-components/dom/getUids";
+import { render as renderMessageBlock } from "./components/MessageBlock";
+import getBlockProps from "./utils/getBlockProps";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -572,7 +577,7 @@ svg.rs-svg-container {
         ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
     };
 
-    window.roamAlphaAPI.ui.commandPalette.addCommand({
+    extensionAPI.ui.commandPalette.addCommand({
       label: "Open Query Drawer",
       callback: () =>
         Promise.resolve(
@@ -589,6 +594,88 @@ svg.rs-svg-container {
         ),
     });
 
+    const renderCustomBlockView = ({
+      view,
+      blockUid,
+      parent,
+    }: {
+      view: string;
+      parent: HTMLElement;
+      blockUid: string;
+    }) => {
+      if (view === "Message") {
+        renderMessageBlock({ parent, onloadArgs, blockUid });
+      }
+    };
+
+    /** 
+     * Roam team is working on a way to register custom block views
+     * This is exciting! commented this out so that the feature could stay somewhat hidden
+     * But hint at how we'd like to register our custom view in the future.
+     * The way that users will be able to add custom block views is using SmartBlock's SETPROPS command.
+    extensionAPI.ui.commandPalette.addCommand({
+      label: "(QB) Change Block View",
+      callback: async () => {
+        const uid =
+          window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"] ||
+          (await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid()) ||
+          window.roamAlphaAPI.util.dateToPageUid(new Date());
+        renderFormDialog({
+          onSubmit: (values) => {
+            const props = getBlockProps(uid);
+            const qbprops = props["roamjs-query-builder"] || {};
+            const view = values.view as string;
+            window.roamAlphaAPI.updateBlock({
+              block: {
+                uid,
+                props: {
+                  ...props,
+                  "roamjs-query-builder": {
+                    ...qbprops,
+                    view,
+                  },
+                },
+              },
+            });
+            document
+              .querySelectorAll<HTMLDivElement>(`.roam-block[id*="${uid}"`)
+              .forEach((parent) =>
+                renderCustomBlockView({
+                  view,
+                  blockUid: uid,
+                  parent,
+                })
+              );
+          },
+          title: "Set Custom View For Block",
+          fields: {
+            view: {
+              type: "select",
+              label: "View Type",
+              options: ["Standard", "Message"],
+            },
+          },
+        });
+      },
+    });
+    */
+
+    const [viewBlockObserver] = createBlockObserver({
+      onBlockLoad: (b) => {
+        const { blockUid } = getUids(b);
+        const props = getBlockProps(blockUid);
+        const qbprops = (props["roamjs-query-builder"] || {}) as Record<
+          string,
+          unknown
+        >;
+        renderCustomBlockView({
+          view: qbprops["view"] as string,
+          blockUid,
+          parent: b,
+        });
+      },
+    });
+
     getSamePageAPI().then((api) => {
       api.listNotebooks().then(({ notebooks }) => {
         registerDatalogTranslator({
@@ -603,13 +690,13 @@ svg.rs-svg-container {
 
     return {
       elements: [style],
-      commands: ["Open Query Drawer"],
       observers: [
         h1Observer,
         qtObserver,
         originalQueryBuilderObserver,
         editQueryBuilderObserver,
         queryBlockObserver,
+        viewBlockObserver,
       ],
       unload: () => {
         window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
