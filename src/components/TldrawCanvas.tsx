@@ -191,7 +191,6 @@ const DEFAULT_HEIGHT = 64;
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type = TEXT_TYPE) {
     super(app, type);
-    this.onBeforeCreate = this.onBeforeCreate.bind(this);
   }
 
   override isAspectRatioLocked = (_shape: DiscourseNodeShape) => false;
@@ -208,13 +207,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       title: "",
     };
   }
-  override onBeforeCreate: OnBeforeCreateHandler<DiscourseNodeShape> = (
-    shape
-  ) => {
-    if (!shape.props.title) {
-      this.app.setEditingId(shape.id);
-    }
-  };
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
@@ -226,6 +218,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       () => this.app.editingId === shape.id,
       [this.app, shape.id]
     );
+    useEffect(() => {
+      if (!shape.props.title) {
+        this.app.setEditingId(shape.id);
+      }
+    }, [shape.props.title, shape.id]);
     return (
       <HTMLContainer
         id={shape.id}
@@ -275,7 +272,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   },
                 });
               } else if (!oldTitle) {
-                // TODO - this needs to actually be replaced by what we derive the 
+                // TODO - this needs to actually be replaced by what we derive the
                 // node creation process to be based on the type
                 window.roamAlphaAPI.createPage({
                   page: {
