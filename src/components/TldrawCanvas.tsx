@@ -30,6 +30,7 @@ import {
   createShapeId,
   TLStore,
   SubMenu,
+  OnBeforeCreateHandler,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -190,6 +191,7 @@ const DEFAULT_HEIGHT = 64;
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type = TEXT_TYPE) {
     super(app, type);
+    this.onBeforeCreate = this.onBeforeCreate.bind(this);
   }
 
   override isAspectRatioLocked = (_shape: DiscourseNodeShape) => false;
@@ -206,6 +208,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       title: "",
     };
   }
+  override onBeforeCreate: OnBeforeCreateHandler<DiscourseNodeShape> = (
+    shape
+  ) => {
+    if (!shape.props.title) {
+      this.app.setEditingId(shape.id);
+    }
+  };
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
@@ -249,10 +258,32 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             onSuccess={(label) => {
               this.updateProps(shape.id, {
                 title: label,
-                uid:
-                  getPageUidByPageTitle(label) ||
-                  window.roamAlphaAPI.util.generateUID(),
               });
+              const oldTitle = getPageTitleByPageUid(shape.props.uid);
+              if (oldTitle && oldTitle !== label) {
+                window.roamAlphaAPI.updatePage({
+                  page: {
+                    uid: shape.props.uid,
+                    title: label,
+                  },
+                });
+              } else if (isLiveBlock(shape.props.uid)) {
+                window.roamAlphaAPI.updateBlock({
+                  block: {
+                    uid: shape.props.uid,
+                    string: label,
+                  },
+                });
+              } else if (!oldTitle) {
+                // TODO - this needs to actually be replaced by what we derive the 
+                // node creation process to be based on the type
+                window.roamAlphaAPI.createPage({
+                  page: {
+                    title: label,
+                    uid: shape.props.uid,
+                  },
+                });
+              }
             }}
           />
         </div>
@@ -539,7 +570,11 @@ const TldrawCanvas = ({ title }: Props) => {
     >
       <style>{`.roam-article .rm-block-children {
   display: none;
-}${maximized ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }" : ""}`}</style>
+}${
+        maximized
+          ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
+          : ""
+      }`}</style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}
@@ -666,8 +701,7 @@ const TldrawCanvas = ({ title }: Props) => {
               );
               if (mainMenu) {
                 const viewSubMenu = mainMenu.children.find(
-                  (m): m is SubMenu =>
-                    m.type === "submenu" && m.id === "view"
+                  (m): m is SubMenu => m.type === "submenu" && m.id === "view"
                 );
                 if (viewSubMenu) {
                   const viewActionsGroup = viewSubMenu.children.find(
