@@ -15,4 +15,4 @@ jobs:
       - name: install
         run: npm install -f
       - name: build
-        run: npx samepage build --review "ignore"
+        run: npx samepage build
