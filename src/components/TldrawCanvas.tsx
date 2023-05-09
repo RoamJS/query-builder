@@ -539,7 +539,7 @@ const TldrawCanvas = ({ title }: Props) => {
     >
       <style>{`.roam-article .rm-block-children {
   display: none;
-}`}</style>
+}${maximized ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }" : ""}`}</style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}

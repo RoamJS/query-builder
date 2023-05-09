@@ -1,16 +1,8 @@
 name: Publish Extension
-on:
-  workflow_dispatch:
-  push:
-    branches: main
-    paths:
-      - "src/**"
-      - "package.json"
-      - ".github/workflows/main.yaml"
+on: pull_request
 
 env:
   ROAMJS_EXTENSION_ID: query-builder
-  GITHUB_TOKEN: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
 
 jobs:
   deploy:
@@ -20,4 +12,4 @@ jobs:
       - name: install
         run: npm install -f
       - name: build
-        run: npx samepage build
+        run: npx samepage build --review ""
