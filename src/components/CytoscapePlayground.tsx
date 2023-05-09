@@ -498,6 +498,7 @@ const CytoscapePlayground = ({
           format: "{content}",
           specification: [],
           isRelationBacked: false,
+          canvasSettings: {},
         }),
     []
   );
@@ -575,6 +576,7 @@ const CytoscapePlayground = ({
   >(
     ({ open, close, span }) => {
       const register = (cy: cytoscape.Core) => {
+        if (!span) return;
         const root = span.closest<HTMLSpanElement>(".bp3-popover-wrapper");
         if (root) root.style.position = "absolute";
         cy.on("mousemove", (e) => {

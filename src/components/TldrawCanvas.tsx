@@ -29,6 +29,7 @@ import {
   Vec2dModel,
   createShapeId,
   TLStore,
+  SubMenu,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -418,7 +419,7 @@ const TldrawCanvas = ({ title }: Props) => {
     return { instanceId, userId, data };
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [maximized, _setMaximized] = useState(false);
+  const [maximized, setMaximized] = useState(false);
   const store = useMemo(() => {
     const _store = customTldrawConfig.createStore({
       initialData: initialState.data,
@@ -538,7 +539,7 @@ const TldrawCanvas = ({ title }: Props) => {
     >
       <style>{`.roam-article .rm-block-children {
   display: none;
-}`}</style>
+}${maximized ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }" : ""}`}</style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}
@@ -593,7 +594,20 @@ const TldrawCanvas = ({ title }: Props) => {
                     allRelationsById[id].label,
                   ])
                 ),
+                "action.toggle-full-screen": "Toggle Full Screen",
               },
+            },
+            actions(_app, actions) {
+              actions["toggle-full-screen"] = {
+                id: "toggle-full-screen",
+                label: "action.toggle-full-screen" as TLTranslationKey,
+                kbd: "!3",
+                onSelect: () => {
+                  setMaximized(!maximized);
+                },
+                readonlyOk: true,
+              };
+              return actions;
             },
             tools(app, tools) {
               allNodesWithTextNode.forEach((node, index) => {
@@ -645,6 +659,42 @@ const TldrawCanvas = ({ title }: Props) => {
                 ...allNodesWithTextNode.map((n) => menuItem(tools[n.type]))
               );
               return keyboardShortcutsMenu;
+            },
+            menu(_app, menu) {
+              const mainMenu = menu.find(
+                (m): m is MenuGroup => m.type === "group" && m.id === "menu"
+              );
+              if (mainMenu) {
+                const viewSubMenu = mainMenu.children.find(
+                  (m): m is SubMenu =>
+                    m.type === "submenu" && m.id === "view"
+                );
+                if (viewSubMenu) {
+                  const viewActionsGroup = viewSubMenu.children.find(
+                    (m): m is MenuGroup =>
+                      m.type === "group" && m.id === "view-actions"
+                  );
+                  if (viewActionsGroup) {
+                    viewActionsGroup.children.push({
+                      type: "item",
+                      readonlyOk: true,
+                      id: "toggle-full-screen",
+                      disabled: false,
+                      checked: maximized,
+                      actionItem: {
+                        id: "toggle-full-screen",
+                        label: "action.toggle-full-screen" as TLTranslationKey,
+                        kbd: "!3",
+                        onSelect: () => {
+                          setMaximized(!maximized);
+                        },
+                        readonlyOk: true,
+                      },
+                    });
+                  }
+                }
+              }
+              return menu;
             },
           }}
         >
