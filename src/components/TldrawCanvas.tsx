@@ -25,12 +25,10 @@ import {
   StateNodeConstructor,
   TLArrowUtil,
   TLArrowShapeProps,
-  OnClickHandler,
   Vec2dModel,
   createShapeId,
   TLStore,
   SubMenu,
-  OnBeforeCreateHandler,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -49,7 +47,11 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { AddPullWatch } from "roamjs-components/types";
+import {
+  AddPullWatch,
+  InputTextNode,
+  RoamBasicNode,
+} from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -65,6 +67,8 @@ import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getBlockProps, { normalizeProps } from "../utils/getBlockProps";
+import { QBClause } from "../utils/types";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 
 declare global {
   interface Window {
@@ -98,7 +102,22 @@ const LabelDialog = ({
   onSuccess,
   nodeType,
 }: RoamOverlayProps<NodeDialogProps>) => {
-  const [label, setLabel] = useState(_label);
+  const defaultValue = useMemo(() => {
+    if (_label) return _label;
+    if (nodeType === TEXT_TYPE) return "";
+    const { specification, text } = discourseContext.nodes[nodeType];
+    if (!specification.length) return "";
+    // CURRENT ASSUMPTIONS:
+    // - conditions are properly ordered
+    // - there is a has title condition somewhere
+    const titleCondition = specification.find(
+      (s): s is QBClause =>
+        s.type === "clause" && s.relation === "has title" && s.source === text
+    );
+    if (!titleCondition) return "";
+    return titleCondition.target;
+  }, [_label, nodeType]);
+  const [label, setLabel] = useState(defaultValue);
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
   const onSubmit = () => {
@@ -143,6 +162,7 @@ const LabelDialog = ({
               onConfirm={onSubmit}
               options={options}
               multiline
+              autoFocus
             />
           ) : (
             <PageInput
@@ -150,6 +170,7 @@ const LabelDialog = ({
               setValue={setLabel}
               onConfirm={onSubmit}
               multiline
+              autoFocus
             />
           )}
         </div>
@@ -210,9 +231,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
-    const discourseNodeIndex = discourseContext.nodes[this.type]?.index ?? -1;
-    const { alias, color } =
-      discourseContext.nodes[this.type]?.canvasSettings || {};
+    const {
+      canvasSettings: { alias = "", color = "" } = {},
+      index: discourseNodeIndex = -1,
+    } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
@@ -272,13 +294,22 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   },
                 });
               } else if (!oldTitle) {
-                // TODO - this needs to actually be replaced by what we derive the
-                // node creation process to be based on the type
-                window.roamAlphaAPI.createPage({
-                  page: {
-                    title: label,
-                    uid: shape.props.uid,
-                  },
+                // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
+                const nodeTree = getFullTreeByParentUid(shape.type).children;
+                const template = getSubTree({
+                  tree: nodeTree,
+                  key: "template",
+                }).children;
+                const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
+                  n.map(({ uid, children, ...c }) => ({
+                    ...c,
+                    children: stripUid(children),
+                  }));
+                const tree = stripUid(template);
+                createPage({
+                  title: label,
+                  uid: shape.props.uid,
+                  tree,
                 });
               }
             }}

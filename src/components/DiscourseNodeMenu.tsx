@@ -31,13 +31,17 @@ type Props = {
 };
 
 const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
-  const NODE_LABELS = useMemo(
+  const discourseNodes = useMemo(
     () => getDiscourseNodes().filter((n) => !n.isRelationBacked),
     []
   );
   const indexBySC = useMemo(
-    () => Object.fromEntries(NODE_LABELS.map((mi, i) => [mi.shortcut, i])),
-    [NODE_LABELS]
+    () => Object.fromEntries(discourseNodes.map((mi, i) => [mi.shortcut, i])),
+    [discourseNodes]
+  );
+  const indexedByType = useMemo(
+    () => Object.fromEntries(discourseNodes.map((mi, i) => [mi.type, mi])),
+    [discourseNodes]
   );
   const shortcuts = useMemo(() => new Set(Object.keys(indexBySC)), [indexBySC]);
   const blockUid = useMemo(() => getUids(textarea).blockUid, [textarea]);
@@ -48,7 +52,6 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
       const menuItem =
         menuRef.current?.children[index].querySelector(".bp3-menu-item");
       if (!menuItem) return;
-      const format = menuItem.getAttribute("data-format") || "";
       const nodeUid = menuItem.getAttribute("data-node") || "";
       const highlighted = textarea.value.substring(
         textarea.selectionStart,
@@ -56,9 +59,10 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
       );
       setTimeout(() => {
         const text = getTextByBlockUid(blockUid);
+        const format = indexedByType[nodeUid]?.format || "";
         const pagename = format.replace(/{([\w\d-]*)}/g, (_, val) => {
           if (/content/i.test(val)) return highlighted;
-          const referencedNode = NODE_LABELS.find(({ text }) =>
+          const referencedNode = discourseNodes.find(({ text }) =>
             new RegExp(text, "i").test(val)
           );
           if (referencedNode) {
@@ -184,11 +188,10 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
       enforceFocus={false}
       content={
         <Menu ulRef={menuRef} data-active-index={activeIndex}>
-          {NODE_LABELS.map((item, i) => {
+          {discourseNodes.map((item, i) => {
             return (
               <MenuItem
                 key={item.text}
-                data-format={item.format}
                 data-node={item.type}
                 text={`${item.text} - (${item.shortcut})`}
                 active={i === activeIndex}
