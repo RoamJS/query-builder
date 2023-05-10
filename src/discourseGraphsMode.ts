@@ -164,7 +164,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
           // @ts-ignore
           {
             title: "Format",
-            description: `The format ${nodeText} pages should have.`,
+            description: `DEPRACATED - Use specification instead. The format ${nodeText} pages should have.`,
             defaultValue: "\\",
             Panel: TextPanel,
             options: {
