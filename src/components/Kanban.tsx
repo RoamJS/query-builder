@@ -7,6 +7,7 @@ import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import { z } from "zod";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
 const columnKey = "status";
 const zPriority = z.record(z.number().min(0).max(1));
@@ -84,10 +85,16 @@ const inlineTry = <T extends unknown>(f: () => T, d: T) => {
 const Kanban = ({
   data,
   layout,
+  onQuery,
 }: {
   data: Result[];
   layout: Record<string, string | string[]>;
+  onQuery: () => void;
 }) => {
+  const byUid = React.useMemo(
+    () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
+    [data]
+  );
   const [columns, setColumns] = React.useState(() =>
     Array.isArray(layout.columns)
       ? layout.columns
@@ -159,9 +166,14 @@ const Kanban = ({
           return x >= left;
         });
       if (!newColumn) return;
-      // TODO: update Result with new column value
+
       const column = newColumn.getAttribute("data-column");
       if (!column) return;
+      // TODO: update Result with new column value. This is hard coded for the demo for now.
+      const columnUid = byUid[uid][`${columnKey}-uid`];
+      updateBlock({ uid: columnUid, text: `Status:: #${column}` }).then(
+        onQuery
+      );
 
       const _cardIndex = Array.from(
         newColumn.querySelectorAll(".roamjs-kanban-card")
@@ -170,7 +182,7 @@ const Kanban = ({
         .reverse()
         .find(({ el }) => {
           const { top } = el.getBoundingClientRect();
-          return y <= top;
+          return y >= top;
         })?.index;
       const cardIndex = typeof _cardIndex === "undefined" ? -1 : 0;
       const topCard = cards[column]?.[cardIndex];
@@ -192,7 +204,7 @@ const Kanban = ({
       );
       setPrioritization((p) => ({ ...p, [uid]: priority }));
     },
-    [setPrioritization, cards, containerRef]
+    [setPrioritization, cards, containerRef, byUid]
   );
   return (
     <div

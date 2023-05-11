@@ -363,7 +363,7 @@ const predefinedSelections: PredefinedSelection[] = [
         : EDIT_DATE_TEST.test(field)
         ? `[:edit/time]`
         : REGEX_TEST.test(field)
-        ? `[:node/title :block/string]`
+        ? `[:node/title :block/string :block/uid]`
         : field
         ? `[:block/uid]`
         : `[:node/title :block/uid :block/string]`;
@@ -390,9 +390,13 @@ const predefinedSelections: PredefinedSelection[] = [
         : field === ":edit/user"
         ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
-        ? new RegExp(match.slice(1, -1))
-            .exec(r?.[":block/string"] || r?.[":node/title"] || "")
-            ?.slice(-1)[0] || ""
+        ? {
+            "":
+              new RegExp(match.slice(1, -1))
+                .exec(r?.[":block/string"] || r?.[":node/title"] || "")
+                ?.slice(-1)[0] || "",
+            "-uid": r?.[":block/uid"] || "",
+          }
         : match
         ? getBlockAttribute(match, r)
         : {

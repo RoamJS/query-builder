@@ -757,7 +757,7 @@ const ResultsView: ResultsViewComponent = ({
             ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
             ) : layout.mode === "kanban" ? (
-              <Kanban data={allResults} layout={layout} />
+              <Kanban data={allResults} layout={layout} onQuery={onRefresh} />
             ) : (
               <div style={{ padding: "16px 8px" }}>
                 Layout `{layout}` is not supported
@@ -780,6 +780,7 @@ const ResultsView: ResultsViewComponent = ({
             className="flex justify-between items-center text-xs px-1"
             style={{
               opacity: 0.8,
+              padding: 4,
             }}
           >
             <span>
@@ -792,7 +793,6 @@ const ResultsView: ResultsViewComponent = ({
                   style={{
                     minWidth: 16,
                     minHeight: 16,
-                    marginRight: 4,
                   }}
                 />
                 Showing {paginatedResults.length} of {results.length} results
