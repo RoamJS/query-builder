@@ -5,21 +5,38 @@ import { Button, Icon, InputGroup } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import setInputSetting from "roamjs-components/util/setInputSetting";
+import { z } from "zod";
 
 const columnKey = "status";
+const zPriority = z.record(z.number().min(0).max(1));
 
-const KanbanCard = (card: { text: string; uid: string }) => {
+type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
+
+const KanbanCard = (card: {
+  text: string;
+  uid: string;
+  $priority: number;
+  $reprioritize: Reprioritize;
+}) => {
+  // TODO: use Default to 'react-draggable', 'react-draggable-dragging', and 'react-draggable-dragged instead
   const [isDragging, setIsDragging] = React.useState(false);
   return (
     <Draggable
       onDrag={() => setIsDragging(true)}
-      onStop={(_, _data) => {
+      onStop={(_, data) => {
+        const { x, y } = data.node.getBoundingClientRect();
+        card.$reprioritize({ uid: card.uid, x, y });
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
       }}
       bounds={".roamjs-kanban-container"}
+      position={{ x: 0, y: 0 }}
     >
       <div
+        className="roamjs-kanban-card"
+        data-uid={card.uid}
+        data-priority={card.$priority}
         onClick={(e) => {
           if (isDragging) return;
           if (e.shiftKey) {
@@ -56,6 +73,14 @@ const KanbanCard = (card: { text: string; uid: string }) => {
   );
 };
 
+const inlineTry = <T extends unknown>(f: () => T, d: T) => {
+  try {
+    return f();
+  } catch (e) {
+    return d;
+  }
+};
+
 const Kanban = ({
   data,
   layout,
@@ -70,6 +95,30 @@ const Kanban = ({
       ? [layout.columns]
       : ["Backlog"]
   );
+  const [prioritization, setPrioritization] = React.useState(() => {
+    const base64 = Array.isArray(layout.prioritization)
+      ? layout.prioritization[0]
+      : typeof layout.prioritization === "string"
+      ? layout.prioritization
+      : "e30="; // base64 of {}
+    const stored = inlineTry(
+      () => zPriority.parse(JSON.parse(window.atob(base64))),
+      {}
+    );
+    data.forEach((d) => {
+      if (!stored[d.uid]) {
+        stored[d.uid] = Math.random();
+      }
+    });
+    return stored;
+  });
+  const layoutUid = React.useMemo(() => {
+    return Array.isArray(layout.uid)
+      ? layout.uid[0]
+      : typeof layout.uid === "string"
+      ? layout.uid
+      : ""; // should we throw an error here? Should never happen in practice...
+  }, [layout.uid]);
   const [isAdding, setIsAdding] = React.useState(false);
   const [newColumn, setNewColumn] = React.useState("");
   const cards = React.useMemo(() => {
@@ -81,18 +130,82 @@ const Kanban = ({
       }
       cards[column].push(d);
     });
+    Object.keys(cards).forEach((k) => {
+      cards[k] = cards[k].sort(
+        (a, b) => prioritization[a.uid] - prioritization[b.uid]
+      );
+    });
     return cards;
-  }, [data]);
+  }, [data, prioritization]);
+  React.useEffect(() => {
+    const base64 = window.btoa(JSON.stringify(prioritization));
+    setInputSetting({
+      blockUid: layoutUid,
+      key: "prioritization",
+      value: base64,
+    });
+  }, [prioritization]);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const reprioritize = React.useCallback<Reprioritize>(
+    ({ uid, x, y }) => {
+      if (!containerRef.current) return;
+      // use x & y to determine priority
+      const newColumn = Array.from(
+        containerRef.current.querySelectorAll(".roamjs-kanban-column")
+      )
+        .reverse()
+        .find((el) => {
+          const { left } = el.getBoundingClientRect();
+          return x >= left;
+        });
+      if (!newColumn) return;
+      // TODO: update Result with new column value
+      const column = newColumn.getAttribute("data-column");
+      if (!column) return;
+
+      const _cardIndex = Array.from(
+        newColumn.querySelectorAll(".roamjs-kanban-card")
+      )
+        .map((el, index) => ({ el, index }))
+        .reverse()
+        .find(({ el }) => {
+          const { top } = el.getBoundingClientRect();
+          return y <= top;
+        })?.index;
+      const cardIndex = typeof _cardIndex === "undefined" ? -1 : 0;
+      const topCard = cards[column]?.[cardIndex];
+      const bottomCard = cards[column]?.[cardIndex + 1];
+      const topPriority = prioritization[topCard?.uid] || 0;
+      const bottomPriority = prioritization[bottomCard?.uid] || 1;
+      const priority = (topPriority + bottomPriority) / 2;
+      console.log(
+        "moved to column",
+        column,
+        "index",
+        cardIndex,
+        "priority",
+        priority,
+        "x",
+        x,
+        "y",
+        y
+      );
+      setPrioritization((p) => ({ ...p, [uid]: priority }));
+    },
+    [setPrioritization, cards, containerRef]
+  );
   return (
     <div
       className="gap-4 items-start p-4 relative roamjs-kanban-container overflow-x-scroll"
       style={{ display: "flex" }}
+      ref={containerRef}
     >
       {columns.map((col) => {
         return (
           <div
             key={col}
-            className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0"
+            className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0 roamjs-kanban-column"
+            data-column={col}
             style={{ display: "flex" }}
           >
             <div
@@ -115,7 +228,13 @@ const Kanban = ({
               />
             </div>
             {(cards[col] || [])?.map((d) => (
-              <KanbanCard key={d.uid} {...d} />
+              <KanbanCard
+                key={d.uid}
+                {...d}
+                // we use $ to prefix these props to avoid collisions with the result object
+                $priority={prioritization[d.uid]}
+                $reprioritize={reprioritize}
+              />
             ))}
           </div>
         );
