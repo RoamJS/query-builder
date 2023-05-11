@@ -9,7 +9,7 @@ import {
   TextArea,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
@@ -57,7 +57,7 @@ const QueryClause = ({
 }: {
   con: QBClause | QBNot;
   index: number;
-  setConditions: (cons: Condition[]) => void;
+  setConditions: React.Dispatch<React.SetStateAction<Condition[]>>;
   conditions: Condition[];
   availableSources: string[];
 }) => {
@@ -70,6 +70,40 @@ const QueryClause = ({
   const targetPlaceholder = useMemo(
     () => sourceToTargetPlaceholder({ relation: con.relation }),
     [con.source, con.relation]
+  );
+  const setConditionRelation = useCallback(
+    (e: string) => {
+      window.clearTimeout(debounceRef.current);
+      setConditions((_conditions) =>
+        _conditions.map((c) => (c.uid === con.uid ? { ...c, relation: e } : c))
+      );
+      debounceRef.current = window.setTimeout(() => {
+        setInputSetting({
+          blockUid: con.uid,
+          key: "Relation",
+          value: e,
+          index: 1,
+        });
+      }, 1000);
+    },
+    [setConditions, con.uid]
+  );
+  const setConditionTarget = useCallback(
+    (e) => {
+      window.clearTimeout(debounceRef.current);
+      setConditions((_conditions) =>
+        _conditions.map((c) => (c.uid === con.uid ? { ...c, target: e } : c))
+      );
+      debounceRef.current = window.setTimeout(() => {
+        setInputSetting({
+          blockUid: con.uid,
+          value: e,
+          key: "target",
+          index: 2,
+        });
+      }, 1000);
+    },
+    [setConditions, con.uid]
   );
   return (
     <>
@@ -100,50 +134,18 @@ const QueryClause = ({
       <div className="roamjs-query-condition-relation">
         <AutocompleteInput
           value={con.relation}
-          setValue={(e) => {
-            window.clearTimeout(debounceRef.current);
-            setConditions(
-              conditions.map((c) =>
-                c.uid === con.uid ? { ...con, relation: e } : c
-              )
-            );
-            debounceRef.current = window.setTimeout(() => {
-              setInputSetting({
-                blockUid: con.uid,
-                key: "Relation",
-                value: e,
-                index: 1,
-              });
-            }, 1000);
-          }}
+          setValue={setConditionRelation}
           options={conditionLabels}
           placeholder={"Choose relationship"}
-          // @ts-ignore TODO
           id={`${con.uid}-relation`}
         />
       </div>
       <div className="roamjs-query-condition-target">
         <AutocompleteInput
           value={con.target}
-          setValue={(e) => {
-            window.clearTimeout(debounceRef.current);
-            setConditions(
-              conditions.map((c) =>
-                c.uid === con.uid ? { ...con, target: e } : c
-              )
-            );
-            debounceRef.current = window.setTimeout(() => {
-              setInputSetting({
-                blockUid: con.uid,
-                value: e,
-                key: "target",
-                index: 2,
-              });
-            }, 1000);
-          }}
+          setValue={setConditionTarget}
           options={targetOptions}
           placeholder={targetPlaceholder}
-          // @ts-ignore TODO
           id={`${con.uid}-target`}
         />
       </div>
@@ -201,7 +203,7 @@ const QueryCondition = ({
 }: {
   con: Condition;
   index: number;
-  setConditions: (cons: Condition[]) => void;
+  setConditions: React.Dispatch<React.SetStateAction<Condition[]>>;
   conditions: Condition[];
   availableSources: string[];
   setView: (s: { uid: string; branch: number }) => void;
@@ -380,6 +382,7 @@ type QueryEditorComponent = (props: {
   parentUid: string;
   onQuery?: () => void;
   defaultReturnNode?: string;
+  hideCustomSwitch?: boolean;
 }) => JSX.Element;
 
 const QueryEditor: QueryEditorComponent = ({
@@ -387,6 +390,7 @@ const QueryEditor: QueryEditorComponent = ({
   parentUid,
   onQuery,
   defaultReturnNode, // returnNodeDisabled
+  hideCustomSwitch,
 }) => {
   const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
   const {
@@ -416,7 +420,7 @@ const QueryEditor: QueryEditorComponent = ({
       else createBlock({ parentUid: returnNodeUid, node: { text: value } });
     }, 1000);
   };
-  const [conditions, setConditions] = useState(initialConditions);
+  const [conditions, _setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
   const [custom, setCustom] = useState(initialCustom);
   const customNodeOnChange = (value: string) => {
@@ -432,8 +436,8 @@ const QueryEditor: QueryEditorComponent = ({
       else createBlock({ parentUid: returnNodeUid, node: { text: value } });
     }, 1000);
   };
-  const [views, setViews] = useState([{ uid: parentUid, branch: 0 }]);
-  const view = useMemo(() => views.slice(-1)[0], [views]);
+  const [viewStack, setViewStack] = useState([{ uid: parentUid, branch: 0 }]);
+  const view = useMemo(() => viewStack.slice(-1)[0], [viewStack]);
   const viewCondition = useMemo(
     () =>
       view.uid === parentUid
@@ -441,6 +445,22 @@ const QueryEditor: QueryEditorComponent = ({
         : (getConditionByUid(view.uid, conditions) as QBNestedData),
     [view, conditions]
   );
+  const setConditions = useMemo<
+    React.Dispatch<React.SetStateAction<Condition[]>>
+  >(() => {
+    if (view.uid === parentUid) return _setConditions;
+    return (nestedConditions) => {
+      if (!viewCondition) return;
+      if (typeof nestedConditions === "function") {
+        viewCondition.conditions[view.branch] = nestedConditions(
+          viewCondition.conditions[view.branch]
+        );
+      } else {
+        viewCondition.conditions[view.branch] = nestedConditions;
+      }
+      _setConditions((cons) => [...cons]);
+    };
+  }, [_setConditions, view.uid, parentUid, viewCondition, view.branch]);
   const viewConditions = useMemo(
     () =>
       view.uid === parentUid
@@ -598,62 +618,65 @@ const QueryEditor: QueryEditorComponent = ({
             />
           ) : (
             <span
-              style={{ display: "inline-block" }}
               tabIndex={-1}
               onClick={() => setIsEditingLabel(true)}
-              className={!!label ? "" : "italic opacity-25 text-sm"}
+              className={`${
+                !!label ? "" : "italic opacity-25 text-sm"
+              } inline-block flex-grow`}
             >
               {!!label ? label : "edit alias"}
             </span>
           )}
-          <Switch
-            checked={!isCustomEnabled}
-            className={"roamjs-query-custom-enabled"}
-            onChange={(e) => {
-              const enabled = !(e.target as HTMLInputElement).checked;
-              const contentUid = getNthChildUidByBlockUid({
-                blockUid: customNodeUid,
-                order: 0,
-              });
-              const enabledUid = getNthChildUidByBlockUid({
-                blockUid: customNodeUid,
-                order: 1,
-              });
-              if (enabled) {
-                const { query: text } = getDatalogQuery({
-                  conditions,
-                  selections,
-                  returnNode,
+          {!hideCustomSwitch && (
+            <Switch
+              checked={!isCustomEnabled}
+              className={"roamjs-query-custom-enabled"}
+              onChange={(e) => {
+                const enabled = !(e.target as HTMLInputElement).checked;
+                const contentUid = getNthChildUidByBlockUid({
+                  blockUid: customNodeUid,
+                  order: 0,
                 });
-                if (contentUid) updateBlock({ text, uid: contentUid });
-                else
-                  createBlock({
-                    parentUid: customNodeUid,
-                    order: 0,
-                    node: {
-                      text,
-                    },
+                const enabledUid = getNthChildUidByBlockUid({
+                  blockUid: customNodeUid,
+                  order: 1,
+                });
+                if (enabled) {
+                  const { query: text } = getDatalogQuery({
+                    conditions,
+                    selections,
+                    returnNode,
                   });
-                setCustom(text);
-                if (enabledUid)
-                  updateBlock({ text: "enabled", uid: enabledUid });
-                else
-                  createBlock({
-                    parentUid: customNodeUid,
-                    order: 1,
-                    node: { text: "enabled" },
-                  });
-              } else {
-                if (contentUid) {
-                  // TODO - translate from custom back into english - seems very hard!
+                  if (contentUid) updateBlock({ text, uid: contentUid });
+                  else
+                    createBlock({
+                      parentUid: customNodeUid,
+                      order: 0,
+                      node: {
+                        text,
+                      },
+                    });
+                  setCustom(text);
+                  if (enabledUid)
+                    updateBlock({ text: "enabled", uid: enabledUid });
+                  else
+                    createBlock({
+                      parentUid: customNodeUid,
+                      order: 1,
+                      node: { text: "enabled" },
+                    });
+                } else {
+                  if (contentUid) {
+                    // TODO - translate from custom back into english - seems very hard!
+                  }
+                  if (enabledUid) deleteBlock(enabledUid);
                 }
-                if (enabledUid) deleteBlock(enabledUid);
-              }
-              setIsCustomEnabled(enabled);
-            }}
-            innerLabelChecked={"ENG"}
-            innerLabel={"DATA"}
-          />
+                setIsCustomEnabled(enabled);
+              }}
+              innerLabelChecked={"ENG"}
+              innerLabel={"DATA"}
+            />
+          )}
         </div>
       </H6>
       {isCustomEnabled ? (
@@ -674,7 +697,7 @@ const QueryEditor: QueryEditorComponent = ({
               conditions={conditions}
               availableSources={[returnNode]}
               setConditions={setConditions}
-              setView={(v) => setViews([...views, v])}
+              setView={(v) => setViewStack([...viewStack, v])}
             />
           ))}
           {selections.map((sel) => (
@@ -811,8 +834,10 @@ const QueryEditor: QueryEditorComponent = ({
         <Tabs
           selectedTabId={view.branch}
           onChange={(e) =>
-            setViews(
-              views.slice(0, -1).concat([{ uid: view.uid, branch: Number(e) }])
+            setViewStack(
+              viewStack
+                .slice(0, -1)
+                .concat([{ uid: view.uid, branch: Number(e) }])
             )
           }
         >
@@ -840,11 +865,8 @@ const QueryEditor: QueryEditorComponent = ({
                               )
                               .map((c) => (c as QBClauseData).target),
                           ]}
-                          setConditions={(cons) => {
-                            viewCondition.conditions[view.branch] = cons;
-                            setConditions([...conditions]);
-                          }}
-                          setView={(v) => setViews([...views, v])}
+                          setConditions={setConditions}
+                          setView={(v) => setViewStack([...viewStack, v])}
                         />
                       ))}
                     </>
@@ -859,7 +881,7 @@ const QueryEditor: QueryEditorComponent = ({
               text={"Back"}
               style={{ maxHeight: 32 }}
               onClick={() => {
-                setViews(views.slice(0, -1));
+                setViewStack(viewStack.slice(0, -1));
               }}
             />
           </span>
@@ -891,9 +913,8 @@ const QueryEditor: QueryEditorComponent = ({
                     })
                   )
                   .then((uid) => {
-                    if (!viewCondition) return;
-                    viewCondition.conditions[view.branch] = [
-                      ...viewConditions,
+                    setConditions((cons) => [
+                      ...cons,
                       {
                         uid,
                         source: "",
@@ -901,8 +922,7 @@ const QueryEditor: QueryEditorComponent = ({
                         target: "",
                         type: "clause",
                       },
-                    ];
-                    setConditions([...conditions]);
+                    ]);
                   });
               }}
             />
@@ -920,8 +940,14 @@ const QueryEditor: QueryEditorComponent = ({
                     text: `AND`,
                   },
                 }).then(() => {
+                  const newBranch = viewCondition?.conditions.length || 0;
                   viewCondition?.conditions.push([]);
-                  setConditions([...conditions]);
+                  setViewStack((vs) =>
+                    vs.slice(0, -1).concat({
+                      uid: view.uid,
+                      branch: newBranch,
+                    })
+                  );
                 });
               }}
             />

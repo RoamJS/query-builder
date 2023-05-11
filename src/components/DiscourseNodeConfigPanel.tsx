@@ -9,9 +9,7 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({}) => {
   const [nodes, setNodes] = useState(() =>
     getDiscourseNodes().filter((n) => !n.isRelationBacked)
   );
-  const [format, setFormat] = useState("");
   const [label, setLabel] = useState("");
-  const [shortcut, setShortcut] = useState("");
   return (
     <>
       <Label>
@@ -50,18 +48,17 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({}) => {
             setNodes([
               ...nodes,
               {
-                format,
+                format: "",
                 type: valueUid,
                 text: label,
-                shortcut,
+                shortcut: "",
                 specification: [],
                 isRelationBacked: false,
+                canvasSettings: {},
               },
             ]);
             refreshConfigTree();
-            setFormat("");
             setLabel("");
-            setShortcut("");
           });
         }}
       />

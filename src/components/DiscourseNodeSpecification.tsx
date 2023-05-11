@@ -83,9 +83,6 @@ const NodeSpecification = ({
         {`.roamjs-node-specification .bp3-button.bp3-intent-primary { display: none; }`}
       </style>
       <p>
-        WARNING: This feature is under development, and intends to replace the
-        format setting in the future. Enabling will replace how Nodes are
-        identified with this specification.{" "}
         <Switch
           checked={!!enabled}
           className={"inline-block ml-8"}
@@ -110,6 +107,7 @@ const NodeSpecification = ({
           parentUid={parentUid}
           key={Number(migrated)}
           defaultReturnNode={"node"}
+          hideCustomSwitch
         />
       </div>
     </div>

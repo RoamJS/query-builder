@@ -25,7 +25,6 @@ import {
   StateNodeConstructor,
   TLArrowUtil,
   TLArrowShapeProps,
-  OnClickHandler,
   Vec2dModel,
   createShapeId,
   TLStore,
@@ -39,6 +38,9 @@ import {
   // InputGroup,
   Intent,
   // Position,
+  Spinner,
+  SpinnerSize,
+  TextArea,
   // Tooltip,
 } from "@blueprintjs/core";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -48,13 +50,15 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { AddPullWatch } from "roamjs-components/types";
+import {
+  AddPullWatch,
+  InputTextNode,
+  RoamBasicNode,
+} from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
 import fireQuery from "../utils/fireQuery";
-import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
-import PageInput from "roamjs-components/components/PageInput";
 import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
@@ -64,6 +68,9 @@ import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getBlockProps, { normalizeProps } from "../utils/getBlockProps";
+import { QBClause } from "../utils/types";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
 declare global {
   interface Window {
@@ -86,7 +93,7 @@ const discourseContext: {
 
 type NodeDialogProps = {
   label: string;
-  onSuccess: (label: string) => void;
+  onSuccess: (label: string) => Promise<void>;
   nodeType: string;
 };
 
@@ -97,32 +104,36 @@ const LabelDialog = ({
   onSuccess,
   nodeType,
 }: RoamOverlayProps<NodeDialogProps>) => {
-  const [label, setLabel] = useState(_label);
+  const [error, setError] = useState("");
+  const defaultValue = useMemo(() => {
+    if (_label) return _label;
+    if (nodeType === TEXT_TYPE) return "";
+    const { specification, text } = discourseContext.nodes[nodeType];
+    if (!specification.length) return "";
+    // CURRENT ASSUMPTIONS:
+    // - conditions are properly ordered
+    // - there is a has title condition somewhere
+    const titleCondition = specification.find(
+      (s): s is QBClause =>
+        s.type === "clause" && s.relation === "has title" && s.source === text
+    );
+    if (!titleCondition) return "";
+    return titleCondition.target
+      .replace(/^\/(\^)?/, "")
+      .replace(/\/(\^)?$/, "")
+      .replace(/\\\[/g, "[")
+      .replace(/\\\]/g, "]")
+      .replace(/\(\.[\*\+](\?)?\)/g, "");
+  }, [_label, nodeType]);
+  const [label, setLabel] = useState(defaultValue);
   const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState<string[]>([]);
   const onSubmit = () => {
-    setLoading(false);
-    onSuccess(label);
-    onClose();
+    setLoading(true);
+    onSuccess(label)
+      .then(onClose)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   };
-  useEffect(() => {
-    if (nodeType !== TEXT_TYPE) {
-      const conditionUid = window.roamAlphaAPI.util.generateUID();
-      fireQuery({
-        returnNode: "node",
-        selections: [],
-        conditions: [
-          {
-            source: "node",
-            relation: "is a",
-            target: nodeType,
-            uid: conditionUid,
-            type: "clause",
-          },
-        ],
-      }).then((results) => setOptions(results.map((r) => r.text)));
-    }
-  }, [nodeType]);
   return (
     <>
       <Dialog
@@ -135,31 +146,35 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY}>
-          {nodeType !== TEXT_TYPE ? (
-            <AutocompleteInput
-              value={label}
-              setValue={setLabel}
-              onConfirm={onSubmit}
-              options={options}
-              multiline
-            />
-          ) : (
-            <PageInput
-              value={label}
-              setValue={setLabel}
-              onConfirm={onSubmit}
-              multiline
-            />
-          )}
+          <TextArea
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onSubmit();
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            autoFocus
+          />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
-          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-            <Button text={"Cancel"} onClick={onClose} disabled={loading} />
+          <div className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center`}>
+            {error && <span className={"text-red-800"}>{error}</span>}
+            {loading && <Spinner size={SpinnerSize.SMALL} />}
+            <Button
+              text={"Cancel"}
+              onClick={onClose}
+              disabled={loading}
+              className="flex-shrink-0"
+            />
             <Button
               text={"Set"}
               intent={Intent.PRIMARY}
               onClick={onSubmit}
               disabled={loading}
+              className="flex-shrink-0"
             />
           </div>
         </div>
@@ -209,14 +224,20 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   // TODO: onDelete - remove connected edges
 
   render(shape: DiscourseNodeShape) {
-    const discourseNodeIndex = discourseContext.nodes[this.type]?.index ?? -1;
-    const { alias, color } =
-      discourseContext.nodes[this.type]?.canvasSettings || {};
+    const {
+      canvasSettings: { alias = "", color = "" } = {},
+      index: discourseNodeIndex = -1,
+    } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
       [this.app, shape.id]
     );
+    useEffect(() => {
+      if (!shape.props.title) {
+        this.app.setEditingId(shape.id);
+      }
+    }, [shape.props.title, shape.id]);
     return (
       <HTMLContainer
         id={shape.id}
@@ -246,12 +267,41 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             }}
             label={shape.props.title}
             nodeType={this.type}
-            onSuccess={(label) => {
+            onSuccess={async (label) => {
+              const oldTitle = getPageTitleByPageUid(shape.props.uid);
+              if (oldTitle && oldTitle !== label) {
+                await window.roamAlphaAPI.updatePage({
+                  page: {
+                    uid: shape.props.uid,
+                    title: label,
+                  },
+                });
+              } else if (isLiveBlock(shape.props.uid)) {
+                await updateBlock({
+                  uid: shape.props.uid,
+                  text: label,
+                });
+              } else if (!oldTitle) {
+                // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
+                const nodeTree = getFullTreeByParentUid(shape.type).children;
+                const template = getSubTree({
+                  tree: nodeTree,
+                  key: "template",
+                }).children;
+                const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
+                  n.map(({ uid, children, ...c }) => ({
+                    ...c,
+                    children: stripUid(children),
+                  }));
+                const tree = stripUid(template);
+                await createPage({
+                  title: label,
+                  uid: shape.props.uid,
+                  tree,
+                });
+              }
               this.updateProps(shape.id, {
                 title: label,
-                uid:
-                  getPageUidByPageTitle(label) ||
-                  window.roamAlphaAPI.util.generateUID(),
               });
             }}
           />
@@ -539,7 +589,11 @@ const TldrawCanvas = ({ title }: Props) => {
     >
       <style>{`.roam-article .rm-block-children {
   display: none;
-}${maximized ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }" : ""}`}</style>
+}${
+        maximized
+          ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
+          : ""
+      }`}</style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}
@@ -666,8 +720,7 @@ const TldrawCanvas = ({ title }: Props) => {
               );
               if (mainMenu) {
                 const viewSubMenu = mainMenu.children.find(
-                  (m): m is SubMenu =>
-                    m.type === "submenu" && m.id === "view"
+                  (m): m is SubMenu => m.type === "submenu" && m.id === "view"
                 );
                 if (viewSubMenu) {
                   const viewActionsGroup = viewSubMenu.children.find(

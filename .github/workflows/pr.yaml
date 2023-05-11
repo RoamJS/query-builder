@@ -13,6 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: install
-        run: npm install -f
+        run: npm install
       - name: build
         run: npx samepage build
