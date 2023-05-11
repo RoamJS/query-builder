@@ -29,6 +29,7 @@ import {
   createShapeId,
   TLStore,
   SubMenu,
+  TLPointerEvent,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -120,7 +121,7 @@ const LabelDialog = ({
     if (!titleCondition) return "";
     return titleCondition.target
       .replace(/^\/(\^)?/, "")
-      .replace(/\/(\^)?$/, "")
+      .replace(/(\$)?\/$/, "")
       .replace(/\\\[/g, "[")
       .replace(/\\\]/g, "]")
       .replace(/\(\.[\*\+](\?)?\)/g, "");
@@ -183,20 +184,18 @@ const LabelDialog = ({
   );
 };
 
-type DiscourseProps = {
-  w: number;
-  h: number;
-  opacity: TLOpacityType;
-  uid: string;
-  title: string;
-};
-
-type DiscourseNodeShape = TLBaseShape<string, DiscourseProps>;
-
-type DiscourseRelationShape = TLBaseShape<
+type DiscourseNodeShape = TLBaseShape<
   string,
-  Omit<DiscourseProps, "w" | "h"> & TLArrowShapeProps
+  {
+    w: number;
+    h: number;
+    opacity: TLOpacityType;
+    uid: string;
+    title: string;
+  }
 >;
+
+type DiscourseRelationShape = TLBaseShape<string, TLArrowShapeProps>;
 
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 const DEFAULT_WIDTH = 160;
@@ -207,9 +206,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     super(app, type);
   }
 
-  override isAspectRatioLocked = (_shape: DiscourseNodeShape) => false;
-  override canResize = (_shape: DiscourseNodeShape) => true;
-  override canBind = (_shape: DiscourseNodeShape) => true;
+  override isAspectRatioLocked = () => false;
+  override canResize = () => true;
+  override canBind = () => true;
   override canEdit = () => true;
 
   override defaultProps(): DiscourseNodeShape["props"] {
@@ -327,18 +326,21 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
   }
+  override canBind = () => true;
+  override canEdit = () => false;
   defaultProps() {
-    const colorIndex = discourseContext.relations.findIndex(
+    // TODO - add canvas settings to relations config and turn
+    // discourseContext.relations into a map
+    const relationIndex = discourseContext.relations.findIndex(
       (r) => r.id === this.type
     );
-    const color =
-      colorIndex >= 0 && colorIndex < discourseContext.relations.length
-        ? COLOR_ARRAY[colorIndex]
-        : COLOR_ARRAY[0];
+    const isValid =
+      relationIndex >= 0 && relationIndex < discourseContext.relations.length;
+    const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
     return {
       opacity: "1" as const,
       dash: "draw" as const,
-      size: "m" as const,
+      size: "s" as const,
       fill: "none" as const,
       color,
       labelColor: color,
@@ -347,11 +349,43 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
       end: { type: "point" as const, x: 0, y: 0 },
       arrowheadStart: "none" as const,
       arrowheadEnd: "arrow" as const,
-      text: "",
-      font: "draw" as const,
-      uid: window.roamAlphaAPI.util.generateUID(),
-      title: "",
+      text: isValid ? discourseContext.relations[relationIndex].label : "",
+      font: "mono" as const,
     };
+  }
+  override onBeforeCreate = (shape: DiscourseRelationShape) => {
+    // TODO - propsForNextShape is clobbering our choice of color
+    const relationIndex = discourseContext.relations.findIndex(
+      (r) => r.id === this.type
+    );
+    const isValid =
+      relationIndex >= 0 && relationIndex < discourseContext.relations.length;
+    const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        color,
+        labelColor: color,
+      },
+    };
+  };
+  render(shape: DiscourseRelationShape) {
+    return (
+      <>
+        <style>{`#${shape.id.replace(":", "_")}_clip_0 {
+  display: none;
+}
+[data-shape-type="${this.type}"] .rs-arrow-label {
+  left: 0;
+  top: 0;
+  width: unset;
+  height: unset;
+}
+`}</style>
+        {super.render(shape)}
+      </>
+    );
   }
 }
 
@@ -411,6 +445,10 @@ const TldrawCanvas = ({ title }: Props) => {
                   static children = TLArrowTool.children;
                   shapeType = id;
                   override styles = ["opacity" as const];
+                  override onPointerUp: TLPointerEvent = (info) => {
+                    console.log("onPointerUp", info);
+                    super.onPointerUp?.(info);
+                  };
                 }
             )
           ),
@@ -692,7 +730,7 @@ const TldrawCanvas = ({ title }: Props) => {
                     app.setSelectedTool(relation);
                   },
                   style: {
-                    color: `var(--palette-${COLOR_ARRAY[index]})`,
+                    color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
                   },
                 };
               });
