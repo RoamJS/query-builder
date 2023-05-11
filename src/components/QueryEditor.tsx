@@ -75,9 +75,7 @@ const QueryClause = ({
     (e: string) => {
       window.clearTimeout(debounceRef.current);
       setConditions((_conditions) =>
-        _conditions.map((c) =>
-          c.uid === con.uid ? { ...con, relation: e } : c
-        )
+        _conditions.map((c) => (c.uid === con.uid ? { ...c, relation: e } : c))
       );
       debounceRef.current = window.setTimeout(() => {
         setInputSetting({
@@ -88,13 +86,13 @@ const QueryClause = ({
         });
       }, 1000);
     },
-    [setConditions]
+    [setConditions, con.uid]
   );
   const setConditionTarget = useCallback(
     (e) => {
       window.clearTimeout(debounceRef.current);
       setConditions((_conditions) =>
-        _conditions.map((c) => (c.uid === con.uid ? { ...con, target: e } : c))
+        _conditions.map((c) => (c.uid === con.uid ? { ...c, target: e } : c))
       );
       debounceRef.current = window.setTimeout(() => {
         setInputSetting({
@@ -105,7 +103,7 @@ const QueryClause = ({
         });
       }, 1000);
     },
-    [setConditions]
+    [setConditions, con.uid]
   );
   return (
     <>
@@ -620,10 +618,11 @@ const QueryEditor: QueryEditorComponent = ({
             />
           ) : (
             <span
-              style={{ display: "inline-block" }}
               tabIndex={-1}
               onClick={() => setIsEditingLabel(true)}
-              className={!!label ? "" : "italic opacity-25 text-sm"}
+              className={`${
+                !!label ? "" : "italic opacity-25 text-sm"
+              } inline-block flex-grow`}
             >
               {!!label ? label : "edit alias"}
             </span>
