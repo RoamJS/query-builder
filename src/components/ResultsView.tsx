@@ -41,6 +41,8 @@ import { ExportTypes } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
+import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 
 type Sorts = { key: string; descending: boolean }[];
 type FilterData = Record<string, Filters>;
@@ -305,13 +307,20 @@ const ResultView = ({
   );
 };
 
+const resolveRefs = (text: string, refs = new Set<string>()): string => {
+  return text.replace(new RegExp(BLOCK_REF_REGEX, "g"), (_, blockUid) => {
+    if (refs.has(blockUid)) return "";
+    const reference = getTextByBlockUid(blockUid);
+    return resolveRefs(reference, new Set(refs));
+  });
+};
 const META_REGEX = /(-(uid|action)$|^uid$)/;
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)
     : typeof v === "undefined" || v === null
     ? ""
-    : extractTag(v.toString());
+    : extractTag(resolveRefs(v.toString()));
 type EnglishQueryPart = { text: string; clickId?: string };
 
 const QueryUsed = ({ parentUid }: { parentUid: string }) => {

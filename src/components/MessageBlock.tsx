@@ -1,5 +1,5 @@
 import { Button, Card } from "@blueprintjs/core";
-import React, { useMemo } from "react";
+import React from "react";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { OnloadArgs, PullBlock } from "roamjs-components/types/native";
