@@ -1,8 +1,8 @@
 diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
-index f87764a..b333965 100644
+index f87764a..b1696bc 100644
 --- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
 +++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
-@@ -4066,7 +4066,7 @@ declare class TickManager {
+@@ -4066,46 +4066,46 @@ declare class TickManager {
  /** @public */
  export declare const TLArrowShapeDef: TLShapeDef<TLArrowShape, TLArrowUtil>;
  
@@ -10,8 +10,10 @@ index f87764a..b333965 100644
 +export declare class TLArrowTool extends StateNode {
      static id: string;
      static initial: string;
-     static children: () => (typeof Idle | typeof Pointing)[];
-@@ -4075,37 +4075,37 @@ declare class TLArrowTool extends StateNode {
+-    static children: () => (typeof Idle | typeof Pointing)[];
++    static children: () => [typeof Idle, typeof Pointing];
+     shapeType: TLShapeType;
+     styles: ("color" | "fill" | "dash" | "size" | "opacity" | "font" | "align" | "geo" | "arrowheadStart" | "arrowheadEnd" | "spline" | "icon" | "labelColor")[];
  }
  
  /** @public */

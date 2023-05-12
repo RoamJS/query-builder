@@ -442,7 +442,37 @@ const TldrawCanvas = ({ title }: Props) => {
                 class extends TLArrowTool {
                   static id = id;
                   static initial = "idle";
-                  static children = TLArrowTool.children;
+                  static children: typeof TLArrowTool.children = () => {
+                    const [Idle, Pointing] = TLArrowTool.children();
+                    return [
+                      class extends Idle {
+                        override onPointerDown: TLPointerEvent = (info) => {
+                          if (info.target !== "shape") {
+                            this.onCancel();
+                            return;
+                          }
+                          const { source } = allRelationsById[id];
+                          if (source !== info.shape.type) {
+                            this.onCancel();
+                            return;
+                          }
+                          this.parent.transition("pointing", info);
+                        };
+                      },
+                      class extends Pointing {
+                        override onPointerUp: TLPointerEvent = (info) => {
+                          if (!this.shape) return;
+                          if (
+                            info.target !== "shape" ||
+                            allRelationsById[id].destination !== info.shape.type
+                          ) {
+                            this.app.deleteShapes([this.shape?.id]);
+                          }
+                          this.cancel();
+                        };
+                      },
+                    ];
+                  };
                   shapeType = id;
                   override styles = ["opacity" as const];
                   override onPointerUp: TLPointerEvent = (info) => {
@@ -478,7 +508,7 @@ const TldrawCanvas = ({ title }: Props) => {
         ],
         allowUnknownShapes: true,
       }),
-    [allNodesWithTextNode]
+    [allNodesWithTextNode, allRelationIds, allRelationsById]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -674,6 +704,11 @@ const TldrawCanvas = ({ title }: Props) => {
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
+            } else if (e.name === "pointer_up" && e.shape) {
+              const relation = discourseContext.relations.find(r => r.id === e.shape.type);
+              if (relation) {
+                // TODO prevent bad handles
+              }
             }
           });
         }}
