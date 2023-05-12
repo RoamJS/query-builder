@@ -515,29 +515,36 @@ const TldrawCanvas = ({ title }: Props) => {
       userId: initialState.userId,
     });
     _store.listen((rec) => {
-      if (rec.source === "user") {
-        clearTimeout(serializeRef.current);
-        serializeRef.current = window.setTimeout(() => {
-          const state = _store.serialize();
-          const props = getBlockProps(pageUid);
-          const rjsqb =
-            typeof props["roamjs-query-builder"] === "object"
-              ? props["roamjs-query-builder"]
-              : {};
-          window.roamAlphaAPI.updateBlock({
-            block: {
-              uid: pageUid,
-              props: {
-                ...props,
-                ["roamjs-query-builder"]: {
-                  ...rjsqb,
-                  tldraw: state,
-                },
+      if (rec.source !== "user") return;
+      const validChanges = Object.keys(rec.changes.added)
+        .concat(Object.keys(rec.changes.removed))
+        .concat(Object.keys(rec.changes.updated))
+        .filter(
+          (k) =>
+            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
+        );
+      if (!validChanges.length) return;
+      clearTimeout(serializeRef.current);
+      serializeRef.current = window.setTimeout(() => {
+        const state = _store.serialize();
+        const props = getBlockProps(pageUid);
+        const rjsqb =
+          typeof props["roamjs-query-builder"] === "object"
+            ? props["roamjs-query-builder"]
+            : {};
+        window.roamAlphaAPI.updateBlock({
+          block: {
+            uid: pageUid,
+            props: {
+              ...props,
+              ["roamjs-query-builder"]: {
+                ...rjsqb,
+                tldraw: state,
               },
             },
-          });
-        }, THROTTLE);
-      }
+          },
+        });
+      }, THROTTLE);
     });
     return _store;
   }, [initialState, serializeRef]);
@@ -563,7 +570,9 @@ const TldrawCanvas = ({ title }: Props) => {
           return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
-          store.deserialize(state);
+          store.mergeRemoteChanges(() => {
+            store.deserialize(state);
+          });
         }, THROTTLE);
       },
     ];
