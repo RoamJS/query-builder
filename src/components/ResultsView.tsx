@@ -789,6 +789,7 @@ const ResultsView: ResultsViewComponent = ({
                   style={{
                     minWidth: 16,
                     minHeight: 16,
+                    marginRight: 4,
                   }}
                 />
                 Showing {paginatedResults.length} of {results.length} results
