@@ -11,6 +11,13 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
+import differenceInSeconds from "date-fns/differenceInSeconds";
+import differenceInMinutes from "date-fns/differenceInMinutes";
+import differenceInHours from "date-fns/differenceInHours";
+import differenceInDays from "date-fns/differenceInDays";
+import differenceInWeeks from "date-fns/differenceInWeeks";
+import differenceInMonths from "date-fns/differenceInMonths";
+import differenceInYears from "date-fns/differenceInYears";
 
 export type QueryArgs = {
   returnNode: string;
@@ -190,8 +197,8 @@ const optimizeQuery = (
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
-const CREATE_DATE_TEST = /^\s*created?\s*(date|time)\s*$/i;
-const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time)\s*$/i;
+const CREATE_DATE_TEST = /^\s*created?\s*(date|time|since)\s*$/i;
+const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time|since)\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
@@ -237,12 +244,49 @@ const formatDate = ({
 }) => {
   const exec = regex.exec(key);
   const date = new Date(value || 0);
-  return /time/i.test(exec?.[1] || "")
-    ? `${date.getHours().toString().padStart(2, "0")}:${date
+  const arg = exec?.[1] || "";
+  const parseArg = () => {
+    if (/since/i.test(arg)) {
+      const now = new Date();
+      const yearsAgo = differenceInYears(now, date);
+      if (yearsAgo > 0) {
+        return `${yearsAgo} year${yearsAgo === 1 ? "" : "s"} ago`;
+      }
+      const monthsAgo = differenceInMonths(now, date);
+      if (monthsAgo > 0) {
+        return `${monthsAgo} month${monthsAgo === 1 ? "" : "s"} ago`;
+      }
+      const weeksAgo = differenceInWeeks(now, date);
+      if (weeksAgo > 0) {
+        return `${weeksAgo} week${weeksAgo === 1 ? "" : "s"} ago`;
+      }
+      const daysAgo = differenceInDays(now, date);
+      if (daysAgo > 0) {
+        return `${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`;
+      }
+      const hoursAgo = differenceInHours(now, date);
+      if (hoursAgo > 0) {
+        return `${hoursAgo} hour${hoursAgo === 1 ? "" : "s"} ago`;
+      }
+      const minutesAgo = differenceInMinutes(now, date);
+      if (minutesAgo > 0) {
+        return `${minutesAgo} minute${minutesAgo === 1 ? "" : "s"} ago`;
+      }
+      const secondsAgo = differenceInSeconds(now, date);
+      return `${secondsAgo} second${secondsAgo === 1 ? "" : "s"} ago`;
+    }
+    if (/time/i.test(arg)) {
+      return `${date.getHours().toString().padStart(2, "0")}:${date
         .getMinutes()
         .toString()
-        .padStart(2, "0")}`
-    : date;
+        .padStart(2, "0")}`;
+    }
+    return date;
+  };
+  return {
+    "": date,
+    "-display": parseArg(),
+  };
 };
 
 const getBlockAttribute = (key: string, r: PullBlock) => {

@@ -188,7 +188,7 @@ const ResultView = ({
     []
   );
   const cell = (key: string) => {
-    const value = toCellValue(r[key] || "");
+    const value = toCellValue(r[`${key}-display`] || r[key] || "");
     const action = r[`${key}-action`];
     if (typeof action === "string") {
       const buttonProps =
@@ -314,7 +314,7 @@ const resolveRefs = (text: string, refs = new Set<string>()): string => {
     return resolveRefs(reference, new Set(refs));
   });
 };
-const META_REGEX = /(-(uid|action)$|^uid$)/;
+const META_REGEX = /(-(uid|action|display)$|^uid$)/;
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)

@@ -117,8 +117,8 @@ const SingleMessage = (
           });
         }}
       >
-        <div>
-          <b className="block mb-1">{t.from}</b>
+        <div className="roamjs-message-recipients">
+          <span className="block mb-1 font-bold">{t.from}</span>
           <span style={{ fontSize: 12 }}>
             to{" "}
             {t.recipients
@@ -126,11 +126,14 @@ const SingleMessage = (
               .join(", ")}
           </span>
         </div>
-        <div style={{ fontSize: 12, alignSelf: "end" }}>
+        <div
+          style={{ fontSize: 12, alignSelf: "end" }}
+          className="roamjs-message-datetime"
+        >
           {t.when.toLocaleString()}
         </div>
       </div>
-      <div className="pt-2 pb-4" ref={bodyRef} />
+      <div className="pt-2 pb-4 pointer-events-none" ref={bodyRef} />
     </div>
   );
 };
