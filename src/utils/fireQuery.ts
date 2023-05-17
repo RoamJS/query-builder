@@ -616,7 +616,7 @@ const fireQuery: FireQuery = async (_args) => {
   if (isSamePageEnabled) {
     return getSamePageAPI()
       .then((api) =>
-        api.postToAppBackend<{ results: QueryResult[] }>("query", args)
+        api.postToAppBackend<{ results: QueryResult[] }>("query", { ...args })
       )
       .then((r) => r.results)
       .catch((e) => {

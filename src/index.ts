@@ -33,14 +33,11 @@ import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import { renderTldrawCanvas } from "./components/TldrawCanvas";
-import getSamePageAPI from "@samepage/external/getSamePageAPI";
-import { registerDatalogTranslator } from "./utils/conditionToDatalog";
 import { QBGlobalRefs } from "./utils/types";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageRemove from "roamjs-components/util/localStorageRemove";
 import { getNodeEnv } from "roamjs-components/util/env";
-import { render as renderFormDialog } from "roamjs-components/components/FormDialog";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
@@ -674,18 +671,6 @@ svg.rs-svg-container {
           parent: b,
         });
       },
-    });
-
-    getSamePageAPI().then((api) => {
-      api.listNotebooks().then(({ notebooks }) => {
-        registerDatalogTranslator({
-          key: "is in notebook",
-          callback: () => [],
-          isVariable: true,
-          placeholder: `Roam ${window.roamAlphaAPI.graph.name}`,
-          targetOptions: notebooks.map((n) => `${n.appName} ${n.workspace}`),
-        });
-      });
     });
 
     return {

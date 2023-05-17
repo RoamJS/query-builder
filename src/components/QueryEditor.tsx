@@ -9,7 +9,13 @@ import {
   TextArea,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import createBlock from "roamjs-components/writes/createBlock";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
@@ -19,6 +25,7 @@ import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import {
   getConditionLabels,
   isTargetVariable,
+  registerDatalogTranslator,
   sourceToTargetOptions,
   sourceToTargetPlaceholder,
 } from "../utils/conditionToDatalog";
@@ -38,6 +45,7 @@ import {
   Selection,
 } from "../utils/types";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
+import getSamePageAPI from "@samepage/external/getSamePageAPI";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -392,7 +400,9 @@ const QueryEditor: QueryEditorComponent = ({
   defaultReturnNode, // returnNodeDisabled
   hideCustomSwitch,
 }) => {
-  const conditionLabels = useMemo(() => new Set(getConditionLabels()), []);
+  const [conditionLabels, setConditionLabels] = useState(
+    () => new Set(getConditionLabels())
+  );
   const {
     returnNodeUid,
     conditionsNodesUid,
@@ -476,9 +486,9 @@ const QueryEditor: QueryEditorComponent = ({
           return `Condition ${index + 1} must not have an empty relation.`;
         }
         if (!conditionLabels.has(condition.relation)) {
-          return `Condition ${index + 1} has an unsupported relation ${
+          return `Condition ${index + 1} has an unsupported relation \`${
             condition.relation
-          }.`;
+          }\`.`;
         }
         if (!condition.target) {
           return `Condition ${index + 1} must not have an empty target.`;
@@ -515,6 +525,26 @@ const QueryEditor: QueryEditorComponent = ({
     return !!aliasMatch && aliasMatch[1] !== "" ? aliasMatch[1] : "";
   });
   const [showDisabledMessage, setShowDisabledMessage] = useState(false);
+  useEffect(() => {
+    if (
+      !conditionLabels.has("is in notebook") &&
+      typeof window.samepage !== "undefined"
+    ) {
+      getSamePageAPI()
+        .then(async (api) => {
+          const { notebooks } = await api.listNotebooks();
+          registerDatalogTranslator({
+            key: "is in notebook",
+            callback: () => [],
+            isVariable: true,
+            placeholder: `Roam ${window.roamAlphaAPI.graph.name}`,
+            targetOptions: notebooks.map((n) => `${n.appName} ${n.workspace}`),
+          });
+          setConditionLabels(new Set(getConditionLabels()));
+        })
+        .catch(console.error);
+    }
+  }, [conditionLabels, setConditionLabels]);
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
       <H6
