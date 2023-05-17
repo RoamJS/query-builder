@@ -45,6 +45,7 @@ const ResultHeader = ({
   filters,
   setFilters,
   initialFilter,
+  columnWidth,
 }: {
   c: string;
   results: Result[];
@@ -53,6 +54,7 @@ const ResultHeader = ({
   filters: FilterData;
   setFilters: (f: FilterData) => void;
   initialFilter: Filters;
+  columnWidth?: string;
 }) => {
   const filterData = useMemo(
     () => ({
@@ -66,6 +68,7 @@ const ResultHeader = ({
       style={{
         cursor: "pointer",
         textTransform: "capitalize",
+        width: columnWidth,
       }}
       key={c}
       onClick={() => {
@@ -291,6 +294,7 @@ const ResultsTable = ({
   columns,
   results,
   parentUid,
+  layout,
   activeSort,
   setActiveSort,
   filters,
@@ -309,6 +313,7 @@ const ResultsTable = ({
   columns: string[];
   results: Result[];
   parentUid: string;
+  layout: Record<string, string | string[]>;
   // TODO - can a lot of these settings become layout settings instead of global?
   activeSort: Sorts;
   setActiveSort: (s: Sorts) => void;
@@ -331,6 +336,21 @@ const ResultsTable = ({
     header: React.ReactNode;
   };
 }) => {
+  const columnWidths = useMemo(() => {
+    const widths =
+      typeof layout.widths === "string" ? [layout.widths] : layout.widths || [];
+    return Object.fromEntries(
+      widths
+        .map((w) => {
+          const match = /^(.*) - ([^-])+$/.exec(w);
+          return match;
+        })
+        .filter((m): m is RegExpExecArray => !!m)
+        .map((match, i) => {
+          return [match[1], match[2]];
+        })
+    );
+  }, [layout]);
   return (
     <HTMLTable
       style={{
@@ -424,6 +444,7 @@ const ResultsTable = ({
                   );
               }}
               initialFilter={filters[c]}
+              columnWidth={columnWidths[c]}
             />
           ))}
           {extraColumn && (

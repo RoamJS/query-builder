@@ -451,25 +451,29 @@ const ResultsView: ResultsViewComponent = ({
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
                         className={`rounded-sm border py-2 px-6 flex flex-col gap-2 cursor-pointer ${
-                          l.id === layout
-                            ? "border-blue-300 border-opacity-75 text-blue-300"
-                            : "border-gray-100 border-opacity-25 text-gray-100"
+                          l.id === layout.mode
+                            ? "border-blue-800 border-opacity-75 text-blue-800"
+                            : "border-gray-800 border-opacity-25 text-gray-800"
                         }`}
                         onClick={() => {
-                          setLayout(l.id);
+                          setLayout({ ...layout, mode: l.id });
                           const resultNode = getSubTree({
                             key: "results",
                             parentUid,
                           });
-                          setInputSetting({
+                          const layoutNode = getSubTree({
                             key: "layout",
+                            parentUid: resultNode.uid,
+                          });
+                          setInputSetting({
+                            key: "mode",
                             value: l.id,
-                            blockUid: resultNode.uid,
+                            blockUid: layoutNode.uid,
                           });
                         }}
                       >
                         <Icon icon={l.icon} />
-                        <span className="capitalize">{l.id}</span>
+                        <span className="capitalize text-sm">{l.id}</span>
                       </div>
                     ))}
                   </div>
@@ -669,8 +673,9 @@ const ResultsView: ResultsViewComponent = ({
         )}
         {!hideResults &&
           (results.length !== 0 ? (
-            layout === "table" ? (
+            layout.mode === "table" ? (
               <ResultsTable
+                layout={layout}
                 columns={columns}
                 results={paginatedResults}
                 parentUid={parentUid}
@@ -687,15 +692,15 @@ const ResultsView: ResultsViewComponent = ({
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
               />
-            ) : layout === "line" ? (
+            ) : layout.mode === "line" ? (
               <Charts
                 type="line"
                 data={allResults}
                 columns={columns.slice(1)}
               />
-            ) : layout === "bar" ? (
+            ) : layout.mode === "bar" ? (
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
-            ) : layout === "timeline" ? (
+            ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
             ) : (
               <div style={{ padding: "16px 8px" }}>
