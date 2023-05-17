@@ -75,6 +75,7 @@ import { QBClause } from "../utils/types";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
+import triplesToBlocks from "../utils/triplesToBlocks";
 
 declare global {
   interface Window {
@@ -89,6 +90,10 @@ type Props = {
 
 const THROTTLE = 350;
 const TEXT_TYPE = "&TEX-node";
+const isPageUid = (uid: string) =>
+  !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
+    ":node/title"
+  ];
 
 const discourseContext: {
   nodes: Record<string, DiscourseNode & { index: number }>;
@@ -499,7 +504,11 @@ const TldrawCanvas = ({ title }: Props) => {
                           (r) => r.id === arrow.type
                         );
                         if (!relation) return;
-                        const { start, end } = arrow.props as TLArrowShapeProps;
+                        const {
+                          start,
+                          end,
+                          text: arrowText,
+                        } = arrow.props as TLArrowShapeProps;
                         const deleteAndWarn = (content: string) => {
                           renderToast({
                             id: "tldraw-warning",
@@ -540,7 +549,69 @@ const TldrawCanvas = ({ title }: Props) => {
                             `Target node must be of type ${targetLabel}`
                           );
                         }
-                        // TODO - Generate Roam Representation of new relation!
+                        const {
+                          triples,
+                          label: relationLabel,
+                          // complement,
+                        } = relation;
+                        const isOriginal = arrowText === relationLabel;
+                        const newTriples = triples
+                          .map((t) => {
+                            if (/is a/i.test(t[1])) {
+                              const targetNode =
+                                (t[2] === "source" && isOriginal) ||
+                                (t[2] === "destination" && !isOriginal)
+                                  ? source
+                                  : target;
+                              const { title, uid } =
+                                targetNode.props as DiscourseNodeShape["props"];
+                              return [
+                                t[0],
+                                isPageUid(uid) ? "has title" : "with text",
+                                title,
+                              ];
+                            }
+                            return t.slice(0);
+                          })
+                          .map(([source, relation, target]) => ({
+                            source,
+                            relation,
+                            target,
+                          }));
+                        const recentlyOpened = new Set<string>();
+                        triplesToBlocks({
+                          defaultPageTitle: `Auto generated from ${title}`,
+                          toPage: (title: string, blocks: InputTextNode[]) => {
+                            const parentUid = getPageUidByPageTitle(title);
+                            return Promise.resolve(
+                              parentUid ||
+                                createPage({
+                                  title: title,
+                                })
+                            ).then((parentUid) => {
+                              blocks.forEach((node, order) =>
+                                createBlock({ node, order, parentUid }).catch(
+                                  () =>
+                                    console.error(
+                                      `Failed to create block: ${JSON.stringify(
+                                        { node, order, parentUid },
+                                        null,
+                                        4
+                                      )}`
+                                    )
+                                )
+                              );
+                              // TODO - do we really need this...
+                              if (!recentlyOpened.has(parentUid)) {
+                                recentlyOpened.add(parentUid);
+                                setTimeout(
+                                  () => openBlockInSidebar(parentUid),
+                                  1000
+                                );
+                              }
+                            });
+                          },
+                        })(newTriples)();
                       };
                     };
                   }
