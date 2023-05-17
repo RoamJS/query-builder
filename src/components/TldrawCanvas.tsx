@@ -17,6 +17,8 @@ import {
   HTMLContainer,
   TLBoxTool,
   TLArrowTool,
+  TLSelectTool,
+  DraggingHandle,
   toolbarItem,
   MenuGroup,
   menuItem,
@@ -72,6 +74,7 @@ import getBlockProps, { normalizeProps } from "../utils/getBlockProps";
 import { QBClause } from "../utils/types";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
+import renderToast from "roamjs-components/components/Toast";
 
 declare global {
   interface Window {
@@ -442,16 +445,110 @@ const TldrawCanvas = ({ title }: Props) => {
                 class extends TLArrowTool {
                   static id = id;
                   static initial = "idle";
-                  static children = TLArrowTool.children;
+                  static children: typeof TLArrowTool.children = () => {
+                    const [Idle, Pointing] = TLArrowTool.children();
+                    return [
+                      class extends Idle {
+                        override onPointerDown: TLPointerEvent = (info) => {
+                          const cancelAndWarn = (content: string) => {
+                            renderToast({
+                              id: "tldraw-warning",
+                              intent: "warning",
+                              content,
+                            });
+                            this.onCancel();
+                          };
+                          if (info.target !== "shape") {
+                            return cancelAndWarn("Must start on a node.");
+                          }
+                          const { source } = allRelationsById[id];
+                          if (source !== info.shape.type) {
+                            const sourceLabel =
+                              discourseContext.nodes[source].text;
+                            return cancelAndWarn(
+                              `Starting node must be of type ${sourceLabel}`
+                            );
+                          }
+                          this.parent.transition("pointing", info);
+                        };
+                      },
+                      Pointing,
+                    ];
+                  };
                   shapeType = id;
                   override styles = ["opacity" as const];
-                  override onPointerUp: TLPointerEvent = (info) => {
-                    console.log("onPointerUp", info);
-                    super.onPointerUp?.(info);
-                  };
                 }
             )
-          ),
+          )
+          .concat([
+            class extends TLSelectTool {
+              // @ts-ignore
+              static children: typeof TLSelectTool.children = () => {
+                return TLSelectTool.children().map((c) => {
+                  if (c.id === "dragging_handle") {
+                    const Handle = c as unknown as typeof DraggingHandle;
+                    return class extends Handle {
+                      override onPointerUp: TLPointerEvent = (info) => {
+                        this.onComplete({
+                          type: "misc",
+                          name: "complete",
+                        });
+                        const arrow = this.app.getShapeById(this.shapeId);
+                        if (!arrow) return;
+                        const relation = discourseContext.relations.find(
+                          (r) => r.id === arrow.type
+                        );
+                        if (!relation) return;
+                        const { start, end } = arrow.props as TLArrowShapeProps;
+                        const deleteAndWarn = (content: string) => {
+                          renderToast({
+                            id: "tldraw-warning",
+                            intent: "warning",
+                            content,
+                          });
+                          this.app.deleteShapes([arrow.id]);
+                        };
+                        if (
+                          start.type !== "binding" ||
+                          end.type !== "binding"
+                        ) {
+                          return deleteAndWarn(
+                            "Relation must connect two nodes."
+                          );
+                        }
+                        const source = this.app.getShapeById(
+                          start.boundShapeId
+                        );
+                        if (!source) {
+                          return deleteAndWarn("Failed to find source node.");
+                        }
+                        const target = this.app.getShapeById(end.boundShapeId);
+                        if (!target) {
+                          return deleteAndWarn("Failed to find target node.");
+                        }
+                        const sourceLabel =
+                          discourseContext.nodes[relation.source].text;
+                        if (source.type !== relation.source) {
+                          return deleteAndWarn(
+                            `Source node must be of type ${sourceLabel}`
+                          );
+                        }
+                        const targetLabel =
+                          discourseContext.nodes[relation.destination].text;
+                        if (target.type !== relation.destination) {
+                          return deleteAndWarn(
+                            `Target node must be of type ${targetLabel}`
+                          );
+                        }
+                        // TODO - Generate Roam Representation of new relation!
+                      };
+                    };
+                  }
+                  return c;
+                });
+              };
+            },
+          ]),
         shapes: [
           ...allNodesWithTextNode.map((n) =>
             defineShape<DiscourseNodeShape>({
@@ -478,7 +575,7 @@ const TldrawCanvas = ({ title }: Props) => {
         ],
         allowUnknownShapes: true,
       }),
-    [allNodesWithTextNode]
+    [allNodesWithTextNode, allRelationIds, allRelationsById]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
