@@ -449,14 +449,8 @@ const ResultsTable = ({
             colSpan={columns.length + (extraColumn ? 1 : 0)}
             style={{ padding: 0, background: "#eeeeee80" }}
           >
-            <div
-              className="flex justify-between items-center"
-              style={{
-                opacity: 0.8,
-                padding: "8px 4px",
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center" }}>
+            <div className="flex justify-between items-center p-1">
+              <div className="flex items-center gap-4">
                 <span>Rows per page:</span>
                 <InputGroup
                   defaultValue={pageSize.toString()}
@@ -485,6 +479,8 @@ const ResultsTable = ({
                     marginLeft: 16,
                   }}
                 />
+              </div>
+              <span>
                 <Button
                   minimal
                   icon={"double-chevron-left"}

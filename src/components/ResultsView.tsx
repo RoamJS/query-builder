@@ -280,7 +280,7 @@ const ResultsView: ResultsViewComponent = ({
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
-  const onViewChange = (view: typeof views[number], i: number) => {
+  const onViewChange = (view: (typeof views)[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
     setViews(newViews);
 
@@ -698,7 +698,9 @@ const ResultsView: ResultsViewComponent = ({
             ) : layout === "timeline" ? (
               <Timeline timelineElements={allResults} />
             ) : (
-              <div>Layout `{layout}` is not supported</div>
+              <div className="py-4 px-1">
+                Layout `{layout}` is not supported
+              </div>
             )
           ) : (
             <>
@@ -709,10 +711,9 @@ const ResultsView: ResultsViewComponent = ({
           ))}
         <div style={{ background: "#eeeeee80" }}>
           <div
-            className="flex justify-between items-center"
+            className="flex justify-between items-center text-xs"
             style={{
               opacity: 0.8,
-              padding: "8px 4px",
             }}
           >
             <span>
@@ -723,7 +724,8 @@ const ResultsView: ResultsViewComponent = ({
                   small
                   onClick={() => setShowContent(!showContent)}
                   style={{
-                    marginRight: 4,
+                    minWidth: 16,
+                    minHeight: 16,
                   }}
                 />
                 Showing {paginatedResults.length} of {results.length} results
