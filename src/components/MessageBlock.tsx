@@ -34,7 +34,7 @@ const getThread = (blockUid: string) => {
       .children.map((c) => /#([^\s]+)\s+\[\[([^\]]+)\]\]/.exec(c.text))
       .filter((s): s is RegExpExecArray => !!s)
       .map(([_, to, status]) => ({ to, status }));
-    const body = getSubTree({ tree, key: "body::" }).children[0];
+    const body = getSubTree({ tree, key: "body::" }).uid;
     const { text: actionsText, uid: actionsUid } = getSubTree({
       tree,
       key: "actions::",
@@ -49,7 +49,7 @@ const getThread = (blockUid: string) => {
       subject,
       from,
       when,
-      body: { uid: body.uid, text: body.text },
+      body,
       recipients,
       buttons,
       actionsUid,
@@ -85,21 +85,21 @@ const getThread = (blockUid: string) => {
 };
 
 const SingleMessage = (
-  t: ReturnType<typeof getThread>[number] & { active: boolean }
+  t: ReturnType<typeof getThread>[number] & { focused: boolean }
 ) => {
   const bodyRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     if (bodyRef.current) {
-      window.roamAlphaAPI.ui.components.renderBlock({
-        uid: t.body.uid,
+      window.roamAlphaAPI.ui.components.renderPage({
+        uid: t.body,
         el: bodyRef.current,
       });
     }
-  }, [bodyRef.current, t.body.uid]);
+  }, [bodyRef.current, t.body]);
   return (
     <div
       className={`px-4 py-2 roamjs-message ${
-        t.active ? "roamjs-message-active border" : ""
+        t.focused ? "roamjs-message-focused" : ""
       }`}
     >
       <div
@@ -133,7 +133,10 @@ const SingleMessage = (
           {t.when.toLocaleString()}
         </div>
       </div>
-      <div className="pt-2 pb-4 pointer-events-none" ref={bodyRef} />
+      <div
+        className="pt-2 pb-4 pointer-events-none cursor-default roamjs-message-body"
+        ref={bodyRef}
+      />
     </div>
   );
 };
@@ -150,12 +153,18 @@ const MessageBlock = ({ blockUid }: Props) => {
       id={`roamjs-message-block-${blockUid}`}
       className={"roamjs-message-block pt-0 px-0 pb-4 overflow-auto"}
     >
-      <style>{`div[data-roamjs-message-block=true] .rm-block-children {
+      <style>{`div[data-roamjs-message-block=true] > .rm-block-children {
   display: none;
+}
+div[data-roamjs-message-block=true] .roamjs-message-body .rm-api-render--block > .rm-block > .rm-block-main {
+  display: none;
+}
+div[data-roamjs-message-block=true] .roamjs-message-body .rm-api-render--block > .rm-block > .rm-block-children {
+  margin-left: 0;
 }`}</style>
       <h1 className="px-4">{thread[0].subject}</h1>
       {thread.map((t, i) => (
-        <SingleMessage {...t} key={i} active={t.uid === blockUid} />
+        <SingleMessage {...t} key={i} focused={t.uid === blockUid} />
       ))}
       <div className="flex gap-2 px-4 mt-4">
         {thread.slice(-1)[0].buttons.map((b, i) => (
