@@ -7,6 +7,14 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
 
+export type Sorts = { key: string; descending: boolean }[];
+export type FilterData = Record<string, Filters>;
+export type Views = {
+  column: string;
+  mode: string;
+  value: string;
+}[];
+
 const getFilterEntries = (
   n: Pick<RoamBasicNode, "children">
 ): [string, Filters][] =>

@@ -25,8 +25,7 @@ const compileDatalog = (
     case "variable":
       return `?${toVar(d.value)}`;
     case "fn-expr":
-      if (!d.binding) return "";
-      return `[(${d.fn} ${(d.arguments || [])
+      return `${indent(level)}[(${d.fn} ${(d.arguments || [])
         .map((a) => compileDatalog(a, level))
         .join(" ")}) ${compileDatalog(d.binding, level)}]`;
     case "pred-expr":

@@ -1,7 +1,6 @@
 import { H3, InputGroup, Button, Tooltip } from "@blueprintjs/core";
 import React, {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -9,11 +8,10 @@ import React, {
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import ResizableDrawer from "./ResizableDrawer";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { OnloadArgs, PullBlock } from "roamjs-components/types/native";
+import { OnloadArgs } from "roamjs-components/types/native";
 import { Result } from "roamjs-components/types/query-builder";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
@@ -255,9 +253,6 @@ const SavedQuery = ({
         hideResults={minimized}
         results={results.map(({ id, ...a }) => a)}
         preventExport
-        ctrlClick={(r) => {
-          clearOnClick?.(r.text);
-        }}
         onResultsInViewChange={(r) => (resultsInViewRef.current = r)}
       />
     </div>
