@@ -363,7 +363,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   });
                 }
               }
-              // TODO - REDRAW EDGES
               const relationIds = new Set(
                 discourseContext.relations.map((r) => r.id)
               );
