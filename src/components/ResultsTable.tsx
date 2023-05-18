@@ -449,8 +449,14 @@ const ResultsTable = ({
             colSpan={columns.length + (extraColumn ? 1 : 0)}
             style={{ padding: 0, background: "#eeeeee80" }}
           >
-            <div className="flex justify-between items-center p-1">
-              <div className="flex items-center gap-4">
+            <div
+              className="flex justify-between items-center"
+              style={{ padding: 4 }}
+            >
+              <div
+                className="flex items-center gap-4"
+                style={{ paddingLeft: 4 }}
+              >
                 <span>Rows per page:</span>
                 <InputGroup
                   defaultValue={pageSize.toString()}
@@ -486,14 +492,18 @@ const ResultsTable = ({
                   icon={"double-chevron-left"}
                   onClick={() => setPage(1)}
                   disabled={page === 1}
+                  small
                 />
                 <Button
                   minimal
                   icon={"chevron-left"}
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
+                  small
                 />
-                <span style={{ margin: "4px 0" }}>{page}</span>
+                <span style={{ margin: "4px 0" }} className={"text-sm"}>
+                  {page}
+                </span>
                 <Button
                   minimal
                   icon={"chevron-right"}
@@ -502,6 +512,7 @@ const ResultsTable = ({
                     page === Math.ceil(allResultsLength / pageSize) ||
                     allResultsLength === 0
                   }
+                  small
                 />
                 <Button
                   minimal
@@ -513,6 +524,7 @@ const ResultsTable = ({
                   onClick={() =>
                     setPage(Math.ceil(allResultsLength / pageSize))
                   }
+                  small
                 />
               </span>
             </div>

@@ -698,22 +698,24 @@ const ResultsView: ResultsViewComponent = ({
             ) : layout === "timeline" ? (
               <Timeline timelineElements={allResults} />
             ) : (
-              <div className="py-4 px-1">
+              <div style={{ padding: "16px 8px" }}>
                 Layout `{layout}` is not supported
               </div>
             )
           ) : (
-            <>
-              <p className="px-2 py-3 flex justify-between items-center mb-0">
-                <i>No Results Found</i>
-              </p>
-            </>
+            <div
+              className="flex justify-between items-center mb-0"
+              style={{ padding: "16px 8px" }}
+            >
+              <i>No Results Found</i>
+            </div>
           ))}
         <div style={{ background: "#eeeeee80" }}>
           <div
-            className="flex justify-between items-center text-xs"
+            className="flex justify-between items-center text-xs px-1"
             style={{
               opacity: 0.8,
+              padding: 4,
             }}
           >
             <span>

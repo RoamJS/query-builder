@@ -132,6 +132,10 @@ export default runExtension({
   min-height: 12px;
 }
 
+.roamjs-query-results-view table.bp3-html-table td {
+  padding: 8px;
+}
+
 .roamjs-view-select button {
   width: 100%;
   display: flex;
