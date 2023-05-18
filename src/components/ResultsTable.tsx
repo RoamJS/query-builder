@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   Button,
   HTMLTable,
@@ -21,6 +27,7 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import setInputSettings from "roamjs-components/util/setInputSettings";
 
 const resolveRefs = (text: string, refs = new Set<string>()): string => {
   return text.replace(new RegExp(BLOCK_REF_REGEX, "g"), (_, blockUid) => {
@@ -30,6 +37,10 @@ const resolveRefs = (text: string, refs = new Set<string>()): string => {
   });
 };
 
+const dragImage = document.createElement("img");
+dragImage.src =
+  "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+
 const toCellValue = (v: number | Date | string) =>
   v instanceof Date
     ? window.roamAlphaAPI.util.dateToPageTitle(v)
@@ -37,85 +48,96 @@ const toCellValue = (v: number | Date | string) =>
     ? ""
     : extractTag(resolveRefs(v.toString()));
 
-const ResultHeader = ({
-  c,
-  results,
-  activeSort,
-  setActiveSort,
-  filters,
-  setFilters,
-  initialFilter,
-  columnWidth,
-}: {
-  c: string;
-  results: Result[];
-  activeSort: Sorts;
-  setActiveSort: (s: Sorts) => void;
-  filters: FilterData;
-  setFilters: (f: FilterData) => void;
-  initialFilter: Filters;
-  columnWidth?: string;
-}) => {
-  const filterData = useMemo(
-    () => ({
-      values: Array.from(new Set(results.map((r) => toCellValue(r[c])))),
-    }),
-    [results, c]
-  );
-  const sortIndex = activeSort.findIndex((s) => s.key === c);
-  return (
-    <td
-      style={{
-        cursor: "pointer",
-        textTransform: "capitalize",
-        width: columnWidth,
-      }}
-      key={c}
-      onClick={() => {
-        if (sortIndex >= 0) {
-          if (activeSort[sortIndex].descending) {
-            setActiveSort(activeSort.filter((s) => s.key !== c));
+const ResultHeader = React.forwardRef<
+  HTMLTableCellElement,
+  {
+    c: string;
+    results: Result[];
+    activeSort: Sorts;
+    setActiveSort: (s: Sorts) => void;
+    filters: FilterData;
+    setFilters: (f: FilterData) => void;
+    initialFilter: Filters;
+    columnWidth?: string;
+  }
+>(
+  (
+    {
+      c,
+      results,
+      activeSort,
+      setActiveSort,
+      filters,
+      setFilters,
+      initialFilter,
+      columnWidth,
+    },
+    ref
+  ) => {
+    const filterData = useMemo(
+      () => ({
+        values: Array.from(new Set(results.map((r) => toCellValue(r[c])))),
+      }),
+      [results, c]
+    );
+    const sortIndex = activeSort.findIndex((s) => s.key === c);
+    return (
+      <td
+        style={{
+          cursor: "pointer",
+          textTransform: "capitalize",
+          width: columnWidth,
+        }}
+        data-column={c}
+        ref={ref}
+        key={c}
+        onClick={() => {
+          if (sortIndex >= 0) {
+            if (activeSort[sortIndex].descending) {
+              setActiveSort(activeSort.filter((s) => s.key !== c));
+            } else {
+              setActiveSort(
+                activeSort.map((s) =>
+                  s.key === c ? { key: c, descending: true } : s
+                )
+              );
+            }
           } else {
-            setActiveSort(
-              activeSort.map((s) =>
-                s.key === c ? { key: c, descending: true } : s
-              )
-            );
+            setActiveSort([...activeSort, { key: c, descending: false }]);
           }
-        } else {
-          setActiveSort([...activeSort, { key: c, descending: false }]);
-        }
-      }}
-    >
-      <div className="flex items-center">
-        <span className="inline-block mr-4">{c}</span>
-        <span>
-          <Filter
-            data={filterData}
-            initialValue={initialFilter}
-            onChange={(newFilters) =>
-              setFilters({ ...filters, [c]: newFilters })
-            }
-            renderButtonText={(s) =>
-              s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
-            }
-            small
-          />
-          {sortIndex >= 0 && (
-            <span>
-              <Icon
-                icon={
-                  activeSort[sortIndex].descending ? "sort-desc" : "sort-asc"
-                }
-              />
-              <span style={{ fontSize: 8 }}>({sortIndex + 1})</span>
-            </span>
-          )}
-        </span>
-      </div>
-    </td>
-  );
-};
+        }}
+      >
+        <div className="flex items-center">
+          <span className="inline-block mr-4">{c}</span>
+          <span>
+            <Filter
+              data={filterData}
+              initialValue={initialFilter}
+              onChange={(newFilters) =>
+                setFilters({ ...filters, [c]: newFilters })
+              }
+              renderButtonText={(s) =>
+                s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
+              }
+              small
+            />
+            {sortIndex >= 0 && (
+              <span>
+                <Icon
+                  icon={
+                    activeSort[sortIndex].descending ? "sort-desc" : "sort-asc"
+                  }
+                  size={12}
+                />
+                <span style={{ fontSize: 8 }}>({sortIndex + 1})</span>
+              </span>
+            )}
+          </span>
+        </div>
+      </td>
+    );
+  }
+);
 
 const CellEmbed = ({ uid }: { uid: string }) => {
   const title = getPageTitleByPageUid(uid);
@@ -142,13 +164,19 @@ const CellEmbed = ({ uid }: { uid: string }) => {
   );
 };
 
-const ResultView = ({
+type OnWidthUpdate = (args: {
+  column: string;
+  width: string;
+  save?: boolean;
+}) => void;
+const ResultRow = ({
   r,
   ctrlClick,
   views,
   extraColumn,
   onRefresh,
   columns,
+  onWidthUpdate,
 }: {
   r: Result;
   ctrlClick?: (e: Result) => void;
@@ -156,6 +184,7 @@ const ResultView = ({
   extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
   columns: string[];
   onRefresh: () => void;
+  onWidthUpdate: OnWidthUpdate;
 }) => {
   const namespaceSetting = useMemo(
     () =>
@@ -225,21 +254,37 @@ const ResultView = ({
     () => Object.fromEntries(views.map((v) => [v.column, v])),
     [views]
   );
+  const dragHandler = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      const delta = e.clientX - e.currentTarget.getBoundingClientRect().left;
+      const cellWidth =
+        e.currentTarget.parentElement?.getBoundingClientRect().width;
+      if (typeof cellWidth === "undefined") return;
+      if (cellWidth + delta <= 0) return;
+      const rowWidth =
+        e.currentTarget.parentElement?.parentElement?.getBoundingClientRect()
+          .width;
+      if (typeof rowWidth === "undefined") return;
+      if (cellWidth + delta >= rowWidth) return;
+      const column = e.currentTarget.getAttribute("data-column");
+      if (column)
+        onWidthUpdate({
+          column,
+          width: `${((cellWidth + delta) / rowWidth) * 100}%`,
+          save: e.type === "dragend",
+        });
+    },
+    [onWidthUpdate]
+  );
   return (
     <>
       <tr>
-        {columns.map((k) => {
+        {columns.map((k, i) => {
           const uid = (r[`${k}-uid`] || "").toString();
           const val = r[k] || "";
           const { mode: view, value: viewValue } = viewsByColumn[k] || {};
           return (
-            <td
-              style={{
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-              }}
-              key={k}
-            >
+            <td className={"relative overflow-hidden text-ellipsis"} key={k}>
               {val === "" ? (
                 <i>[block is blank]</i>
               ) : view === "link" || view === "alias" ? (
@@ -280,6 +325,25 @@ const ResultView = ({
                 <CellEmbed uid={uid} />
               ) : (
                 cell(k)
+              )}
+              {i < columns.length - 1 && (
+                <div
+                  style={{
+                    width: 4,
+                    cursor: "ew-resize",
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                  }}
+                  data-column={k}
+                  draggable
+                  onDragStart={(e) =>
+                    e.dataTransfer.setDragImage(dragImage, 0, 0)
+                  }
+                  onDrag={dragHandler}
+                  onDragEnd={dragHandler}
+                />
               )}
             </td>
           );
@@ -342,15 +406,36 @@ const ResultsTable = ({
     return Object.fromEntries(
       widths
         .map((w) => {
-          const match = /^(.*) - ([^-])+$/.exec(w);
+          const match = /^(.*) - ([^-]+)$/.exec(w);
           return match;
         })
         .filter((m): m is RegExpExecArray => !!m)
-        .map((match, i) => {
+        .map((match) => {
           return [match[1], match[2]];
         })
     );
   }, [layout]);
+  const thRefs = useRef<Record<string, HTMLTableCellElement>>({});
+  const onWidthUpdate = useCallback<OnWidthUpdate>(
+    (args) => {
+      const cell = thRefs.current[args.column];
+      if (!cell) return;
+      cell.style.width = args.width;
+      if (args.save) {
+        const layoutUid = getSubTree({ parentUid, key: "layout" }).uid;
+        if (layoutUid)
+          setInputSettings({
+            blockUid: layoutUid,
+            key: "widths",
+            values: Object.entries(thRefs.current)
+              .map(([k, v]) => [k, v.style.width])
+              .filter(([k, v]) => !!k && !!v)
+              .map(([k, v]) => `${k} - ${v}`),
+          });
+      }
+    },
+    [thRefs, parentUid]
+  );
   return (
     <HTMLTable
       style={{
@@ -374,18 +459,15 @@ const ResultsTable = ({
             <ResultHeader
               key={c}
               c={c}
+              ref={(r) => r && (thRefs.current[c] = r)}
               results={results}
               activeSort={activeSort}
               setActiveSort={(as) => {
                 setActiveSort(as);
                 if (preventSavingSettings) return;
-                const resultNode = getSubTree({
-                  key: "results",
-                  parentUid,
-                });
                 const sortsNode = getSubTree({
                   key: "sorts",
-                  parentUid: resultNode.uid,
+                  parentUid,
                 });
                 sortsNode.children.forEach((c) => deleteBlock(c.uid));
                 as.map((a) => ({
@@ -404,13 +486,9 @@ const ResultsTable = ({
                 setFilters(fs);
 
                 if (preventSavingSettings) return;
-                const resultNode = getSubTree({
-                  key: "results",
-                  parentUid,
-                });
                 const filtersNode = getSubTree({
                   key: "filters",
-                  parentUid: resultNode.uid,
+                  parentUid,
                 });
                 filtersNode.children.forEach((c) => deleteBlock(c.uid));
                 Object.entries(fs)
@@ -454,13 +532,14 @@ const ResultsTable = ({
       </thead>
       <tbody>
         {results.map((r) => (
-          <ResultView
+          <ResultRow
             key={Object.values(r).join("-")}
             r={r}
             views={views}
             extraColumn={extraColumn}
             onRefresh={onRefresh}
             columns={columns}
+            onWidthUpdate={onWidthUpdate}
           />
         ))}
       </tbody>
@@ -487,14 +566,10 @@ const ResultsTable = ({
                       setPageSize(Number(e.target.value));
 
                       if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
                       setInputSetting({
                         key: "size",
                         value: e.target.value,
-                        blockUid: resultNode.uid,
+                        blockUid: parentUid,
                       });
                     }, 1000);
                   }}

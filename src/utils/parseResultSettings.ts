@@ -120,6 +120,7 @@ const parseResultSettings = (
         : "table";
   layout.uid = layoutNode.uid;
   return {
+    resultNodeUid: resultNode.uid,
     activeSort: sortsNode.children.map((s) => ({
       key: s.text,
       descending: toFlexRegex("true").test(s.children[0]?.text || ""),

@@ -285,13 +285,9 @@ const ResultsView: ResultsViewComponent = ({
     setViews(newViews);
 
     if (preventSavingSettings) return;
-    const resultNode = getSubTree({
-      key: "results",
-      parentUid,
-    });
     const viewsNode = getSubTree({
       key: "views",
-      parentUid: resultNode.uid,
+      parentUid: settings.resultNodeUid,
     });
     viewsNode.children.forEach((c) => deleteBlock(c.uid));
 
@@ -330,13 +326,9 @@ const ResultsView: ResultsViewComponent = ({
               window.clearTimeout(debounceRef.current);
               setSearchFilter(e.target.value);
               if (preventSavingSettings) return;
-              const resultNode = getSubTree({
-                key: "results",
-                parentUid,
-              });
               const searchFilterNode = getSubTree({
                 key: "searchFilter",
-                parentUid: resultNode.uid,
+                parentUid: settings.resultNodeUid,
               });
               debounceRef.current = window.setTimeout(() => {
                 const searchFilter = getFirstChildUidByBlockUid(
@@ -678,7 +670,7 @@ const ResultsView: ResultsViewComponent = ({
                 layout={layout}
                 columns={columns}
                 results={paginatedResults}
-                parentUid={parentUid}
+                parentUid={settings.resultNodeUid}
                 activeSort={activeSort}
                 setActiveSort={setActiveSort}
                 filters={filters}
