@@ -76,6 +76,8 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
+import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 
 declare global {
   interface Window {
@@ -103,6 +105,7 @@ const discourseContext: {
 type NodeDialogProps = {
   label: string;
   onSuccess: (label: string) => Promise<void>;
+  onCancel: () => void;
   nodeType: string;
 };
 
@@ -111,9 +114,11 @@ const LabelDialog = ({
   onClose,
   label: _label,
   onSuccess,
+  onCancel,
   nodeType,
 }: RoamOverlayProps<NodeDialogProps>) => {
   const [error, setError] = useState("");
+  const [options, setOptions] = useState<string[]>([]);
   const defaultValue = useMemo(() => {
     if (_label) return _label;
     if (nodeType === TEXT_TYPE) return "";
@@ -143,6 +148,24 @@ const LabelDialog = ({
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
+  useEffect(() => {
+    if (nodeType !== TEXT_TYPE) {
+      const conditionUid = window.roamAlphaAPI.util.generateUID();
+      fireQuery({
+        returnNode: "node",
+        selections: [],
+        conditions: [
+          {
+            source: "node",
+            relation: "is a",
+            target: nodeType,
+            uid: conditionUid,
+            type: "clause",
+          },
+        ],
+      }).then((results) => setOptions(results.map((r) => r.text)));
+    }
+  }, [nodeType, setOptions]);
   return (
     <>
       <Dialog
@@ -155,18 +178,29 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY}>
-          <TextArea
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onSubmit();
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-            autoFocus
-          />
+          {nodeType !== TEXT_TYPE ? (
+            <AutocompleteInput
+              value={label}
+              setValue={setLabel}
+              onConfirm={onSubmit}
+              options={options}
+              multiline
+              autoFocus
+            />
+          ) : (
+            <TextArea
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onSubmit();
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              autoFocus
+            />
+          )}
         </div>
         <div className={Classes.DIALOG_FOOTER}>
           <div className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center`}>
@@ -174,7 +208,10 @@ const LabelDialog = ({
             {loading && <Spinner size={SpinnerSize.SMALL} />}
             <Button
               text={"Cancel"}
-              onClick={onClose}
+              onClick={() => {
+                onCancel();
+                onClose();
+              }}
               disabled={loading}
               className="flex-shrink-0"
             />
@@ -240,11 +277,12 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       () => this.app.editingId === shape.id,
       [this.app, shape.id]
     );
+    const [closing, setClosing] = useState(false);
     useEffect(() => {
-      if (!shape.props.title) {
+      if (!shape.props.title && !closing) {
         this.app.setEditingId(shape.id);
       }
-    }, [shape.props.title, shape.id]);
+    }, [shape.props.title, shape.id, closing]);
     return (
       <HTMLContainer
         id={shape.id}
@@ -275,7 +313,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             label={shape.props.title}
             nodeType={this.type}
             onSuccess={async (label) => {
+              setClosing(true);
               const oldTitle = getPageTitleByPageUid(shape.props.uid);
+              let finalUid = shape.props.uid;
               if (oldTitle && oldTitle !== label) {
                 await window.roamAlphaAPI.updatePage({
                   page: {
@@ -284,32 +324,136 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   },
                 });
               } else if (isLiveBlock(shape.props.uid)) {
-                await updateBlock({
-                  uid: shape.props.uid,
-                  text: label,
-                });
+                const newUid = getPageUidByPageTitle(label);
+                if (newUid) {
+                  finalUid = newUid;
+                  this.updateProps(shape.id, {
+                    uid: newUid,
+                  });
+                } else {
+                  await updateBlock({
+                    uid: shape.props.uid,
+                    text: label,
+                  });
+                }
               } else if (!oldTitle) {
-                // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
-                const nodeTree = getFullTreeByParentUid(shape.type).children;
-                const template = getSubTree({
-                  tree: nodeTree,
-                  key: "template",
-                }).children;
-                const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-                  n.map(({ uid, children, ...c }) => ({
-                    ...c,
-                    children: stripUid(children),
-                  }));
-                const tree = stripUid(template);
-                await createPage({
-                  title: label,
-                  uid: shape.props.uid,
-                  tree,
-                });
+                const newUid = getPageUidByPageTitle(label);
+                if (newUid) {
+                  finalUid = newUid;
+                  this.updateProps(shape.id, {
+                    uid: newUid,
+                  });
+                } else {
+                  // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
+                  const nodeTree = getFullTreeByParentUid(shape.type).children;
+                  const template = getSubTree({
+                    tree: nodeTree,
+                    key: "template",
+                  }).children;
+                  const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
+                    n.map(({ uid, children, ...c }) => ({
+                      ...c,
+                      children: stripUid(children),
+                    }));
+                  const tree = stripUid(template);
+                  await createPage({
+                    title: label,
+                    uid: shape.props.uid,
+                    tree,
+                  });
+                }
               }
+              // TODO - REDRAW EDGES
+              const relationIds = new Set(
+                discourseContext.relations.map((r) => r.id)
+              );
+              const allRecords = this.app.store.allRecords();
+              const toDelete = allRecords
+                .filter((r): r is DiscourseRelationShape => {
+                  return r.typeName === "shape" && relationIds.has(r.type);
+                })
+                .filter((r) => {
+                  const { start, end } = r.props;
+                  return (
+                    (start.type === "binding" &&
+                      start.boundShapeId === shape.id) ||
+                    (end.type === "binding" && end.boundShapeId === shape.id)
+                  );
+                });
+              this.app.deleteShapes(toDelete.map((r) => r.id));
               this.updateProps(shape.id, {
                 title: label,
               });
+
+              const nodes = Object.values(discourseContext.nodes);
+              const nodeIds = new Set(nodes.map((n) => n.type));
+              const nodesInView = Object.fromEntries(
+                allRecords
+                  .filter((r): r is DiscourseNodeShape => {
+                    return r.typeName === "shape" && nodeIds.has(r.type);
+                  })
+                  .map((r) => [r.props.uid, r] as const)
+              );
+              const results = await getDiscourseContextResults({
+                uid: finalUid,
+                nodes: Object.values(discourseContext.nodes),
+                relations: discourseContext.relations,
+              });
+              const toCreate = results
+                .flatMap((r) =>
+                  Object.entries(r.results)
+                    .filter(
+                      ([k, v]) =>
+                        nodesInView[k] && v.id && relationIds.has(v.id)
+                    )
+                    .map(([k, v]) => ({
+                      relationId: v.id!,
+                      complement: v.complement,
+                      nodeId: k,
+                    }))
+                )
+                .map(({ relationId, complement, nodeId }) => {
+                  return {
+                    id: createShapeId(),
+                    type: relationId,
+                    props: complement
+                      ? {
+                          start: {
+                            type: "binding",
+                            boundShapeId: nodesInView[nodeId].id,
+                            normalizedAnchor: { x: 0.5, y: 0.5 },
+                            isExact: false,
+                          },
+                          end: {
+                            type: "binding",
+                            boundShapeId: shape.id,
+                            normalizedAnchor: { x: 0.5, y: 0.5 },
+                            isExact: false,
+                          },
+                        }
+                      : {
+                          start: {
+                            type: "binding",
+                            boundShapeId: shape.id,
+                            normalizedAnchor: { x: 0.5, y: 0.5 },
+                            isExact: false,
+                          },
+                          end: {
+                            type: "binding",
+                            boundShapeId: nodesInView[nodeId].id,
+                            normalizedAnchor: { x: 0.5, y: 0.5 },
+                            isExact: false,
+                          },
+                        },
+                  };
+                });
+              this.app.createShapes(toCreate);
+              setClosing(false);
+            }}
+            onCancel={() => {
+              if (!isLiveBlock(shape.props.uid)) {
+                this.app.deleteShapes([shape.id]);
+              }
             }}
           />
         </div>
