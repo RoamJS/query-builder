@@ -32,6 +32,7 @@ import {
   TLStore,
   SubMenu,
   TLPointerEvent,
+  TLRecord,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -70,7 +71,7 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
-import getBlockProps, { normalizeProps } from "../utils/getBlockProps";
+import getBlockProps, { json, normalizeProps } from "../utils/getBlockProps";
 import { QBClause } from "../utils/types";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
@@ -265,7 +266,110 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       title: "",
     };
   }
-  // TODO: onDelete - remove connected edges
+
+  deleteRelationsInCanvas(
+    shape: DiscourseNodeShape,
+    {
+      allRecords = this.app.store.allRecords(),
+      relationIds = new Set(discourseContext.relations.map((r) => r.id)),
+    }: { allRecords?: TLRecord[]; relationIds?: Set<string> } = {}
+  ) {
+    const toDelete = allRecords
+      .filter((r): r is DiscourseRelationShape => {
+        return r.typeName === "shape" && relationIds.has(r.type);
+      })
+      .filter((r) => {
+        const { start, end } = r.props;
+        return (
+          (start.type === "binding" && start.boundShapeId === shape.id) ||
+          (end.type === "binding" && end.boundShapeId === shape.id)
+        );
+      });
+    this.app.deleteShapes(toDelete.map((r) => r.id));
+  }
+
+  async createExistingRelations(
+    shape: DiscourseNodeShape,
+    {
+      allRecords = this.app.store.allRecords(),
+      relationIds = new Set(discourseContext.relations.map((r) => r.id)),
+      finalUid = shape.props.uid,
+    }: {
+      allRecords?: TLRecord[];
+      relationIds?: Set<string>;
+      finalUid?: string;
+    } = {}
+  ) {
+    const nodes = Object.values(discourseContext.nodes);
+    const nodeIds = new Set(nodes.map((n) => n.type));
+    const nodesInView = Object.fromEntries(
+      allRecords
+        .filter((r): r is DiscourseNodeShape => {
+          return r.typeName === "shape" && nodeIds.has(r.type);
+        })
+        .map((r) => [r.props.uid, r] as const)
+    );
+    const results = await getDiscourseContextResults({
+      uid: finalUid,
+      nodes: Object.values(discourseContext.nodes),
+      relations: discourseContext.relations,
+    });
+    const toCreate = results
+      .flatMap((r) =>
+        Object.entries(r.results)
+          .filter(([k, v]) => nodesInView[k] && v.id && relationIds.has(v.id))
+          .map(([k, v]) => ({
+            relationId: v.id!,
+            complement: v.complement,
+            nodeId: k,
+          }))
+      )
+      .map(({ relationId, complement, nodeId }) => {
+        return {
+          id: createShapeId(),
+          type: relationId,
+          props: complement
+            ? {
+                start: {
+                  type: "binding",
+                  boundShapeId: nodesInView[nodeId].id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+                end: {
+                  type: "binding",
+                  boundShapeId: shape.id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+              }
+            : {
+                start: {
+                  type: "binding",
+                  boundShapeId: shape.id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+                end: {
+                  type: "binding",
+                  boundShapeId: nodesInView[nodeId].id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+              },
+        };
+      });
+    this.app.createShapes(toCreate);
+  }
+
+  onBeforeDelete(shape: DiscourseNodeShape) {
+    this.deleteRelationsInCanvas(shape);
+  }
+
+  onAfterCreate(shape: DiscourseNodeShape) {
+    if (shape.props.title && shape.props.uid)
+      this.createExistingRelations(shape);
+  }
 
   render(shape: DiscourseNodeShape) {
     const {
@@ -363,90 +467,19 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   });
                 }
               }
+              const allRecords = this.app.store.allRecords();
               const relationIds = new Set(
                 discourseContext.relations.map((r) => r.id)
               );
-              const allRecords = this.app.store.allRecords();
-              const toDelete = allRecords
-                .filter((r): r is DiscourseRelationShape => {
-                  return r.typeName === "shape" && relationIds.has(r.type);
-                })
-                .filter((r) => {
-                  const { start, end } = r.props;
-                  return (
-                    (start.type === "binding" &&
-                      start.boundShapeId === shape.id) ||
-                    (end.type === "binding" && end.boundShapeId === shape.id)
-                  );
-                });
-              this.app.deleteShapes(toDelete.map((r) => r.id));
+              this.deleteRelationsInCanvas(shape, { allRecords, relationIds });
               this.updateProps(shape.id, {
                 title: label,
               });
-
-              const nodes = Object.values(discourseContext.nodes);
-              const nodeIds = new Set(nodes.map((n) => n.type));
-              const nodesInView = Object.fromEntries(
-                allRecords
-                  .filter((r): r is DiscourseNodeShape => {
-                    return r.typeName === "shape" && nodeIds.has(r.type);
-                  })
-                  .map((r) => [r.props.uid, r] as const)
-              );
-              const results = await getDiscourseContextResults({
-                uid: finalUid,
-                nodes: Object.values(discourseContext.nodes),
-                relations: discourseContext.relations,
+              await this.createExistingRelations(shape, {
+                allRecords,
+                relationIds,
+                finalUid,
               });
-              const toCreate = results
-                .flatMap((r) =>
-                  Object.entries(r.results)
-                    .filter(
-                      ([k, v]) =>
-                        nodesInView[k] && v.id && relationIds.has(v.id)
-                    )
-                    .map(([k, v]) => ({
-                      relationId: v.id!,
-                      complement: v.complement,
-                      nodeId: k,
-                    }))
-                )
-                .map(({ relationId, complement, nodeId }) => {
-                  return {
-                    id: createShapeId(),
-                    type: relationId,
-                    props: complement
-                      ? {
-                          start: {
-                            type: "binding",
-                            boundShapeId: nodesInView[nodeId].id,
-                            normalizedAnchor: { x: 0.5, y: 0.5 },
-                            isExact: false,
-                          },
-                          end: {
-                            type: "binding",
-                            boundShapeId: shape.id,
-                            normalizedAnchor: { x: 0.5, y: 0.5 },
-                            isExact: false,
-                          },
-                        }
-                      : {
-                          start: {
-                            type: "binding",
-                            boundShapeId: shape.id,
-                            normalizedAnchor: { x: 0.5, y: 0.5 },
-                            isExact: false,
-                          },
-                          end: {
-                            type: "binding",
-                            boundShapeId: nodesInView[nodeId].id,
-                            normalizedAnchor: { x: 0.5, y: 0.5 },
-                            isExact: false,
-                          },
-                        },
-                  };
-                });
-              this.app.createShapes(toCreate);
               setClosing(false);
             }}
             onCancel={() => {
@@ -812,7 +845,7 @@ const TldrawCanvas = ({ title }: Props) => {
     }
     const instanceId = TLInstance.createCustomId(pageUid);
     const userId = TLUser.createCustomId(getCurrentUserUid());
-    const props = getBlockProps(pageUid);
+    const props = getBlockProps(pageUid) as Record<string, unknown>;
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
     const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
     return { instanceId, userId, data };
@@ -838,7 +871,7 @@ const TldrawCanvas = ({ title }: Props) => {
       clearTimeout(serializeRef.current);
       serializeRef.current = window.setTimeout(() => {
         const state = _store.serialize();
-        const props = getBlockProps(pageUid);
+        const props = getBlockProps(pageUid) as Record<string, unknown>;
         const rjsqb =
           typeof props["roamjs-query-builder"] === "object"
             ? props["roamjs-query-builder"]
@@ -858,14 +891,16 @@ const TldrawCanvas = ({ title }: Props) => {
       }, THROTTLE);
     });
     return _store;
-  }, [initialState, serializeRef]);
+  }, [initialState, serializeRef, appRef]);
 
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
       "[:edit/user :block/props]",
       `[:block/uid "${pageUid}"]`,
       (_, after) => {
-        const props = normalizeProps(after?.[":block/props"] || {});
+        const props = normalizeProps(
+          (after?.[":block/props"] || {}) as json
+        ) as Record<string, json>;
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
         const state = rjsqb?.tldraw as Parameters<typeof store.deserialize>[0];
         const editingUser = after?.[":edit/user"]?.[":db/id"];
@@ -987,6 +1022,26 @@ const TldrawCanvas = ({ title }: Props) => {
               openBlockInSidebar(e.shape.props.uid);
             }
           });
+          const oldOnBeforeDelete = app.store.onBeforeDelete;
+          app.store.onBeforeDelete = (record) => {
+            oldOnBeforeDelete?.(record);
+            if (record.typeName === "shape") {
+              const util = app.getShapeUtil(record);
+              if (util instanceof DiscourseNodeUtil) {
+                util.onBeforeDelete(record as DiscourseNodeShape);
+              }
+            }
+          };
+          const oldOnAfterCreate = app.store.onAfterCreate;
+          app.store.onAfterCreate = (record) => {
+            oldOnAfterCreate?.(record);
+            if (record.typeName === "shape") {
+              const util = app.getShapeUtil(record);
+              if (util instanceof DiscourseNodeUtil) {
+                util.onAfterCreate(record as DiscourseNodeShape);
+              }
+            }
+          };
         }}
       >
         <TldrawUi
