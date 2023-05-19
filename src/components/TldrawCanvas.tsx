@@ -891,7 +891,7 @@ const TldrawCanvas = ({ title }: Props) => {
       }, THROTTLE);
     });
     return _store;
-  }, [initialState, serializeRef, appRef]);
+  }, [initialState, serializeRef]);
 
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
