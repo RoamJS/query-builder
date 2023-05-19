@@ -357,7 +357,7 @@ const ResultsView: ResultsViewComponent = ({
         exportTypes={getExportTypes?.(allResults)}
       />
       <div className="relative">
-        <span className="absolute top-2 right-2 z-10">
+        <span className="absolute top-1 right-0 z-10">
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
               <Button icon={"refresh"} minimal onClick={onRefresh} />

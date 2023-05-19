@@ -254,6 +254,7 @@ const ResultRow = ({
     () => Object.fromEntries(views.map((v) => [v.column, v])),
     [views]
   );
+  const trRef = useRef<HTMLTableRowElement>(null);
   const dragHandler = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       const delta = e.clientX - e.currentTarget.getBoundingClientRect().left;
@@ -267,11 +268,15 @@ const ResultRow = ({
       if (typeof rowWidth === "undefined") return;
       if (cellWidth + delta >= rowWidth) return;
       const column = e.currentTarget.getAttribute("data-column");
+      const save = e.type === "dragEnd";
+      if (trRef.current) {
+        trRef.current.style.cursor = save ? "" : "ew-resize";
+      }
       if (column)
         onWidthUpdate({
           column,
           width: `${((cellWidth + delta) / rowWidth) * 100}%`,
-          save: e.type === "dragend",
+          save,
         });
     },
     [onWidthUpdate]
@@ -329,12 +334,13 @@ const ResultRow = ({
               {i < columns.length - 1 && (
                 <div
                   style={{
-                    width: 4,
+                    width: 1,
                     cursor: "ew-resize",
                     position: "absolute",
                     top: 0,
                     right: 0,
                     bottom: 0,
+                    background: `rgba(16,22,26,0.15)`,
                   }}
                   data-column={k}
                   draggable
@@ -447,7 +453,6 @@ const ResultsTable = ({
       }}
       striped
       interactive
-      bordered
     >
       <thead
         style={{
