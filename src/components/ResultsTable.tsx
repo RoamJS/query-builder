@@ -13,7 +13,7 @@ import {
   InputGroup,
 } from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
-import { Result } from "../utils/types";
+import { Column, Result } from "../utils/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import extractTag from "roamjs-components/util/extractTag";
 import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
@@ -51,7 +51,7 @@ const toCellValue = (v: number | Date | string) =>
 const ResultHeader = React.forwardRef<
   HTMLTableCellElement,
   {
-    c: string;
+    c: Column;
     results: Result[];
     activeSort: Sorts;
     setActiveSort: (s: Sorts) => void;
@@ -76,11 +76,11 @@ const ResultHeader = React.forwardRef<
   ) => {
     const filterData = useMemo(
       () => ({
-        values: Array.from(new Set(results.map((r) => toCellValue(r[c])))),
+        values: Array.from(new Set(results.map((r) => toCellValue(r[c.key])))),
       }),
       [results, c]
     );
-    const sortIndex = activeSort.findIndex((s) => s.key === c);
+    const sortIndex = activeSort.findIndex((s) => s.key === c.key);
     return (
       <td
         style={{
@@ -88,33 +88,33 @@ const ResultHeader = React.forwardRef<
           textTransform: "capitalize",
           width: columnWidth,
         }}
-        data-column={c}
+        data-column={c.uid}
         ref={ref}
-        key={c}
+        key={c.uid}
         onClick={() => {
           if (sortIndex >= 0) {
             if (activeSort[sortIndex].descending) {
-              setActiveSort(activeSort.filter((s) => s.key !== c));
+              setActiveSort(activeSort.filter((s) => s.key !== c.key));
             } else {
               setActiveSort(
                 activeSort.map((s) =>
-                  s.key === c ? { key: c, descending: true } : s
+                  s.key === c.key ? { key: c.key, descending: true } : s
                 )
               );
             }
           } else {
-            setActiveSort([...activeSort, { key: c, descending: false }]);
+            setActiveSort([...activeSort, { key: c.key, descending: false }]);
           }
         }}
       >
         <div className="flex items-center">
-          <span className="inline-block mr-4">{c}</span>
+          <span className="inline-block mr-4">{c.key}</span>
           <span>
             <Filter
               data={filterData}
               initialValue={initialFilter}
               onChange={(newFilters) =>
-                setFilters({ ...filters, [c]: newFilters })
+                setFilters({ ...filters, [c.key]: newFilters })
               }
               renderButtonText={(s) =>
                 s ? s.toString() : <i style={{ opacity: 0.5 }}>(Empty)</i>
@@ -173,7 +173,6 @@ const ResultRow = ({
   r,
   ctrlClick,
   views,
-  extraColumn,
   onRefresh,
   columns,
   onWidthUpdate,
@@ -181,8 +180,7 @@ const ResultRow = ({
   r: Result;
   ctrlClick?: (e: Result) => void;
   views: { column: string; mode: string; value: string }[];
-  extraColumn?: { row: (e: Result) => React.ReactNode; reserved: RegExp[] };
-  columns: string[];
+  columns: Column[];
   onRefresh: () => void;
   onWidthUpdate: OnWidthUpdate;
 }) => {
@@ -268,7 +266,7 @@ const ResultRow = ({
       if (typeof rowWidth === "undefined") return;
       if (cellWidth + delta >= rowWidth) return;
       const column = e.currentTarget.getAttribute("data-column");
-      const save = e.type === "dragEnd";
+      const save = e.type === "dragend";
       if (trRef.current) {
         trRef.current.style.cursor = save ? "" : "ew-resize";
       }
@@ -284,12 +282,12 @@ const ResultRow = ({
   return (
     <>
       <tr>
-        {columns.map((k, i) => {
-          const uid = (r[`${k}-uid`] || "").toString();
-          const val = r[k] || "";
-          const { mode: view, value: viewValue } = viewsByColumn[k] || {};
+        {columns.map(({ key, uid: columnUid }, i) => {
+          const uid = (r[`${key}-uid`] || "").toString();
+          const val = r[key] || "";
+          const { mode: view, value: viewValue } = viewsByColumn[key] || {};
           return (
-            <td className={"relative overflow-hidden text-ellipsis"} key={k}>
+            <td className={"relative overflow-hidden text-ellipsis"} key={key}>
               {val === "" ? (
                 <i>[block is blank]</i>
               ) : view === "link" || view === "alias" ? (
@@ -324,12 +322,12 @@ const ResultRow = ({
                     }
                   }}
                 >
-                  {view === "alias" ? viewValue : cell(k)}
+                  {view === "alias" ? viewValue : cell(key)}
                 </a>
               ) : view === "embed" ? (
                 <CellEmbed uid={uid} />
               ) : (
-                cell(k)
+                cell(key)
               )}
               {i < columns.length - 1 && (
                 <div
@@ -342,7 +340,7 @@ const ResultRow = ({
                     bottom: 0,
                     background: `rgba(16,22,26,0.15)`,
                   }}
-                  data-column={k}
+                  data-column={columnUid}
                   draggable
                   onDragStart={(e) =>
                     e.dataTransfer.setDragImage(dragImage, 0, 0)
@@ -354,7 +352,6 @@ const ResultRow = ({
             </td>
           );
         })}
-        {extraColumn && <td>{extraColumn.row(r)}</td>}
       </tr>
     </>
   );
@@ -378,9 +375,8 @@ const ResultsTable = ({
   page,
   setPage,
   allResultsLength,
-  extraColumn,
 }: {
-  columns: string[];
+  columns: Column[];
   results: Result[];
   parentUid: string;
   layout: Record<string, string | string[]>;
@@ -398,13 +394,6 @@ const ResultsTable = ({
   setPage: (p: number) => void;
   onRefresh: () => void;
   allResultsLength: number;
-  // @deprecated - move to `-action` columns through selections
-  extraColumn?: {
-    reserved: RegExp[];
-    width: number;
-    row: (e: Result) => React.ReactNode;
-    header: React.ReactNode;
-  };
 }) => {
   const columnWidths = useMemo(() => {
     const widths =
@@ -462,9 +451,9 @@ const ResultsTable = ({
         <tr>
           {columns.map((c) => (
             <ResultHeader
-              key={c}
+              key={c.uid}
               c={c}
-              ref={(r) => r && (thRefs.current[c] = r)}
+              ref={(r) => r && (thRefs.current[c.uid] = r)}
               results={results}
               activeSort={activeSort}
               setActiveSort={(as) => {
@@ -526,13 +515,10 @@ const ResultsTable = ({
                     })
                   );
               }}
-              initialFilter={filters[c]}
-              columnWidth={columnWidths[c]}
+              initialFilter={filters[c.key]}
+              columnWidth={columnWidths[c.uid]}
             />
           ))}
-          {extraColumn && (
-            <th style={{ width: extraColumn.width }}>{extraColumn.header}</th>
-          )}
         </tr>
       </thead>
       <tbody>
@@ -541,7 +527,6 @@ const ResultsTable = ({
             key={Object.values(r).join("-")}
             r={r}
             views={views}
-            extraColumn={extraColumn}
             onRefresh={onRefresh}
             columns={columns}
             onWidthUpdate={onWidthUpdate}
@@ -551,7 +536,7 @@ const ResultsTable = ({
       <tfoot>
         <tr>
           <td
-            colSpan={columns.length + (extraColumn ? 1 : 0)}
+            colSpan={columns.length}
             style={{ padding: 0, background: "#eeeeee80" }}
           >
             <div

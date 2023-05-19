@@ -18,7 +18,6 @@ import createBlock from "roamjs-components/writes/createBlock";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
-import type { Result } from "roamjs-components/types/query-builder";
 import parseResultSettings, {
   FilterData,
   Sorts,
@@ -33,7 +32,7 @@ import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { ExportTypes } from "../utils/types";
+import { Column, ExportTypes, Result } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
@@ -182,6 +181,7 @@ const SUPPORTED_LAYOUTS = [
 
 type ResultsViewComponent = (props: {
   parentUid: string;
+  columns: Column[];
   header?: React.ReactNode;
   results: Result[];
   hideResults?: boolean;
@@ -195,17 +195,11 @@ type ResultsViewComponent = (props: {
   isEditBlock?: boolean;
   // @deprecated - should be inferred from the query or layout
   onResultsInViewChange?: (r: Result[]) => void;
-  // @deprecated - move to `-action` columns through selections
-  extraColumn?: {
-    reserved: RegExp[];
-    width: number;
-    row: (e: Result) => React.ReactNode;
-    header: React.ReactNode;
-  };
 }) => JSX.Element;
 
 const ResultsView: ResultsViewComponent = ({
   parentUid,
+  columns,
   header,
   results,
   hideResults = false,
@@ -216,23 +210,8 @@ const ResultsView: ResultsViewComponent = ({
   getExportTypes,
   onResultsInViewChange,
   isEditBlock,
-  extraColumn,
 }) => {
   const extensionAPI = useExtensionAPI();
-  const columns = useMemo(
-    () =>
-      results.length
-        ? Object.keys(results[0]).filter(
-            (k) =>
-              !META_REGEX.test(k) &&
-              !(
-                extraColumn &&
-                extraColumn.reserved.some((t: RegExp) => t.test(k))
-              )
-          )
-        : ["text"],
-    [results, extraColumn]
-  );
   const settings = useMemo(
     () => parseResultSettings(parentUid, columns, extensionAPI),
     [parentUid]

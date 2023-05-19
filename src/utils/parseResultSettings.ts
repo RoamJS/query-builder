@@ -5,6 +5,7 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
+import { Column } from "./types";
 
 export type Sorts = { key: string; descending: boolean }[];
 export type FilterData = Record<string, Filters>;
@@ -64,8 +65,9 @@ const getSettings = (extensionAPI?: OnloadArgs["extensionAPI"]) => {
 };
 
 const parseResultSettings = (
+  // TODO - this should be the resultNode uid
   parentUid: string,
-  columns: string[],
+  columns: Column[],
   extensionAPI?: OnloadArgs["extensionAPI"]
 ) => {
   const { globalFiltersData, globalPageSize } = getSettings(extensionAPI);
@@ -127,7 +129,7 @@ const parseResultSettings = (
     })),
     searchFilter,
     filters: Object.fromEntries(
-      columns.map((key) => [
+      columns.map(({ key }) => [
         key,
         savedFilterData[key] || {
           includes: { values: new Set<string>() },
@@ -135,7 +137,7 @@ const parseResultSettings = (
         },
       ])
     ),
-    views: columns.map((column) => ({
+    views: columns.map(({ key: column }) => ({
       column,
       mode:
         savedViewData[column]?.mode || (column === "text" ? "link" : "plain"),

@@ -253,13 +253,25 @@ const ContextTab = ({
         : r.results,
     [groupByTarget, r.results, subTabId, getFilteredResults]
   );
+  const columns = useMemo(
+    () => [
+      {
+        key: "text",
+        // we currently don't care about the uid since we don't save settings yet for this ResultsView
+        uid: "uid",
+      },
+    ],
+    []
+  );
   const resultsView = (
     <ResultsView
+      // TODO - always save settings, but maybe separate from root `parentUid`?
       preventSavingSettings
       parentUid={parentUid}
       results={Object.values(results).map(
         ({ target, complement, id, ...a }) => a as Result
       )}
+      columns={columns}
       onRefresh={onRefresh}
       header={
         <>
@@ -276,6 +288,7 @@ const ContextTab = ({
           </span>
         </>
       }
+      // @ts-ignore TODO - add back in through -action selection
       extraColumn={
         hasExtra
           ? {
