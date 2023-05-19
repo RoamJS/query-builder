@@ -23,7 +23,7 @@ import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
 import { Filters } from "roamjs-components/components/Filter";
-import { ExportTypes } from "../utils/types";
+import { Column, ExportTypes } from "../utils/types";
 
 type QueryPageComponent = (props: {
   showAlias?: boolean;
@@ -98,6 +98,7 @@ const QueryPage = ({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [columns, setColumns] = useState<Column[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const onRefresh = useCallback(() => {
@@ -105,9 +106,10 @@ const QueryPage = ({
     setLoading(true);
     const args = parseQuery(pageUid);
     setTimeout(() => {
-      const runFireQuery = (a: Parameters<typeof fireQuery>[0]) =>
+      const runFireQuery = (a: ReturnType<typeof parseQuery>) =>
         fireQuery(a)
           .then((results) => {
+            setColumns(a.columns);
             setResults(results);
           })
           .catch(() => {
@@ -143,7 +145,7 @@ const QueryPage = ({
         setLoading(false);
       });
     }, 1);
-  }, [setResults, pageUid, setLoading, defaultReturnNode]);
+  }, [setResults, pageUid, setLoading, defaultReturnNode, setColumns]);
   useEffect(() => {
     if (!isEdit) {
       onRefresh();
@@ -215,6 +217,7 @@ const QueryPage = ({
                 <div className="text-red-700 mb-4">{error}</div>
               ) : undefined
             }
+            columns={columns}
             results={results.map(({ id, ...a }) => a)}
             onRefresh={onRefresh}
             isEditBlock={isEditBlock}

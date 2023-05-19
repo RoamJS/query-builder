@@ -1,10 +1,5 @@
 import { H3, InputGroup, Button, Tooltip } from "@blueprintjs/core";
-import React, {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -27,6 +22,7 @@ import parseQuery from "../utils/parseQuery";
 import ResultsView from "./ResultsView";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 import QueryEditor from "./QueryEditor";
+import { Column } from "../utils/types";
 
 type Props = {
   blockUid: string;
@@ -41,6 +37,7 @@ const SavedQuery = ({
   clearOnClick,
   editSavedQuery,
   initialResults,
+  initialColumns,
 }: {
   uid: string;
   onDelete?: () => void;
@@ -48,7 +45,9 @@ const SavedQuery = ({
   clearOnClick: (s: string) => void;
   editSavedQuery: (s: string) => void;
   initialResults?: Result[];
+  initialColumns?: Column[];
 }) => {
+  const [columns, setColumns] = useState<Column[]>(initialColumns || []);
   const [results, setResults] = useState<Result[]>(initialResults || []);
   const [minimized, setMinimized] = useState(!isSavedToPage && !initialResults);
   const [initialQuery, setInitialQuery] = useState(!!initialResults);
@@ -56,17 +55,19 @@ const SavedQuery = ({
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [error, setError] = useState("");
   const resultsInViewRef = useRef<Result[]>([]);
-  const refresh = useCallback(
-    () =>
-      fireQuery(parseQuery(uid))
-        .then(setResults)
-        .catch(() => {
-          setError(
-            `Query failed to run. Try running a new query from the editor.`
-          );
-        }),
-    [uid, setResults, setError]
-  );
+  const refresh = useCallback(() => {
+    const args = parseQuery(uid);
+    return fireQuery(args)
+      .then((r) => {
+        setColumns(args.columns);
+        setResults(r);
+      })
+      .catch(() => {
+        setError(
+          `Query failed to run. Try running a new query from the editor.`
+        );
+      });
+  }, [uid, setResults, setError, setColumns]);
   return (
     <div
       style={{
@@ -252,11 +253,19 @@ const SavedQuery = ({
         }
         hideResults={minimized}
         results={results.map(({ id, ...a }) => a)}
+        columns={columns}
         preventExport
         onResultsInViewChange={(r) => (resultsInViewRef.current = r)}
       />
     </div>
   );
+};
+
+type SavedQuery = {
+  uid: string;
+  text: string;
+  results?: Result[];
+  columns?: Column[];
 };
 
 const SavedQueriesContainer = ({
@@ -265,10 +274,8 @@ const SavedQueriesContainer = ({
   clearOnClick,
   setQuery,
 }: {
-  savedQueries: { uid: string; text: string; results?: Result[] }[];
-  setSavedQueries: (
-    s: { uid: string; text: string; results?: Result[] }[]
-  ) => void;
+  savedQueries: SavedQuery[];
+  setSavedQueries: (s: SavedQuery[]) => void;
   clearOnClick: (s: string) => void;
   setQuery: (s: string) => void;
 }) => {
@@ -300,9 +307,7 @@ const QueryDrawerContent = ({
   ...exportRenderProps
 }: Props) => {
   const tree = useMemo(() => getBasicTreeByParentUid(blockUid), []);
-  const [savedQueries, setSavedQueries] = useState<
-    { text: string; uid: string; results?: Result[] }[]
-  >(
+  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>(
     tree
       .filter((t) => !toFlexRegex("scratch").test(t.text))
       .map((t) => ({ text: t.text, uid: t.uid }))
@@ -326,6 +331,7 @@ const QueryDrawerContent = ({
         key={query}
         parentUid={blockUid}
         onQuery={() => {
+          const args = parseQuery(blockUid);
           return Promise.all([
             createBlock({
               node: {
@@ -340,7 +346,7 @@ const QueryDrawerContent = ({
                 parentUid: newSavedUid,
               }).then((scratchUid) => ({ newSavedUid, scratchUid }))
             ),
-            fireQuery(parseQuery(blockUid)),
+            fireQuery(args),
           ]).then(([{ newSavedUid, scratchUid }, results]) =>
             Promise.all(
               getSubTree({ key: "scratch", parentUid: blockUid }).children.map(
@@ -355,7 +361,12 @@ const QueryDrawerContent = ({
               )
             ).then(() => {
               setSavedQueries([
-                { uid: newSavedUid, text: savedQueryLabel, results },
+                {
+                  uid: newSavedUid,
+                  text: savedQueryLabel,
+                  results,
+                  columns: args.columns,
+                },
                 ...savedQueries,
               ]);
               const nextQueryLabel = savedQueryLabel

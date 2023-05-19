@@ -2,7 +2,7 @@ import { RoamBasicNode } from "roamjs-components/types/native";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import createBlock from "roamjs-components/writes/createBlock";
-import { Condition, Selection } from "./types";
+import { Column, Condition, Selection } from "./types";
 
 const roamNodeToCondition = ({
   uid,
@@ -50,6 +50,7 @@ type ParseQuery = (q: RoamBasicNode | string) => {
   customNodeUid: string;
   isCustomEnabled: boolean;
   isSamePageEnabled: boolean;
+  columns: Column[];
 };
 
 const parseQuery: ParseQuery = (parentUidOrNode) => {
@@ -100,6 +101,16 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     customNodeUid,
     isCustomEnabled: customBlock.children[1]?.text === "enabled",
     isSamePageEnabled: !!samePageBlock.uid,
+    columns: [
+      {
+        key: selections.find((s) => s.text === "node")?.label || "text",
+        uid: returnNodeUid,
+      },
+    ].concat(
+      selections
+        .filter((s) => s.text !== "node")
+        .map((s) => ({ uid: s.uid, key: s.label }))
+    ),
   };
 };
 

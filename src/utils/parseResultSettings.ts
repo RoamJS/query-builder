@@ -2,10 +2,10 @@ import { Filters } from "roamjs-components/components/Filter";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { OnloadArgs, RoamBasicNode } from "roamjs-components/types/native";
 import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
+import { Column } from "./types";
 
 export type Sorts = { key: string; descending: boolean }[];
 export type FilterData = Record<string, Filters>;
@@ -65,8 +65,9 @@ const getSettings = (extensionAPI?: OnloadArgs["extensionAPI"]) => {
 };
 
 const parseResultSettings = (
+  // TODO - this should be the resultNode uid
   parentUid: string,
-  columns: string[],
+  columns: Column[],
   extensionAPI?: OnloadArgs["extensionAPI"]
 ) => {
   const { globalFiltersData, globalPageSize } = getSettings(extensionAPI);
@@ -100,18 +101,35 @@ const parseResultSettings = (
       },
     ])
   );
-  const layout = getSettingValueFromTree({
+  const layoutNode = getSubTree({
     tree: resultNode.children,
     key: "layout",
   });
+  const layout = Object.fromEntries(
+    layoutNode.children
+      .filter((c) => c.children.length)
+      .map((c) => [
+        c.text,
+        c.children.length === 1
+          ? c.children[0].text
+          : c.children.map((cc) => cc.text),
+      ])
+  );
+  if (!layout.mode)
+    layout.mode =
+      layoutNode.children[0]?.children.length === 0
+        ? layoutNode.children[0].text
+        : "table";
+  layout.uid = layoutNode.uid;
   return {
+    resultNodeUid: resultNode.uid,
     activeSort: sortsNode.children.map((s) => ({
       key: s.text,
       descending: toFlexRegex("true").test(s.children[0]?.text || ""),
     })),
     searchFilter,
     filters: Object.fromEntries(
-      columns.map((key) => [
+      columns.map(({ key }) => [
         key,
         savedFilterData[key] || {
           includes: { values: new Set<string>() },
@@ -119,7 +137,7 @@ const parseResultSettings = (
         },
       ])
     ),
-    views: columns.map((column) => ({
+    views: columns.map(({ key: column }) => ({
       column,
       mode:
         savedViewData[column]?.mode || (column === "text" ? "link" : "plain"),

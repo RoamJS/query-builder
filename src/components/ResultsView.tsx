@@ -18,7 +18,6 @@ import createBlock from "roamjs-components/writes/createBlock";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
-import type { Result } from "roamjs-components/types/query-builder";
 import parseResultSettings, {
   FilterData,
   Sorts,
@@ -33,7 +32,7 @@ import Timeline from "./Timeline";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { ExportTypes } from "../utils/types";
+import { Column, ExportTypes, Result } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
@@ -182,6 +181,7 @@ const SUPPORTED_LAYOUTS = [
 
 type ResultsViewComponent = (props: {
   parentUid: string;
+  columns: Column[];
   header?: React.ReactNode;
   results: Result[];
   hideResults?: boolean;
@@ -195,17 +195,11 @@ type ResultsViewComponent = (props: {
   isEditBlock?: boolean;
   // @deprecated - should be inferred from the query or layout
   onResultsInViewChange?: (r: Result[]) => void;
-  // @deprecated - move to `-action` columns through selections
-  extraColumn?: {
-    reserved: RegExp[];
-    width: number;
-    row: (e: Result) => React.ReactNode;
-    header: React.ReactNode;
-  };
 }) => JSX.Element;
 
 const ResultsView: ResultsViewComponent = ({
   parentUid,
+  columns,
   header,
   results,
   hideResults = false,
@@ -216,23 +210,8 @@ const ResultsView: ResultsViewComponent = ({
   getExportTypes,
   onResultsInViewChange,
   isEditBlock,
-  extraColumn,
 }) => {
   const extensionAPI = useExtensionAPI();
-  const columns = useMemo(
-    () =>
-      results.length
-        ? Object.keys(results[0]).filter(
-            (k) =>
-              !META_REGEX.test(k) &&
-              !(
-                extraColumn &&
-                extraColumn.reserved.some((t: RegExp) => t.test(k))
-              )
-          )
-        : ["text"],
-    [results, extraColumn]
-  );
   const settings = useMemo(
     () => parseResultSettings(parentUid, columns, extensionAPI),
     [parentUid]
@@ -285,13 +264,9 @@ const ResultsView: ResultsViewComponent = ({
     setViews(newViews);
 
     if (preventSavingSettings) return;
-    const resultNode = getSubTree({
-      key: "results",
-      parentUid,
-    });
     const viewsNode = getSubTree({
       key: "views",
-      parentUid: resultNode.uid,
+      parentUid: settings.resultNodeUid,
     });
     viewsNode.children.forEach((c) => deleteBlock(c.uid));
 
@@ -330,13 +305,9 @@ const ResultsView: ResultsViewComponent = ({
               window.clearTimeout(debounceRef.current);
               setSearchFilter(e.target.value);
               if (preventSavingSettings) return;
-              const resultNode = getSubTree({
-                key: "results",
-                parentUid,
-              });
               const searchFilterNode = getSubTree({
                 key: "searchFilter",
-                parentUid: resultNode.uid,
+                parentUid: settings.resultNodeUid,
               });
               debounceRef.current = window.setTimeout(() => {
                 const searchFilter = getFirstChildUidByBlockUid(
@@ -365,7 +336,7 @@ const ResultsView: ResultsViewComponent = ({
         exportTypes={getExportTypes?.(allResults)}
       />
       <div className="relative">
-        <span className="absolute top-2 right-2 z-10">
+        <span className="absolute top-1 right-0 z-10">
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
               <Button icon={"refresh"} minimal onClick={onRefresh} />
@@ -451,25 +422,29 @@ const ResultsView: ResultsViewComponent = ({
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
                         className={`rounded-sm border py-2 px-6 flex flex-col gap-2 cursor-pointer ${
-                          l.id === layout
-                            ? "border-blue-300 border-opacity-75 text-blue-300"
-                            : "border-gray-100 border-opacity-25 text-gray-100"
+                          l.id === layout.mode
+                            ? "border-blue-800 border-opacity-75 text-blue-800"
+                            : "border-gray-800 border-opacity-25 text-gray-800"
                         }`}
                         onClick={() => {
-                          setLayout(l.id);
+                          setLayout({ ...layout, mode: l.id });
                           const resultNode = getSubTree({
                             key: "results",
                             parentUid,
                           });
-                          setInputSetting({
+                          const layoutNode = getSubTree({
                             key: "layout",
+                            parentUid: resultNode.uid,
+                          });
+                          setInputSetting({
+                            key: "mode",
                             value: l.id,
-                            blockUid: resultNode.uid,
+                            blockUid: layoutNode.uid,
                           });
                         }}
                       >
                         <Icon icon={l.icon} />
-                        <span className="capitalize">{l.id}</span>
+                        <span className="capitalize text-sm">{l.id}</span>
                       </div>
                     ))}
                   </div>
@@ -669,11 +644,12 @@ const ResultsView: ResultsViewComponent = ({
         )}
         {!hideResults &&
           (results.length !== 0 ? (
-            layout === "table" ? (
+            layout.mode === "table" ? (
               <ResultsTable
+                layout={layout}
                 columns={columns}
                 results={paginatedResults}
-                parentUid={parentUid}
+                parentUid={settings.resultNodeUid}
                 activeSort={activeSort}
                 setActiveSort={setActiveSort}
                 filters={filters}
@@ -687,15 +663,15 @@ const ResultsView: ResultsViewComponent = ({
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
               />
-            ) : layout === "line" ? (
+            ) : layout.mode === "line" ? (
               <Charts
                 type="line"
                 data={allResults}
                 columns={columns.slice(1)}
               />
-            ) : layout === "bar" ? (
+            ) : layout.mode === "bar" ? (
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
-            ) : layout === "timeline" ? (
+            ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
             ) : (
               <div style={{ padding: "16px 8px" }}>

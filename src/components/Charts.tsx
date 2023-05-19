@@ -1,6 +1,7 @@
 import React from "react";
 import { Chart, AxisOptions, AxisOptionsBase } from "react-charts";
 import { Result } from "roamjs-components/types/query-builder";
+import { Column } from "../utils/types";
 
 type ChartData = [Result[string], Result[string]];
 
@@ -11,14 +12,14 @@ const Charts = ({
 }: {
   type: AxisOptionsBase["elementType"];
   data: Result[];
-  columns: string[];
+  columns: Column[];
 }): JSX.Element => {
   const chartData = React.useMemo(
     () =>
       columns.slice(1).map((col) => {
         return {
-          label: col,
-          data: data.map((d) => [d[columns[0]], d[col]] as ChartData),
+          label: col.key,
+          data: data.map((d) => [d[columns[0].key], d[col.key]] as ChartData),
         };
       }),
     [data, columns]
