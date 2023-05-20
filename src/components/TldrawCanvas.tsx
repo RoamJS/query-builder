@@ -118,6 +118,7 @@ const LabelDialog = ({
   onCancel,
   nodeType,
 }: RoamOverlayProps<NodeDialogProps>) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [options, setOptions] = useState<string[]>([]);
   const defaultValue = useMemo(() => {
@@ -149,6 +150,10 @@ const LabelDialog = ({
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
+  const onCancelClick = () => {
+    onCancel();
+    onClose();
+  };
   useEffect(() => {
     if (nodeType !== TEXT_TYPE) {
       const conditionUid = window.roamAlphaAPI.util.generateUID();
@@ -167,6 +172,31 @@ const LabelDialog = ({
       }).then((results) => setOptions(results.map((r) => r.text)));
     }
   }, [nodeType, setOptions]);
+  const touchRef = useRef<EventTarget | null>();
+  useEffect(() => {
+    const { current } = containerRef;
+    if (!current) return;
+    const touchStartListener = (e: TouchEvent) => {
+      if (!!(e.target as HTMLElement)?.closest(".roamjs-autocomplete-input"))
+        return;
+      touchRef.current = e.target;
+    };
+    const touchEndListener = (e: TouchEvent) => {
+      if (
+        touchRef.current === e.target &&
+        e.target !== null &&
+        !current.contains(e.target as HTMLElement)
+      ) {
+        onCancelClick();
+      }
+    };
+    document.body.addEventListener("touchstart", touchStartListener);
+    document.body.addEventListener("touchend", touchEndListener);
+    return () => {
+      document.body.removeEventListener("touchstart", touchStartListener);
+      document.body.removeEventListener("touchend", touchEndListener);
+    };
+  }, [containerRef, onCancelClick, touchRef]);
   return (
     <>
       <Dialog
@@ -178,7 +208,7 @@ const LabelDialog = ({
         autoFocus={false}
         className={"roamjs-discourse-playground-dialog"}
       >
-        <div className={Classes.DIALOG_BODY}>
+        <div className={Classes.DIALOG_BODY} ref={containerRef}>
           {nodeType !== TEXT_TYPE ? (
             <AutocompleteInput
               value={label}
@@ -209,10 +239,8 @@ const LabelDialog = ({
             {loading && <Spinner size={SpinnerSize.SMALL} />}
             <Button
               text={"Cancel"}
-              onClick={() => {
-                onCancel();
-                onClose();
-              }}
+              onClick={onCancelClick}
+              onTouchEnd={onCancelClick}
               disabled={loading}
               className="flex-shrink-0"
             />
@@ -220,6 +248,7 @@ const LabelDialog = ({
               text={"Set"}
               intent={Intent.PRIMARY}
               onClick={onSubmit}
+              onTouchEnd={onSubmit}
               disabled={loading}
               className="flex-shrink-0"
             />
@@ -409,85 +438,92 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             ? new RegExp(alias).exec(shape.props.title)?.[1] ||
               shape.props.title
             : shape.props.title}
-          <LabelDialog
-            isOpen={isEditing}
-            onClose={() => {
-              this.app.setEditingId(null);
-            }}
-            label={shape.props.title}
-            nodeType={this.type}
-            onSuccess={async (label) => {
-              setClosing(true);
-              const oldTitle = getPageTitleByPageUid(shape.props.uid);
-              let finalUid = shape.props.uid;
-              if (oldTitle && oldTitle !== label) {
-                await window.roamAlphaAPI.updatePage({
-                  page: {
-                    uid: shape.props.uid,
-                    title: label,
-                  },
+          {isEditing && (
+            <LabelDialog
+              isOpen={true}
+              onClose={() => {
+                this.app.setEditingId(null);
+              }}
+              label={shape.props.title}
+              nodeType={this.type}
+              onSuccess={async (label) => {
+                setClosing(true);
+                const oldTitle = getPageTitleByPageUid(shape.props.uid);
+                let finalUid = shape.props.uid;
+                if (oldTitle && oldTitle !== label) {
+                  await window.roamAlphaAPI.updatePage({
+                    page: {
+                      uid: shape.props.uid,
+                      title: label,
+                    },
+                  });
+                } else if (isLiveBlock(shape.props.uid)) {
+                  const newUid = getPageUidByPageTitle(label);
+                  if (newUid) {
+                    finalUid = newUid;
+                    this.updateProps(shape.id, {
+                      uid: newUid,
+                    });
+                  } else {
+                    await updateBlock({
+                      uid: shape.props.uid,
+                      text: label,
+                    });
+                  }
+                } else if (!oldTitle) {
+                  const newUid = getPageUidByPageTitle(label);
+                  if (newUid) {
+                    finalUid = newUid;
+                    this.updateProps(shape.id, {
+                      uid: newUid,
+                    });
+                  } else {
+                    // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
+                    const nodeTree = getFullTreeByParentUid(
+                      shape.type
+                    ).children;
+                    const template = getSubTree({
+                      tree: nodeTree,
+                      key: "template",
+                    }).children;
+                    const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
+                      n.map(({ uid, children, ...c }) => ({
+                        ...c,
+                        children: stripUid(children),
+                      }));
+                    const tree = stripUid(template);
+                    await createPage({
+                      title: label,
+                      uid: shape.props.uid,
+                      tree,
+                    });
+                  }
+                }
+                const allRecords = this.app.store.allRecords();
+                const relationIds = new Set(
+                  discourseContext.relations.map((r) => r.id)
+                );
+                this.deleteRelationsInCanvas(shape, {
+                  allRecords,
+                  relationIds,
                 });
-              } else if (isLiveBlock(shape.props.uid)) {
-                const newUid = getPageUidByPageTitle(label);
-                if (newUid) {
-                  finalUid = newUid;
-                  this.updateProps(shape.id, {
-                    uid: newUid,
-                  });
-                } else {
-                  await updateBlock({
-                    uid: shape.props.uid,
-                    text: label,
-                  });
+                this.updateProps(shape.id, {
+                  title: label,
+                });
+                await this.createExistingRelations(shape, {
+                  allRecords,
+                  relationIds,
+                  finalUid,
+                });
+                setClosing(false);
+              }}
+              onCancel={() => {
+                if (!isLiveBlock(shape.props.uid)) {
+                  this.app.deleteShapes([shape.id]);
                 }
-              } else if (!oldTitle) {
-                const newUid = getPageUidByPageTitle(label);
-                if (newUid) {
-                  finalUid = newUid;
-                  this.updateProps(shape.id, {
-                    uid: newUid,
-                  });
-                } else {
-                  // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
-                  const nodeTree = getFullTreeByParentUid(shape.type).children;
-                  const template = getSubTree({
-                    tree: nodeTree,
-                    key: "template",
-                  }).children;
-                  const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-                    n.map(({ uid, children, ...c }) => ({
-                      ...c,
-                      children: stripUid(children),
-                    }));
-                  const tree = stripUid(template);
-                  await createPage({
-                    title: label,
-                    uid: shape.props.uid,
-                    tree,
-                  });
-                }
-              }
-              const allRecords = this.app.store.allRecords();
-              const relationIds = new Set(
-                discourseContext.relations.map((r) => r.id)
-              );
-              this.deleteRelationsInCanvas(shape, { allRecords, relationIds });
-              this.updateProps(shape.id, {
-                title: label,
-              });
-              await this.createExistingRelations(shape, {
-                allRecords,
-                relationIds,
-                finalUid,
-              });
-              setClosing(false);
-            }}
-            onCancel={() => {
-              if (!isLiveBlock(shape.props.uid)) {
-                this.app.deleteShapes([shape.id]);
-              }
-            }}
-          />
+              }}
+            />
+          )}
         </div>
       </HTMLContainer>
     );
