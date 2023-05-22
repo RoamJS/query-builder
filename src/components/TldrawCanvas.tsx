@@ -92,7 +92,6 @@ type Props = {
 };
 
 const THROTTLE = 350;
-const TEXT_TYPE = "&TEX-node";
 const isPageUid = (uid: string) =>
   !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
     ":node/title"
@@ -123,7 +122,6 @@ const LabelDialog = ({
   const [options, setOptions] = useState<string[]>([]);
   const defaultValue = useMemo(() => {
     if (_label) return _label;
-    if (nodeType === TEXT_TYPE) return "";
     const { specification, text } = discourseContext.nodes[nodeType];
     if (!specification.length) return "";
     // CURRENT ASSUMPTIONS:
@@ -155,22 +153,20 @@ const LabelDialog = ({
     onClose();
   };
   useEffect(() => {
-    if (nodeType !== TEXT_TYPE) {
-      const conditionUid = window.roamAlphaAPI.util.generateUID();
-      fireQuery({
-        returnNode: "node",
-        selections: [],
-        conditions: [
-          {
-            source: "node",
-            relation: "is a",
-            target: nodeType,
-            uid: conditionUid,
-            type: "clause",
-          },
-        ],
-      }).then((results) => setOptions(results.map((r) => r.text)));
-    }
+    const conditionUid = window.roamAlphaAPI.util.generateUID();
+    fireQuery({
+      returnNode: "node",
+      selections: [],
+      conditions: [
+        {
+          source: "node",
+          relation: "is a",
+          target: nodeType,
+          uid: conditionUid,
+          type: "clause",
+        },
+      ],
+    }).then((results) => setOptions(results.map((r) => r.text)));
   }, [nodeType, setOptions]);
   const touchRef = useRef<EventTarget | null>();
   useEffect(() => {
@@ -209,29 +205,14 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
-          {nodeType !== TEXT_TYPE ? (
-            <AutocompleteInput
-              value={label}
-              setValue={setLabel}
-              onConfirm={onSubmit}
-              options={options}
-              multiline
-              autoFocus
-            />
-          ) : (
-            <TextArea
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onSubmit();
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              }}
-              autoFocus
-            />
-          )}
+          <AutocompleteInput
+            value={label}
+            setValue={setLabel}
+            onConfirm={onSubmit}
+            options={options}
+            multiline
+            autoFocus
+          />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
           <div className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center`}>
@@ -277,7 +258,7 @@ const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
-  constructor(app: TldrawApp, type = TEXT_TYPE) {
+  constructor(app: TldrawApp, type: string) {
     super(app, type);
   }
 
@@ -427,7 +408,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               COLOR_ARRAY[
                 discourseNodeIndex >= 0 &&
                 discourseNodeIndex < COLOR_ARRAY.length - 1
-                  ? discourseNodeIndex + 1
+                  ? discourseNodeIndex
                   : 0
               ]
             })`,
@@ -491,7 +472,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                         ...c,
                         children: stripUid(children),
                       }));
-                    const tree = stripUid(template);
+                    const tree = template.length
+                      ? stripUid(template)
+                      : [{ text: "" }];
                     await createPage({
                       title: label,
                       uid: shape.props.uid,
@@ -631,22 +614,10 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
-  const allNodesWithTextNode = useMemo(
-    () =>
-      [
-        {
-          type: TEXT_TYPE,
-          shortcut: "t",
-          canvasSettings: {} as Record<string, string>,
-          text: "Text Node",
-        },
-      ].concat(allNodes),
-    [allNodes]
-  );
   const customTldrawConfig = useMemo(
     () =>
       new TldrawEditorConfig({
-        tools: allNodesWithTextNode
+        tools: allNodes
           .map(
             (n): StateNodeConstructor =>
               class extends TLBoxTool {
@@ -833,7 +804,7 @@ const TldrawCanvas = ({ title }: Props) => {
             },
           ]),
         shapes: [
-          ...allNodesWithTextNode.map((n) =>
+          ...allNodes.map((n) =>
             defineShape<DiscourseNodeShape>({
               type: n.type,
               getShapeUtil: () =>
@@ -858,7 +829,7 @@ const TldrawCanvas = ({ title }: Props) => {
         ],
         allowUnknownShapes: true,
       }),
-    [allNodesWithTextNode, allRelationIds, allRelationsById]
+    [allNodes, allRelationIds, allRelationsById]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -985,19 +956,21 @@ const TldrawCanvas = ({ title }: Props) => {
           }
         : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
       const nodeType = findDiscourseNode(e.detail.uid, allNodes);
-      app.createShapes([
-        {
-          type: nodeType ? nodeType.type : TEXT_TYPE,
-          id: createShapeId(),
-          props: {
-            uid: e.detail.uid,
-            title: e.detail.val,
+      if (nodeType) {
+        app.createShapes([
+          {
+            type: nodeType.type,
+            id: createShapeId(),
+            props: {
+              uid: e.detail.uid,
+              title: e.detail.val,
+            },
+            ...position,
           },
-          ...position,
-        },
-      ]);
-      lastInsertRef.current = position;
-      e.detail.onRefresh();
+        ]);
+        lastInsertRef.current = position;
+        e.detail.onRefresh();
+      }
     }) as EventListener;
     document.addEventListener("roamjs:query-builder:action", actionListener);
     return () => {
@@ -1086,10 +1059,7 @@ const TldrawCanvas = ({ title }: Props) => {
             translations: {
               en: {
                 ...Object.fromEntries(
-                  allNodesWithTextNode.map((node) => [
-                    `shape.node.${node.type}`,
-                    node.text,
-                  ])
+                  allNodes.map((node) => [`shape.node.${node.type}`, node.text])
                 ),
                 ...Object.fromEntries(
                   allRelationIds.map((id) => [
@@ -1113,7 +1083,7 @@ const TldrawCanvas = ({ title }: Props) => {
               return actions;
             },
             tools(app, tools) {
-              allNodesWithTextNode.forEach((node, index) => {
+              allNodes.forEach((node, index) => {
                 tools[node.type] = {
                   id: node.type,
                   icon: "color",
@@ -1149,7 +1119,7 @@ const TldrawCanvas = ({ title }: Props) => {
             },
             toolbar(_app, toolbar, { tools }) {
               toolbar.push(
-                ...allNodesWithTextNode.map((n) => toolbarItem(tools[n.type])),
+                ...allNodes.map((n) => toolbarItem(tools[n.type])),
                 ...allRelationIds.map((id) => toolbarItem(tools[id]))
               );
               return toolbar;
@@ -1159,7 +1129,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 (group) => group.id === "shortcuts-dialog.tools"
               ) as MenuGroup;
               toolsGroup.children.push(
-                ...allNodesWithTextNode.map((n) => menuItem(tools[n.type]))
+                ...allNodes.map((n) => menuItem(tools[n.type]))
               );
               return keyboardShortcutsMenu;
             },
