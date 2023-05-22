@@ -42,7 +42,6 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
-import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -158,6 +157,17 @@ svg.rs-svg-container {
 .roamjs-tldraw-node .rm-api-render--block .rm-block__controls,
 .rs-shape .rm-api-render--block .rm-block__ref-count {
   display: none;
+}
+
+.roamjs-kanban-container .react-draggable-dragging.roamjs-kanban-card > div {
+  transform: rotate(20deg);
+  cursor: grabbing;
+  z-index: 1000;
+}
+
+.roamjs-kanban-container .react-draggable.roamjs-kanban-card > div {
+  transform: rotate(0deg);
+  cursor: pointer;
 }`);
     const isCanvasPage = (title: string) => {
       const canvasPageFormat =
@@ -676,7 +686,9 @@ svg.rs-svg-container {
           json
         >;
         renderCustomBlockView({
-          view: qbprops["view"] as string,
+          view: qbprops[
+            "view"
+          ] as string,
           blockUid,
           parent: b,
         });

@@ -197,7 +197,11 @@ const SUPPORTED_LAYOUTS = [
     icon: "timeline-events",
     settings: [],
   },
-  { id: "kanban", icon: "heat-grid", settings: [] },
+  {
+    id: "kanban",
+    icon: "heat-grid",
+    settings: [{ key: "key", label: "Group By", options: "columns" }],
+  },
 ] as const;
 const settingsById = Object.fromEntries(
   SUPPORTED_LAYOUTS.map((l) => [l.id, l.settings])
@@ -212,7 +216,7 @@ type ResultsViewComponent = (props: {
   preventSavingSettings?: boolean;
   preventExport?: boolean;
   onEdit?: () => void;
-  onRefresh: () => void;
+  onRefresh: (loadInBackground?: boolean) => void;
   getExportTypes?: (r: Result[]) => ExportTypes;
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
@@ -285,9 +289,7 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
-  const [layout, setLayout] = useState(
-    settings.layout || SUPPORTED_LAYOUTS[0].id
-  );
+  const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
     () => (Array.isArray(layout.mode) ? layout.mode[0] : layout.mode),
     [layout]
@@ -377,7 +379,7 @@ const ResultsView: ResultsViewComponent = ({
         >
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
-              <Button icon={"refresh"} minimal onClick={onRefresh} />
+              <Button icon={"refresh"} minimal onClick={() => onRefresh()} />
             </Tooltip>
           )}
           <Popover
@@ -459,8 +461,8 @@ const ResultsView: ResultsViewComponent = ({
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
-                        className={`rounded-sm border p-2 flex flex-col gap-2 cursor-pointer justify-center items-center ${
-                          l.id === layout.mode
+                        className={`rounded-sm border p-2 flex flex-col gap-2 items-center justify-center cursor-pointer ${
+                          l.id === layoutMode
                             ? "border-blue-800 border-opacity-75 text-blue-800"
                             : "border-gray-800 border-opacity-25 text-gray-800"
                         }`}
@@ -488,31 +490,37 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                   </div>
-                  {settingsById[layoutMode].map((s) => (
-                    <Label key={s.key}>
-                      {s.label}
-                      <MenuItemSelect
-                        activeItem={head(layout[s.key]) || s.options[0]}
-                        onItemSelect={(value) => {
-                          setLayout({ ...layout, [s.key]: value });
-                          const resultNode = getSubTree({
-                            key: "results",
-                            parentUid,
-                          });
-                          const layoutNode = getSubTree({
-                            key: "layout",
-                            parentUid: resultNode.uid,
-                          });
-                          setInputSetting({
-                            key: s.key,
-                            value,
-                            blockUid: layoutNode.uid,
-                          });
-                        }}
-                        items={s.options.slice()}
-                      />
-                    </Label>
-                  ))}
+                  {settingsById[layoutMode].map((s) => {
+                    const options =
+                      s.options === "columns"
+                        ? columns.slice(1).map((c) => c.key)
+                        : s.options.slice();
+                    return (
+                      <Label key={s.key}>
+                        {s.label}
+                        <MenuItemSelect
+                          activeItem={head(layout[s.key]) || options[0]}
+                          onItemSelect={(value) => {
+                            setLayout({ ...layout, [s.key]: value });
+                            const resultNode = getSubTree({
+                              key: "results",
+                              parentUid,
+                            });
+                            const layoutNode = getSubTree({
+                              key: "layout",
+                              parentUid: resultNode.uid,
+                            });
+                            setInputSetting({
+                              key: s.key,
+                              value,
+                              blockUid: layoutNode.uid,
+                            });
+                          }}
+                          items={options}
+                        />
+                      </Label>
+                    );
+                  })}
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
@@ -726,7 +734,7 @@ const ResultsView: ResultsViewComponent = ({
         )}
         {!hideResults &&
           (results.length !== 0 ? (
-            layout.mode === "table" ? (
+            layoutMode === "table" ? (
               <ResultsTable
                 layout={layout}
                 columns={columns}
@@ -746,21 +754,26 @@ const ResultsView: ResultsViewComponent = ({
                 allResultsLength={allResults.length}
                 showInterface={showInterface}
               />
-            ) : layout.mode === "line" ? (
+            ) : layoutMode === "line" ? (
               <Charts
                 type="line"
                 data={allResults}
                 columns={columns.slice(1)}
               />
-            ) : layout.mode === "bar" ? (
+            ) : layoutMode === "bar" ? (
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
-            ) : layout.mode === "timeline" ? (
+            ) : layoutMode === "timeline" ? (
               <Timeline timelineElements={allResults} />
-            ) : layout.mode === "kanban" ? (
-              <Kanban data={allResults} layout={layout} onQuery={onRefresh} />
+            ) : layoutMode === "kanban" ? (
+              <Kanban
+                data={allResults}
+                layout={layout}
+                onQuery={() => onRefresh(true)}
+                resultKeys={columns.slice(1)}
+              />
             ) : (
               <div style={{ padding: "16px 8px" }}>
-                Layout `{layout}` is not supported
+                Layout `{layoutMode}` is not supported
               </div>
             )
           ) : (

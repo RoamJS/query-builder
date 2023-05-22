@@ -1,4 +1,10 @@
-export type json = string | number | boolean | null | json[] | { [key: string]: json };
+export type json =
+  | string
+  | number
+  | boolean
+  | null
+  | json[]
+  | { [key: string]: json };
 
 export const normalizeProps = (props: json): json =>
   typeof props === "object"
@@ -22,7 +28,7 @@ const getBlockProps = (uid: string) =>
   normalizeProps(
     (window.roamAlphaAPI.pull("[:block/props]", [":block/uid", uid])?.[
       ":block/props"
-    ] || {}) as json
-  );
+    ] || {}) as Record<string, json>
+  ) as Record<string, json>;
 
 export default getBlockProps;

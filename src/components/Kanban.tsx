@@ -1,6 +1,6 @@
 // Design inspiration from Trello
 import React from "react";
-import { Result } from "../utils/types";
+import { Column, Result } from "../utils/types";
 import { Button, Icon, InputGroup } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
@@ -9,7 +9,6 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 import { z } from "zod";
 import updateBlock from "roamjs-components/writes/updateBlock";
 
-const columnKey = "status";
 const zPriority = z.record(z.number().min(0).max(1));
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
@@ -53,20 +52,7 @@ const KanbanCard = (card: {
           }
         }}
       >
-        <div
-          className={`rounded-xl bg-white p-4 hover:bg-gray-200`}
-          style={
-            isDragging
-              ? {
-                  transform: "rotate(20deg)",
-                  cursor: "grabbing",
-                }
-              : {
-                  cursor: "pointer",
-                  transform: "rotate(0deg)",
-                }
-          }
-        >
+        <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
           {card.text}
         </div>
       </div>
@@ -86,7 +72,9 @@ const Kanban = ({
   data,
   layout,
   onQuery,
+  resultKeys,
 }: {
+  resultKeys: Column[];
   data: Result[];
   layout: Record<string, string | string[]>;
   onQuery: () => void;
@@ -94,6 +82,15 @@ const Kanban = ({
   const byUid = React.useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
+  );
+  const columnKey = React.useMemo(
+    () =>
+      Array.isArray(layout.key)
+        ? layout.key[0]
+        : typeof layout.key === "string"
+        ? layout.key
+        : resultKeys[1]?.key || "Status",
+    [layout.key]
   );
   const [columns, setColumns] = React.useState(() =>
     Array.isArray(layout.columns)
@@ -131,7 +128,7 @@ const Kanban = ({
   const cards = React.useMemo(() => {
     const cards: Record<string, Result[]> = {};
     data.forEach((d) => {
-      const column = d[columnKey].toString() || "Backlog";
+      const column = d[columnKey]?.toString() || `No ${columnKey}`;
       if (!cards[column]) {
         cards[column] = [];
       }
@@ -143,7 +140,7 @@ const Kanban = ({
       );
     });
     return cards;
-  }, [data, prioritization]);
+  }, [data, prioritization, columnKey]);
   React.useEffect(() => {
     const base64 = window.btoa(JSON.stringify(prioritization));
     setInputSetting({
@@ -169,7 +166,7 @@ const Kanban = ({
 
       const column = newColumn.getAttribute("data-column");
       if (!column) return;
-      // TODO: update Result with new column value. This is hard coded for the demo for now.
+      // TODO: update Result with new column value. This is hard coded for the demo for now. Reverse engineer with columnKey
       const columnUid = byUid[uid][`${columnKey}-uid`];
       updateBlock({ uid: columnUid, text: `Status:: #${column}` }).then(
         onQuery
@@ -184,27 +181,15 @@ const Kanban = ({
           const { top } = el.getBoundingClientRect();
           return y >= top;
         })?.index;
-      const cardIndex = typeof _cardIndex === "undefined" ? -1 : 0;
+      const cardIndex = typeof _cardIndex === "undefined" ? -1 : _cardIndex;
       const topCard = cards[column]?.[cardIndex];
       const bottomCard = cards[column]?.[cardIndex + 1];
       const topPriority = prioritization[topCard?.uid] || 0;
       const bottomPriority = prioritization[bottomCard?.uid] || 1;
       const priority = (topPriority + bottomPriority) / 2;
-      console.log(
-        "moved to column",
-        column,
-        "index",
-        cardIndex,
-        "priority",
-        priority,
-        "x",
-        x,
-        "y",
-        y
-      );
       setPrioritization((p) => ({ ...p, [uid]: priority }));
     },
-    [setPrioritization, cards, containerRef, byUid]
+    [setPrioritization, cards, containerRef, byUid, columnKey]
   );
   return (
     <div
@@ -258,11 +243,16 @@ const Kanban = ({
               placeholder="Enter column title..."
               value={newColumn}
               onChange={(e) => setNewColumn(e.target.value)}
+              className={"mb-2"}
             />
-            <div className="gap-4" style={{ display: "flex" }}>
+            <div
+              className="justify-between items-center"
+              style={{ display: "flex" }}
+            >
               <Button
                 intent="primary"
                 text="Add column"
+                className="text-xs"
                 onClick={() => {
                   const values = [...columns, newColumn];
                   setInputSettings({
