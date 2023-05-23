@@ -40,6 +40,23 @@ const DEFAULT_NODES: DiscourseNode[] = [
     isRelationBacked: false,
     canvasSettings: {},
   },
+  {
+    text: "Block",
+    type: "blck-node",
+    shortcut: "b",
+    format: "{content}",
+    specification: [
+      {
+        type: "clause",
+        source: "Block",
+        relation: "is in page",
+        target: "_",
+        uid: window.roamAlphaAPI.util.generateUID(),
+      },
+    ],
+    isRelationBacked: false,
+    canvasSettings: {},
+  },
 ];
 
 const getDiscourseNodes = (relations = getDiscourseRelations()) => {

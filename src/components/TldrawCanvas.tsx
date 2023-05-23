@@ -67,12 +67,12 @@ import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../utils/getDiscourseRelations";
-import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import fuzzy from "fuzzy";
 import { useValue } from "signia-react";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getBlockProps, { json, normalizeProps } from "../utils/getBlockProps";
-import { QBClause } from "../utils/types";
+import { QBClause, Result } from "../utils/types";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
@@ -102,11 +102,54 @@ const discourseContext: {
   relations: DiscourseRelation[];
 } = { nodes: {}, relations: [] };
 
+// TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
+const createDiscourseNode = async ({
+  type,
+  uid,
+  text,
+  nodes = Object.values(discourseContext.nodes),
+}: {
+  type: string;
+  uid: string;
+  text: string;
+  nodes?: DiscourseNode[];
+}) => {
+  const nodeTree = getFullTreeByParentUid(type).children;
+  const template = getSubTree({
+    tree: nodeTree,
+    key: "template",
+  }).children;
+  const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
+    n.map(({ uid, children, ...c }) => ({
+      ...c,
+      children: stripUid(children),
+    }));
+  const tree = template.length ? stripUid(template) : [{ text: "" }];
+  const specification = nodes.find((n) => n.type === type)?.specification;
+  if (
+    specification?.find(
+      (spec) => spec.type === "clause" && spec.relation === "is in page"
+    )
+  ) {
+    await createBlock({
+      parentUid: window.roamAlphaAPI.util.dateToPageUid(new Date()),
+      node: { text },
+    });
+  } else {
+    await createPage({
+      title: text,
+      uid,
+      tree,
+    });
+  }
+};
+
 type NodeDialogProps = {
   label: string;
-  onSuccess: (label: string) => Promise<void>;
+  onSuccess: (a: Result) => Promise<void>;
   onCancel: () => void;
   nodeType: string;
+  initialUid: string;
 };
 
 const LabelDialog = ({
@@ -116,11 +159,12 @@ const LabelDialog = ({
   onSuccess,
   onCancel,
   nodeType,
+  initialUid,
 }: RoamOverlayProps<NodeDialogProps>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
-  const [options, setOptions] = useState<string[]>([]);
-  const defaultValue = useMemo(() => {
+  const [options, setOptions] = useState<Result[]>([]);
+  const initialLabel = useMemo(() => {
     if (_label) return _label;
     const { specification, text } = discourseContext.nodes[nodeType];
     if (!specification.length) return "";
@@ -139,11 +183,15 @@ const LabelDialog = ({
       .replace(/\\\]/g, "]")
       .replace(/\(\.[\*\+](\?)?\)/g, "");
   }, [_label, nodeType]);
-  const [label, setLabel] = useState(defaultValue);
+  const initialValue = useMemo(() => {
+    return { text: initialLabel, uid: initialUid };
+  }, [initialLabel, initialUid]);
+  const [label, setLabel] = useState(initialValue.text);
+  const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
   const onSubmit = () => {
     setLoading(true);
-    onSuccess(label)
+    onSuccess({ text: label, uid })
       .then(onClose)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -166,7 +214,7 @@ const LabelDialog = ({
           type: "clause",
         },
       ],
-    }).then((results) => setOptions(results.map((r) => r.text)));
+    }).then((results) => setOptions(results));
   }, [nodeType, setOptions]);
   const touchRef = useRef<EventTarget | null>();
   useEffect(() => {
@@ -193,12 +241,35 @@ const LabelDialog = ({
       document.body.removeEventListener("touchend", touchEndListener);
     };
   }, [containerRef, onCancelClick, touchRef]);
+  const setValue = React.useCallback(
+    (r: Result) => {
+      setLabel(r.text);
+      setUid(r.uid);
+    },
+    [setLabel, setUid]
+  );
+  const onNewItem = React.useCallback(
+    (text: string) => ({ text, uid: initialUid }),
+    [initialUid]
+  );
+  const itemToQuery = React.useCallback(
+    (result?: Result) => result?.text || "",
+    []
+  );
+  const filterOptions = React.useCallback(
+    (o: Result[], q: string) =>
+      fuzzy
+        .filter(q, o, { extract: itemToQuery })
+        .map((f) => f.original)
+        .filter((f): f is Result => !!f),
+    [itemToQuery]
+  );
   return (
     <>
       <Dialog
         isOpen={isOpen}
         title={"Edit Discourse Node Label"}
-        onClose={onClose}
+        onClose={onCancelClick}
         canOutsideClickClose
         canEscapeKeyClose
         autoFocus={false}
@@ -206,12 +277,15 @@ const LabelDialog = ({
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
           <AutocompleteInput
-            value={label}
-            setValue={setLabel}
+            value={initialValue}
+            setValue={setValue}
             onConfirm={onSubmit}
             options={options}
             multiline
             autoFocus
+            onNewItem={onNewItem}
+            itemToQuery={itemToQuery}
+            filterOptions={filterOptions}
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
@@ -421,67 +495,41 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             : shape.props.title}
           {isEditing && (
             <LabelDialog
+              initialUid={shape.props.uid}
               isOpen={true}
               onClose={() => {
                 this.app.setEditingId(null);
               }}
               label={shape.props.title}
               nodeType={this.type}
-              onSuccess={async (label) => {
+              onSuccess={async ({ text, uid }) => {
                 setClosing(true);
-                const oldTitle = getPageTitleByPageUid(shape.props.uid);
-                let finalUid = shape.props.uid;
-                if (oldTitle && oldTitle !== label) {
-                  await window.roamAlphaAPI.updatePage({
-                    page: {
-                      uid: shape.props.uid,
-                      title: label,
-                    },
-                  });
-                } else if (isLiveBlock(shape.props.uid)) {
-                  const newUid = getPageUidByPageTitle(label);
-                  if (newUid) {
-                    finalUid = newUid;
-                    this.updateProps(shape.id, {
-                      uid: newUid,
-                    });
+                // If we get a new uid, all the necessary updates happen below
+                if (shape.props.uid === uid) {
+                  if (shape.props.title) {
+                    if (shape.props.title === text) {
+                      // nothing to update I think
+                      setClosing(false);
+                      return;
+                    } else {
+                      if (isPageUid(shape.props.uid))
+                        await window.roamAlphaAPI.updatePage({
+                          page: {
+                            uid: shape.props.uid,
+                            title: text,
+                          },
+                        });
+                      else await updateBlock({ uid: shape.props.uid, text });
+                    }
                   } else {
-                    await updateBlock({
-                      uid: shape.props.uid,
-                      text: label,
-                    });
-                  }
-                } else if (!oldTitle) {
-                  const newUid = getPageUidByPageTitle(label);
-                  if (newUid) {
-                    finalUid = newUid;
-                    this.updateProps(shape.id, {
-                      uid: newUid,
-                    });
-                  } else {
-                    // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
-                    const nodeTree = getFullTreeByParentUid(
-                      shape.type
-                    ).children;
-                    const template = getSubTree({
-                      tree: nodeTree,
-                      key: "template",
-                    }).children;
-                    const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-                      n.map(({ uid, children, ...c }) => ({
-                        ...c,
-                        children: stripUid(children),
-                      }));
-                    const tree = template.length
-                      ? stripUid(template)
-                      : [{ text: "" }];
-                    await createPage({
-                      title: label,
-                      uid: shape.props.uid,
-                      tree,
+                    createDiscourseNode({
+                      type: shape.type,
+                      text,
+                      uid,
                     });
                   }
                 }
+
                 const allRecords = this.app.store.allRecords();
                 const relationIds = new Set(
                   discourseContext.relations.map((r) => r.id)
@@ -491,12 +539,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   relationIds,
                 });
                 this.updateProps(shape.id, {
-                  title: label,
+                  title: text,
+                  uid,
                 });
                 await this.createExistingRelations(shape, {
                   allRecords,
                   relationIds,
-                  finalUid,
+                  finalUid: uid,
                 });
                 setClosing(false);
               }}
@@ -761,18 +810,20 @@ const TldrawCanvas = ({ title }: Props) => {
                             relation,
                             target,
                           }));
-                        const recentlyOpened = new Set<string>();
                         triplesToBlocks({
                           defaultPageTitle: `Auto generated from ${title}`,
-                          toPage: (title: string, blocks: InputTextNode[]) => {
-                            const parentUid = getPageUidByPageTitle(title);
-                            return Promise.resolve(
-                              parentUid ||
-                                createPage({
-                                  title: title,
-                                })
-                            ).then((parentUid) => {
-                              blocks.forEach((node, order) =>
+                          toPage: async (
+                            title: string,
+                            blocks: InputTextNode[]
+                          ) => {
+                            const parentUid =
+                              getPageUidByPageTitle(title) ||
+                              (await createPage({
+                                title: title,
+                              }));
+
+                            await Promise.all(
+                              blocks.map((node, order) =>
                                 createBlock({ node, order, parentUid }).catch(
                                   () =>
                                     console.error(
@@ -783,16 +834,9 @@ const TldrawCanvas = ({ title }: Props) => {
                                       )}`
                                     )
                                 )
-                              );
-                              // TODO - do we really need this...
-                              if (!recentlyOpened.has(parentUid)) {
-                                recentlyOpened.add(parentUid);
-                                setTimeout(
-                                  () => openBlockInSidebar(parentUid),
-                                  1000
-                                );
-                              }
-                            });
+                              )
+                            );
+                            await openBlockInSidebar(parentUid);
                           },
                         })(newTriples)();
                       };
@@ -1009,6 +1053,7 @@ const TldrawCanvas = ({ title }: Props) => {
             tldrawApps[title] = app;
           }
           appRef.current = app;
+          // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (e) => {
             if (
               e.shiftKey &&
@@ -1016,16 +1061,15 @@ const TldrawCanvas = ({ title }: Props) => {
               e.shape.props?.uid &&
               e.name === "pointer_up"
             ) {
-              if (
-                !getPageTitleByPageUid(e.shape.props.uid) &&
-                !isLiveBlock(e.shape.props.uid)
-              ) {
+              if (!isLiveBlock(e.shape.props.uid)) {
+                // TODO - it shouldn't be possible to shift click a discourse node that isn't a live block - turn into a warning instead
                 if (!e.shape.props.title) {
                   return;
                 }
-                createPage({
+                createDiscourseNode({
                   uid: e.shape.props.uid,
-                  title: e.shape.props.title,
+                  text: e.shape.props.title,
+                  type: e.shape.type,
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
