@@ -769,7 +769,7 @@ const ResultsView: ResultsViewComponent = ({
                 data={allResults}
                 layout={layout}
                 onQuery={() => onRefresh(true)}
-                resultKeys={columns.slice(1)}
+                resultKeys={columns}
               />
             ) : (
               <div style={{ padding: "16px 8px" }}>

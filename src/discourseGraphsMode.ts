@@ -35,7 +35,7 @@ import isDiscourseNode from "./utils/isDiscourseNode";
 import isFlagEnabled from "./utils/isFlagEnabled";
 import addStyle from "roamjs-components/dom/addStyle";
 import { render as exportRender } from "./components/ExportDialog";
-import { registerSelection } from "./utils/fireQuery";
+import { registerSelection } from "./utils/predefinedSelections";
 import deriveNodeAttribute from "./utils/deriveDiscourseNodeAttribute";
 import matchDiscourseNode from "./utils/matchDiscourseNode";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";

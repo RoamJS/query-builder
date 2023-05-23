@@ -159,7 +159,7 @@ svg.rs-svg-container {
   display: none;
 }
 
-.roamjs-kanban-container .react-draggable-dragging.roamjs-kanban-card > div {
+.roamjs-kanban-container div.react-draggable-dragging.roamjs-kanban-card > div {
   transform: rotate(20deg);
   cursor: grabbing;
   z-index: 1000;
@@ -708,6 +708,8 @@ svg.rs-svg-container {
       unload: () => {
         window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
         toggleDiscourseGraphsMode(false);
+        // @ts-ignore - tldraw throws a warning on multiple loads
+        delete window[Symbol.for("__signia__")];
       },
     };
   },

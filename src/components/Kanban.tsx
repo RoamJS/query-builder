@@ -8,6 +8,8 @@ import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import { z } from "zod";
 import updateBlock from "roamjs-components/writes/updateBlock";
+import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import predefinedSelections from "../utils/predefinedSelections";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -141,6 +143,10 @@ const Kanban = ({
     });
     return cards;
   }, [data, prioritization, columnKey]);
+  const potentialColumns = React.useMemo(() => {
+    const columnSet = new Set(columns);
+    return Object.keys(cards).filter((c) => !columnSet.has(c));
+  }, [cards, columns]);
   React.useEffect(() => {
     const base64 = window.btoa(JSON.stringify(prioritization));
     setInputSetting({
@@ -166,14 +172,11 @@ const Kanban = ({
 
       const column = newColumn.getAttribute("data-column");
       if (!column) return;
-      // TODO: update Result with new column value. This is hard coded for the demo for now. Reverse engineer with columnKey
-      const columnUid = byUid[uid][`${columnKey}-uid`];
-      updateBlock({ uid: columnUid, text: `Status:: #${column}` }).then(
-        onQuery
-      );
 
       const _cardIndex = Array.from(
-        newColumn.querySelectorAll(".roamjs-kanban-card")
+        newColumn.querySelectorAll(
+          ".roamjs-kanban-card:not(.react-draggable-dragging)"
+        )
       )
         .map((el, index) => ({ el, index }))
         .reverse()
@@ -188,6 +191,26 @@ const Kanban = ({
       const bottomPriority = prioritization[bottomCard?.uid] || 1;
       const priority = (topPriority + bottomPriority) / 2;
       setPrioritization((p) => ({ ...p, [uid]: priority }));
+
+      const result = byUid[uid];
+      if (!result) return;
+      const columnKeySelection = resultKeys.find(
+        (rk) => rk.key === columnKey
+      )?.selection;
+      if (!columnKeySelection) return;
+      const predefinedSelection = predefinedSelections.find((ps) =>
+        ps.test.test(columnKeySelection)
+      );
+      if (!predefinedSelection?.update) return;
+      const { [`${columnKey}-uid`]: columnUid } = result;
+      if (typeof columnUid !== "string") return;
+      predefinedSelection
+        .update({
+          uid: columnUid,
+          value: column,
+          selection: columnKeySelection,
+        })
+        .then(onQuery);
     },
     [setPrioritization, cards, containerRef, byUid, columnKey]
   );
@@ -239,14 +262,14 @@ const Kanban = ({
       <div className="w-48 flex-shrink-0">
         {isAdding ? (
           <div className="rounded-2xl p-4 bg-gray-100">
-            <InputGroup
+            <AutocompleteInput
               placeholder="Enter column title..."
               value={newColumn}
-              onChange={(e) => setNewColumn(e.target.value)}
-              className={"mb-2"}
+              setValue={setNewColumn}
+              options={potentialColumns}
             />
             <div
-              className="justify-between items-center"
+              className="justify-between items-center mt-2"
               style={{ display: "flex" }}
             >
               <Button

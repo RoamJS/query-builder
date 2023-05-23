@@ -45,7 +45,7 @@ export type Result = {
 } & Record<`${string}-uid`, string> &
   Record<string, string | number | Date>;
 
-export type Column = { key: string; uid: string };
+export type Column = { key: string; uid: string; selection: string };
 
 export type QBGlobalRefs = {
   [key: string]: (args: Record<string, string>) => void;

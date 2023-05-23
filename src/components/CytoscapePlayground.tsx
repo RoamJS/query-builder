@@ -51,7 +51,9 @@ import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
 import { QBGlobalRefs } from "../utils/types";
 
-if (window.RoamLazy) window.RoamLazy.Cytoscape().then(navigator);
+if (window.RoamLazy) window.RoamLazy.Cytoscape().then(cy => {
+  navigator
+});
 const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
 const trashCursor =

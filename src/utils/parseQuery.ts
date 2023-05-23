@@ -105,11 +105,12 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
       {
         key: selections.find((s) => s.text === "node")?.label || "text",
         uid: returnNodeUid,
+        selection: "node",
       },
     ].concat(
       selections
         .filter((s) => s.text !== "node")
-        .map((s) => ({ uid: s.uid, key: s.label }))
+        .map((s) => ({ uid: s.uid, key: s.label, selection: s.text }))
     ),
   };
 };
