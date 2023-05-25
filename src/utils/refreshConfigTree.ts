@@ -1,10 +1,20 @@
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
-import getPageTitlesStartingWithPrefix from "roamjs-components/queries/getPageTitlesStartingWithPrefix";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getDiscourseRelationLabels from "./getDiscourseRelationLabels";
 import discourseConfigRef from "./discourseConfigRef";
 import registerDiscourseDatalogTranslators from "./registerDiscourseDatalogTranslators";
 import { unregisterDatalogTranslator } from "./conditionToDatalog";
+import type { PullBlock } from "roamjs-components/types/native";
+
+const getPagesStartingWithPrefix = (prefix: string) =>
+  (
+    window.roamAlphaAPI.data.fast.q(
+      `[:find (pull ?b [:block/uid :node/title]) :where [?b :node/title ?title] [(clojure.string/starts-with? ?title  "${prefix}")]]`
+    ) as [PullBlock][]
+  ).map((r) => ({
+    title: r[0][":node/title"] || '',
+    uid: r[0][":block/uid"] || '',
+  }));
 
 const refreshConfigTree = () => {
   getDiscourseRelationLabels().forEach((key) =>
@@ -13,10 +23,9 @@ const refreshConfigTree = () => {
   discourseConfigRef.tree = getBasicTreeByParentUid(
     getPageUidByPageTitle("roam/js/discourse-graph")
   );
-  const titles = getPageTitlesStartingWithPrefix("discourse-graph/nodes");
+  const pages = getPagesStartingWithPrefix("discourse-graph/nodes");
   discourseConfigRef.nodes = Object.fromEntries(
-    titles.map((title) => {
-      const uid = getPageUidByPageTitle(title);
+    pages.map(({ title, uid }) => {
       return [
         uid,
         {

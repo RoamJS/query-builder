@@ -398,7 +398,8 @@ const registerDiscourseDatalogTranslators = () => {
                 dr.relation === label &&
                 (!source ||
                   dr.source === source ||
-                  nodeLabelByType[dr.source] === source)
+                  nodeLabelByType[dr.source] === source) &&
+                nodeByType[dr.target]
             );
           return pageNames
             .filter((p) =>
