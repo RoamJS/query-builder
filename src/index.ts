@@ -41,7 +41,7 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
-import getBlockProps from "./utils/getBlockProps";
+import getBlockProps, { json } from "./utils/getBlockProps";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -152,6 +152,10 @@ export default runExtension({
 
 svg.rs-svg-container {
   overflow: visible;
+}
+
+.roamjs-tldraw-node .rm-api-render--block .rm-block__controls{
+  display: none;
 }`);
     const isCanvasPage = (title: string) => {
       const canvasPageFormat =
@@ -664,10 +668,10 @@ svg.rs-svg-container {
     const [viewBlockObserver] = createBlockObserver({
       onBlockLoad: (b) => {
         const { blockUid } = getUids(b);
-        const props = getBlockProps(blockUid);
+        const props = getBlockProps(blockUid) as Record<string, json>;
         const qbprops = (props["roamjs-query-builder"] || {}) as Record<
           string,
-          unknown
+          json
         >;
         renderCustomBlockView({
           view: qbprops["view"] as string,

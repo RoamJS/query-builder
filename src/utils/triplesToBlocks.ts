@@ -1,5 +1,11 @@
 import type { InputTextNode } from "roamjs-components/types";
+import { Condition } from "./types";
 
+// TODO - this needs to be massively reworked to incorporate inverse functions on the conditionToDatalog mapping itself
+// similar to `update` on defaultSelections.ts. Something like:
+// const deserializeBlock = ({ conditions, target }: { target: string, conditions: Condition[] }) =>
+//   conditions.reduce((graph, condition) => {
+//    }, {});
 const triplesToBlocks =
   ({
     defaultPageTitle,
@@ -8,6 +14,7 @@ const triplesToBlocks =
   }: {
     defaultPageTitle: string;
     toPage: (title: string, blocks: InputTextNode[]) => Promise<void>;
+    nodeSpecificationsByLabel?: Record<string, Condition[]>;
     nodeFormatsByLabel?: Record<string, string>;
   }) =>
   (
@@ -22,20 +29,27 @@ const triplesToBlocks =
       const rel = triples.find(
         (h) =>
           h.source === source &&
-          [/is a/i, /has title/i, /with text/i].some((r) => r.test(h.relation))
+          [/is a/i, /has title/i, /with text/i, /with uid/i].some((r) =>
+            r.test(h.relation)
+          )
       ) || {
         relation: "",
         target: "",
       };
       return /is a/i.test(rel.relation)
-        ? (nodeFormatsByLabel[rel.target] || "")
-            .replace("{content}", `This is a ${rel.target} page.`)
-            .replace(".+", "This is a page of any node type")
+        ? {
+            text: (nodeFormatsByLabel[rel.target] || "")
+              .replace("{content}", `This is a ${rel.target} page.`)
+              .replace(".+", "This is a page of any node type"),
+            isPage: true,
+          }
         : /has title/i.test(rel.relation)
-        ? rel.target
+        ? { text: rel.target, isPage: true }
         : /with text/i.test(rel.relation)
-        ? rel.target
-        : source;
+        ? { text: rel.target, isPage: false }
+        : /with uid/i.test(rel.relation)
+        ? { text: rel.target, isPage: false }
+        : { text: source, isPage: true };
     };
     const blockReferences = new Set<{
       uid: string;
@@ -49,8 +63,9 @@ const triplesToBlocks =
         ...triples
           .filter((e) => /references/i.test(e.relation) && e.source === source)
           .map((e) => {
-            const title = relationToTitle(e.target);
-            if (title) return `[[${relationToTitle(e.target)}]]`;
+            const target = relationToTitle(e.target);
+            if (target.isPage && target.text) return `[[${target}]]`;
+            else if (target.text) return `((${target.text}))`;
             const text = triples.find(
               (h) => h.source === e.target && /with text/i.test(h.relation)
             )?.target;
@@ -90,7 +105,7 @@ const triplesToBlocks =
       return Promise.all(
         Object.entries(pages).map((p) =>
           toPage(
-            relationToTitle(p[0]) || p[0],
+            relationToTitle(p[0]).text || p[0],
             p[1].map(toBlock).concat(Array.from(blockReferences))
           )
         )

@@ -33,6 +33,8 @@ import {
   SubMenu,
   TLPointerEvent,
   TLRecord,
+  TLImageShape,
+  TLTextShape,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -110,7 +112,7 @@ const createDiscourseNode = async ({
   nodes = Object.values(discourseContext.nodes),
 }: {
   type: string;
-  uid: string;
+  uid?: string;
   text: string;
   nodes?: DiscourseNode[];
 }) => {
@@ -131,12 +133,12 @@ const createDiscourseNode = async ({
       (spec) => spec.type === "clause" && spec.relation === "is in page"
     )
   ) {
-    await createBlock({
+    return await createBlock({
       parentUid: window.roamAlphaAPI.util.dateToPageUid(new Date()),
-      node: { text },
+      node: { text, uid },
     });
   } else {
-    await createPage({
+    return await createPage({
       title: text,
       uid,
       tree,
@@ -471,10 +473,25 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         this.app.setEditingId(shape.id);
       }
     }, [shape.props.title, shape.id, closing]);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [loaded, setLoaded] = useState("");
+    useEffect(() => {
+      if (
+        shape.props.uid !== loaded &&
+        !isPageUid(shape.props.uid) &&
+        contentRef.current
+      ) {
+        window.roamAlphaAPI.ui.components.renderBlock({
+          el: contentRef.current,
+          uid: shape.props.uid,
+        });
+        setLoaded(shape.props.uid);
+      }
+    }, [setLoaded, loaded, contentRef, shape.props.uid]);
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black"
+        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black roamjs-tldraw-node"
         style={{
           background:
             color ||
@@ -489,10 +506,12 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         }}
       >
         <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
-          {alias
-            ? new RegExp(alias).exec(shape.props.title)?.[1] ||
-              shape.props.title
-            : shape.props.title}
+          <div ref={contentRef}>
+            {alias
+              ? new RegExp(alias).exec(shape.props.title)?.[1] ||
+                shape.props.title
+              : shape.props.title}
+          </div>
           {isEditing && (
             <LabelDialog
               initialUid={shape.props.uid}
@@ -799,8 +818,8 @@ const TldrawCanvas = ({ title }: Props) => {
                                 targetNode.props as DiscourseNodeShape["props"];
                               return [
                                 t[0],
-                                isPageUid(uid) ? "has title" : "with text",
-                                title,
+                                isPageUid(uid) ? "has title" : "with uid",
+                                isPageUid(uid) ? title : uid,
                               ];
                             }
                             return t.slice(0);
@@ -838,6 +857,12 @@ const TldrawCanvas = ({ title }: Props) => {
                             );
                             await openBlockInSidebar(parentUid);
                           },
+                          nodeSpecificationsByLabel: Object.fromEntries(
+                            Object.values(discourseContext.nodes).map((n) => [
+                              n.text,
+                              n.specification,
+                            ])
+                          ),
                         })(newTriples)();
                       };
                     };
@@ -1112,7 +1137,73 @@ const TldrawCanvas = ({ title }: Props) => {
                   ])
                 ),
                 "action.toggle-full-screen": "Toggle Full Screen",
+                "action.convert-to-block": "Convert to Block",
               },
+            },
+            contextMenu(app, schema, helpers) {
+              if (helpers.oneSelected) {
+                const shape = app.getShapeById(app.selectedIds[0]);
+                if (!shape) return schema;
+                const convertToBlock = async (text: string) => {
+                  const uid = await createDiscourseNode({
+                    type: "blck-node",
+                    text,
+                  });
+                  const { x, y } = shape;
+                  app.deleteShapes([shape.id]);
+                  app.createShapes([
+                    {
+                      type: "blck-node",
+                      id: createShapeId(),
+                      props: {
+                        uid,
+                        title: text,
+                      },
+                      x,
+                      y,
+                    },
+                  ]);
+                };
+                const onSelect =
+                  shape?.type === "image"
+                    ? async () => {
+                        const { assetId } = (shape as TLImageShape).props;
+                        if (!assetId) return;
+                        const asset = app.getAssetById(assetId);
+                        if (!asset || !asset.props.src) return;
+                        const file = await fetch(asset.props.src)
+                          .then((r) => r.arrayBuffer())
+                          .then((buf) => new File([buf], shape.id));
+                        // @ts-ignore
+                        const src = await window.roamAlphaAPI.util.uploadFile({
+                          // @ts-ignore
+                          file,
+                        });
+                        console.log(src);
+                        convertToBlock(`![](${src})`);
+                      }
+                    : shape?.type === "text"
+                    ? () => {
+                        const { text } = (shape as TLTextShape).props;
+                        convertToBlock(text);
+                      }
+                    : null;
+                if (onSelect)
+                  schema.push({
+                    id: "convert-to-block",
+                    type: "item",
+                    actionItem: {
+                      label: "action.convert-to-block" as TLTranslationKey,
+                      id: "convert-to-block",
+                      onSelect,
+                      readonlyOk: true,
+                    },
+                    checked: false,
+                    disabled: false,
+                    readonlyOk: true,
+                  });
+              }
+              return schema;
             },
             actions(_app, actions) {
               actions["toggle-full-screen"] = {
