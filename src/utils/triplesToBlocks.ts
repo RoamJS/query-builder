@@ -64,7 +64,7 @@ const triplesToBlocks =
           .filter((e) => /references/i.test(e.relation) && e.source === source)
           .map((e) => {
             const target = relationToTitle(e.target);
-            if (target.isPage && target.text) return `[[${target}]]`;
+            if (target.isPage && target.text) return `[[${target.text}]]`;
             else if (target.text) return `((${target.text}))`;
             const text = triples.find(
               (h) => h.source === e.target && /with text/i.test(h.relation)

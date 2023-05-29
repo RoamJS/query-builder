@@ -351,10 +351,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
   background: #FFFF00;
   }
   
-  .roamjs-discourse-editor-preview > .roam-block-container > .rm-block-main,
-  .roamjs-discourse-editor-preview > .roam-block-container > .rm-block-children > .rm-multibar,
-  .roamjs-discourse-editor-preview > .roam-block-container > .rm-block-children > .roam-block-container > .rm-block-main > .controls,
-  .roamjs-discourse-editor-preview > .roam-block-container > .rm-block-children > .roam-block-container > .rm-block-children > .rm-multibar {
+  .roamjs-discourse-editor-preview > .rm-api-render--block > .roam-block-container > .rm-block-main,
+  .roamjs-discourse-editor-preview > .rm-api-render--block > .roam-block-container > .rm-block-children > .rm-multibar,
+  .roamjs-discourse-editor-preview > .rm-api-render--block > .roam-block-container > .rm-block-children > .roam-block-container > .rm-block-main > .controls,
+  .roamjs-discourse-editor-preview > .rm-api-render--block > .roam-block-container > .rm-block-children > .roam-block-container > .rm-block-children > .rm-multibar {
   visibility: hidden;
   }
   
