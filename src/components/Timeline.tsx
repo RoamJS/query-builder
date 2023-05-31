@@ -110,7 +110,7 @@ const Timeline: React.FunctionComponent<TimelineProps> = ({
     [timelineElements]
   );
   return datedTimelineElements.length < timelineElements.length ? (
-    <p>
+    <p className="p-2 pr-16 m-0">
       Some of the results in this query are missing a <code>Date</code> column.
       To use the Timeline layout, make sure that you add a selections labelled{" "}
       <code>Date</code> and that all results return a valid date value for that

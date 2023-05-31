@@ -50,10 +50,11 @@ const Charts = ({
   );
 
   return Object.keys(primaryAxis).length !== 0 && !secondaryAxes.length ? (
-    <p>
-      You need to have at least two selections for this layout to work, where
-      the first is a selection that returns date values and all subsequent
-      selections return numeric values.
+    <p className="p-2 pr-16 m-0">
+      You need to have at least <strong>two selections</strong> for this layout
+      to work, where the first is a selection that returns{" "}
+      <strong>date values</strong> and all subsequent selections return{" "}
+      <strong>numeric values</strong>.
     </p>
   ) : (
     <div style={{ height: 300 }}>
