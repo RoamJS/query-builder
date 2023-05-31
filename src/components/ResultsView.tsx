@@ -673,7 +673,7 @@ const ResultsView: ResultsViewComponent = ({
         )}
         {!hideResults &&
           (results.length !== 0 ? (
-            layout.mode === "table" ? (
+            layout.mode === "table" || layout.mode === "minimal" ? (
               <ResultsTable
                 layout={layout}
                 columns={columns}
@@ -691,6 +691,7 @@ const ResultsView: ResultsViewComponent = ({
                 pageSizeTimeoutRef={pageSizeTimeoutRef}
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
+                minimal={layout.mode === "minimal"}
                 showInterface={showInterface}
               />
             ) : layout.mode === "line" ? (
@@ -703,27 +704,6 @@ const ResultsView: ResultsViewComponent = ({
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
             ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
-            ) : layout.mode === "minimal" ? (
-              <ResultsTable
-                layout={layout}
-                columns={columns}
-                results={paginatedResults}
-                parentUid={settings.resultNodeUid}
-                activeSort={activeSort}
-                setActiveSort={setActiveSort}
-                filters={filters}
-                setFilters={setFilters}
-                views={views}
-                page={page}
-                setPage={setPage}
-                pageSize={pageSize}
-                setPageSize={setPageSize}
-                pageSizeTimeoutRef={pageSizeTimeoutRef}
-                onRefresh={onRefresh}
-                allResultsLength={allResults.length}
-                minimal={true}
-                showInterface={showInterface}
-              />
             ) : (
               <div style={{ padding: "16px 8px" }}>
                 Layout `{layout}` is not supported
