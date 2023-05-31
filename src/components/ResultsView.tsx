@@ -293,17 +293,20 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
-  const minimal = layout.mode === "minimal" ? true : false;
-  const [showInterface, setShowInterface] = useState(minimal ? false : true);
-  const [showIcons, setShowIcons] = useState(minimal ? false : true);
+  const [showInterface, setShowInterface] = useState(
+    layout.mode === "minimal" ? false : true
+  );
+  const [showIcons, setShowIcons] = useState(
+    layout.mode === "minimal" ? false : true
+  );
   const appear = useCallback(() => setShowIcons(true), [setShowIcons]);
   const disappear = useCallback(() => setShowIcons(false), [setShowIcons]);
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={minimal ? appear : undefined}
-      onMouseOut={minimal ? disappear : undefined}
+      onMouseOver={layout.mode === "minimal" ? appear : undefined}
+      onMouseOut={layout.mode === "minimal" ? disappear : undefined}
     >
       {isEditSearchFilter && (
         <div
@@ -354,7 +357,7 @@ const ResultsView: ResultsViewComponent = ({
           className="absolute top-1 right-0 z-10"
           style={!showIcons && !showInterface ? { display: "none" } : {}}
         >
-          {minimal && (
+          {layout.mode === "minimal" && (
             <Tooltip content={"Toggle Interface"}>
               <Button
                 icon={showInterface ? "eye-off" : "eye-open"}
