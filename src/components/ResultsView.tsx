@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Icon,
@@ -173,10 +179,11 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
 };
 
 const SUPPORTED_LAYOUTS = [
-  { id: "table", icon: "join-table" },
-  { id: "line", icon: "chart" },
-  { id: "bar", icon: "vertical-bar-chart-asc" },
-  { id: "timeline", icon: "timeline-events" },
+  { id: "table", icon: "join-table", showInterface: true },
+  { id: "minimal", icon: "layout-linear", showInterface: false },
+  { id: "line", icon: "chart", showInterface: true },
+  { id: "bar", icon: "vertical-bar-chart-asc", showInterface: true },
+  { id: "timeline", icon: "timeline-events", showInterface: true },
 ] as const;
 
 type ResultsViewComponent = (props: {
@@ -286,10 +293,17 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
+  const minimal = layout.mode === "minimal" ? true : false;
+  const [showInterface, setShowInterface] = useState(minimal ? false : true);
+  const [showIcons, setShowIcons] = useState(minimal ? false : true);
+  const appear = useCallback(() => setShowIcons(true), [setShowIcons]);
+  const disappear = useCallback(() => setShowIcons(false), [setShowIcons]);
   return (
     <div
-      className="roamjs-query-results-view w-full relative"
+      className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
+      onMouseOver={minimal ? appear : undefined}
+      onMouseOut={minimal ? disappear : undefined}
     >
       {isEditSearchFilter && (
         <div
@@ -336,7 +350,19 @@ const ResultsView: ResultsViewComponent = ({
         exportTypes={getExportTypes?.(allResults)}
       />
       <div className="relative">
-        <span className="absolute top-1 right-0 z-10">
+        <span
+          className="absolute top-1 right-0 z-10"
+          style={!showIcons && !showInterface ? { display: "none" } : {}}
+        >
+          {minimal && (
+            <Tooltip content={"Toggle Interface"}>
+              <Button
+                icon={showInterface ? "eye-off" : "eye-open"}
+                minimal
+                onClick={() => setShowInterface((s) => !s)}
+              />
+            </Tooltip>
+          )}
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
               <Button icon={"refresh"} minimal onClick={onRefresh} />
@@ -421,13 +447,14 @@ const ResultsView: ResultsViewComponent = ({
                   <div className="grid grid-cols-3 gap-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
-                        className={`rounded-sm border py-2 px-6 flex flex-col gap-2 cursor-pointer ${
+                        className={`rounded-sm border p-2 flex flex-col gap-2 cursor-pointer justify-center items-center ${
                           l.id === layout.mode
                             ? "border-blue-800 border-opacity-75 text-blue-800"
                             : "border-gray-800 border-opacity-25 text-gray-800"
                         }`}
                         onClick={() => {
                           setLayout({ ...layout, mode: l.id });
+                          setShowInterface(l.showInterface);
                           const resultNode = getSubTree({
                             key: "results",
                             parentUid,
@@ -441,6 +468,8 @@ const ResultsView: ResultsViewComponent = ({
                             value: l.id,
                             blockUid: layoutNode.uid,
                           });
+                          setIsEditLayout(false);
+                          setMoreMenuOpen(false);
                         }}
                       >
                         <Icon icon={l.icon} />
@@ -662,6 +691,7 @@ const ResultsView: ResultsViewComponent = ({
                 pageSizeTimeoutRef={pageSizeTimeoutRef}
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
+                showInterface={showInterface}
               />
             ) : layout.mode === "line" ? (
               <Charts
@@ -673,6 +703,27 @@ const ResultsView: ResultsViewComponent = ({
               <Charts type="bar" data={allResults} columns={columns.slice(1)} />
             ) : layout.mode === "timeline" ? (
               <Timeline timelineElements={allResults} />
+            ) : layout.mode === "minimal" ? (
+              <ResultsTable
+                layout={layout}
+                columns={columns}
+                results={paginatedResults}
+                parentUid={settings.resultNodeUid}
+                activeSort={activeSort}
+                setActiveSort={setActiveSort}
+                filters={filters}
+                setFilters={setFilters}
+                views={views}
+                page={page}
+                setPage={setPage}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                pageSizeTimeoutRef={pageSizeTimeoutRef}
+                onRefresh={onRefresh}
+                allResultsLength={allResults.length}
+                minimal={true}
+                showInterface={showInterface}
+              />
             ) : (
               <div style={{ padding: "16px 8px" }}>
                 Layout `{layout}` is not supported
@@ -686,7 +737,11 @@ const ResultsView: ResultsViewComponent = ({
               <i>No Results Found</i>
             </div>
           ))}
-        <div style={{ background: "#eeeeee80" }}>
+        <div
+          style={
+            !showInterface ? { display: "none" } : { background: "#eeeeee80" }
+          }
+        >
           <div
             className="flex justify-between items-center text-xs px-1"
             style={{

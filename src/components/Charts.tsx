@@ -49,7 +49,13 @@ const Charts = ({
     [type]
   );
 
-  return (
+  return Object.keys(primaryAxis).length !== 0 && !secondaryAxes.length ? (
+    <p>
+      You need to have at least two selections for this layout to work, where
+      the first is a selection that returns date values and all subsequent
+      selections return numeric values.
+    </p>
+  ) : (
     <div style={{ height: 300 }}>
       <Chart options={{ data: chartData, primaryAxis, secondaryAxes }} />
     </div>
