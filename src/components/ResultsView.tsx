@@ -531,11 +531,7 @@ const ResultsView: ResultsViewComponent = ({
                               : "default",
                             blockUid: layoutNode.uid,
                           });
-                          setShowInterface((s) => !s);
-                          console.log(
-                            "changed",
-                            (e.target as HTMLInputElement).checked
-                          );
+                          setShowInterface(layout.style === "minimal");
                         }}
                       />
                     </Label>
@@ -736,7 +732,7 @@ const ResultsView: ResultsViewComponent = ({
         )}
         {!hideResults &&
           (results.length !== 0 ? (
-            layout.mode === "table" || layout.mode === "minimal" ? (
+            layout.mode === "table" ? (
               <ResultsTable
                 layout={layout}
                 columns={columns}
