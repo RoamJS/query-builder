@@ -15,6 +15,8 @@ import {
   MenuItem,
   Switch,
   Intent,
+  Label,
+  Checkbox,
 } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Filters } from "roamjs-components/components/Filter";
@@ -179,12 +181,26 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
 };
 
 const SUPPORTED_LAYOUTS = [
-  { id: "table", icon: "join-table", showInterface: true },
-  { id: "minimal", icon: "layout-linear", showInterface: false },
-  { id: "line", icon: "chart", showInterface: true },
-  { id: "bar", icon: "vertical-bar-chart-asc", showInterface: true },
-  { id: "timeline", icon: "timeline-events", showInterface: true },
+  {
+    id: "table",
+    icon: "join-table",
+    settings: [{ key: "style", label: "Style" }],
+  },
+  { id: "line", icon: "chart", settings: [] },
+  {
+    id: "bar",
+    icon: "vertical-bar-chart-asc",
+    settings: [],
+  },
+  {
+    id: "timeline",
+    icon: "timeline-events",
+    settings: [],
+  },
 ] as const;
+const settingsById = Object.fromEntries(
+  SUPPORTED_LAYOUTS.map((l) => [l.id, l.settings])
+);
 
 type ResultsViewComponent = (props: {
   parentUid: string;
@@ -266,6 +282,10 @@ const ResultsView: ResultsViewComponent = ({
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
   );
+  const layoutMode = useMemo(
+    () => (Array.isArray(layout.mode) ? layout.mode[0] : layout.mode),
+    [layout]
+  );
   const onViewChange = (view: (typeof views)[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
     setViews(newViews);
@@ -294,19 +314,17 @@ const ResultsView: ResultsViewComponent = ({
   };
   const debounceRef = useRef(0);
   const [showInterface, setShowInterface] = useState(
-    layout.mode === "minimal" ? false : true
+    layout.style !== "minimal"
   );
-  const [showIcons, setShowIcons] = useState(
-    layout.mode === "minimal" ? false : true
-  );
+  const [showIcons, setShowIcons] = useState(layout.style !== "minimal");
   const appear = useCallback(() => setShowIcons(true), [setShowIcons]);
   const disappear = useCallback(() => setShowIcons(false), [setShowIcons]);
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={layout.mode === "minimal" ? appear : undefined}
-      onMouseOut={layout.mode === "minimal" ? disappear : undefined}
+      onMouseOver={layout.style === "minimal" ? appear : undefined}
+      onMouseOut={layout.style === "minimal" ? disappear : undefined}
     >
       {isEditSearchFilter && (
         <div
@@ -357,7 +375,7 @@ const ResultsView: ResultsViewComponent = ({
           className="absolute top-1 right-0 z-10"
           style={!showIcons && !showInterface ? { display: "none" } : {}}
         >
-          {layout.mode === "minimal" && (
+          {layout.style === "minimal" && (
             <Tooltip content={"Toggle Interface"}>
               <Button
                 icon={showInterface ? "eye-off" : "eye-open"}
@@ -447,7 +465,7 @@ const ResultsView: ResultsViewComponent = ({
                       small
                     />
                   </h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
                         className={`rounded-sm border p-2 flex flex-col gap-2 cursor-pointer justify-center items-center ${
@@ -457,7 +475,6 @@ const ResultsView: ResultsViewComponent = ({
                         }`}
                         onClick={() => {
                           setLayout({ ...layout, mode: l.id });
-                          setShowInterface(l.showInterface);
                           const resultNode = getSubTree({
                             key: "results",
                             parentUid,
@@ -480,6 +497,49 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                   </div>
+                  {settingsById[layoutMode].map((s) => (
+                    //TODO: make generic
+                    <Label key={s.key}>
+                      {s.label}
+                      <Checkbox
+                        defaultChecked={layout.style === "minimal"}
+                        label="Minimal"
+                        onChange={(e) => {
+                          const resultNode = getSubTree({
+                            key: "results",
+                            parentUid,
+                          });
+                          const layoutNode = getSubTree({
+                            key: "layout",
+                            parentUid: resultNode.uid,
+                          });
+                          setInputSetting({
+                            key: "mode",
+                            value: layoutMode,
+                            blockUid: layoutNode.uid,
+                          });
+                          setLayout({
+                            ...layout,
+                            [s.key]: (e.target as HTMLInputElement).checked
+                              ? "minimal"
+                              : "default",
+                          });
+                          setInputSetting({
+                            key: s.key,
+                            value: (e.target as HTMLInputElement).checked
+                              ? "minimal"
+                              : "default",
+                            blockUid: layoutNode.uid,
+                          });
+                          setShowInterface((s) => !s);
+                          console.log(
+                            "changed",
+                            (e.target as HTMLInputElement).checked
+                          );
+                        }}
+                      />
+                    </Label>
+                  ))}
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
@@ -694,7 +754,6 @@ const ResultsView: ResultsViewComponent = ({
                 pageSizeTimeoutRef={pageSizeTimeoutRef}
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
-                minimal={layout.mode === "minimal"}
                 showInterface={showInterface}
               />
             ) : layout.mode === "line" ? (

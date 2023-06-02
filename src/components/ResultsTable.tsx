@@ -375,7 +375,6 @@ const ResultsTable = ({
   page,
   setPage,
   allResultsLength,
-  minimal,
   showInterface,
 }: {
   columns: Column[];
@@ -396,7 +395,6 @@ const ResultsTable = ({
   setPage: (p: number) => void;
   onRefresh: () => void;
   allResultsLength: number;
-  minimal?: boolean;
   showInterface?: boolean;
 }) => {
   const columnWidths = useMemo(() => {
@@ -444,7 +442,9 @@ const ResultsTable = ({
         tableLayout: "fixed",
         borderRadius: 3,
       }}
-      {...(minimal ? { condensed: true } : { striped: true })}
+      {...(layout.style === "minimal"
+        ? { condensed: true }
+        : { striped: true })}
       interactive
     >
       <thead
