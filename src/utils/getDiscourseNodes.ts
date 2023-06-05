@@ -11,7 +11,7 @@ export type DiscourseNode = {
   type: string;
   shortcut: string;
   specification: Condition[];
-  source: "user" | "default" | "relation";
+  backedBy: "user" | "default" | "relation";
   canvasSettings: {
     [k: string]: string;
   };
@@ -35,7 +35,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
       },
     ],
     canvasSettings: {},
-    source: "default",
+    backedBy: "default",
   },
   {
     text: "Block",
@@ -52,7 +52,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
       },
     ],
     canvasSettings: {},
-    source: "default",
+    backedBy: "default",
   },
 ];
 
@@ -72,7 +72,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
         specification: !!getSubTree({ tree: specTree, key: "enabled" }).uid
           ? parseQuery(spec.uid).conditions
           : [],
-        source: "user",
+          backedBy: "user",
         canvasSettings: Object.fromEntries(
           getSubTree({ tree: children, key: "canvas" }).children.map(
             (c) => [c.text, c.children[0]?.text || ""] as const
@@ -102,7 +102,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
                 : target,
             uid: window.roamAlphaAPI.util.generateUID(),
           })),
-          source: "relation",
+          backedBy: "relation",
           canvasSettings: {},
         }))
     );

@@ -32,7 +32,7 @@ type Props = {
 
 const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
   const discourseNodes = useMemo(
-    () => getDiscourseNodes().filter((n) => n.source === "user"),
+    () => getDiscourseNodes().filter((n) => n.backedBy === "user"),
     []
   );
   const indexBySC = useMemo(
