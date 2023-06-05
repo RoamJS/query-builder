@@ -497,7 +497,7 @@ const CytoscapePlayground = ({
           type: TEXT_TYPE,
           format: "{content}",
           specification: [],
-          isRelationBacked: false,
+          source: "default",
           canvasSettings: {},
         }),
     []

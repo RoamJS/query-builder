@@ -7,7 +7,7 @@ import type { CustomField } from "roamjs-components/components/ConfigPanels/type
 
 const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({}) => {
   const [nodes, setNodes] = useState(() =>
-    getDiscourseNodes().filter((n) => !n.isRelationBacked)
+    getDiscourseNodes().filter((n) => n.source === "user")
   );
   const [label, setLabel] = useState("");
   return (
@@ -53,7 +53,7 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({}) => {
                 text: label,
                 shortcut: "",
                 specification: [],
-                isRelationBacked: false,
+                source: "user",
                 canvasSettings: {},
               },
             ]);
