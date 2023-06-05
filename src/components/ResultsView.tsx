@@ -184,7 +184,7 @@ const SUPPORTED_LAYOUTS = [
   {
     id: "table",
     icon: "join-table",
-    settings: [{ key: "style", label: "Style" }],
+    settings: [{ key: "style", label: "Style", options: ["Minimal"] }],
   },
   { id: "line", icon: "chart", settings: [] },
   {
@@ -314,17 +314,27 @@ const ResultsView: ResultsViewComponent = ({
   };
   const debounceRef = useRef(0);
   const [showInterface, setShowInterface] = useState(
-    layout.style !== "minimal"
+    layout.style !== "Minimal" && layoutMode === "table"
   );
-  const [showIcons, setShowIcons] = useState(layout.style !== "minimal");
+  const [showIcons, setShowIcons] = useState(
+    layout.style !== "Minimal" && layoutMode === "table"
+  );
   const appear = useCallback(() => setShowIcons(true), [setShowIcons]);
   const disappear = useCallback(() => setShowIcons(false), [setShowIcons]);
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={layout.style === "minimal" ? appear : undefined}
-      onMouseOut={layout.style === "minimal" ? disappear : undefined}
+      onMouseOver={
+        layout.style === "Minimal" && layoutMode === "table"
+          ? appear
+          : undefined
+      }
+      onMouseOut={
+        layout.style === "Minimal" && layoutMode === "table"
+          ? disappear
+          : undefined
+      }
     >
       {isEditSearchFilter && (
         <div
@@ -375,7 +385,7 @@ const ResultsView: ResultsViewComponent = ({
           className="absolute top-1 right-0 z-10"
           style={!showIcons && !showInterface ? { display: "none" } : {}}
         >
-          {layout.style === "minimal" && (
+          {layout.style === "Minimal" && (
             <Tooltip content={"Toggle Interface"}>
               <Button
                 icon={showInterface ? "eye-off" : "eye-open"}
@@ -497,45 +507,53 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                   </div>
-                  {settingsById[layoutMode].map((s) => (
-                    //TODO: make generic
-                    <Label key={s.key}>
-                      {s.label}
-                      <Checkbox
-                        defaultChecked={layout.style === "minimal"}
-                        label="Minimal"
-                        onChange={(e) => {
-                          const resultNode = getSubTree({
-                            key: "results",
-                            parentUid,
-                          });
-                          const layoutNode = getSubTree({
-                            key: "layout",
-                            parentUid: resultNode.uid,
-                          });
-                          setInputSetting({
-                            key: "mode",
-                            value: layoutMode,
-                            blockUid: layoutNode.uid,
-                          });
-                          setLayout({
-                            ...layout,
-                            [s.key]: (e.target as HTMLInputElement).checked
-                              ? "minimal"
-                              : "default",
-                          });
-                          setInputSetting({
-                            key: s.key,
-                            value: (e.target as HTMLInputElement).checked
-                              ? "minimal"
-                              : "default",
-                            blockUid: layoutNode.uid,
-                          });
-                          setShowInterface(layout.style === "minimal");
-                        }}
-                      />
-                    </Label>
-                  ))}
+                  {settingsById[layoutMode].map(
+                    (s) =>
+                      s.options.length === 1 && (
+                        <Label key={s.key}>
+                          {s.label}
+                          <Checkbox
+                            defaultChecked={layout.style === s.options[0]}
+                            label={s.options[0]}
+                            onChange={(e) => {
+                              const resultNode = getSubTree({
+                                key: "results",
+                                parentUid,
+                              });
+                              const layoutNode = getSubTree({
+                                key: "layout",
+                                parentUid: resultNode.uid,
+                              });
+                              setInputSetting({
+                                key: "mode",
+                                value: layoutMode,
+                                blockUid: layoutNode.uid,
+                              });
+                              setLayout({
+                                ...layout,
+                                [s.key]: (e.target as HTMLInputElement).checked
+                                  ? s.options[0]
+                                  : "default",
+                              });
+                              setInputSetting({
+                                key: s.key,
+                                value: (e.target as HTMLInputElement).checked
+                                  ? s.options[0]
+                                  : "default",
+                                blockUid: layoutNode.uid,
+                              });
+                              setShowInterface(
+                                layout.style !== "Minimal" &&
+                                  s.key === "style" &&
+                                  layoutMode == "table"
+                                  ? false
+                                  : true
+                              );
+                            }}
+                          />
+                        </Label>
+                      )
+                  )}
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
