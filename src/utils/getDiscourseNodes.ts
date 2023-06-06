@@ -11,10 +11,7 @@ export type DiscourseNode = {
   type: string;
   shortcut: string;
   specification: Condition[];
-  
-  // TODO - wondering if this should be an enum instead
-  // 'relation' | 'default' | 'user'
-  isRelationBacked: boolean; 
+  backedBy: "user" | "default" | "relation";
   canvasSettings: {
     [k: string]: string;
   };
@@ -37,8 +34,8 @@ const DEFAULT_NODES: DiscourseNode[] = [
         uid: window.roamAlphaAPI.util.generateUID(),
       },
     ],
-    isRelationBacked: false,
     canvasSettings: {},
+    backedBy: "default",
   },
   {
     text: "Block",
@@ -54,14 +51,14 @@ const DEFAULT_NODES: DiscourseNode[] = [
         uid: window.roamAlphaAPI.util.generateUID(),
       },
     ],
-    isRelationBacked: false,
     canvasSettings: {},
+    backedBy: "default",
   },
 ];
 
 const getDiscourseNodes = (relations = getDiscourseRelations()) => {
   const configuredNodes = Object.entries(discourseConfigRef.nodes)
-    .map(([type, { text, children }]) => {
+    .map(([type, { text, children }]): DiscourseNode => {
       const spec = getSubTree({
         tree: children,
         key: "specification",
@@ -75,7 +72,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
         specification: !!getSubTree({ tree: specTree, key: "enabled" }).uid
           ? parseQuery(spec.uid).conditions
           : [],
-        isRelationBacked: false,
+          backedBy: "user",
         canvasSettings: Object.fromEntries(
           getSubTree({ tree: children, key: "canvas" }).children.map(
             (c) => [c.text, c.children[0]?.text || ""] as const
@@ -105,7 +102,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
                 : target,
             uid: window.roamAlphaAPI.util.generateUID(),
           })),
-          isRelationBacked: true,
+          backedBy: "relation",
           canvasSettings: {},
         }))
     );
@@ -113,7 +110,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
   const defaultNodes = DEFAULT_NODES.filter(
     (n) => !configuredNodeTexts.has(n.text)
   );
-  return defaultNodes.concat(configuredNodes);
+  return configuredNodes.concat(defaultNodes);
 };
 
 export default getDiscourseNodes;

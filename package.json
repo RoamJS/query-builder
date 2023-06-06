@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "1.7.4",
+  "version": "1.7.6",
   "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
   "author": {
@@ -30,7 +30,7 @@
     "react-charts": "^3.0.0-beta.48",
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.79.2",
+    "roamjs-components": "^0.79.3",
     "signia-react": "^0.1.1"
   },
   "overrides": {

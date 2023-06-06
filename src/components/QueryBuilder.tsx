@@ -125,6 +125,15 @@ const SubqueryContent = ({
     [setQueryState, incrementKey, queryState]
   );
   const addChildButtonRef = useRef<HTMLButtonElement>(null);
+  const setValue = useCallback(
+    (value: string) =>
+      setQueryState((qs) => ({
+        type: qs.type,
+        value,
+        key: qs.key,
+      })),
+    [setQueryState]
+  );
   return (
     <div onKeyDown={onContainerKeyDown}>
       <div style={{ marginBottom: 8 }}>
@@ -156,16 +165,7 @@ const SubqueryContent = ({
         </NodeSelect>
         {queryState.type === NODES.TAG && (
           <span style={{ marginLeft: 8 }}>
-            <PageInput
-              value={queryState.value || ""}
-              setValue={(value) =>
-                setQueryState({
-                  type: queryState.type,
-                  value,
-                  key: queryState.key,
-                })
-              }
-            />
+            <PageInput value={queryState.value || ""} setValue={setValue} />
           </span>
         )}
         {!!onDelete && (

@@ -18,6 +18,7 @@ import differenceInDays from "date-fns/differenceInDays";
 import differenceInWeeks from "date-fns/differenceInWeeks";
 import differenceInMonths from "date-fns/differenceInMonths";
 import differenceInYears from "date-fns/differenceInYears";
+import datefnsFormat from "date-fns/format";
 
 export type QueryArgs = {
   returnNode: string;
@@ -205,14 +206,17 @@ const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
+const DATE_FORMAT_TEST = /^date-format\(([^,)]+),([^,)]+)\)$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
   if (/^today$/i.test(key)) return new Date();
   const val = result[key];
   if (typeof val === "string" && DAILY_NOTE_PAGE_REGEX.test(val))
-    return window.roamAlphaAPI.util.pageTitleToDate(
-      DAILY_NOTE_PAGE_REGEX.exec(val)?.[0] || ""
+    return (
+      window.roamAlphaAPI.util.pageTitleToDate(
+        DAILY_NOTE_PAGE_REGEX.exec(val)?.[0] || ""
+      ) || new Date()
     );
   return val;
 };
@@ -442,6 +446,34 @@ const predefinedSelections: PredefinedSelection[] = [
         );
       } else {
         return (Number(val0) || 0) + (Number(val1) || 0);
+      }
+    },
+  },
+  {
+    test: DATE_FORMAT_TEST,
+    pull: ({ match }) => {
+      const arg0 = match?.[1];
+      return `(pull ?${arg0} [:block/string :node/title :block/uid])`;
+    },
+    mapper: (pull, key) => {
+      const exec = DATE_FORMAT_TEST.exec(key);
+      const rawArg0 = pull[":block/string"] || pull[":node/title"] || "";
+      const arg0 =
+        typeof rawArg0 === "string" && DAILY_NOTE_PAGE_REGEX.test(rawArg0)
+          ? window.roamAlphaAPI.util.pageTitleToDate(
+              DAILY_NOTE_PAGE_REGEX.exec(rawArg0)?.[0] || ""
+            ) || new Date()
+          : rawArg0;
+      const arg1 = exec?.[2] || "";
+      const uid = pull[":block/uid"] || "";
+      if (arg0 instanceof Date) {
+        return {
+          "": arg0,
+          "-display": datefnsFormat(arg0, arg1),
+          "-uid": uid,
+        };
+      } else {
+        return { "": arg0, "-uid": uid };
       }
     },
   },
