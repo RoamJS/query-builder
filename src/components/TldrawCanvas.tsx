@@ -35,6 +35,9 @@ import {
   TLRecord,
   TLImageShape,
   TLTextShape,
+  TEXT_PROPS,
+  FONT_SIZES,
+  FONT_FAMILIES,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -479,7 +482,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       if (
         shape.props.uid !== loaded &&
         !isPageUid(shape.props.uid) &&
-        contentRef.current
+        contentRef.current &&
+        isLiveBlock(shape.props.uid)
       ) {
         window.roamAlphaAPI.ui.components.renderBlock({
           el: contentRef.current,
@@ -540,7 +544,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                         });
                       else await updateBlock({ uid: shape.props.uid, text });
                     }
-                  } else {
+                  } else if (!getPageUidByPageTitle(text)) {
                     createDiscourseNode({
                       type: shape.type,
                       text,
@@ -557,9 +561,19 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   allRecords,
                   relationIds,
                 });
+                const { w, h } = this.app.textMeasure.measureText({
+                  ...TEXT_PROPS,
+                  text,
+                  fontSize: FONT_SIZES.m,
+                  fontFamily: FONT_FAMILIES.sans,
+                  width: "fit-content",
+                  maxWidth: "400px",
+                });
                 this.updateProps(shape.id, {
                   title: text,
                   uid,
+                  w,
+                  h,
                 });
                 await this.createExistingRelations(shape, {
                   allRecords,
