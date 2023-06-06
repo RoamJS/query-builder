@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Icon,
@@ -16,7 +10,6 @@ import {
   Switch,
   Intent,
   Label,
-  Checkbox,
 } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Filters } from "roamjs-components/components/Filter";
