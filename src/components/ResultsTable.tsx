@@ -176,7 +176,6 @@ const ResultRow = ({
   onRefresh,
   columns,
   onWidthUpdate,
-  layout, // TODO - remove after fixing drag for layout.style === "Minimal"
 }: {
   r: Result;
   ctrlClick?: (e: Result) => void;
@@ -184,7 +183,6 @@ const ResultRow = ({
   columns: Column[];
   onRefresh: () => void;
   onWidthUpdate: OnWidthUpdate;
-  layout: Record<string, string | string[]>; // TODO - remove after fixing drag for layout.style === "Minimal"
 }) => {
   const namespaceSetting = useMemo(
     () =>
@@ -335,8 +333,7 @@ const ResultRow = ({
                 <div
                   style={{
                     width: 1,
-                    cursor:
-                      layout.style === "Minimal" ? "pointer" : "ew-resize", // TODO - remove after fixing drag for layout.style === "Minimal"
+                    cursor: "ew-resize",
                     position: "absolute",
                     top: 0,
                     right: 0,
@@ -445,17 +442,12 @@ const ResultsTable = ({
         tableLayout: "fixed",
         borderRadius: 3,
       }}
-      {...(layout.style === "Minimal"
-        ? { condensed: true }
-        : { striped: true })}
-      interactive
+      {...(layout.rowStyle !== "Bare"
+        ? { striped: true, interactive: true }
+        : {})}
     >
-      <thead
-        style={
-          !showInterface ? { display: "none" } : { background: "#eeeeee80" }
-        }
-      >
-        <tr>
+      <thead style={{ background: "#eeeeee80" }}>
+        <tr style={!showInterface ? { visibility: "collapse" } : {}}>
           {columns.map((c) => (
             <ResultHeader
               key={c.uid}
@@ -537,7 +529,6 @@ const ResultsTable = ({
             onRefresh={onRefresh}
             columns={columns}
             onWidthUpdate={onWidthUpdate}
-            layout={layout} // TODO - remove after fixing drag for layout.style === "Minimal"
           />
         ))}
       </tbody>

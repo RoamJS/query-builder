@@ -184,7 +184,13 @@ const SUPPORTED_LAYOUTS = [
   {
     id: "table",
     icon: "join-table",
-    settings: [{ key: "style", label: "Style", options: ["Minimal"] }],
+    settings: [
+      {
+        key: "rowStyle",
+        label: "Row Style",
+        options: ["Striped", "Bare"],
+      },
+    ],
   },
   { id: "line", icon: "chart", settings: [] },
   {
@@ -219,6 +225,8 @@ type ResultsViewComponent = (props: {
   // @deprecated - should be inferred from the query or layout
   onResultsInViewChange?: (r: Result[]) => void;
 }) => JSX.Element;
+
+const head = (s: string | string[]) => (Array.isArray(s) ? s[0] || "" : s);
 
 const ResultsView: ResultsViewComponent = ({
   parentUid,
@@ -314,28 +322,19 @@ const ResultsView: ResultsViewComponent = ({
   };
   const debounceRef = useRef(0);
   const [showInterface, setShowInterface] = useState(
-    layout.style !== "Minimal" && layoutMode === "table"
+    layout.interface !== "hide"
   );
-  const [showIcons, setShowIcons] = useState(
-    layout.style !== "Minimal" && layoutMode === "table"
+  const [showMenuIcons, setShowMenuIcons] = useState(
+    layout.interface !== "hide"
   );
-  const appear = useCallback(() => setShowIcons(true), [setShowIcons]);
-  const disappear = useCallback(() => setShowIcons(false), [setShowIcons]);
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={
-        layout.style === "Minimal" && layoutMode === "table"
-          ? appear
-          : undefined
-      }
-      onMouseOut={
-        layout.style === "Minimal" && layoutMode === "table"
-          ? disappear
-          : undefined
-      }
+      onMouseOver={() => setShowMenuIcons(true)}
+      onMouseOut={() => setShowMenuIcons(false)}
     >
+      {/* {showInterface ? "true" : "false"} | {layout.style} */}
       {isEditSearchFilter && (
         <div
           className="p-4 w-full"
@@ -383,17 +382,8 @@ const ResultsView: ResultsViewComponent = ({
       <div className="relative">
         <span
           className="absolute top-1 right-0 z-10"
-          style={!showIcons && !showInterface ? { display: "none" } : {}}
+          style={!showMenuIcons && !showInterface ? { display: "none" } : {}}
         >
-          {layout.style === "Minimal" && (
-            <Tooltip content={"Toggle Interface"}>
-              <Button
-                icon={showInterface ? "eye-off" : "eye-open"}
-                minimal
-                onClick={() => setShowInterface((s) => !s)}
-              />
-            </Tooltip>
-          )}
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
               <Button icon={"refresh"} minimal onClick={onRefresh} />
@@ -507,53 +497,31 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                   </div>
-                  {settingsById[layoutMode].map(
-                    (s) =>
-                      s.options.length === 1 && (
-                        <Label key={s.key}>
-                          {s.label}
-                          <Checkbox
-                            defaultChecked={layout.style === s.options[0]}
-                            label={s.options[0]}
-                            onChange={(e) => {
-                              const resultNode = getSubTree({
-                                key: "results",
-                                parentUid,
-                              });
-                              const layoutNode = getSubTree({
-                                key: "layout",
-                                parentUid: resultNode.uid,
-                              });
-                              setInputSetting({
-                                key: "mode",
-                                value: layoutMode,
-                                blockUid: layoutNode.uid,
-                              });
-                              setLayout({
-                                ...layout,
-                                [s.key]: (e.target as HTMLInputElement).checked
-                                  ? s.options[0]
-                                  : "default",
-                              });
-                              setInputSetting({
-                                key: s.key,
-                                value: (e.target as HTMLInputElement).checked
-                                  ? s.options[0]
-                                  : "default",
-                                blockUid: layoutNode.uid,
-                              });
-                              setShowInterface(
-                                layout.style !== "Minimal" &&
-                                  s.key === "style" &&
-                                  layoutMode == "table"
-                                  ? false
-                                  : true
-                              );
-                            }}
-                          />
-                        </Label>
-                      )
-                  )}
+                  {settingsById[layoutMode].map((s) => (
+                    <Label key={s.key}>
+                      {s.label}
+                      <MenuItemSelect
+                        activeItem={head(layout[s.key]) || s.options[0]}
+                        onItemSelect={(value) => {
+                          setLayout({ ...layout, [s.key]: value });
+                          const resultNode = getSubTree({
+                            key: "results",
+                            parentUid,
+                          });
+                          const layoutNode = getSubTree({
+                            key: "layout",
+                            parentUid: resultNode.uid,
+                          });
+                          setInputSetting({
+                            key: s.key,
+                            value,
+                            blockUid: layoutNode.uid,
+                          });
+                        }}
+                        items={s.options.slice()}
+                      />
+                    </Label>
+                  ))}
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
@@ -650,6 +618,27 @@ const ResultsView: ResultsViewComponent = ({
                     text={"Column Views"}
                     onClick={() => {
                       setIsEditViews(true);
+                    }}
+                  />
+                  <MenuItem
+                    icon={showInterface ? "th-disconnect" : "th"}
+                    text={showInterface ? "Hide Interface" : "Show Interface"}
+                    onClick={() => {
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      const layoutNode = getSubTree({
+                        key: "layout",
+                        parentUid: resultNode.uid,
+                      });
+                      setInputSetting({
+                        key: "interface",
+                        value: showInterface ? "hide" : "show",
+                        blockUid: layoutNode.uid,
+                      });
+                      setShowInterface((s) => !s);
+                      setMoreMenuOpen(false);
                     }}
                   />
                   {!preventExport && (
