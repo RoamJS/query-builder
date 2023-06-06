@@ -1009,6 +1009,10 @@ const TldrawCanvas = ({ title }: Props) => {
           TLUser.createCustomId(editingUserUid) === initialState.userId
         )
           return;
+      // TODO - DESERIALIZATION IS BAD!!
+      // It clears the state, which means everything is deleted and then added -> infinite loop and chaos ensues
+      // Figure out a way to calculate the diff between remote state and current state
+      // then call store.applyDiffs(diff) instead of store.deserialize(state)
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
           store.mergeRemoteChanges(() => {
