@@ -84,6 +84,7 @@ import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
+import { StoreSnapshot } from "@tldraw/tlstore";
 
 declare global {
   interface Window {
@@ -106,6 +107,75 @@ const discourseContext: {
   nodes: Record<string, DiscourseNode & { index: number }>;
   relations: DiscourseRelation[];
 } = { nodes: {}, relations: [] };
+
+const diffObjects = (
+  oldRecord: Record<string, any>,
+  newRecord: Record<string, any>
+): Record<string, any> => {
+  const allKeys = Array.from(
+    new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
+  );
+  return Object.fromEntries(
+    allKeys
+      .map((key) => {
+        const oldValue = oldRecord[key];
+        const newValue = newRecord[key];
+        if (typeof oldValue !== typeof newValue) {
+          return [key, newValue];
+        }
+        if (
+          typeof oldValue === "object" &&
+          oldValue !== null &&
+          newValue !== null
+        ) {
+          const diffed = diffObjects(oldValue, newValue);
+          if (Object.keys(diffed).length) {
+            return [key, diffed];
+          }
+        }
+        if (oldValue !== newValue) {
+          return [key, newValue];
+        }
+        return null;
+      })
+      .filter((e): e is [string, any] => !!e)
+  );
+};
+
+const calculateDiff = (
+  newState: StoreSnapshot<TLRecord>,
+  oldState: StoreSnapshot<TLRecord>
+) => {
+  return {
+    added: Object.fromEntries(
+      Object.keys(newState)
+        .filter((id) => !oldState[id])
+        .map((id) => [id, newState[id]])
+    ),
+    removed: Object.fromEntries(
+      Object.keys(oldState)
+        .filter((id) => !newState[id])
+        .map((key) => [key, oldState[key]])
+    ),
+    updated: Object.fromEntries(
+      Object.keys(newState)
+        .map((id) => {
+          const oldRecord = oldState[id];
+          const newRecord = newState[id];
+          if (!oldRecord || !newRecord) {
+            return null;
+          }
+
+          const diffed = diffObjects(oldRecord, newRecord);
+          if (Object.keys(diffed).length) {
+            return [id, diffed];
+          }
+          return null;
+        })
+        .filter((e): e is [string, any] => !!e)
+    ),
+  };
+};
 
 // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
 const createDiscourseNode = async ({
@@ -997,9 +1067,11 @@ const TldrawCanvas = ({ title }: Props) => {
           (after?.[":block/props"] || {}) as json
         ) as Record<string, json>;
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-        const state = rjsqb?.tldraw as Parameters<typeof store.deserialize>[0];
+        const newState = rjsqb?.tldraw as Parameters<
+          typeof store.deserialize
+        >[0];
         const editingUser = after?.[":edit/user"]?.[":db/id"];
-        if (!state || !editingUser) return;
+        if (!newState || !editingUser) return;
         const editingUserUid = window.roamAlphaAPI.pull(
           "[:user/uid]",
           editingUser
@@ -1009,14 +1081,13 @@ const TldrawCanvas = ({ title }: Props) => {
           TLUser.createCustomId(editingUserUid) === initialState.userId
         )
           return;
-      // TODO - DESERIALIZATION IS BAD!!
-      // It clears the state, which means everything is deleted and then added -> infinite loop and chaos ensues
-      // Figure out a way to calculate the diff between remote state and current state
-      // then call store.applyDiffs(diff) instead of store.deserialize(state)
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
           store.mergeRemoteChanges(() => {
-            store.deserialize(state);
+            const currentState = store.serialize();
+            // debugger; // TODO - figure out why props is not properly diffing
+            const diff = calculateDiff(newState, currentState);
+            store.applyDiff(diff);
           });
         }, THROTTLE);
       },
