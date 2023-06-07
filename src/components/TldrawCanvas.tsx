@@ -336,6 +336,15 @@ const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 
+const DEFAULT_STYLE_PROPS = {
+  ...TEXT_PROPS,
+  fontSize: FONT_SIZES.m,
+  fontFamily: FONT_FAMILIES.sans,
+  width: "fit-content",
+  maxWidth: "400px",
+  padding: "16px",
+};
+
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
@@ -510,7 +519,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         }}
       >
         <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
-          <div ref={contentRef}>
+          <div ref={contentRef} style={DEFAULT_STYLE_PROPS}>
             {alias
               ? new RegExp(alias).exec(shape.props.title)?.[1] ||
                 shape.props.title
@@ -562,12 +571,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   relationIds,
                 });
                 const { w, h } = this.app.textMeasure.measureText({
-                  ...TEXT_PROPS,
+                  ...DEFAULT_STYLE_PROPS,
                   text,
-                  fontSize: FONT_SIZES.m,
-                  fontFamily: FONT_FAMILIES.sans,
-                  width: "fit-content",
-                  maxWidth: "400px",
                 });
                 this.updateProps(shape.id, {
                   title: text,
