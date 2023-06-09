@@ -85,6 +85,7 @@ import triplesToBlocks from "../utils/triplesToBlocks";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { StoreSnapshot } from "@tldraw/tlstore";
+import setInputSetting from "roamjs-components/util/setInputSetting";
 
 declare global {
   interface Window {
@@ -132,6 +133,7 @@ const diffObjects = (
           if (Object.keys(diffed).length) {
             return [key, diffed];
           }
+          return null;
         }
         if (oldValue !== newValue) {
           return [key, newValue];
@@ -168,7 +170,7 @@ const calculateDiff = (
 
           const diffed = diffObjects(oldRecord, newRecord);
           if (Object.keys(diffed).length) {
-            return [id, diffed];
+            return [id, [oldRecord, newRecord]];
           }
           return null;
         })
@@ -1034,13 +1036,19 @@ const TldrawCanvas = ({ title }: Props) => {
         );
       if (!validChanges.length) return;
       clearTimeout(serializeRef.current);
-      serializeRef.current = window.setTimeout(() => {
+      serializeRef.current = window.setTimeout(async () => {
         const state = _store.serialize();
         const props = getBlockProps(pageUid) as Record<string, unknown>;
         const rjsqb =
           typeof props["roamjs-query-builder"] === "object"
             ? props["roamjs-query-builder"]
             : {};
+        // we need this bc Roam doesn't update edit/user or edit/time when we just edit block/props
+        await setInputSetting({
+          blockUid: pageUid,
+          key: "timestamp",
+          value: new Date().valueOf().toString(),
+        });
         window.roamAlphaAPI.updateBlock({
           block: {
             uid: pageUid,
@@ -1060,7 +1068,7 @@ const TldrawCanvas = ({ title }: Props) => {
 
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
-      "[:edit/user :block/props]",
+      "[:edit/user :block/props :block/string {:block/children ...}]",
       `[:block/uid "${pageUid}"]`,
       (_, after) => {
         const props = normalizeProps(
@@ -1070,7 +1078,9 @@ const TldrawCanvas = ({ title }: Props) => {
         const newState = rjsqb?.tldraw as Parameters<
           typeof store.deserialize
         >[0];
-        const editingUser = after?.[":edit/user"]?.[":db/id"];
+        const editingUser = (after?.[":block/children"] || []).find(
+          (b) => b[":block/string"] === "timestamp"
+        )?.[":block/children"]?.[0]?.[":edit/user"]?.[":db/id"];
         if (!newState || !editingUser) return;
         const editingUserUid = window.roamAlphaAPI.pull(
           "[:user/uid]",
