@@ -144,10 +144,20 @@ const diffObjects = (
   );
 };
 
+const personalRecordTypes = new Set(["camera", "instance", "instance_page_state"]);
+const pruneState = (state: StoreSnapshot<TLRecord>) =>
+  Object.fromEntries(
+    Object.entries(state).filter(
+      ([_, record]) => !personalRecordTypes.has(record.typeName)
+    )
+  );
+
 const calculateDiff = (
-  newState: StoreSnapshot<TLRecord>,
-  oldState: StoreSnapshot<TLRecord>
+  _newState: StoreSnapshot<TLRecord>,
+  _oldState: StoreSnapshot<TLRecord>
 ) => {
+  const newState = pruneState(_newState);
+  const oldState = pruneState(_oldState);
   return {
     added: Object.fromEntries(
       Object.keys(newState)
@@ -1095,7 +1105,6 @@ const TldrawCanvas = ({ title }: Props) => {
         deserializeRef.current = window.setTimeout(() => {
           store.mergeRemoteChanges(() => {
             const currentState = store.serialize();
-            // debugger; // TODO - figure out why props is not properly diffing
             const diff = calculateDiff(newState, currentState);
             store.applyDiff(diff);
           });
