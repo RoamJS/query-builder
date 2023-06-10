@@ -293,14 +293,19 @@ const formatDate = ({
   };
 };
 
+const flatten = (blocks: PullBlock[] = []): PullBlock[] =>
+  blocks.flatMap((b) => [b, ...flatten(b[":block/children"])]);
+
 const getBlockAttribute = (key: string, r: PullBlock) => {
-  const block = window.roamAlphaAPI.data.fast.q(
-    `[:find (pull ?b [:block/string :block/uid]) :where [?a :node/title "${normalizePageTitle(
-      key
-    )}"] [?p :block/uid "${
-      r[":block/uid"]
-    }"] [?b :block/refs ?a] [?b :block/parents ?p]]`
-  )?.[0]?.[0] as PullBlock;
+  const blocks = flatten(
+    window.roamAlphaAPI.pull(
+      "[:block/string :block/uid {:block/children ...}]",
+      [":block/uid", r[":block/uid"] || ""]
+    )?.[":block/children"]
+  );
+  const block = blocks.find((blk) =>
+    (blk[":block/string"] || "").startsWith(key + "::")
+  );
   return {
     "": (block?.[":block/string"] || "").slice(key.length + 2).trim(),
     "-uid": block?.[":block/uid"] || "",
