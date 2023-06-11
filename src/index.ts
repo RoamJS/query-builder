@@ -42,6 +42,7 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
+import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -472,9 +473,8 @@ svg.rs-svg-container {
       text: "QUERYBUILDER",
       delayArgs: true,
       help: "Run an existing query block and output the results.\n\n1. The reference to the query block\n2. The format to output each result\n3. (Optional) The number of results returned",
-      handler:
-        ({ proccessBlockText, variables, processBlock }) =>
-        (arg, ...args) => {
+      handler: ({ proccessBlockText, variables, processBlock }) =>
+        function runQueryBuilderCommand(arg, ...args) {
           const inputArgs = args.filter((a) => a.includes("="));
           const regularArgs = args.filter((a) => !a.includes("="));
           const lastArg = regularArgs[regularArgs.length - 1];
@@ -494,9 +494,11 @@ svg.rs-svg-container {
               }
             : { text: formatArg, children: [], uid: "" };
           const queryRef = variables[arg] || arg;
-          const aliasOrPage = window.roamAlphaAPI.data.fast
-            .q(
-              `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
+          const parentUid = isLiveBlock(extractRef(queryRef))
+            ? extractRef(queryRef)
+            : window.roamAlphaAPI.data.fast
+                .q(
+                  `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
                  [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
                  ${getQueryPages(extensionAPI).map(
                    (p) =>
@@ -504,9 +506,8 @@ svg.rs-svg-container {
                  )}
                   [and [?b :node/title "${queryRef}"]]
             ]]`
-            )[0]
-            ?.toString();
-          const parentUid = aliasOrPage || extractRef(queryRef);
+                )[0]
+                ?.toString() || "";
           return runQuery({
             parentUid,
             extensionAPI,
