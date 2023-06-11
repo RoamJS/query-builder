@@ -84,6 +84,8 @@ import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
+import { StoreSnapshot } from "@tldraw/tlstore";
+import setInputSetting from "roamjs-components/util/setInputSetting";
 
 declare global {
   interface Window {
@@ -106,6 +108,86 @@ const discourseContext: {
   nodes: Record<string, DiscourseNode & { index: number }>;
   relations: DiscourseRelation[];
 } = { nodes: {}, relations: [] };
+
+const diffObjects = (
+  oldRecord: Record<string, any>,
+  newRecord: Record<string, any>
+): Record<string, any> => {
+  const allKeys = Array.from(
+    new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
+  );
+  return Object.fromEntries(
+    allKeys
+      .map((key) => {
+        const oldValue = oldRecord[key];
+        const newValue = newRecord[key];
+        if (typeof oldValue !== typeof newValue) {
+          return [key, newValue];
+        }
+        if (
+          typeof oldValue === "object" &&
+          oldValue !== null &&
+          newValue !== null
+        ) {
+          const diffed = diffObjects(oldValue, newValue);
+          if (Object.keys(diffed).length) {
+            return [key, diffed];
+          }
+          return null;
+        }
+        if (oldValue !== newValue) {
+          return [key, newValue];
+        }
+        return null;
+      })
+      .filter((e): e is [string, any] => !!e)
+  );
+};
+
+const personalRecordTypes = new Set(["camera", "instance", "instance_page_state"]);
+const pruneState = (state: StoreSnapshot<TLRecord>) =>
+  Object.fromEntries(
+    Object.entries(state).filter(
+      ([_, record]) => !personalRecordTypes.has(record.typeName)
+    )
+  );
+
+const calculateDiff = (
+  _newState: StoreSnapshot<TLRecord>,
+  _oldState: StoreSnapshot<TLRecord>
+) => {
+  const newState = pruneState(_newState);
+  const oldState = pruneState(_oldState);
+  return {
+    added: Object.fromEntries(
+      Object.keys(newState)
+        .filter((id) => !oldState[id])
+        .map((id) => [id, newState[id]])
+    ),
+    removed: Object.fromEntries(
+      Object.keys(oldState)
+        .filter((id) => !newState[id])
+        .map((key) => [key, oldState[key]])
+    ),
+    updated: Object.fromEntries(
+      Object.keys(newState)
+        .map((id) => {
+          const oldRecord = oldState[id];
+          const newRecord = newState[id];
+          if (!oldRecord || !newRecord) {
+            return null;
+          }
+
+          const diffed = diffObjects(oldRecord, newRecord);
+          if (Object.keys(diffed).length) {
+            return [id, [oldRecord, newRecord]];
+          }
+          return null;
+        })
+        .filter((e): e is [string, any] => !!e)
+    ),
+  };
+};
 
 // TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
 const createDiscourseNode = async ({
@@ -964,13 +1046,19 @@ const TldrawCanvas = ({ title }: Props) => {
         );
       if (!validChanges.length) return;
       clearTimeout(serializeRef.current);
-      serializeRef.current = window.setTimeout(() => {
+      serializeRef.current = window.setTimeout(async () => {
         const state = _store.serialize();
         const props = getBlockProps(pageUid) as Record<string, unknown>;
         const rjsqb =
           typeof props["roamjs-query-builder"] === "object"
             ? props["roamjs-query-builder"]
             : {};
+        // we need this bc Roam doesn't update edit/user or edit/time when we just edit block/props
+        await setInputSetting({
+          blockUid: pageUid,
+          key: "timestamp",
+          value: new Date().valueOf().toString(),
+        });
         window.roamAlphaAPI.updateBlock({
           block: {
             uid: pageUid,
@@ -990,16 +1078,20 @@ const TldrawCanvas = ({ title }: Props) => {
 
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
-      "[:edit/user :block/props]",
+      "[:edit/user :block/props :block/string {:block/children ...}]",
       `[:block/uid "${pageUid}"]`,
       (_, after) => {
         const props = normalizeProps(
           (after?.[":block/props"] || {}) as json
         ) as Record<string, json>;
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-        const state = rjsqb?.tldraw as Parameters<typeof store.deserialize>[0];
-        const editingUser = after?.[":edit/user"]?.[":db/id"];
-        if (!state || !editingUser) return;
+        const newState = rjsqb?.tldraw as Parameters<
+          typeof store.deserialize
+        >[0];
+        const editingUser = (after?.[":block/children"] || []).find(
+          (b) => b[":block/string"] === "timestamp"
+        )?.[":block/children"]?.[0]?.[":edit/user"]?.[":db/id"];
+        if (!newState || !editingUser) return;
         const editingUserUid = window.roamAlphaAPI.pull(
           "[:user/uid]",
           editingUser
@@ -1012,7 +1104,9 @@ const TldrawCanvas = ({ title }: Props) => {
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
           store.mergeRemoteChanges(() => {
-            store.deserialize(state);
+            const currentState = store.serialize();
+            const diff = calculateDiff(newState, currentState);
+            store.applyDiff(diff);
           });
         }, THROTTLE);
       },
