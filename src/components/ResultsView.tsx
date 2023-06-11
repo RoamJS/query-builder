@@ -621,14 +621,10 @@ const ResultsView: ResultsViewComponent = ({
                         key: "results",
                         parentUid,
                       });
-                      const layoutNode = getSubTree({
-                        key: "layout",
-                        parentUid: resultNode.uid,
-                      });
                       setInputSetting({
                         key: "interface",
                         value: showInterface ? "hide" : "show",
-                        blockUid: layoutNode.uid,
+                        blockUid: resultNode.uid,
                       });
                       setShowInterface((s) => !s);
                       setMoreMenuOpen(false);
