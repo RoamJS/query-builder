@@ -249,6 +249,8 @@ const ResultsView: ResultsViewComponent = ({
   const pageSizeTimeoutRef = useRef(0);
   const [views, setViews] = useState<Views>(settings.views);
   const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
+  const [showInterface, setShowInterface] = useState(settings.showInterface);
+  const [showMenuIcons, setShowMenuIcons] = useState(false);
 
   const { allResults, paginatedResults } = useMemo(() => {
     return postProcessResults(results, {
@@ -258,6 +260,7 @@ const ResultsView: ResultsViewComponent = ({
       page,
       pageSize,
       searchFilter,
+      showInterface,
     });
   }, [
     results,
@@ -314,12 +317,6 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
-  const [showInterface, setShowInterface] = useState(
-    layout.interface !== "hide"
-  );
-  const [showMenuIcons, setShowMenuIcons] = useState(
-    layout.interface !== "hide"
-  );
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
@@ -327,7 +324,6 @@ const ResultsView: ResultsViewComponent = ({
       onMouseOver={() => setShowMenuIcons(true)}
       onMouseOut={() => setShowMenuIcons(false)}
     >
-      {/* {showInterface ? "true" : "false"} | {layout.style} */}
       {isEditSearchFilter && (
         <div
           className="p-4 w-full"
