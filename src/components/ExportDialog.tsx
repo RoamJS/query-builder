@@ -26,7 +26,9 @@ const ExportDialog = ({
 } & Props) => {
   const exportArgs = useMemo(() => {
     if (fromQuery) return fromQuery;
-    const discourseNodes = getDiscourseNodes();
+    const discourseNodes = getDiscourseNodes().filter(
+      (r) => r.backedBy !== "default"
+    );
     return {
       nodes: (isSamePageEnabled: boolean) =>
         Promise.all(
