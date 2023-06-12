@@ -9,6 +9,7 @@ import {
   MenuItem,
   Switch,
   Intent,
+  Label,
 } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Filters } from "roamjs-components/components/Filter";
@@ -173,11 +174,32 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
 };
 
 const SUPPORTED_LAYOUTS = [
-  { id: "table", icon: "join-table" },
-  { id: "line", icon: "chart" },
-  { id: "bar", icon: "vertical-bar-chart-asc" },
-  { id: "timeline", icon: "timeline-events" },
+  {
+    id: "table",
+    icon: "join-table",
+    settings: [
+      {
+        key: "rowStyle",
+        label: "Row Style",
+        options: ["Striped", "Bare"],
+      },
+    ],
+  },
+  { id: "line", icon: "chart", settings: [] },
+  {
+    id: "bar",
+    icon: "vertical-bar-chart-asc",
+    settings: [],
+  },
+  {
+    id: "timeline",
+    icon: "timeline-events",
+    settings: [],
+  },
 ] as const;
+const settingsById = Object.fromEntries(
+  SUPPORTED_LAYOUTS.map((l) => [l.id, l.settings])
+);
 
 type ResultsViewComponent = (props: {
   parentUid: string;
@@ -196,6 +218,8 @@ type ResultsViewComponent = (props: {
   // @deprecated - should be inferred from the query or layout
   onResultsInViewChange?: (r: Result[]) => void;
 }) => JSX.Element;
+
+const head = (s: string | string[]) => (Array.isArray(s) ? s[0] || "" : s);
 
 const ResultsView: ResultsViewComponent = ({
   parentUid,
@@ -225,6 +249,8 @@ const ResultsView: ResultsViewComponent = ({
   const pageSizeTimeoutRef = useRef(0);
   const [views, setViews] = useState<Views>(settings.views);
   const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
+  const [showInterface, setShowInterface] = useState(settings.showInterface);
+  const [showMenuIcons, setShowMenuIcons] = useState(false);
 
   const { allResults, paginatedResults } = useMemo(() => {
     return postProcessResults(results, {
@@ -234,6 +260,7 @@ const ResultsView: ResultsViewComponent = ({
       page,
       pageSize,
       searchFilter,
+      showInterface,
     });
   }, [
     results,
@@ -258,6 +285,10 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const [layout, setLayout] = useState(
     settings.layout || SUPPORTED_LAYOUTS[0].id
+  );
+  const layoutMode = useMemo(
+    () => (Array.isArray(layout.mode) ? layout.mode[0] : layout.mode),
+    [layout]
   );
   const onViewChange = (view: (typeof views)[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
@@ -288,8 +319,10 @@ const ResultsView: ResultsViewComponent = ({
   const debounceRef = useRef(0);
   return (
     <div
-      className="roamjs-query-results-view w-full relative"
+      className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
+      onMouseOver={() => setShowMenuIcons(true)}
+      onMouseOut={() => setShowMenuIcons(false)}
     >
       {isEditSearchFilter && (
         <div
@@ -336,7 +369,10 @@ const ResultsView: ResultsViewComponent = ({
         exportTypes={getExportTypes?.(allResults)}
       />
       <div className="relative">
-        <span className="absolute top-1 right-0 z-10">
+        <span
+          className="absolute top-1 right-0 z-10"
+          style={!showMenuIcons && !showInterface ? { display: "none" } : {}}
+        >
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
               <Button icon={"refresh"} minimal onClick={onRefresh} />
@@ -418,10 +454,10 @@ const ResultsView: ResultsViewComponent = ({
                       small
                     />
                   </h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
-                        className={`rounded-sm border py-2 px-6 flex flex-col gap-2 cursor-pointer ${
+                        className={`rounded-sm border p-2 flex flex-col gap-2 cursor-pointer justify-center items-center ${
                           l.id === layout.mode
                             ? "border-blue-800 border-opacity-75 text-blue-800"
                             : "border-gray-800 border-opacity-25 text-gray-800"
@@ -441,6 +477,8 @@ const ResultsView: ResultsViewComponent = ({
                             value: l.id,
                             blockUid: layoutNode.uid,
                           });
+                          setIsEditLayout(false);
+                          setMoreMenuOpen(false);
                         }}
                       >
                         <Icon icon={l.icon} />
@@ -448,6 +486,31 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                   </div>
+                  {settingsById[layoutMode].map((s) => (
+                    <Label key={s.key}>
+                      {s.label}
+                      <MenuItemSelect
+                        activeItem={head(layout[s.key]) || s.options[0]}
+                        onItemSelect={(value) => {
+                          setLayout({ ...layout, [s.key]: value });
+                          const resultNode = getSubTree({
+                            key: "results",
+                            parentUid,
+                          });
+                          const layoutNode = getSubTree({
+                            key: "layout",
+                            parentUid: resultNode.uid,
+                          });
+                          setInputSetting({
+                            key: s.key,
+                            value,
+                            blockUid: layoutNode.uid,
+                          });
+                        }}
+                        items={s.options.slice()}
+                      />
+                    </Label>
+                  ))}
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
@@ -544,6 +607,23 @@ const ResultsView: ResultsViewComponent = ({
                     text={"Column Views"}
                     onClick={() => {
                       setIsEditViews(true);
+                    }}
+                  />
+                  <MenuItem
+                    icon={showInterface ? "th-disconnect" : "th"}
+                    text={showInterface ? "Hide Interface" : "Show Interface"}
+                    onClick={() => {
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      setInputSetting({
+                        key: "interface",
+                        value: showInterface ? "hide" : "show",
+                        blockUid: resultNode.uid,
+                      });
+                      setShowInterface((s) => !s);
+                      setMoreMenuOpen(false);
                     }}
                   />
                   {!preventExport && (
@@ -662,6 +742,7 @@ const ResultsView: ResultsViewComponent = ({
                 pageSizeTimeoutRef={pageSizeTimeoutRef}
                 onRefresh={onRefresh}
                 allResultsLength={allResults.length}
+                showInterface={showInterface}
               />
             ) : layout.mode === "line" ? (
               <Charts
@@ -686,7 +767,11 @@ const ResultsView: ResultsViewComponent = ({
               <i>No Results Found</i>
             </div>
           ))}
-        <div style={{ background: "#eeeeee80" }}>
+        <div
+          style={
+            !showInterface ? { display: "none" } : { background: "#eeeeee80" }
+          }
+        >
           <div
             className="flex justify-between items-center text-xs px-1"
             style={{

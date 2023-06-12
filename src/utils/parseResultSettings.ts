@@ -79,7 +79,10 @@ const parseResultSettings = (
     tree: resultNode.children,
     key: "searchFilter",
   });
-  const searchFilter = searchFilterNode.children[0]?.text;
+  const interfaceNode = getSubTree({
+    tree: resultNode.children,
+    key: "interface",
+  });
   const filterEntries = getFilterEntries(filtersNode);
   const savedFilterData = filterEntries.length
     ? Object.fromEntries(filterEntries)
@@ -127,7 +130,8 @@ const parseResultSettings = (
       key: s.text,
       descending: toFlexRegex("true").test(s.children[0]?.text || ""),
     })),
-    searchFilter,
+    searchFilter: searchFilterNode.children[0]?.text,
+    showInterface: interfaceNode.children[0]?.text !== "hide",
     filters: Object.fromEntries(
       columns.map(({ key }) => [
         key,

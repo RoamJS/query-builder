@@ -375,6 +375,7 @@ const ResultsTable = ({
   page,
   setPage,
   allResultsLength,
+  showInterface,
 }: {
   columns: Column[];
   results: Result[];
@@ -394,6 +395,7 @@ const ResultsTable = ({
   setPage: (p: number) => void;
   onRefresh: () => void;
   allResultsLength: number;
+  showInterface?: boolean;
 }) => {
   const columnWidths = useMemo(() => {
     const widths =
@@ -440,15 +442,12 @@ const ResultsTable = ({
         tableLayout: "fixed",
         borderRadius: 3,
       }}
-      striped
-      interactive
+      {...(layout.rowStyle !== "Bare"
+        ? { striped: true, interactive: true }
+        : {})}
     >
-      <thead
-        style={{
-          background: "#eeeeee80",
-        }}
-      >
-        <tr>
+      <thead style={{ background: "#eeeeee80" }}>
+        <tr style={!showInterface ? { visibility: "collapse" } : {}}>
           {columns.map((c) => (
             <ResultHeader
               key={c.uid}
@@ -533,7 +532,7 @@ const ResultsTable = ({
           />
         ))}
       </tbody>
-      <tfoot>
+      <tfoot style={!showInterface ? { display: "none" } : {}}>
         <tr>
           <td
             colSpan={columns.length}
