@@ -86,6 +86,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
+import ContrastColor from "contrast-color";
 
 declare global {
   interface Window {
@@ -144,7 +145,11 @@ const diffObjects = (
   );
 };
 
-const personalRecordTypes = new Set(["camera", "instance", "instance_page_state"]);
+const personalRecordTypes = new Set([
+  "camera",
+  "instance",
+  "instance_page_state",
+]);
 const pruneState = (state: StoreSnapshot<TLRecord>) =>
   Object.fromEntries(
     Object.entries(state).filter(
@@ -362,7 +367,24 @@ const LabelDialog = ({
         autoFocus={false}
         className={"roamjs-discourse-playground-dialog"}
       >
-        <div className={Classes.DIALOG_BODY} ref={containerRef}>
+        <div
+          className={Classes.DIALOG_BODY}
+          ref={containerRef}
+          // TODO - this was an attempt to fix a bug related to the dialog reappearing after
+          // closing by pressing enter. Still doesn't fix it however - document keyup handler
+          // is still being called which then sets the editing id to the current shape, reopening
+          // the dialog
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+            e.nativeEvent.stopPropagation();
+          }}
+          onKeyUp={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+            e.nativeEvent.stopPropagation();
+          }}
+        >
           <AutocompleteInput
             value={initialValue}
             setValue={setValue}
@@ -376,16 +398,9 @@ const LabelDialog = ({
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
-          <div className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center`}>
-            {error && <span className={"text-red-800"}>{error}</span>}
-            {loading && <Spinner size={SpinnerSize.SMALL} />}
-            <Button
-              text={"Cancel"}
-              onClick={onCancelClick}
-              onTouchEnd={onCancelClick}
-              disabled={loading}
-              className="flex-shrink-0"
-            />
+          <div
+            className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center flex-row-reverse`}
+          >
             <Button
               text={"Set"}
               intent={Intent.PRIMARY}
@@ -394,6 +409,15 @@ const LabelDialog = ({
               disabled={loading}
               className="flex-shrink-0"
             />
+            <Button
+              text={"Cancel"}
+              onClick={onCancelClick}
+              onTouchEnd={onCancelClick}
+              disabled={loading}
+              className="flex-shrink-0"
+            />
+            <span className={"text-red-800 flex-grow"}>{error}</span>
+            {loading && <Spinner size={SpinnerSize.SMALL} />}
           </div>
         </div>
       </Dialog>
@@ -414,6 +438,22 @@ type DiscourseNodeShape = TLBaseShape<
 
 type DiscourseRelationShape = TLBaseShape<string, TLArrowShapeProps>;
 
+// from @tldraw/editor/editor.css
+const COLOR_PALETTE: Record<string, string> = {
+  black: "#1d1d1d",
+  blue: "#4263eb",
+  green: "#099268",
+  grey: "#adb5bd",
+  "light-blue": "#4dabf7",
+  "light-green": "#40c057",
+  "light-red": "#ff8787",
+  "light-violet": "#e599f7",
+  orange: "#f76707",
+  red: "#e03131",
+  violet: "#ae3ec9",
+  white: "#ffffff",
+  yellow: "#ffc078",
+};
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
@@ -553,7 +593,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
   render(shape: DiscourseNodeShape) {
     const {
-      canvasSettings: { alias = "", color = "" } = {},
+      canvasSettings: { alias = "", color: backgroundColor = "" } = {},
       index: discourseNodeIndex = -1,
     } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
@@ -561,12 +601,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       () => this.app.editingId === shape.id,
       [this.app, shape.id]
     );
-    const [closing, setClosing] = useState(false);
     useEffect(() => {
-      if (!shape.props.title && !closing) {
+      if (!shape.props.title) {
         this.app.setEditingId(shape.id);
       }
-    }, [shape.props.title, shape.id, closing]);
+    }, [shape.props.title, shape.id]);
     const contentRef = useRef<HTMLDivElement>(null);
     const [loaded, setLoaded] = useState("");
     useEffect(() => {
@@ -583,21 +622,24 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
+    const paletteColor =
+      COLOR_ARRAY[
+        discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
+          ? discourseNodeIndex
+          : 0
+      ];
+    const textColor = backgroundColor
+      ? ContrastColor.contrastColor({ bgColor: backgroundColor })
+      : ContrastColor.contrastColor({
+          bgColor: COLOR_PALETTE[paletteColor],
+        });
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl text-black roamjs-tldraw-node"
+        className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node"
         style={{
-          background:
-            color ||
-            `var(--palette-${
-              COLOR_ARRAY[
-                discourseNodeIndex >= 0 &&
-                discourseNodeIndex < COLOR_ARRAY.length - 1
-                  ? discourseNodeIndex
-                  : 0
-              ]
-            })`,
+          background: backgroundColor || `var(--palette-${paletteColor})`,
+          color: textColor,
         }}
       >
         <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
@@ -617,13 +659,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               label={shape.props.title}
               nodeType={this.type}
               onSuccess={async ({ text, uid }) => {
-                setClosing(true);
                 // If we get a new uid, all the necessary updates happen below
                 if (shape.props.uid === uid) {
                   if (shape.props.title) {
                     if (shape.props.title === text) {
                       // nothing to update I think
-                      setClosing(false);
                       return;
                     } else {
                       if (isPageUid(shape.props.uid))
@@ -667,7 +707,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   relationIds,
                   finalUid: uid,
                 });
-                setClosing(false);
               }}
               onCancel={() => {
                 if (!isLiveBlock(shape.props.uid)) {
