@@ -51,7 +51,11 @@ import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
 import { QBGlobalRefs } from "../utils/types";
 
-if (window.RoamLazy) window.RoamLazy.Cytoscape().then(navigator);
+if (window.RoamLazy && !window.roamjs?.extension?.cytoscape) {
+  window.RoamLazy.Cytoscape().then(navigator);
+  // hack to get rid of cytoscape warning
+  window.roamjs.extension.cytoscape = {};
+}
 const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
 const trashCursor =
@@ -381,7 +385,7 @@ const SELECTION_MODES = [
   { id: "DELETE", tooltip: "Delete", icon: "delete", shortcut: "d" },
   { id: "ALIAS", tooltip: "Alias", icon: "application", shortcut: "a" },
 ] as const;
-type SelectionMode = typeof SELECTION_MODES[number]["id"];
+type SelectionMode = (typeof SELECTION_MODES)[number]["id"];
 
 const getCyElementFromRoamNode = async ({
   text,

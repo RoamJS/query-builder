@@ -101,51 +101,60 @@ const QueryPage = ({
   const [columns, setColumns] = useState<Column[]>([]);
   const [results, setResults] = useState<Result[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const onRefresh = useCallback(() => {
-    setError("");
-    setLoading(true);
-    const args = parseQuery(pageUid);
-    setTimeout(() => {
-      const runFireQuery = (a: ReturnType<typeof parseQuery>) =>
-        fireQuery(a)
-          .then((results) => {
-            setColumns(a.columns);
-            setResults(results);
-          })
-          .catch(() => {
-            setError(
-              `Query failed to run. Try running a new query from the editor.`
-            );
-          })
-          .finally(() => {
-            const tree = getBasicTreeByParentUid(pageUid);
-            const node = getSubTree({ tree, key: "results" });
-            return (
-              node.uid
-                ? Promise.resolve(node.uid)
-                : createBlock({ parentUid: pageUid, node: { text: "results" } })
-            ).then(() => setHasResults(true));
-          });
-      (args.returnNode
-        ? runFireQuery(args)
-        : defaultReturnNode
-        ? ensureSetting({
-            key: "scratch.return",
-            value: defaultReturnNode,
-            parentUid: pageUid,
-          }).then(() => {
-            if (defaultReturnNode === "block" || defaultReturnNode === "node") {
-              setIsEdit(true);
-            } else {
-              runFireQuery({ ...args, returnNode: defaultReturnNode });
-            }
-          })
-        : setIsEdit(true)
-      ).finally(() => {
-        setLoading(false);
-      });
-    }, 1);
-  }, [setResults, pageUid, setLoading, defaultReturnNode, setColumns]);
+  const onRefresh = useCallback(
+    (loadInBackground = false) => {
+      setError("");
+      setLoading(!loadInBackground);
+      const args = parseQuery(pageUid);
+      setTimeout(() => {
+        const runFireQuery = (a: ReturnType<typeof parseQuery>) =>
+          fireQuery(a)
+            .then((results) => {
+              setColumns(a.columns);
+              setResults(results);
+            })
+            .catch(() => {
+              setError(
+                `Query failed to run. Try running a new query from the editor.`
+              );
+            })
+            .finally(() => {
+              const tree = getBasicTreeByParentUid(pageUid);
+              const node = getSubTree({ tree, key: "results" });
+              return (
+                node.uid
+                  ? Promise.resolve(node.uid)
+                  : createBlock({
+                      parentUid: pageUid,
+                      node: { text: "results" },
+                    })
+              ).then(() => setHasResults(true));
+            });
+        (args.returnNode
+          ? runFireQuery(args)
+          : defaultReturnNode
+          ? ensureSetting({
+              key: "scratch.return",
+              value: defaultReturnNode,
+              parentUid: pageUid,
+            }).then(() => {
+              if (
+                defaultReturnNode === "block" ||
+                defaultReturnNode === "node"
+              ) {
+                setIsEdit(true);
+              } else {
+                runFireQuery({ ...args, returnNode: defaultReturnNode });
+              }
+            })
+          : setIsEdit(true)
+        ).finally(() => {
+          setLoading(false);
+        });
+      }, 1);
+    },
+    [setResults, pageUid, setLoading, defaultReturnNode, setColumns]
+  );
   useEffect(() => {
     if (!isEdit) {
       onRefresh();
