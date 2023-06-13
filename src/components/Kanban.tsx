@@ -7,7 +7,6 @@ import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import { z } from "zod";
-import updateBlock from "roamjs-components/writes/updateBlock";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import predefinedSelections from "../utils/predefinedSelections";
 
@@ -20,15 +19,25 @@ const KanbanCard = (card: {
   uid: string;
   $priority: number;
   $reprioritize: Reprioritize;
+  $getColumnElement: (x: number) => HTMLDivElement | undefined;
 }) => {
-  // TODO: use Default to 'react-draggable', 'react-draggable-dragging', and 'react-draggable-dragged instead
   const [isDragging, setIsDragging] = React.useState(false);
+
   return (
     <Draggable
-      onDrag={() => setIsDragging(true)}
+      onDrag={(_, data) => {
+        const { x, width } = data.node.getBoundingClientRect();
+        const el = card.$getColumnElement(x + width / 2);
+        if (el) el.style.background = "rgb(226, 232, 240)";
+        setIsDragging(true);
+      }}
       onStop={(_, data) => {
-        const { x, y } = data.node.getBoundingClientRect();
-        card.$reprioritize({ uid: card.uid, x, y });
+        const { x, y, width, height } = data.node.getBoundingClientRect();
+        card.$reprioritize({
+          uid: card.uid,
+          x: x + width / 2,
+          y: y + height / 2,
+        });
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
       }}
@@ -156,18 +165,24 @@ const Kanban = ({
     });
   }, [prioritization]);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const getColumnElement = React.useCallback(
+    (x: number) => {
+      if (!containerRef.current) return;
+      const columnEls = Array.from<HTMLDivElement>(
+        containerRef.current.querySelectorAll(".roamjs-kanban-column")
+      ).reverse();
+      columnEls.forEach((el) => (el.style.background = ""));
+      return columnEls.find((el) => {
+        const { left } = el.getBoundingClientRect();
+        return x >= left;
+      });
+    },
+    [containerRef]
+  );
   const reprioritize = React.useCallback<Reprioritize>(
     ({ uid, x, y }) => {
       if (!containerRef.current) return;
-      // use x & y to determine priority
-      const newColumn = Array.from(
-        containerRef.current.querySelectorAll(".roamjs-kanban-column")
-      )
-        .reverse()
-        .find((el) => {
-          const { left } = el.getBoundingClientRect();
-          return x >= left;
-        });
+      const newColumn = getColumnElement(x);
       if (!newColumn) return;
 
       const column = newColumn.getAttribute("data-column");
@@ -254,6 +269,7 @@ const Kanban = ({
                 // we use $ to prefix these props to avoid collisions with the result object
                 $priority={prioritization[d.uid]}
                 $reprioritize={reprioritize}
+                $getColumnElement={getColumnElement}
               />
             ))}
           </div>

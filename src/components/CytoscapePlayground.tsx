@@ -51,7 +51,7 @@ import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
 import { QBGlobalRefs } from "../utils/types";
 
-if (window.RoamLazy && !window.roamjs.extension.cytoscape) {
+if (window.RoamLazy && !window.roamjs?.extension?.cytoscape) {
   window.RoamLazy.Cytoscape().then(navigator);
   // hack to get rid of cytoscape warning
   window.roamjs.extension.cytoscape = {};
