@@ -54,7 +54,13 @@ import { QBGlobalRefs } from "../utils/types";
 if (window.RoamLazy && !window.roamjs?.extension?.cytoscape) {
   window.RoamLazy.Cytoscape().then(navigator);
   // hack to get rid of cytoscape warning
-  window.roamjs.extension.cytoscape = {};
+  window.roamjs = {
+    ...window.roamjs,
+    extension: {
+      ...window.roamjs?.extension,
+      cytoscape: {},
+    },
+  };
 }
 const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
