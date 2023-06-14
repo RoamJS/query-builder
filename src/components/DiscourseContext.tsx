@@ -259,6 +259,7 @@ const ContextTab = ({
         key: "text",
         // we currently don't care about the uid since we don't save settings yet for this ResultsView
         uid: "uid",
+        selection: "text",
       },
     ],
     []
@@ -288,17 +289,16 @@ const ContextTab = ({
           </span>
         </>
       }
-      // @ts-ignore TODO - add back in through -action selection
-      extraColumn={
-        hasExtra
-          ? {
-              width: 72,
-              header: <Icon icon={"data-connection"} />,
-              row: ExtraColumnRow,
-              reserved: [/anchor/, /context/],
-            }
-          : undefined
-      }
+      // extraColumn={
+      //   hasExtra
+      //     ? {
+      //         width: 72,
+      //         header: <Icon icon={"data-connection"} />,
+      //         row: ExtraColumnRow,
+      //         reserved: [/anchor/, /context/],
+      //       }
+      //     : undefined
+      // }
     />
   );
   return subTabs.length ? (

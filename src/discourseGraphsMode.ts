@@ -49,6 +49,7 @@ import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
+import CanvasReferences from "./components/CanvasReferences";
 
 export const SETTING = "discourse-graphs";
 
@@ -682,17 +683,28 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             !d.getAttribute("data-roamjs-discourse-context")
           ) {
             d.setAttribute("data-roamjs-discourse-context", "true");
-            const parent =
-              d.querySelector("div.rm-reference-container") || d.children[0];
-            if (parent && parent.parentElement) {
+            const parent = d.firstElementChild;
+            if (parent) {
+              const insertBefore = parent.firstElementChild;
+
               const p = document.createElement("div");
-              parent.parentElement.insertBefore(p, parent);
+              parent.insertBefore(p, insertBefore);
               renderWithUnmount(
                 React.createElement(DiscourseContext, {
                   uid,
                   results: [],
                 }),
                 p,
+                args
+              );
+
+              const canvasP = document.createElement("div");
+              parent.insertBefore(canvasP, insertBefore);
+              renderWithUnmount(
+                React.createElement(CanvasReferences, {
+                  uid,
+                }),
+                canvasP,
                 args
               );
             }
