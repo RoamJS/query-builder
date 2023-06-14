@@ -141,7 +141,6 @@ const ResultHeader = React.forwardRef<
 
 const CellEmbed = ({ uid }: { uid: string }) => {
   const title = getPageTitleByPageUid(uid);
-  const isPage = !!title ? "page-embed" : "block-embed";
   const contentRef = useRef(null);
   useEffect(() => {
     const el = contentRef.current;
@@ -154,12 +153,10 @@ const CellEmbed = ({ uid }: { uid: string }) => {
   }, [contentRef]);
   return (
     <div className="roamjs-query-embed">
-      {isPage === "page-embed" ? (
-        <h1 className="rm-page-title">{title}</h1>
-      ) : (
-        ""
-      )}
-      <div ref={contentRef} className={isPage} />
+      <div
+        ref={contentRef}
+        className={!!title ? "page-embed" : "block-embed"}
+      />
     </div>
   );
 };
