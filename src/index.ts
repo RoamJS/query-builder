@@ -42,6 +42,8 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
+import hashResults from "./utils/hashResults";
+import renderToast from "roamjs-components/components/Toast";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -682,6 +684,44 @@ svg.rs-svg-container {
           parent: b,
         });
       },
+    });
+
+    const notifiedQueries = window.roamAlphaAPI.data.fast.q(`[
+      :find 
+        [pull ?b [:block/uid]]
+        [pull ?n [:block/string {:block/children ...}]]
+      :where
+        [?b :block/string ?s]
+        [(re-pattern "^{{query block(?::.+)?}}$") ?regex]
+        [(re-find ?regex ?s)]
+        [?b :block/children ?r]
+        [?r :block/string "results"]
+        [?r :block/children ?n]
+        [?n :block/string "notifications"]
+    ]`) as [PullBlock, PullBlock][];
+    const notifiedQueriesChanged = notifiedQueries
+      .map((q) => ({
+        uid: q[0][":block/uid"],
+        hash: q[1][":block/children"]?.[0]?.[":block/string"],
+      }))
+      .map(({ uid, hash }) => {
+        if (!uid || !hash) return { uid, changed: false };
+        return runQuery({ parentUid: uid, extensionAPI })
+          .then((results) => {
+            return hashResults(results.allResults);
+          })
+          .then((newHash) => ({
+            uid,
+            changed: hash !== newHash,
+          }));
+      });
+    Promise.all(notifiedQueriesChanged).then((queries) => {
+      const uids = queries.filter((q) => q.changed).map((q) => q.uid);
+      if (uids.length)
+        renderToast({
+          content: "New Results in Queries!",
+          id: "queries-notifications",
+        });
     });
 
     return {

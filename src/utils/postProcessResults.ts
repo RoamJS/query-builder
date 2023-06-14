@@ -37,7 +37,7 @@ const postProcessResults = (
   results: Result[],
   settings: Omit<
     ReturnType<typeof parseResultSettings>,
-    "views" | "layout" | "resultNodeUid"
+    "views" | "layout" | "resultNodeUid" | "notificationsEnabled" | "showInterface"
   >
 ) => {
   const sortedResults = results

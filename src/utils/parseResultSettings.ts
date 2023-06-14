@@ -83,6 +83,10 @@ const parseResultSettings = (
     tree: resultNode.children,
     key: "interface",
   });
+  const notificationsNode = getSubTree({
+    tree: resultNode.children,
+    key: "notifications",
+  });
   const filterEntries = getFilterEntries(filtersNode);
   const savedFilterData = filterEntries.length
     ? Object.fromEntries(filterEntries)
@@ -132,6 +136,7 @@ const parseResultSettings = (
     })),
     searchFilter: searchFilterNode.children[0]?.text,
     showInterface: interfaceNode.children[0]?.text !== "hide",
+    notificationsEnabled: !!notificationsNode.uid,
     filters: Object.fromEntries(
       columns.map(({ key }) => [
         key,

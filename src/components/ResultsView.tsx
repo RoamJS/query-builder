@@ -39,6 +39,7 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
+import hashResults from "../utils/hashResults";
 
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
@@ -47,7 +48,6 @@ const VIEWS: Record<string, { value: boolean }> = {
   alias: { value: true },
 };
 
-const META_REGEX = /(-(uid|action|display)$|^uid$)/;
 type EnglishQueryPart = { text: string; clickId?: string };
 
 const QueryUsed = ({ parentUid }: { parentUid: string }) => {
@@ -257,6 +257,9 @@ const ResultsView: ResultsViewComponent = ({
   const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
   const [showInterface, setShowInterface] = useState(settings.showInterface);
   const [showMenuIcons, setShowMenuIcons] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    settings.notificationsEnabled
+  );
 
   const { allResults, paginatedResults } = useMemo(() => {
     return postProcessResults(results, {
@@ -266,7 +269,6 @@ const ResultsView: ResultsViewComponent = ({
       page,
       pageSize,
       searchFilter,
-      showInterface,
     });
   }, [
     results,
@@ -321,6 +323,16 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
+  useEffect(() => {
+    if (notificationsEnabled)
+      hashResults(results).then((hash) => {
+        setInputSetting({
+          blockUid: settings.resultNodeUid,
+          key: "notifications",
+          value: hash,
+        });
+      });
+  }, [notificationsEnabled, results, settings.resultNodeUid]);
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
@@ -713,6 +725,43 @@ const ResultsView: ResultsViewComponent = ({
                         content: "Copied Query",
                         intent: Intent.PRIMARY,
                       });
+                    }}
+                  />
+                  <MenuItem
+                    icon={"notifications"}
+                    text={
+                      notificationsEnabled
+                        ? "Turn off Notifications"
+                        : "Turn on Notifications"
+                    }
+                    onClick={() => {
+                      renderToast({
+                        id: "notifications-enabled",
+                        content: notificationsEnabled
+                          ? "Turned off Notifications"
+                          : "Turned on Notifications",
+                        intent: Intent.PRIMARY,
+                      });
+                      setMoreMenuOpen(false);
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      const newNotificationsEnabled = !notificationsEnabled;
+                      setNotificationsEnabled(newNotificationsEnabled);
+                      if (newNotificationsEnabled) {
+                        createBlock({
+                          node: { text: "notifications" },
+                          parentUid: resultNode.uid,
+                        });
+                      } else {
+                        deleteBlock(
+                          getSubTree({
+                            key: "notifications",
+                            parentUid: resultNode.uid,
+                          }).uid
+                        );
+                      }
                     }}
                   />
                 </Menu>
