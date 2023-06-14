@@ -39,6 +39,7 @@ import {
   FONT_SIZES,
   FONT_FAMILIES,
 } from "@tldraw/tldraw";
+import { canolicalizeRotation } from "@tldraw/primitives";
 import {
   Button,
   Classes,
@@ -591,11 +592,30 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       this.createExistingRelations(shape);
   }
 
-  render(shape: DiscourseNodeShape) {
+  getColors() {
     const {
-      canvasSettings: { alias = "", color: backgroundColor = "" } = {},
+      canvasSettings: { color: backgroundColor = "" } = {},
       index: discourseNodeIndex = -1,
     } = discourseContext.nodes[this.type] || {};
+    const paletteColor =
+      COLOR_ARRAY[
+        discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
+          ? discourseNodeIndex
+          : 0
+      ];
+    const backgroundInfo = backgroundColor
+      ? { backgroundColor, backgroundCss: backgroundColor }
+      : {
+          backgroundColor: COLOR_PALETTE[paletteColor],
+          backgroundCss: `var(--palette-${paletteColor})`,
+        };
+    const textColor = ContrastColor.contrastColor({ bgColor: backgroundColor });
+    return { ...backgroundInfo, textColor };
+  }
+
+  render(shape: DiscourseNodeShape) {
+    const { canvasSettings: { alias = "" } = {} } =
+      discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
@@ -622,23 +642,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
-    const paletteColor =
-      COLOR_ARRAY[
-        discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
-          ? discourseNodeIndex
-          : 0
-      ];
-    const textColor = backgroundColor
-      ? ContrastColor.contrastColor({ bgColor: backgroundColor })
-      : ContrastColor.contrastColor({
-          bgColor: COLOR_PALETTE[paletteColor],
-        });
+    const { backgroundCss, textColor } = this.getColors();
     return (
       <HTMLContainer
         id={shape.id}
         className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node"
         style={{
-          background: backgroundColor || `var(--palette-${paletteColor})`,
+          background: backgroundCss,
           color: textColor,
         }}
       >
@@ -718,6 +728,37 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         </div>
       </HTMLContainer>
     );
+  }
+
+  toSvg(shape: DiscourseNodeShape) {
+    const { backgroundColor, textColor } = this.getColors();
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("width", shape.props.w.toString());
+    rect.setAttribute("height", shape.props.h.toString());
+    rect.setAttribute("fill", backgroundColor);
+    rect.setAttribute("opacity", shape.props.opacity);
+    rect.setAttribute("stroke", textColor);
+    rect.setAttribute("stroke-width", "1");
+    rect.setAttribute("rx", "16");
+    rect.setAttribute("ry", "16");
+    g.appendChild(rect);
+    const pageRotation = canolicalizeRotation(
+      this.app.getPageRotationById(shape.id)
+    );
+    const offsetRotation = pageRotation + Math.PI / 4;
+    console.log("TODO - transform rotation", offsetRotation);
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", "0");
+    text.setAttribute("y", (shape.props.h / 2).toString());
+    text.setAttribute("font-family", "sans-serif");
+    text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
+    text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
+    // text.style.setProperty("transform", labelTranslate);
+    text.textContent = shape.props.title;
+    g.appendChild(text);
+    return g;
   }
 
   indicator(shape: DiscourseNodeShape) {
