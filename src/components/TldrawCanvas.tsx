@@ -741,6 +741,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     rect.setAttribute("ry", "16");
     g.appendChild(rect);
 
+    // TODO: Look at ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/TLTextUtil/TLTextUtil.js toSvg method
+    // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const textWidth = Math.min(
