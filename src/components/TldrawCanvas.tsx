@@ -591,11 +591,30 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       this.createExistingRelations(shape);
   }
 
-  render(shape: DiscourseNodeShape) {
+  getColors() {
     const {
-      canvasSettings: { alias = "", color: backgroundColor = "" } = {},
+      canvasSettings: { color: backgroundColor = "" } = {},
       index: discourseNodeIndex = -1,
     } = discourseContext.nodes[this.type] || {};
+    const paletteColor =
+      COLOR_ARRAY[
+        discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
+          ? discourseNodeIndex
+          : 0
+      ];
+    const backgroundInfo = backgroundColor
+      ? { backgroundColor, backgroundCss: backgroundColor }
+      : {
+          backgroundColor: COLOR_PALETTE[paletteColor],
+          backgroundCss: `var(--palette-${paletteColor})`,
+        };
+    const textColor = ContrastColor.contrastColor({ bgColor: backgroundColor });
+    return { ...backgroundInfo, textColor };
+  }
+
+  render(shape: DiscourseNodeShape) {
+    const { canvasSettings: { alias = "" } = {} } =
+      discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
@@ -622,23 +641,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
-    const paletteColor =
-      COLOR_ARRAY[
-        discourseNodeIndex >= 0 && discourseNodeIndex < COLOR_ARRAY.length - 1
-          ? discourseNodeIndex
-          : 0
-      ];
-    const textColor = backgroundColor
-      ? ContrastColor.contrastColor({ bgColor: backgroundColor })
-      : ContrastColor.contrastColor({
-          bgColor: COLOR_PALETTE[paletteColor],
-        });
+    const { backgroundCss, textColor } = this.getColors();
     return (
       <HTMLContainer
         id={shape.id}
         className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node"
         style={{
-          background: backgroundColor || `var(--palette-${paletteColor})`,
+          background: backgroundCss,
           color: textColor,
         }}
       >
@@ -718,6 +727,74 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         </div>
       </HTMLContainer>
     );
+  }
+
+  toSvg(shape: DiscourseNodeShape) {
+    const { backgroundColor, textColor } = this.getColors();
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("width", shape.props.w.toString());
+    rect.setAttribute("height", shape.props.h.toString());
+    rect.setAttribute("fill", backgroundColor);
+    rect.setAttribute("opacity", shape.props.opacity);
+    rect.setAttribute("rx", "16");
+    rect.setAttribute("ry", "16");
+    g.appendChild(rect);
+
+    // TODO: Look at ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/TLTextUtil/TLTextUtil.js toSvg method
+    // for non-manual way to implement this
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+    const textWidth = Math.min(
+      shape.props.w - padding * 2,
+      Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""))
+    );
+    const textX = (shape.props.w / 2 - textWidth / 2).toString();
+    text.setAttribute("x", textX.toString());
+    text.setAttribute("font-family", "sans-serif");
+    text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
+    text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
+    text.setAttribute("stroke", textColor);
+    text.setAttribute("stroke-width", "1");
+    const words = shape.props.title.split(/\s/g);
+    let line = "";
+    let lineCount = 0;
+    const lineHeight =
+      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+    const addTspan = () => {
+      const tspan = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "tspan"
+      );
+      tspan.setAttribute("x", textX);
+      tspan.setAttribute("dy", lineHeight.toString());
+      tspan.textContent = line;
+      text.appendChild(tspan);
+      lineCount++;
+    };
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const testLine = line + word + " ";
+      const testWidth = this.app.textMeasure.measureText({
+        ...DEFAULT_STYLE_PROPS,
+        text: testLine,
+      }).w;
+      if (testWidth > textWidth) {
+        addTspan();
+        line = word + " ";
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      addTspan();
+    }
+    text.setAttribute(
+      "y",
+      (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
+    );
+    g.appendChild(text);
+    return g;
   }
 
   indicator(shape: DiscourseNodeShape) {
