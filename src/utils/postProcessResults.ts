@@ -84,15 +84,15 @@ const postProcessResults = (
       }
       return 0;
     });
-  const allResults =
+  const allProcessedResults =
     settings.random > 0
       ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, settings.random)
       : sortedResults;
-  const paginatedResults = allResults.slice(
+  const paginatedResults = allProcessedResults.slice(
     (settings.page - 1) * settings.pageSize,
     settings.page * settings.pageSize
   );
-  return { allResults, paginatedResults };
+  return { results, allProcessedResults, paginatedResults };
 };
 
 export default postProcessResults;

@@ -49,10 +49,10 @@ const toCellValue = (v: number | Date | string) =>
     : extractTag(resolveRefs(v.toString()));
 
 const ResultHeader = React.forwardRef<
-  HTMLTableCellElement,
+  Record<string, HTMLTableCellElement>,
   {
     c: Column;
-    results: Result[];
+    allResults: Result[];
     activeSort: Sorts;
     setActiveSort: (s: Sorts) => void;
     filters: FilterData;
@@ -64,7 +64,7 @@ const ResultHeader = React.forwardRef<
   (
     {
       c,
-      results,
+      allResults,
       activeSort,
       setActiveSort,
       filters,
@@ -76,11 +76,22 @@ const ResultHeader = React.forwardRef<
   ) => {
     const filterData = useMemo(
       () => ({
-        values: Array.from(new Set(results.map((r) => toCellValue(r[c.key])))),
+        values: Array.from(
+          new Set(allResults.map((r) => toCellValue(r[c.key])))
+        ),
       }),
-      [results, c]
+      [allResults, c]
     );
-    const sortIndex = activeSort.findIndex((s) => s.key === c.key);
+    const sortIndex = useMemo(
+      () => activeSort.findIndex((s) => s.key === c.key),
+      [c.key, activeSort]
+    );
+    const refCallback = useCallback(
+      (r: HTMLTableDataCellElement) => {
+        if (ref && "current" in ref && ref.current) ref.current[c.uid] = r;
+      },
+      [ref, c.uid]
+    );
     return (
       <td
         style={{
@@ -89,7 +100,7 @@ const ResultHeader = React.forwardRef<
           width: columnWidth,
         }}
         data-column={c.uid}
-        ref={ref}
+        ref={refCallback}
         key={c.uid}
         onClick={() => {
           if (sortIndex >= 0) {
@@ -371,7 +382,8 @@ const ResultsTable = ({
   pageSizeTimeoutRef,
   page,
   setPage,
-  allResultsLength,
+  allProcessedResults,
+  allResults,
   showInterface,
 }: {
   columns: Column[];
@@ -391,7 +403,8 @@ const ResultsTable = ({
   page: number;
   setPage: (p: number) => void;
   onRefresh: () => void;
-  allResultsLength: number;
+  allProcessedResults: Result[];
+  allResults: Result[];
   showInterface?: boolean;
 }) => {
   const columnWidths = useMemo(() => {
@@ -430,6 +443,74 @@ const ResultsTable = ({
     },
     [thRefs, parentUid]
   );
+  const resultHeaderSetActiveSort = React.useCallback(
+    (as: Sorts) => {
+      setActiveSort(as);
+      if (preventSavingSettings) return;
+      const sortsNode = getSubTree({
+        key: "sorts",
+        parentUid,
+      });
+      sortsNode.children.forEach((c) => deleteBlock(c.uid));
+      as.map((a) => ({
+        text: a.key,
+        children: [{ text: `${a.descending}` }],
+      })).forEach((node, order) =>
+        createBlock({
+          parentUid: sortsNode.uid,
+          node,
+          order,
+        })
+      );
+    },
+    [setActiveSort, preventSavingSettings, parentUid]
+  );
+  const resultHeaderSetFilters = React.useCallback(
+    (fs: FilterData) => {
+      setFilters(fs);
+
+      if (preventSavingSettings) return;
+      const filtersNode = getSubTree({
+        key: "filters",
+        parentUid,
+      });
+      filtersNode.children.forEach((c) => deleteBlock(c.uid));
+      Object.entries(fs)
+        .filter(
+          ([, data]) => data.includes.values.size || data.excludes.values.size
+        )
+        .map(([column, data]) => ({
+          text: column,
+          children: [
+            {
+              text: "includes",
+              children: Array.from(data.includes.values).map((text) => ({
+                text,
+              })),
+            },
+            {
+              text: "excludes",
+              children: Array.from(data.excludes.values).map((text) => ({
+                text,
+              })),
+            },
+          ],
+        }))
+        .forEach((node, order) =>
+          createBlock({
+            parentUid: filtersNode.uid,
+            node,
+            order,
+          })
+        );
+    },
+    [setFilters, preventSavingSettings, parentUid]
+  );
+  const tableProps = useMemo(
+    () =>
+      layout.rowStyle !== "Bare" ? { striped: true, interactive: true } : {},
+    [layout.rowStyle]
+  );
   return (
     <HTMLTable
       style={{
@@ -439,78 +520,20 @@ const ResultsTable = ({
         tableLayout: "fixed",
         borderRadius: 3,
       }}
-      {...(layout.rowStyle !== "Bare"
-        ? { striped: true, interactive: true }
-        : {})}
+      {...tableProps}
     >
       <thead style={{ background: "#eeeeee80" }}>
-        <tr style={!showInterface ? { visibility: "collapse" } : {}}>
+        <tr style={{ visibility: !showInterface ? "collapse" : "visible" }}>
           {columns.map((c) => (
             <ResultHeader
               key={c.uid}
               c={c}
-              ref={(r) => r && (thRefs.current[c.uid] = r)}
-              results={results}
+              ref={thRefs}
+              allResults={allResults}
               activeSort={activeSort}
-              setActiveSort={(as) => {
-                setActiveSort(as);
-                if (preventSavingSettings) return;
-                const sortsNode = getSubTree({
-                  key: "sorts",
-                  parentUid,
-                });
-                sortsNode.children.forEach((c) => deleteBlock(c.uid));
-                as.map((a) => ({
-                  text: a.key,
-                  children: [{ text: `${a.descending}` }],
-                })).forEach((node, order) =>
-                  createBlock({
-                    parentUid: sortsNode.uid,
-                    node,
-                    order,
-                  })
-                );
-              }}
+              setActiveSort={resultHeaderSetActiveSort}
               filters={filters}
-              setFilters={(fs) => {
-                setFilters(fs);
-
-                if (preventSavingSettings) return;
-                const filtersNode = getSubTree({
-                  key: "filters",
-                  parentUid,
-                });
-                filtersNode.children.forEach((c) => deleteBlock(c.uid));
-                Object.entries(fs)
-                  .filter(
-                    ([, data]) =>
-                      data.includes.values.size || data.excludes.values.size
-                  )
-                  .map(([column, data]) => ({
-                    text: column,
-                    children: [
-                      {
-                        text: "includes",
-                        children: Array.from(data.includes.values).map(
-                          (text) => ({ text })
-                        ),
-                      },
-                      {
-                        text: "excludes",
-                        children: Array.from(data.excludes.values).map(
-                          (text) => ({ text })
-                        ),
-                      },
-                    ],
-                  }))
-                  .forEach((node, order) =>
-                    createBlock({
-                      parentUid: filtersNode.uid,
-                      node,
-                      order,
-                    })
-                  );
-              }}
+              setFilters={resultHeaderSetFilters}
               initialFilter={filters[c.key]}
               columnWidth={columnWidths[c.uid]}
             />
@@ -591,8 +614,8 @@ const ResultsTable = ({
                   icon={"chevron-right"}
                   onClick={() => setPage(page + 1)}
                   disabled={
-                    page === Math.ceil(allResultsLength / pageSize) ||
-                    allResultsLength === 0
+                    page === Math.ceil(allProcessedResults.length / pageSize) ||
+                    allProcessedResults.length === 0
                   }
                   small
                 />
@@ -600,11 +623,11 @@ const ResultsTable = ({
                   minimal
                   icon={"double-chevron-right"}
                   disabled={
-                    page === Math.ceil(allResultsLength / pageSize) ||
-                    allResultsLength === 0
+                    page === Math.ceil(allProcessedResults.length / pageSize) ||
+                    allProcessedResults.length === 0
                   }
                   onClick={() =>
-                    setPage(Math.ceil(allResultsLength / pageSize))
+                    setPage(Math.ceil(allProcessedResults.length / pageSize))
                   }
                   small
                 />

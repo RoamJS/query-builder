@@ -247,18 +247,18 @@ const ResultsView: ResultsViewComponent = ({
     [parentUid]
   );
   const [activeSort, setActiveSort] = useState<Sorts>(settings.activeSort);
-  const [filters, setFilters] = useState<FilterData>(() => settings.filters);
+  const [filters, setFilters] = useState<FilterData>(settings.filters);
   const randomRef = useRef(settings.random);
   const [random, setRandom] = useState({ count: settings.random });
   const [page, setPage] = useState(settings.page);
   const [pageSize, setPageSize] = useState(settings.pageSize);
   const pageSizeTimeoutRef = useRef(0);
   const [views, setViews] = useState<Views>(settings.views);
-  const [searchFilter, setSearchFilter] = useState(() => settings.searchFilter);
+  const [searchFilter, setSearchFilter] = useState(settings.searchFilter);
   const [showInterface, setShowInterface] = useState(settings.showInterface);
   const [showMenuIcons, setShowMenuIcons] = useState(false);
 
-  const { allResults, paginatedResults } = useMemo(() => {
+  const { allProcessedResults, paginatedResults } = useMemo(() => {
     return postProcessResults(results, {
       activeSort,
       filters,
@@ -369,8 +369,8 @@ const ResultsView: ResultsViewComponent = ({
       <Export
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
-        results={allResults}
-        exportTypes={getExportTypes?.(allResults)}
+        results={allProcessedResults}
+        exportTypes={getExportTypes?.(allProcessedResults)}
       />
       <div className="relative">
         <span
@@ -751,22 +751,23 @@ const ResultsView: ResultsViewComponent = ({
                 setPageSize={setPageSize}
                 pageSizeTimeoutRef={pageSizeTimeoutRef}
                 onRefresh={onRefresh}
-                allResultsLength={allResults.length}
+                allProcessedResults={allProcessedResults}
+                allResults={results}
                 showInterface={showInterface}
               />
             ) : layoutMode === "line" ? (
               <Charts
                 type="line"
-                data={allResults}
+                data={allProcessedResults}
                 columns={columns.slice(1)}
               />
             ) : layoutMode === "bar" ? (
-              <Charts type="bar" data={allResults} columns={columns.slice(1)} />
+              <Charts type="bar" data={allProcessedResults} columns={columns.slice(1)} />
             ) : layoutMode === "timeline" ? (
-              <Timeline timelineElements={allResults} />
+              <Timeline timelineElements={allProcessedResults} />
             ) : layoutMode === "kanban" ? (
               <Kanban
-                data={allResults}
+                data={allProcessedResults}
                 layout={layout}
                 onQuery={() => onRefresh(true)}
                 resultKeys={columns}
