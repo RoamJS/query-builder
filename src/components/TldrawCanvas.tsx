@@ -39,7 +39,6 @@ import {
   FONT_SIZES,
   FONT_FAMILIES,
 } from "@tldraw/tldraw";
-import { canolicalizeRotation } from "@tldraw/primitives";
 import {
   Button,
   Classes,
@@ -738,25 +737,60 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     rect.setAttribute("height", shape.props.h.toString());
     rect.setAttribute("fill", backgroundColor);
     rect.setAttribute("opacity", shape.props.opacity);
-    rect.setAttribute("stroke", textColor);
-    rect.setAttribute("stroke-width", "1");
     rect.setAttribute("rx", "16");
     rect.setAttribute("ry", "16");
     g.appendChild(rect);
-    const pageRotation = canolicalizeRotation(
-      this.app.getPageRotationById(shape.id)
-    );
-    const offsetRotation = pageRotation + Math.PI / 4;
-    console.log("TODO - transform rotation", offsetRotation);
 
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "0");
-    text.setAttribute("y", (shape.props.h / 2).toString());
+    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+    const textWidth = Math.min(
+      shape.props.w - padding * 2,
+      Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""))
+    );
+    const textX = (shape.props.w / 2 - textWidth / 2).toString();
+    text.setAttribute("x", textX.toString());
     text.setAttribute("font-family", "sans-serif");
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
-    // text.style.setProperty("transform", labelTranslate);
-    text.textContent = shape.props.title;
+    text.setAttribute("stroke", textColor);
+    text.setAttribute("stroke-width", "1");
+    const words = shape.props.title.split(/\s/g);
+    let line = "";
+    let lineCount = 0;
+    const lineHeight =
+      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+    const addTspan = () => {
+      const tspan = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "tspan"
+      );
+      tspan.setAttribute("x", textX);
+      tspan.setAttribute("dy", lineHeight.toString());
+      tspan.textContent = line;
+      text.appendChild(tspan);
+      lineCount++;
+    };
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const testLine = line + word + " ";
+      const testWidth = this.app.textMeasure.measureText({
+        ...DEFAULT_STYLE_PROPS,
+        text: testLine,
+      }).w;
+      if (testWidth > textWidth) {
+        addTspan();
+        line = word + " ";
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      addTspan();
+    }
+    text.setAttribute(
+      "y",
+      (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
+    );
     g.appendChild(text);
     return g;
   }
