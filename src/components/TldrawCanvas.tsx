@@ -608,7 +608,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           backgroundColor: COLOR_PALETTE[paletteColor],
           backgroundCss: `var(--palette-${paletteColor})`,
         };
-    const textColor = ContrastColor.contrastColor({ bgColor: backgroundColor });
+    const textColor = ContrastColor.contrastColor({
+      bgColor: backgroundInfo.backgroundColor,
+    });
     return { ...backgroundInfo, textColor };
   }
 
@@ -638,6 +640,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           el: contentRef.current,
           uid: shape.props.uid,
         });
+        // TODO: resize shape props once this is rendered
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
