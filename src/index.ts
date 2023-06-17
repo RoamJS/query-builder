@@ -518,8 +518,8 @@ svg.rs-svg-container {
                 .map((i) => i.split("=").slice(0, 2) as [string, string])
                 .map(([k, v]) => [k, variables[v] || v])
             ),
-          }).then(({ allResults }) => {
-            const results = limit ? allResults.slice(0, limit) : allResults;
+          }).then(({ allProcessedResults }) => {
+            const results = limit ? allProcessedResults.slice(0, limit) : allProcessedResults;
             return results
               .map((r) =>
                 Object.fromEntries(
@@ -566,7 +566,7 @@ svg.rs-svg-container {
     window.roamjs.extension.queryBuilder = {
       runQuery: (parentUid: string) =>
         runQuery({ parentUid, extensionAPI }).then(
-          ({ allResults }) => allResults
+          ({ allProcessedResults }) => allProcessedResults
         ),
       listActiveQueries: () =>
         (
