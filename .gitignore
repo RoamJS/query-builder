@@ -12,3 +12,6 @@ stats.json
 analyze.txt
 *.woff2
 *.woff
+coverage
+extension.js.map
+extension.css.map

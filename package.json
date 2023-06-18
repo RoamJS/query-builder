@@ -11,7 +11,8 @@
     "postinstall": "patch-package",
     "start": "samepage dev",
     "prebuild:roam": "npm install",
-    "build:roam": "samepage build --dry"
+    "build:roam": "samepage build --dry",
+    "test": "samepage test"
   },
   "license": "MIT",
   "devDependencies": {
@@ -33,7 +34,7 @@
     "react-draggable": "^4.4.5",
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
-    "roamjs-components": "^0.79.12",
+    "roamjs-components": "^0.80.1",
     "signia-react": "^0.1.1"
   },
   "overrides": {
