@@ -993,15 +993,13 @@ const TldrawCanvas = ({ title }: Props) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
                     return class extends Handle {
-                      override onPointerUp: TLPointerEvent = (info) => {
+                      override onPointerUp: TLPointerEvent = () => {
                         this.onComplete({
                           type: "misc",
                           name: "complete",
                         });
                         const arrow = this.app.getShapeById(this.shapeId);
                         if (!arrow) return;
-                        const relation = allRelationsById[arrow.type];
-                        if (!relation) return;
                         const {
                           start,
                           end,
@@ -1033,6 +1031,8 @@ const TldrawCanvas = ({ title }: Props) => {
                         if (!target) {
                           return deleteAndWarn("Failed to find target node.");
                         }
+                        const relation = allRelationsById[arrow.type];
+                        if (!relation) return;
                         const sourceLabel =
                           discourseContext.nodes[relation.source].text;
                         if (source.type !== relation.source) {
@@ -1040,12 +1040,25 @@ const TldrawCanvas = ({ title }: Props) => {
                             `Source node must be of type ${sourceLabel}`
                           );
                         }
-                        const targetLabel =
-                          discourseContext.nodes[relation.destination].text;
-                        if (target.type !== relation.destination) {
+                        const possibleTargets = discourseContext.relations[
+                          relation.label
+                        ]
+                          .filter((r) => r.source === relation.source)
+                          .map((r) => r.destination);
+                        if (!possibleTargets.includes(target.type)) {
                           return deleteAndWarn(
-                            `Target node must be of type ${targetLabel}`
+                            `Target node must be of type ${possibleTargets
+                              .map((t) => discourseContext.nodes[t].text)
+                              .join(", ")}`
                           );
+                        }
+                        if (arrow.type !== target.type) {
+                          this.app.updateShapes([
+                            {
+                              id: arrow.id,
+                              type: target.type,
+                            },
+                          ]);
                         }
                         const {
                           triples,
