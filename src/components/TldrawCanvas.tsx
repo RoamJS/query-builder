@@ -106,9 +106,18 @@ const isPageUid = (uid: string) =>
   ];
 
 const discourseContext: {
+  // { [Node.id] => DiscourseNode }
   nodes: Record<string, DiscourseNode & { index: number }>;
-  relations: DiscourseRelation[];
-} = { nodes: {}, relations: [] };
+  // { [Relation.Label] => DiscourseRelation[] }
+  relations: Record<string, DiscourseRelation[]>;
+} = { nodes: {}, relations: {} };
+
+const getRelationIds = () =>
+  new Set(
+    Object.values(discourseContext.relations).flatMap((rs) =>
+      rs.map((r) => r.id)
+    )
+  );
 
 const diffObjects = (
   oldRecord: Record<string, any>,
@@ -491,7 +500,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     shape: DiscourseNodeShape,
     {
       allRecords = this.app.store.allRecords(),
-      relationIds = new Set(discourseContext.relations.map((r) => r.id)),
+      relationIds = getRelationIds(),
     }: { allRecords?: TLRecord[]; relationIds?: Set<string> } = {}
   ) {
     const toDelete = allRecords
@@ -512,7 +521,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     shape: DiscourseNodeShape,
     {
       allRecords = this.app.store.allRecords(),
-      relationIds = new Set(discourseContext.relations.map((r) => r.id)),
+      relationIds = getRelationIds(),
       finalUid = shape.props.uid,
     }: {
       allRecords?: TLRecord[];
@@ -532,7 +541,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     const results = await getDiscourseContextResults({
       uid: finalUid,
       nodes: Object.values(discourseContext.nodes),
-      relations: discourseContext.relations,
+      relations: Object.values(discourseContext.relations).flat(),
     });
     const toCreate = results
       .flatMap((r) =>
@@ -697,9 +706,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 }
 
                 const allRecords = this.app.store.allRecords();
-                const relationIds = new Set(
-                  discourseContext.relations.map((r) => r.id)
-                );
+                const relationIds = getRelationIds();
                 this.deleteRelationsInCanvas(shape, {
                   allRecords,
                   relationIds,
@@ -820,13 +827,12 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   override canBind = () => true;
   override canEdit = () => false;
   defaultProps() {
-    // TODO - add canvas settings to relations config and turn
-    // discourseContext.relations into a map
-    const relationIndex = discourseContext.relations.findIndex(
-      (r) => r.id === this.type
+    const relations = Object.values(discourseContext.relations);
+    // TODO - add canvas settings to relations config
+    const relationIndex = relations.findIndex((rs) =>
+      rs.some((r) => r.id === this.type)
     );
-    const isValid =
-      relationIndex >= 0 && relationIndex < discourseContext.relations.length;
+    const isValid = relationIndex >= 0 && relationIndex < relations.length;
     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
     return {
       opacity: "1" as const,
@@ -840,17 +846,19 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
       end: { type: "point" as const, x: 0, y: 0 },
       arrowheadStart: "none" as const,
       arrowheadEnd: "arrow" as const,
-      text: isValid ? discourseContext.relations[relationIndex].label : "",
+      text: isValid
+        ? Object.keys(discourseContext.relations)[relationIndex]
+        : "",
       font: "mono" as const,
     };
   }
   override onBeforeCreate = (shape: DiscourseRelationShape) => {
     // TODO - propsForNextShape is clobbering our choice of color
-    const relationIndex = discourseContext.relations.findIndex(
-      (r) => r.id === this.type
+    const relations = Object.values(discourseContext.relations);
+    const relationIndex = relations.findIndex((rs) =>
+      rs.some((r) => r.id === this.type)
     );
-    const isValid =
-      relationIndex >= 0 && relationIndex < discourseContext.relations.length;
+    const isValid = relationIndex >= 0 && relationIndex < relations.length;
     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
     return {
       ...shape,
@@ -883,17 +891,29 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
 const TldrawCanvas = ({ title }: Props) => {
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
-  const allRelations = useMemo(
-    () => (discourseContext.relations = getDiscourseRelations()),
-    []
-  );
-  // TODO: We need to stop splitting a single relation into multiple. Supporting OR solves this.
-  const allRelationsById = useMemo(
-    () => Object.fromEntries(allRelations.map((r) => [r.id, r])),
-    [allRelations]
-  );
+  const allRelations = useMemo(() => {
+    const relations = getDiscourseRelations();
+    discourseContext.relations = relations.reduce((acc, r) => {
+      if (acc[r.label]) {
+        acc[r.label].push(r);
+      } else {
+        acc[r.label] = [r];
+      }
+      return acc;
+    }, {} as Record<string, DiscourseRelation[]>);
+    return relations;
+  }, []);
+  const allRelationsById = useMemo(() => {
+    return Object.fromEntries(allRelations.map((r) => [r.id, r])) as Record<
+      string,
+      DiscourseRelation
+    >;
+  }, [allRelations]);
   const allRelationIds = useMemo(() => {
     return Object.keys(allRelationsById);
+  }, [allRelationsById]);
+  const allRelationNames = useMemo(() => {
+    return Object.keys(discourseContext.relations);
   }, [allRelations]);
   const allNodes = useMemo(() => {
     const allNodes = getDiscourseNodes(allRelations);
@@ -916,10 +936,10 @@ const TldrawCanvas = ({ title }: Props) => {
               }
           )
           .concat(
-            allRelationIds.map(
-              (id) =>
+            allRelationNames.map(
+              (name) =>
                 class extends TLArrowTool {
-                  static id = id;
+                  static id = name;
                   static initial = "idle";
                   static children: typeof TLArrowTool.children = () => {
                     const [Idle, Pointing] = TLArrowTool.children();
@@ -937,13 +957,22 @@ const TldrawCanvas = ({ title }: Props) => {
                           if (info.target !== "shape") {
                             return cancelAndWarn("Must start on a node.");
                           }
-                          const { source } = allRelationsById[id];
-                          if (source !== info.shape.type) {
-                            const sourceLabel =
-                              discourseContext.nodes[source].text;
+                          const relation = discourseContext.relations[
+                            name
+                          ].find((r) => r.source === info.shape.type);
+                          if (!relation) {
                             return cancelAndWarn(
-                              `Starting node must be of type ${sourceLabel}`
+                              `Starting node must be one of ${discourseContext.relations[
+                                name
+                              ]
+                                .map(
+                                  (r) => discourseContext.nodes[r.source].text
+                                )
+                                .join(", ")}`
                             );
+                          } else {
+                            (this.parent as TLArrowTool).shapeType =
+                              relation.id;
                           }
                           this.parent.transition("pointing", info);
                         };
@@ -951,7 +980,7 @@ const TldrawCanvas = ({ title }: Props) => {
                       Pointing,
                     ];
                   };
-                  shapeType = id;
+                  shapeType = name;
                   override styles = ["opacity" as const];
                 }
             )
@@ -964,17 +993,13 @@ const TldrawCanvas = ({ title }: Props) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
                     return class extends Handle {
-                      override onPointerUp: TLPointerEvent = (info) => {
+                      override onPointerUp: TLPointerEvent = () => {
                         this.onComplete({
                           type: "misc",
                           name: "complete",
                         });
                         const arrow = this.app.getShapeById(this.shapeId);
                         if (!arrow) return;
-                        const relation = discourseContext.relations.find(
-                          (r) => r.id === arrow.type
-                        );
-                        if (!relation) return;
                         const {
                           start,
                           end,
@@ -1006,6 +1031,8 @@ const TldrawCanvas = ({ title }: Props) => {
                         if (!target) {
                           return deleteAndWarn("Failed to find target node.");
                         }
+                        const relation = allRelationsById[arrow.type];
+                        if (!relation) return;
                         const sourceLabel =
                           discourseContext.nodes[relation.source].text;
                         if (source.type !== relation.source) {
@@ -1013,12 +1040,25 @@ const TldrawCanvas = ({ title }: Props) => {
                             `Source node must be of type ${sourceLabel}`
                           );
                         }
-                        const targetLabel =
-                          discourseContext.nodes[relation.destination].text;
-                        if (target.type !== relation.destination) {
+                        const possibleTargets = discourseContext.relations[
+                          relation.label
+                        ]
+                          .filter((r) => r.source === relation.source)
+                          .map((r) => r.destination);
+                        if (!possibleTargets.includes(target.type)) {
                           return deleteAndWarn(
-                            `Target node must be of type ${targetLabel}`
+                            `Target node must be of type ${possibleTargets
+                              .map((t) => discourseContext.nodes[t].text)
+                              .join(", ")}`
                           );
+                        }
+                        if (arrow.type !== target.type) {
+                          this.app.updateShapes([
+                            {
+                              id: arrow.id,
+                              type: target.type,
+                            },
+                          ]);
                         }
                         const {
                           triples,
@@ -1363,9 +1403,9 @@ const TldrawCanvas = ({ title }: Props) => {
                   allNodes.map((node) => [`shape.node.${node.type}`, node.text])
                 ),
                 ...Object.fromEntries(
-                  allRelationIds.map((id) => [
-                    `shape.relation.${id}`,
-                    allRelationsById[id].label,
+                  allRelationNames.map((name) => [
+                    `shape.relation.${name}`,
+                    name,
                   ])
                 ),
                 "action.toggle-full-screen": "Toggle Full Screen",
@@ -1467,7 +1507,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   },
                 };
               });
-              allRelationIds.forEach((relation, index) => {
+              allRelationNames.forEach((relation, index) => {
                 tools[relation] = {
                   id: relation,
                   icon: "tool-arrow",
@@ -1487,7 +1527,7 @@ const TldrawCanvas = ({ title }: Props) => {
             toolbar(_app, toolbar, { tools }) {
               toolbar.push(
                 ...allNodes.map((n) => toolbarItem(tools[n.type])),
-                ...allRelationIds.map((id) => toolbarItem(tools[id]))
+                ...allRelationNames.map((name) => toolbarItem(tools[name]))
               );
               return toolbar;
             },
