@@ -85,23 +85,17 @@ const QueryClause = ({
       setConditions((_conditions) =>
         _conditions.map((c) => (c.uid === con.uid ? { ...c, relation: e } : c))
       );
-      if (timeout) {
-        debounceRef.current = window.setTimeout(() => {
+      debounceRef.current = window.setTimeout(
+        () => {
           setInputSetting({
             blockUid: con.uid,
             key: "Relation",
             value: e,
             index: 1,
           });
-        }, 1000);
-      } else {
-        setInputSetting({
-          blockUid: con.uid,
-          key: "Relation",
-          value: e,
-          index: 1,
-        });
-      }
+        },
+        timeout ? 1000 : 0
+      );
     },
     [setConditions, con.uid]
   );
