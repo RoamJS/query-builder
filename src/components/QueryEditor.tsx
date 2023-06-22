@@ -80,19 +80,28 @@ const QueryClause = ({
     [con.source, con.relation]
   );
   const setConditionRelation = useCallback(
-    (e: string) => {
+    (e: string, timeout: boolean = true) => {
       window.clearTimeout(debounceRef.current);
       setConditions((_conditions) =>
         _conditions.map((c) => (c.uid === con.uid ? { ...c, relation: e } : c))
       );
-      debounceRef.current = window.setTimeout(() => {
+      if (timeout) {
+        debounceRef.current = window.setTimeout(() => {
+          setInputSetting({
+            blockUid: con.uid,
+            key: "Relation",
+            value: e,
+            index: 1,
+          });
+        }, 1000);
+      } else {
         setInputSetting({
           blockUid: con.uid,
           key: "Relation",
           value: e,
           index: 1,
         });
-      }, 1000);
+      }
     },
     [setConditions, con.uid]
   );
@@ -143,6 +152,7 @@ const QueryClause = ({
         <AutocompleteInput
           value={con.relation}
           setValue={setConditionRelation}
+          onBlur={(e) => setConditionRelation(e, false)}
           options={conditionLabels}
           placeholder={"Choose relationship"}
           id={`${con.uid}-relation`}
