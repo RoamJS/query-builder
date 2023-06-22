@@ -200,7 +200,10 @@ const SUPPORTED_LAYOUTS = [
   {
     id: "kanban",
     icon: "heat-grid",
-    settings: [{ key: "key", label: "Group By", options: "columns" }],
+    settings: [
+      { key: "key", label: "Group By", options: "columns" },
+      { key: "display", label: "Display", options: "columns" },
+    ],
   },
 ] as const;
 const settingsById = Object.fromEntries(
@@ -762,7 +765,11 @@ const ResultsView: ResultsViewComponent = ({
                 columns={columns.slice(1)}
               />
             ) : layoutMode === "bar" ? (
-              <Charts type="bar" data={allProcessedResults} columns={columns.slice(1)} />
+              <Charts
+                type="bar"
+                data={allProcessedResults}
+                columns={columns.slice(1)}
+              />
             ) : layoutMode === "timeline" ? (
               <Timeline timelineElements={allProcessedResults} />
             ) : layoutMode === "kanban" ? (

@@ -15,11 +15,11 @@ const zPriority = z.record(z.number().min(0).max(1));
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
 const KanbanCard = (card: {
-  text: string;
-  uid: string;
   $priority: number;
   $reprioritize: Reprioritize;
+  $displayKey: string;
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
+  result: Result;
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
 
@@ -34,7 +34,7 @@ const KanbanCard = (card: {
       onStop={(_, data) => {
         const { x, y, width, height } = data.node.getBoundingClientRect();
         card.$reprioritize({
-          uid: card.uid,
+          uid: card.result.uid,
           x: x + width / 2,
           y: y + height / 2,
         });
@@ -46,17 +46,17 @@ const KanbanCard = (card: {
     >
       <div
         className="roamjs-kanban-card"
-        data-uid={card.uid}
+        data-uid={card.result.uid}
         data-priority={card.$priority}
         onClick={(e) => {
           if (isDragging) return;
           if (e.shiftKey) {
-            openBlockInSidebar(card.uid);
+            openBlockInSidebar(card.result.uid);
             e.preventDefault();
             e.stopPropagation();
           } else {
             window.roamAlphaAPI.ui.mainWindow.openBlock({
-              block: { uid: card.uid },
+              block: { uid: card.result.uid },
             });
             e.preventDefault();
             e.stopPropagation();
@@ -64,7 +64,7 @@ const KanbanCard = (card: {
         }}
       >
         <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
-          {card.text}
+          {card.result[card.$displayKey]}
         </div>
       </div>
     </Draggable>
@@ -94,22 +94,68 @@ const Kanban = ({
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
   );
-  const columnKey = React.useMemo(
-    () =>
-      Array.isArray(layout.key)
-        ? layout.key[0]
-        : typeof layout.key === "string"
-        ? layout.key
-        : resultKeys[1]?.key || "Status",
-    [layout.key]
-  );
-  const [columns, setColumns] = React.useState(() =>
-    Array.isArray(layout.columns)
+  const columnKey = React.useMemo(() => {
+    const configuredKey = Array.isArray(layout.key)
+      ? layout.key[0]
+      : typeof layout.key === "string"
+      ? layout.key
+      : "";
+    if (configuredKey) return configuredKey;
+    const keySets = Object.fromEntries(
+      resultKeys.map((rk) => [rk.key, new Set()])
+    );
+    data.forEach((d) => {
+      resultKeys.forEach((rk) => {
+        keySets[rk.key].add(d[rk.key]);
+      });
+    });
+    const defaultColumnKey = Object.entries(keySets).reduce(
+      (prev, [k, v]) => (v.size < prev[1] ? ([k, v.size] as const) : prev),
+      ["" as string, data.length + 1] as const
+    )[0];
+    setInputSetting({
+      key: "key",
+      value: defaultColumnKey,
+      blockUid: layout.uid as string,
+    });
+    return defaultColumnKey;
+  }, [layout.key]);
+  const displayKey = React.useMemo(() => {
+    const configuredDisplay = Array.isArray(layout.display)
+      ? layout.display[0]
+      : typeof layout.display === "string"
+      ? layout.display
+      : undefined;
+    if (configuredDisplay) return configuredDisplay;
+    const defaultDisplayKey = resultKeys[0].key;
+    setInputSetting({
+      key: "display",
+      value: defaultDisplayKey,
+      blockUid: layout.uid as string,
+    });
+    return defaultDisplayKey;
+  }, [layout.key]);
+  const [columns, setColumns] = React.useState(() => {
+    const configuredCols = Array.isArray(layout.columns)
       ? layout.columns
       : typeof layout.columns === "string"
       ? [layout.columns]
-      : ["Backlog"]
-  );
+      : undefined;
+    if (configuredCols) return configuredCols;
+    const valueCounts = data.reduce((prev, d) => {
+      const key = d[columnKey]?.toString() || `No ${columnKey}`;
+      if (!prev[key]) {
+        prev[key] = 0;
+      }
+      prev[key] += 1;
+      return prev;
+    }, {} as Record<string, number>);
+    return Object.entries(valueCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map((c) => c[0])
+      .slice(0, 3);
+  });
+
   const [prioritization, setPrioritization] = React.useState(() => {
     const base64 = Array.isArray(layout.prioritization)
       ? layout.prioritization[0]
@@ -265,11 +311,12 @@ const Kanban = ({
             {(cards[col] || [])?.map((d) => (
               <KanbanCard
                 key={d.uid}
-                {...d}
+                result={d}
                 // we use $ to prefix these props to avoid collisions with the result object
                 $priority={prioritization[d.uid]}
                 $reprioritize={reprioritize}
                 $getColumnElement={getColumnElement}
+                $displayKey={displayKey}
               />
             ))}
           </div>
@@ -292,6 +339,7 @@ const Kanban = ({
                 intent="primary"
                 text="Add column"
                 className="text-xs"
+                disabled={!newColumn}
                 onClick={() => {
                   const values = [...columns, newColumn];
                   setInputSettings({
