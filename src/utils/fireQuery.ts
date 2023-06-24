@@ -285,10 +285,8 @@ const fireQuery: FireQuery = async (_args) => {
   const { isCustomEnabled, customNode, isSamePageEnabled, ...args } = _args;
   if (isSamePageEnabled) {
     return getSamePageAPI()
-      .then((api) =>
-        api.postToAppBackend<{ results: QueryResult[] }>("query", { ...args })
-      )
-      .then((r) => r.results)
+      .then((api) => api.postToAppBackend({ path: "query", data: { ...args } }))
+      .then((r) => r.results as QueryResult[])
       .catch((e) => {
         console.error("Error from SamePage:");
         console.error(e.message);
