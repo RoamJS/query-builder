@@ -100,19 +100,22 @@ const QueryClause = ({
     [setConditions, con.uid]
   );
   const setConditionTarget = useCallback(
-    (e) => {
+    (e, timeout: boolean = true) => {
       window.clearTimeout(debounceRef.current);
       setConditions((_conditions) =>
         _conditions.map((c) => (c.uid === con.uid ? { ...c, target: e } : c))
       );
-      debounceRef.current = window.setTimeout(() => {
-        setInputSetting({
-          blockUid: con.uid,
-          value: e,
-          key: "target",
-          index: 2,
-        });
-      }, 1000);
+      debounceRef.current = window.setTimeout(
+        () => {
+          setInputSetting({
+            blockUid: con.uid,
+            value: e,
+            key: "target",
+            index: 2,
+          });
+        },
+        timeout ? 1000 : 0
+      );
     },
     [setConditions, con.uid]
   );
@@ -156,6 +159,7 @@ const QueryClause = ({
         <AutocompleteInput
           value={con.target}
           setValue={setConditionTarget}
+          onBlur={(e) => setConditionTarget(e, false)}
           options={targetOptions}
           placeholder={targetPlaceholder}
           id={`${con.uid}-target`}
@@ -300,6 +304,41 @@ const QuerySelection = ({
   selections: Selection[];
 }) => {
   const debounceRef = useRef(0);
+  const setSelectionLabel = useCallback(
+    (e, timeout: boolean = true) => {
+      window.clearTimeout(debounceRef.current);
+      const label = e.target.value;
+      setSelections(
+        selections.map((c) => (c.uid === sel.uid ? { ...sel, label } : c))
+      );
+      debounceRef.current = window.setTimeout(
+        () => {
+          const firstChild = getFirstChildUidByBlockUid(sel.uid);
+          if (firstChild) updateBlock({ uid: firstChild, text: label });
+          else createBlock({ parentUid: sel.uid, node: { text: label } });
+        },
+        timeout ? 1000 : 0
+      );
+    },
+    [setSelections, sel.uid]
+  );
+  const setSelectionData = useCallback(
+    (e, timeout: boolean = true) => {
+      window.clearTimeout(debounceRef.current);
+      setSelections(
+        selections.map((c) =>
+          c.uid === sel.uid ? { ...sel, text: e.target.value } : c
+        )
+      );
+      debounceRef.current = window.setTimeout(
+        () => {
+          updateBlock({ uid: sel.uid, text: e.target.value });
+        },
+        timeout ? 1000 : 0
+      );
+    },
+    [setSelections, sel.uid]
+  );
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "center" }}>
       <span
@@ -315,17 +354,9 @@ const QuerySelection = ({
         <InputGroup
           value={sel.label}
           id={`${sel.uid}-as`}
-          onChange={(e) => {
-            window.clearTimeout(debounceRef.current);
-            const label = e.target.value;
-            setSelections(
-              selections.map((c) => (c.uid === sel.uid ? { ...sel, label } : c))
-            );
-            debounceRef.current = window.setTimeout(() => {
-              const firstChild = getFirstChildUidByBlockUid(sel.uid);
-              if (firstChild) updateBlock({ uid: firstChild, text: label });
-              else createBlock({ parentUid: sel.uid, node: { text: label } });
-            }, 1000);
+          onChange={setSelectionLabel}
+          onBlur={(e) => {
+            setSelectionLabel(e, false);
           }}
         />
       </div>
@@ -348,16 +379,9 @@ const QuerySelection = ({
           value={sel.text}
           style={{ width: "100%" }}
           id={`${sel.uid}-select`}
-          onChange={(e) => {
-            window.clearTimeout(debounceRef.current);
-            setSelections(
-              selections.map((c) =>
-                c.uid === sel.uid ? { ...sel, text: e.target.value } : c
-              )
-            );
-            debounceRef.current = window.setTimeout(() => {
-              updateBlock({ uid: sel.uid, text: e.target.value });
-            }, 1000);
+          onChange={setSelectionData}
+          onBlur={(e) => {
+            setSelectionData(e, false);
           }}
         />
       </div>
