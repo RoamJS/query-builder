@@ -51,13 +51,13 @@ These queries are far more powerful than vanilla Roam queries, as it taps into R
 
 ### Query Blocks
 
-The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want. 
+The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want.
 
 To create one, simply add `{{query block}}` to any block on the page.
 
 ### Query Pages
 
-With Query Pages, you designate certain pages in your Roam graph as "views" into your data. 
+With Query Pages, you designate certain pages in your Roam graph as "views" into your data.
 
 On the Roam Depot Settings page for Query Builder, you should see a setting called `Query Pages`. You could use this to denote which page titles in your Roam Graph will be used to create query pages. Use the `*` as a wildcard.
 
@@ -67,13 +67,13 @@ Example: `[[queries/Demo]]`
 
 ### Query Drawer
 
-The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are. 
+The above UI is also available as a left hand drawer, accessible from the command palette. This allows you to execute a query no matter where in your graph you are.
 
 To open, enter `Open Query Drawer` from the Roam Command Palette.
 
 ### Usage
 
-Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query.  You can use this editor to create and save a query. 
+Create a [Query Block](#query-blocks), navigate to a [Query Page](#query-pages), or open the [Query Drawer](#query-drawer) to begin to building your query. You can use this editor to create and save a query.
 
 There are two important parts to a query: [Conditions](#conditions) and [Selections](#selections).
 
@@ -89,7 +89,7 @@ The results returned will be organized in a table with sortable and filterable c
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F43zLKIaYmR.png?alt=media&token=d279b43a-790c-472a-9ac4-28c05f76563f)
 
-You can use a combination of multiple **conditions** to select the data you want. 
+You can use a combination of multiple **conditions** to select the data you want.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fq6Tn9LVu89.png?alt=media&token=548ab58b-2cd3-4b5a-aca4-e553b3e55b19)
 
@@ -97,28 +97,33 @@ You can use a combination of multiple **conditions** to select the data you want
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FdM2m9nT_4G.png?alt=media&token=aded28a9-2971-4a4c-9ad2-3014f971f0ea)
 
-Here are all the supported `relationship`s:
+<details>
+<summary>Here are all the supported <code>relationship</code>s:</summary>
 
-- `has title` - The `source` page has the exact text `target` as a title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP to resolve a single date, e.g. `{date:today}`. The `target` also supports Regular Expressions by starting and ending the value with a `/`.
-- `references` - The `source` block or page references the `target` block or page.
-- `references title` - The `source` block or page references a page with `target` as the title. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP to resolve a single date, e.g. `{date:today}`. The `target` also supports Regular Expressions by starting and ending the value with a `/`.
-- `is referenced by` - The `source` block or page is referenced by the `target` block or page.
-- `is in page` - The `source` block is in the `target` page.
-- `is in page with title` - The `source` block is in a page with title `target`. If `target` is equal to `{date}`, then it matches any Daily Note Page. Supports date NLP to resolve a single date, e.g. `{date:today}`. The `target` also supports Regular Expressions by starting and ending the value with a `/`.
-- `has attribute` - The `source` block or page has an attribute with value `target`.
-- `has child` - The `source` block or page has the `target` block as a child.
-- `has ancestor` - The `source` block has the `target` block or page as an ancestor up the outliner tree.
-- `has descendent` - The `source` block or page has the `target` block as a descendant somewhere down the outliner tree
-- `with text` - The `source` block or page has the exact text `target` somewhere in its block text or page title
-- `created by` - The `source` block or page was created by the user with a display name of `target`
-- `edited by` - The `source` block or page was last edited by the user with a display name of `target`
-- `with title in text` - The `source` page has the exact text `target` somewhere in its page title.
-- `created before` - The `source` block or page was created before the naturally specified `target`
-- `created after` - The `source` block or page was created after the naturally specified `target`
-- `edited before` - The `source` block or page was edited before the naturally specified `target`
-- `edited after` - The `source` block or page was edited after the naturally specified `target`
-- `titled before` - The `source` page is a DNP that is before the naturally specified `target`
-- `titled after` - The `source` page is a DNP that is after the naturally specified `target`
+| Relationship            | Description                                                                                                                                 | Example                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `created after`         | The `source` block or page was created after the naturally specified `target`.                                                              |                                            |
+| `created before`        | The `source` block or page was created before the naturally specified `target`.                                                             |                                            |
+| `created by`            | The `source` block or page was created by the user with a display name of `target`.                                                         |                                            |
+| `edited after`          | The `source` block or page was edited after the naturally specified `target`.                                                               |                                            |
+| `edited before`         | The `source` block or page was edited before the naturally specified `target`.                                                              |                                            |
+| `edited by`             | The `source` block or page was last edited by the user with a display name of `target`.                                                     |                                            |
+| `has ancestor`          | The `source` block has the `target` block or page as an ancestor up the outliner tree.                                                      |                                            |
+| `has attribute`         | The `source` block or page has an attribute with value `target`.                                                                            |                                            |
+| `has child`             | The `source` block or page has the `target` block as a child.                                                                               |                                            |
+| `has descendent`        | The `source` block or page has the `target` block as a descendant somewhere down the outliner tree.                                         |                                            |
+| `has title`             | The `source` page has the exact text `target` as a title. Supports date NLP. The `target` also supports Regular Expressions.                | [Link](/EXAMPLES.md#has-title)             |
+| `is in page`            | The `source` block is in the `target` page.                                                                                                 |                                            |
+| `is in page with title` | The `source` block is in a page with title `target`. Supports date NLP. The `target` also supports Regular Expressions.                     | [Link](/EXAMPLES.md#is-in-page-with-title) |
+| `is referenced by`      | The `source` block or page is referenced by the `target` block or page.                                                                     |                                            |
+| `references`            | The `source` block or page references the `target` block or page.                                                                           |                                            |
+| `references title`      | The `source` block or page references a page with `target` as the title. Supports date NLP. The `target` also supports Regular Expressions. | [Link](/EXAMPLES.md#references-title)      |
+| `titled after`          | The `source` page is a DNP that is after the naturally specified `target`.                                                                  |                                            |
+| `titled before`         | The `source` page is a DNP that is before the naturally specified `target`.                                                                 |                                            |
+| `with text`             | The `source` block or page has the exact text `target` somewhere in its block text or page title.                                           |                                            |
+| `with title in text`    | The `source` page has the exact text `target` somewhere in its page title.                                                                  |                                            |
+
+</details>
 
 ### Selections
 
@@ -126,35 +131,35 @@ Here are all the supported `relationship`s:
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FRfEkGB3PWo.png?alt=media&token=3d48fe9e-6fab-4a5e-846a-be426a4ab18c)
 
-The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return. 
+The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return.
 
-The following data types are supported:
+<details>
+<summary>The following data types are supported:</summary>
 
-- `Created Date` - The date the block or page was created
-- `Created Time` - Same as above, but in `hh:mm` format
-- `Edited Date` - The date the block or page was edited
-- `Edited Time` - Same as above, but in `hh:mm` format
-- `Author` - The user who created the block or page
-- `Last Edited By` - The user who created the block or page
-- `node:{node}` - Returns any intermediary node you defined in one of the conditions.  For example:
-  - `node:page` will return the title of a `page` referenced in a condition.
-  - `node:placeholder` will return the title of a `placeholder` referenced in a condition.
-- `node:{node}:{field}` - Specify one of the first six options as the field to return the related metadata for the intermediary node.  For example:
-  - `node:page:Author` will return the user who created the `page` defined in a condition.
-  - `node:placeholder:Client` will return the value of the `Client` attribute from the `placeholder` node defined in a condition.
-- `node:{node}:/regular_expression/` - returns match according to a regular expression between `/`'s.  For example:
-  - `node:node:/(\d\d?:\d\d)/` will return time in the format of "hours:minutes" from the main `node` being queried
-  - `node:placeholder:/#([^\s]*)/` will return the text after the first hashtag from the `placeholder` node defined in a condition.
-- `node` - Edit the column header of the first column
-  - ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fgkc5hYMG4K.png?alt=media&token=c506c0a6-81e5-45c5-8825-bf62ef9860a1)
-- Anything else is assumed to be an attribute of the exact text
+## Metadata
 
-You can also use the aliases in previous selects to derive values for future columns. The following derived selects are supported:
+| Data             | Description                            | Example |
+| ---------------- | -------------------------------------- | ------- |
+| `Author`         | The user who created the block or page |         |
+| `Created Date`   | The date the block or page was created |         |
+| `Created Time`   | Same as above, but in `hh:mm` format   |         |
+| `Edited Date`    | The date the block or page was edited  |         |
+| `Edited Time`    | Same as above, but in `hh:mm` format   |         |
+| `Last Edited By` | The user who created the block or page |         |
 
-- `add({alias1}, {alias2})` - Add the values of two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used. 
-- `subtract({alias1}, {alias2})`- Subtract the values betweenn two columns. Supports adding values to dates. If one of the aliases is `today`, then today's date will be used.
+## Other
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
+| Data                               | Description                                                                                   | Example                                 |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `{attribute}`                      | Returns the value of an `{attribute}` associated with the queried results.                    |                                         |
+| `node:{node}`                      | Returns any intermediary node you defined in one of the conditions.                           | [Link](/EXAMPLES.md#intermediate-node)  |
+| `node:{node}:{data}`               | Specify one of the [metadata](#metadata) `{data}` options to return for an intermediary node. | [Link](/EXAMPLES.md#field)              |
+| `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                              | [Link](/EXAMPLES.md#regular-expression) |
+| `node`                             | Edit the column header of the first column                                                    | [Link](/EXAMPLES.md#node)               |
+| `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                               | [Link](/EXAMPLES.md#add-or-subtract)    |
+| `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                    | [Link](/EXAMPLES.md#add-or-subtract)    |
+
+</details>
 
 ### Manipulating Results
 
@@ -184,7 +189,7 @@ All changes to the outputted results are saved automatically.
 
 ### Layouts
 
-By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option. 
+By default, the query builder will use the `Table` layout. You can switch to a different layout by hitting the more menu on the top right of the results and clicking on the `Layout` option.
 
 The following values are also supported:
 
@@ -251,7 +256,7 @@ Demo showing [Query Block](#query-blocks), [Query Pages](#query-pages), [Query D
 
 #### Conversation with Conor White-Sullivan<!-- omit in toc -->
 
-About Roam Depot, extensions, and a Query Builder demo.  Demo starts around 13 minutes.
+About Roam Depot, extensions, and a Query Builder demo. Demo starts around 13 minutes.
 
 (in the demo you'll see the `block` being used, but that can be interchanged with `node`)
 
@@ -269,7 +274,7 @@ In a block, type `{{qb}}`.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSNq4QmaRxy.png?alt=media&token=5b7c1173-da57-4d83-851b-1719edffab02)
 
- Similar to date picker, there will be an overlay that appears next to the QUERY button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
+Similar to date picker, there will be an overlay that appears next to the QUERY button. After specifying different query components that you're interested in searching, hit save to insert the query syntax into the block.
 
 The overlay is fully keyboard accessible. Each input is focusable and you can `tab` and `shift+tab` through them. For the query component dropdown, you could use the following key strokes to navigate:
 
@@ -307,18 +312,23 @@ To persist a particular sort on a query, create a block on the page with the tex
 
 To configure sorting by blocks on a single query instead of on all queries in your DB, add a block that says `Sort Blocks` as a child to the specific query.
 
-Here are the options you can sort by:
+<details>
+<summary>Here are the options you can sort by:</summary>
 
-- **Sort By Page Title** - This will sort all the query results in ascending alphabetical order of the page title.
-- **Sort By Page Title Descending** - This will sort all the query results in descending alphabetical order of the page title.
-- **Sort By Word Count** - This will sort all the query results in ascending order of the word count.
-- **Sort By Word Count Descending** - This will sort all the query results in descending alphabetical order of the word count.
-- **Sort By Created Date** - This will sort all the query results in ascending order that the page was created.
-- **Sort By Created Date Descending** - This will sort all the query results in descending order that the page was created.
-- **Sort By Edited Date** - This will sort all the query results in ascending order that the page was last edited.
-- **Sort By Edited Date Descending** - This will sort all the query results in descending order that the page was last edited.
-- **Sort By Daily Note** - This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.
-- **Sort By Daily Note Descending** - This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages.
+| Option                          | Description                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Sort By Created Date            | This will sort all the query results in ascending order that the page was created.                                        |
+| Sort By Created Date Descending | This will sort all the query results in descending order that the page was created.                                       |
+| Sort By Daily Note              | This will sort all the query results in ascending order by Daily Note, followed by created date of non-daily note pages.  |
+| Sort By Daily Note Descending   | This will sort all the query results in descending order by Daily Note, followed by created date of non-daily note pages. |
+| Sort By Edited Date             | This will sort all the query results in ascending order that the page was last edited.                                    |
+| Sort By Edited Date Descending  | This will sort all the query results in descending order that the page was last edited.                                   |
+| Sort By Page Title              | This will sort all the query results in ascending alphabetical order of the page title.                                   |
+| Sort By Page Title Descending   | This will sort all the query results in descending alphabetical order of the page title.                                  |
+| Sort By Word Count              | This will sort all the query results in ascending order of the word count.                                                |
+| Sort By Word Count Descending   | This will sort all the query results in descending order of the word count.                                               |
+
+</details>
 
 #### Randomization
 
@@ -340,14 +350,19 @@ In your Roam Depot Settings, there is a flag called `Sortable Linked References`
 
 You could also add a `Default Sort` attribute with a valid value on the page itself to have a specific sorting for just that page.
 
-Here are the options you can sort by:
+<details>
+<summary>Here are the options you can sort by:</summary>
 
-- **Sort By Page Title** - This will sort all the linked references in ascending alphabetical order of the page title.
-- **Sort By Page Title Descending** - This will sort all the linked references in descending alphabetical order of the page title.
-- **Sort By Created Date** - This will sort all the linked references in ascending order that the page was created.
-- **Sort By Created Date Descending** - This will sort all the linked references in descending order that the page was created.
-- **Sort By Daily Note** - This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.
-- **Sort By Daily Note Descending** - This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages.
+| Option                          | Description                                                                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Sort By Created Date            | This will sort all the linked references in ascending order that the page was created.                                        |
+| Sort By Created Date Descending | This will sort all the linked references in descending order that the page was created.                                       |
+| Sort By Daily Note              | This will sort all the linked references in ascending order by Daily Note, followed by created date of non-daily note pages.  |
+| Sort By Daily Note Descending   | This will sort all the linked references in descending order by Daily Note, followed by created date of non-daily note pages. |
+| Sort By Page Title              | This will sort all the linked references in ascending alphabetical order of the page title.                                   |
+| Sort By Page Title Descending   | This will sort all the linked references in descending alphabetical order of the page title.                                  |
+
+</details>
 
 ## Discourse Graphs
 
