@@ -108,6 +108,19 @@ index 185d39d..f19078a 100644
 +  DraggingHandle,
  };
  //# sourceMappingURL=TLSelectTool.mjs.map
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/hooks/useCanvasEvents.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/hooks/useCanvasEvents.mjs
+index 043e7c0..f480bc6 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/hooks/useCanvasEvents.mjs
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/hooks/useCanvasEvents.mjs
+@@ -78,7 +78,7 @@ function useCanvasEvents() {
+         ;
+         e.isKilled = true;
+         document.body.click();
+-        preventDefault(e);
++        // preventDefault(e);
+       }
+       function onTouchEnd(e) {
+         ;
 diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs
 index 57cb723..4be6ebd 100644
 --- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/index.mjs
@@ -121,3 +134,111 @@ index 57cb723..4be6ebd 100644
  export * from "./app/types/clipboard-types.mjs";
  export * from "./app/types/event-types.mjs";
  export * from "./app/types/history-types.mjs";
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/utils/assets.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/utils/assets.mjs
+index bc63c45..8c97b7b 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/utils/assets.mjs
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/utils/assets.mjs
+@@ -54,41 +54,70 @@ async function getResizedImageDataUrl(dataURLForImage, width, height) {
+     img.src = dataURLForImage;
+   });
+ }
++// async function getMediaAssetFromFile(file) {
++//   return await new Promise((resolve, reject) => {
++//     const reader = new FileReader();
++//     reader.onerror = () => reject(reader.error);
++//     reader.onload = async () => {
++//       let dataUrl = reader.result;
++//       const isImageType = isImage(file.type);
++//       const sizeFn = isImageType ? getImageSizeFromSrc : getVideoSizeFromSrc;
++//       if (file.type === "video/quicktime" && dataUrl.includes("video/quicktime")) {
++//         dataUrl = dataUrl.replace("video/quicktime", "video/mp4");
++//       }
++//       const originalSize = await sizeFn(dataUrl);
++//       const size = containBoxSize(originalSize, { w: MAX_ASSET_WIDTH, h: MAX_ASSET_HEIGHT });
++//       if (size !== originalSize && (file.type === "image/jpeg" || file.type === "image/png")) {
++//         dataUrl = await getResizedImageDataUrl(dataUrl, size.w, size.h);
++//       }
++//       const assetId = TLAsset.createCustomId(getHashForString(dataUrl));
++//       const metadata = await getFileMetaData(file);
++//       const asset = {
++//         id: assetId,
++//         type: isImageType ? "image" : "video",
++//         typeName: "asset",
++//         props: {
++//           name: file.name,
++//           src: dataUrl,
++//           w: size.w,
++//           h: size.h,
++//           mimeType: file.type,
++//           isAnimated: metadata.isAnimated
++//         }
++//       };
++//       resolve(asset);
++//     };
++//     reader.readAsDataURL(file);
++//   });
++// }
+ async function getMediaAssetFromFile(file) {
+-  return await new Promise((resolve, reject) => {
+-    const reader = new FileReader();
+-    reader.onerror = () => reject(reader.error);
+-    reader.onload = async () => {
+-      let dataUrl = reader.result;
+-      const isImageType = isImage(file.type);
+-      const sizeFn = isImageType ? getImageSizeFromSrc : getVideoSizeFromSrc;
+-      if (file.type === "video/quicktime" && dataUrl.includes("video/quicktime")) {
+-        dataUrl = dataUrl.replace("video/quicktime", "video/mp4");
+-      }
+-      const originalSize = await sizeFn(dataUrl);
+-      const size = containBoxSize(originalSize, { w: MAX_ASSET_WIDTH, h: MAX_ASSET_HEIGHT });
+-      if (size !== originalSize && (file.type === "image/jpeg" || file.type === "image/png")) {
+-        dataUrl = await getResizedImageDataUrl(dataUrl, size.w, size.h);
+-      }
+-      const assetId = TLAsset.createCustomId(getHashForString(dataUrl));
+-      const metadata = await getFileMetaData(file);
+-      const asset = {
+-        id: assetId,
+-        type: isImageType ? "image" : "video",
+-        typeName: "asset",
+-        props: {
+-          name: file.name,
+-          src: dataUrl,
+-          w: size.w,
+-          h: size.h,
+-          mimeType: file.type,
+-          isAnimated: metadata.isAnimated
+-        }
+-      };
+-      resolve(asset);
+-    };
+-    reader.readAsDataURL(file);
++  const url = await window.roamAlphaAPI.file.upload({
++    file, 
++    toast: {
++      hide: true
++    }
+   });
++  const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
++  const isImageType = isImage(file.type);
++  const sizeFn = isImageType ? getImageSizeFromSrc : getVideoSizeFromSrc;
++  const originalSize = await sizeFn(dataUrl);
++  const size = containBoxSize(originalSize, { w: MAX_ASSET_WIDTH, h: MAX_ASSET_HEIGHT });
++  const assetId = TLAsset.createCustomId(getHashForString(dataUrl));
++  const metadata = await getFileMetaData(file);
++  const asset = {
++    id: assetId,
++    type: isImageType ? "image" : "video",
++    typeName: "asset",
++    props: {
++      name: file.name,
++      src: dataUrl,
++      w: size.w,
++      h: size.h,
++      mimeType: file.type,
++      isAnimated: metadata.isAnimated
++    }
++  };
++  return asset;
+ }
+ async function getFileMetaData(file) {
+   if (file.type === "image/gif") {
