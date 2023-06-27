@@ -100,7 +100,6 @@ const registerDiscourseDatalogTranslators = () => {
       targetOptions: discourseNodes
         .map((d) => d.text)
         .concat(ANY_DISCOURSE_NODE),
-      isVariable: true,
       placeholder: "Enter a discourse node",
     })
   );
