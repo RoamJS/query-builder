@@ -297,19 +297,17 @@ const QueryCondition = ({
 const QuerySelection = ({
   sel,
   setSelections,
-  selections,
 }: {
   sel: Selection;
-  setSelections: (cons: Selection[]) => void;
-  selections: Selection[];
+  setSelections: React.Dispatch<React.SetStateAction<Selection[]>>;
 }) => {
   const debounceRef = useRef(0);
   const setSelectionLabel = useCallback(
     (e, timeout: boolean = true) => {
       window.clearTimeout(debounceRef.current);
       const label = e.target.value;
-      setSelections(
-        selections.map((c) => (c.uid === sel.uid ? { ...sel, label } : c))
+      setSelections((selections) =>
+        selections.map((s) => (s.uid === sel.uid ? { ...s, label } : s))
       );
       debounceRef.current = window.setTimeout(
         () => {
@@ -325,14 +323,13 @@ const QuerySelection = ({
   const setSelectionData = useCallback(
     (e, timeout: boolean = true) => {
       window.clearTimeout(debounceRef.current);
-      setSelections(
-        selections.map((c) =>
-          c.uid === sel.uid ? { ...sel, text: e.target.value } : c
-        )
+      const text = e.target.value;
+      setSelections((selections) =>
+        selections.map((s) => (s.uid === sel.uid ? { ...s, text } : s))
       );
       debounceRef.current = window.setTimeout(
         () => {
-          updateBlock({ uid: sel.uid, text: e.target.value });
+          updateBlock({ uid: sel.uid, text });
         },
         timeout ? 1000 : 0
       );
@@ -389,7 +386,9 @@ const QuerySelection = ({
         icon={"trash"}
         onClick={() => {
           deleteBlock(sel.uid).then(() =>
-            setSelections(selections.filter((c) => c.uid !== sel.uid))
+            setSelections((selections) =>
+              selections.filter((c) => c.uid !== sel.uid)
+            )
           );
         }}
         minimal
@@ -762,7 +761,6 @@ const QueryEditor: QueryEditorComponent = ({
             <QuerySelection
               key={sel.uid}
               sel={sel}
-              selections={selections}
               setSelections={setSelections}
             />
           ))}
