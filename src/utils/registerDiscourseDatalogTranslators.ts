@@ -41,6 +41,8 @@ const collectVariables = (
     })
   );
 
+const ANY_DISCOURSE_NODE = "Any Discourse Node";
+
 const registerDiscourseDatalogTranslators = () => {
   const discourseRelations = getDiscourseRelations();
   const discourseNodes = getDiscourseNodes(discourseRelations);
@@ -51,18 +53,36 @@ const registerDiscourseDatalogTranslators = () => {
       ...discourseNodes.map((n) => [n.type, n] as const),
       ...discourseNodes.map((n) => [n.text, n] as const),
     ]);
-    return target === "*"
+    return target === ANY_DISCOURSE_NODE
       ? [
           {
+            type: "data-pattern" as const,
+            arguments: [
+              { type: "variable" as const, value: source },
+              { type: "constant" as const, value: ":block/uid" },
+              { type: "variable" as const, value: `${source}-uid` },
+            ],
+          },
+          {
+            type: "data-pattern" as const,
+            arguments: [
+              { type: "variable" as const, value: `${source}-any` },
+              { type: "constant" as const, value: ":block/uid" },
+              { type: "variable" as const, value: `${source}-uid` },
+            ],
+          },
+          {
             type: "or-join-clause" as const,
-            variables: [{ type: "variable" as const, value: `any` }],
-            clauses: discourseNodes.map((dn) => ({
-              type: "and-clause" as const,
-              clauses: discourseNodeFormatToDatalog({
-                freeVar: "any",
-                ...dn,
-              }),
-            })),
+            variables: [{ type: "variable" as const, value: `${source}-any` }],
+            clauses: discourseNodes
+              .filter((dn) => dn.backedBy !== "default")
+              .map((dn) => ({
+                type: "and-clause" as const,
+                clauses: discourseNodeFormatToDatalog({
+                  freeVar: `${source}-any`,
+                  ...dn,
+                }),
+              })),
           },
         ]
       : nodeByTypeOrText[target]
@@ -77,7 +97,9 @@ const registerDiscourseDatalogTranslators = () => {
     registerDatalogTranslator({
       key: "is a",
       callback: isACallback,
-      targetOptions: discourseNodes.map((d) => d.text),
+      targetOptions: discourseNodes
+        .map((d) => d.text)
+        .concat(ANY_DISCOURSE_NODE),
       isVariable: true,
       placeholder: "Enter a discourse node",
     })
