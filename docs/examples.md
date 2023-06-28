@@ -1,40 +1,3 @@
-# Table of Contents<!-- omit in toc -->
-
-- [Conditions](#conditions)
-  - [Created After](#created-after)
-  - [Created Before](#created-before)
-  - [Created By](#created-by)
-  - [Edited After](#edited-after)
-  - [Edited Before](#edited-before)
-  - [Edited By](#edited-by)
-  - [Has Ancestor](#has-ancestor)
-  - [Has Attribute](#has-attribute)
-  - [Has Child](#has-child)
-  - [Has Descendent](#has-descendent)
-  - [Has Title](#has-title)
-  - [Is In Page](#is-in-page)
-  - [Is In Page With Title](#is-in-page-with-title)
-  - [Is Referenced By](#is-referenced-by)
-  - [References](#references)
-  - [References Title](#references-title)
-  - [Titled After](#titled-after)
-  - [Titled Before](#titled-before)
-  - [With Title](#with-title)
-  - [With Title In Text](#with-title-in-text)
-- [Selections](#selections)
-  - [Add or Subtract](#add-or-subtract)
-  - [Attribute](#attribute)
-  - [Author](#author)
-  - [Created Date](#created-date)
-  - [Created Time](#created-time)
-  - [Edited Date](#edited-date)
-  - [Edited Time](#edited-time)
-  - [Field](#field)
-  - [Intermediate Node](#intermediate-node)
-  - [Last Edited By](#last-edited-by)
-  - [Node](#node)
-  - [Regular Expression](#regular-expression)
-
 # Conditions
 
 ## Created After
@@ -198,3 +161,37 @@ Coming Soon.
 
 - `node:node:/(\d\d?:\d\d)/` will return time in the format of "hours:minutes" from the main `node` being queried
 - `node:placeholder:/#([^\s]*)/` will return the text after the first hashtag from the `placeholder` node defined in a condition.
+
+# Layouts
+
+The following layouts are available for displaying your data:
+
+## Line
+
+Displays your data as a line chart.
+
+You need to have at least **two** selections for this layout to work
+
+- The **first** is a selection that returns **date values**
+- all subsequent selections return **numeric values**.
+
+## Bar
+
+Displays your data as a bar chart.
+
+You need to have at least **two** selections for this layout to work
+
+- The **first** is a selection that returns **date values**
+- all subsequent selections return **numeric values**.
+
+## Timeline
+
+Displays your data as an interactive timeline view.
+
+- You need to have a selection chosen labelled **Date** that returns **date values** for this layout to work.
+
+## Kanban
+
+<!-- Displays your data as a Kanban board. -->
+
+Coming soon.
