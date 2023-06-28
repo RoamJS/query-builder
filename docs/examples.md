@@ -153,7 +153,6 @@ Coming Soon.
 `node` - Edit the column header of the first column
 
 - ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fgkc5hYMG4K.png?alt=media&token=c506c0a6-81e5-45c5-8825-bf62ef9860a1)
--
 
 ## Regular Expression
 
