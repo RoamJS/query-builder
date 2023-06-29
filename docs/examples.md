@@ -132,10 +132,18 @@ Coming Soon.
 
 ## Field
 
-`node:{node}:{field}` - Specify one of the first six options as the field to return the related metadata for the intermediary node.
+`node:{node}:{data}` - Specify one of the first six options as the field to return the related metadata for the intermediary node.
 
-- `node:page:Author` will return the user who created the `page` defined in a condition.
-- `node:placeholder:Client` will return the value of the `Client` attribute from the `placeholder` node defined in a condition.
+Metadata
+
+`node:thisIsChildNode:Author` will return the user who created the `thisIsChildNode` node defined in a condition.
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FkyYbmJMBg0.png?alt=media&token=c62040c1-e35f-4b2a-a0f6-966614c7ae85)
+
+Attribute
+
+`node:thisIsPlaceholder:Client` will return the value of the `Client` attribute from the `thisIsPlaceholder` node defined in a condition.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKJjaKl2L4m.png?alt=media&token=40b943a2-e005-45a1-b491-dd07a585cc92)
 
 ## Intermediate Node
 
@@ -152,7 +160,7 @@ Coming Soon.
 
 `node` - Edit the column header of the first column
 
-- ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fgkc5hYMG4K.png?alt=media&token=c506c0a6-81e5-45c5-8825-bf62ef9860a1)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4NcO5GSexN.png?alt=media&token=25f177d1-ba02-448c-be11-2d227228a092)
 
 ## Regular Expression
 

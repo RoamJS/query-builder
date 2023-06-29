@@ -2,7 +2,7 @@
 
 Introduces new user interfaces for building queries in Roam.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FTTIyJxNaux.png?alt=media&token=fa991711-f319-43e1-8a9c-6a64d818df29)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FYERyR8FnXO.png?alt=media&token=7522a921-3e17-424f-b141-08e4109f9b75)
 
 For more information, check out our docs at [https://github.com/dvargas92495/roamjs-query-builder](https://github.com/dvargas92495/roamjs-query-builder)
 
