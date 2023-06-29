@@ -386,6 +386,7 @@ const ResultsView: ResultsViewComponent = ({
             </Tooltip>
           )}
           <Popover
+            placement="left-end"
             isOpen={moreMenuOpen}
             target={
               <Button
