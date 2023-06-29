@@ -4,7 +4,7 @@ Query Builder can be used to create queries via a [Query Block](#query-blocks), 
 
 These queries are far more powerful than vanilla Roam queries, as it taps into Roam's underlying query language surfaced through an approachable UI.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FkZkUZkpxWj.png?alt=media&token=c836a4a9-0e1d-41ca-a2a0-aad0c34afcf2)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FP_sZPbksxv.png?alt=media&token=c1d57c11-6bc7-4cf3-9d5f-3aa00ebaf7b1)
 
 ## Query Blocks
 
@@ -38,21 +38,21 @@ After specifying conditions and selections, hit the `Query` button to return res
 
 The results returned will be organized in a table with sortable and filterable columns. Click on the columns to sort the data and use the filter icon to narrow down the table to your desired results:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4Tl0Yotz6V.png?alt=media&token=db2db5e3-4b66-489f-9d6d-ad271a170463)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FnI53sChRxN.png?alt=media&token=d4f5161c-fff3-4e2f-bfd1-1e4c12f6bc58)
 
 ## Conditions
 
 **Conditions** specify which blocks you want to return. They determine the **rows** of the table. The anatomy of a Condition is a triple: `source`, `relationship`, & `target`:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F43zLKIaYmR.png?alt=media&token=d279b43a-790c-472a-9ac4-28c05f76563f)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F479hekgysR.jpg?alt=media&token=163e97ba-c6e8-47d9-addb-e5f6bb14b81d)
 
 You can use a combination of multiple **conditions** to select the data you want.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fq6Tn9LVu89.png?alt=media&token=548ab58b-2cd3-4b5a-aca4-e553b3e55b19)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F5Rg4tuOgxo.png?alt=media&token=734e58e4-b71e-466b-9183-00f852c34d2a)
 
 `relationship`s will autocomplete as you type:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FdM2m9nT_4G.png?alt=media&token=aded28a9-2971-4a4c-9ad2-3014f971f0ea)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FxZaDShivcN.png?alt=media&token=3e08aa10-be40-4857-85a5-bc6cd41b5aeb)
 
 ### Supported Relationships
 
@@ -83,7 +83,7 @@ You can use a combination of multiple **conditions** to select the data you want
 
 **Selections** specify what data from the blocks that match your conditions get returned. They determine the **columns** of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FRfEkGB3PWo.png?alt=media&token=3d48fe9e-6fab-4a5e-846a-be426a4ab18c)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F_HPRxD7QLa.jpg?alt=media&token=ef75e680-3bd5-4869-8ed0-117c03b4f232)
 
 The `label`, which gets specified after **AS**, denotes the name of the column that gets used. The `data`, which gets specified after **Select**, denotes what kind of data to return.
 
@@ -102,15 +102,15 @@ The `label`, which gets specified after **AS**, denotes the name of the column t
 
 **Additional Data Types**
 
-| Data                               | Description                                                                                   | Example                                |
-| ---------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `{attribute}`                      | Returns the value of an `{attribute}` associated with the queried results.                    |                                        |
-| `node:{node}`                      | Returns any intermediary node you defined in one of the conditions.                           | [Link](examples.md#intermediate-node)  |
-| `node:{node}:{data}`               | Specify one of the [metadata](#metadata) `{data}` options to return for an intermediary node. | [Link](examples.md#field)              |
-| `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                              | [Link](examples.md#regular-expression) |
-| `node`                             | Edit the column header of the first column                                                    | [Link](examples.md#node)               |
-| `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                               | [Link](examples.md#add-or-subtract)    |
-| `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                    | [Link](examples.md#add-or-subtract)    |
+| Data                               | Description                                                                                          | Example                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `{attribute}`                      | Returns the value of an `{attribute}` associated with the queried results.                           |                                        |
+| `node:{node}`                      | Returns any intermediary node you defined in one of the conditions.                                  | [Link](examples.md#intermediate-node)  |
+| `node:{node}:{data}`               | Specify one of the metadata `{data}` options or an `{attribute}` to return for an intermediary node. | [Link](examples.md#field)              |
+| `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                                     | [Link](examples.md#regular-expression) |
+| `node`                             | Edit the column header of the first column                                                           | [Link](examples.md#node)               |
+| `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                                      | [Link](examples.md#add-or-subtract)    |
+| `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                           | [Link](examples.md#add-or-subtract)    |
 
 ## Manipulating Results
 
@@ -177,11 +177,11 @@ This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` co
 
 You can set the alias of a [Query Block](#query-blocks) in the top right corner of the UI.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FN_YUvsTh-w.png?alt=media&token=f734f73b-7fa4-48f6-97e0-d6c3671ca02c)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FBRQ-hhJpLe.jpg?alt=media&token=d0b9afb1-0189-4904-bab8-420e032f1da6)
 
 The end of the title of a [Query Page](#query-pages) works as well.
 
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FNVOH1yVd5x.png?alt=media&token=e9698dc6-0c48-4cbb-bc47-46bf3959eb27)
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F3VGMt6toTB.jpg?alt=media&token=51d851d3-0954-4300-9be4-2bcb13ed95d2)
 
 ### Examples
 
