@@ -58,26 +58,26 @@ You can use a combination of multiple **conditions** to select the data you want
 
 | Relationship            | Description                                                                                                                                 | Example                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `created after`         | The `source` block or page was created after the naturally specified `target`.                                                              |                                           |
-| `created before`        | The `source` block or page was created before the naturally specified `target`.                                                             |                                           |
-| `created by`            | The `source` block or page was created by the user with a display name of `target`.                                                         |                                           |
-| `edited after`          | The `source` block or page was edited after the naturally specified `target`.                                                               |                                           |
-| `edited before`         | The `source` block or page was edited before the naturally specified `target`.                                                              |                                           |
-| `edited by`             | The `source` block or page was last edited by the user with a display name of `target`.                                                     |                                           |
-| `has ancestor`          | The `source` block has the `target` block or page as an ancestor up the outliner tree.                                                      |                                           |
-| `has attribute`         | The `source` block or page has an attribute with value `target`.                                                                            |                                           |
-| `has child`             | The `source` block or page has the `target` block as a child.                                                                               |                                           |
-| `has descendent`        | The `source` block or page has the `target` block as a descendant somewhere down the outliner tree.                                         |                                           |
+| `created after`         | The `source` block or page was created after the naturally specified `target`.                                                              | [Link](examples.md#created-after)         |
+| `created before`        | The `source` block or page was created before the naturally specified `target`.                                                             | [Link](examples.md#created-before)        |
+| `created by`            | The `source` block or page was created by the user with a display name of `target`.                                                         | [Link](examples.md#created-by)            |
+| `edited after`          | The `source` block or page was edited after the naturally specified `target`.                                                               | [Link](examples.md#edited-after)          |
+| `edited before`         | The `source` block or page was edited before the naturally specified `target`.                                                              | [Link](examples.md#edited-before)         |
+| `edited by`             | The `source` block or page was last edited by the user with a display name of `target`.                                                     | [Link](examples.md#edited-by)             |
+| `has ancestor`          | The `source` block has the `target` block or page as an ancestor up the outliner tree.                                                      | [Link](examples.md#has-ancestor)          |
+| `has attribute`         | The `source` block or page has an attribute with value `target`.                                                                            | [Link](examples.md#has-attribute)         |
+| `has child`             | The `source` block or page has the `target` block as a child.                                                                               | [Link](examples.md#has-child)             |
+| `has descendant`        | The `source` block or page has the `target` block as a descendant somewhere down the outliner tree.                                         | [Link](examples.md#has-descendant)        |
 | `has title`             | The `source` page has the exact text `target` as a title. Supports date NLP. The `target` also supports Regular Expressions.                | [Link](examples.md#has-title)             |
-| `is in page`            | The `source` block is in the `target` page.                                                                                                 |                                           |
+| `is in page`            | The `source` block is in the `target` page.                                                                                                 | [Link](examples.md#is-in-page)            |
 | `is in page with title` | The `source` block is in a page with title `target`. Supports date NLP. The `target` also supports Regular Expressions.                     | [Link](examples.md#is-in-page-with-title) |
-| `is referenced by`      | The `source` block or page is referenced by the `target` block or page.                                                                     |                                           |
-| `references`            | The `source` block or page references the `target` block or page.                                                                           |                                           |
+| `is referenced by`      | The `source` block or page is referenced by the `target` block or page.                                                                     | [Link](examples.md#is-referenced-by)      |
+| `references`            | The `source` block or page references the `target` block or page.                                                                           | [Link](examples.md#references)            |
 | `references title`      | The `source` block or page references a page with `target` as the title. Supports date NLP. The `target` also supports Regular Expressions. | [Link](examples.md#references-title)      |
-| `titled after`          | The `source` page is a DNP that is after the naturally specified `target`.                                                                  |                                           |
-| `titled before`         | The `source` page is a DNP that is before the naturally specified `target`.                                                                 |                                           |
-| `with text`             | The `source` block or page has the exact text `target` somewhere in its block text or page title.                                           |                                           |
-| `with title in text`    | The `source` page has the exact text `target` somewhere in its page title.                                                                  |                                           |
+| `titled after`          | The `source` page is a DNP that is after the naturally specified `target`.                                                                  | [Link](examples.md#titled-after)          |
+| `titled before`         | The `source` page is a DNP that is before the naturally specified `target`.                                                                 | [Link](examples.md#titled-before)         |
+| `with text`             | The `source` block or page has the exact text `target` somewhere in its block text or page title.                                           | [Link](examples.md#with-text)             |
+| `with title in text`    | The `source` page has the exact text `target` somewhere in its page title.                                                                  | [Link](examples.md#with-title-in-text)    |
 
 ## Selections
 
