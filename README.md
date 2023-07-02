@@ -21,7 +21,7 @@ For more information, check out our docs at [https://github.com/dvargas92495/roa
   - [Styling](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/query-builder.md#styling)
   - [SmartBlocks Integration](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/query-builder.md#smartblocks-integration)
   - [Developer API](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/query-builder.md#developer-api)
-  - [Demos](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/query-builder.md#demos)
+  - [Examples](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/query-builder.md#examples)
 - [Discourse Graphs](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/discourse-graphs.md)
 - [Native Roam Queries](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/roam-queries.md#native-roam-queries)
   - [Creating Native Roam Queries](https://github.com/dvargas92495/roamjs-query-builder/blob/main/docs/roam-queries.md#creating-native-roam-queries)

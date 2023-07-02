@@ -91,26 +91,26 @@ The `label`, which gets specified after **AS**, denotes the name of the column t
 
 **Metadata**
 
-| Data             | Description                            | Example |
-| ---------------- | -------------------------------------- | ------- |
-| `Author`         | The user who created the block or page |         |
-| `Created Date`   | The date the block or page was created |         |
-| `Created Time`   | Same as above, but in `hh:mm` format   |         |
-| `Edited Date`    | The date the block or page was edited  |         |
-| `Edited Time`    | Same as above, but in `hh:mm` format   |         |
-| `Last Edited By` | The user who created the block or page |         |
+| Data             | Description                            | Example                            |
+| ---------------- | -------------------------------------- | ---------------------------------- |
+| `Author`         | The user who created the block or page | [Link](examples.md#author)         |
+| `Created Date`   | The date the block or page was created | [Link](examples.md#created-date)   |
+| `Created Time`   | Same as above, but in `hh:mm` format   | [Link](examples.md#created-time)   |
+| `Edited Date`    | The date the block or page was edited  | [Link](examples.md#edited-date)    |
+| `Edited Time`    | Same as above, but in `hh:mm` format   | [Link](examples.md#edited-time)    |
+| `Last Edited By` | The user who created the block or page | [Link](examples.md#last-edited-by) |
 
 **Additional Data Types**
 
-| Data                               | Description                                                                                          | Example                                |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `{attribute}`                      | Returns the value of an `{attribute}` associated with the queried results.                           |                                        |
-| `node:{node}`                      | Returns any intermediary node you defined in one of the conditions.                                  | [Link](examples.md#intermediate-node)  |
-| `node:{node}:{data}`               | Specify one of the metadata `{data}` options or an `{attribute}` to return for an intermediary node. | [Link](examples.md#field)              |
-| `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                                     | [Link](examples.md#regular-expression) |
-| `node`                             | Edit the column header of the first column                                                           | [Link](examples.md#node)               |
-| `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                                      | [Link](examples.md#add-or-subtract)    |
-| `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                           | [Link](examples.md#add-or-subtract)    |
+| Data                               | Description                                                                                          | Example                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `{attribute}`                      | Returns the value of an `{attribute}` associated with the queried results.                           | [Link](examples.md#attribute)           |
+| `node:{node}`                      | Returns any intermediary node you defined in one of the conditions.                                  | [Link](examples.md#intermediate-node)   |
+| `node:{node}:{data}`               | Specify one of the metadata `{data}` options or an `{attribute}` to return for an intermediary node. | [Link](examples.md#data)                |
+| `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                                     | [Link](examples.md#regular-expression)  |
+| `node`                             | Use the label to edit the column header of the first column                                          | [Link](examples.md#first-column-header) |
+| `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                                      | [Link](examples.md#add-or-subtract)     |
+| `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                           | [Link](examples.md#add-or-subtract)     |
 
 ## Manipulating Results
 
@@ -148,12 +148,12 @@ By default, the query builder will use the `Table` layout. You can switch to a d
 
 The following layouts are available:
 
-| Layout     | Description                                         | Example                             |
-| ---------- | --------------------------------------------------- | ----------------------------------- |
-| `Line`     | Displays your data as a line chart.                 | [Link](examples.md#Line)            |
-| `Bar`      | Displays your data as a bar chart.                  | [Link](examples.md#Bar)             |
-| `Timeline` | Displays your data as an interactive timeline view. | [Link](examples.md#Timeline)        |
-| `Kanban`   | Displays your data as a Kanban board.               | <!--[Link](examples.md#Kanban)  --> |
+| Layout     | Description                                         | Example                      |
+| ---------- | --------------------------------------------------- | ---------------------------- |
+| `Line`     | Displays your data as a line chart.                 | [Link](examples.md#Line)     |
+| `Bar`      | Displays your data as a bar chart.                  | [Link](examples.md#Bar)      |
+| `Timeline` | Displays your data as an interactive timeline view. | [Link](examples.md#Timeline) |
+| `Kanban`   | Displays your data as a Kanban board.               | [Link](examples.md#Kanban)   |
 
 ## Exporting
 
@@ -202,7 +202,9 @@ For developers of other extensions who want to use the queries defined by users,
   - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
 
-## Demos
+## Examples
+
+See more query examples here: [Link](examples.md)
 
 ### General Demo<!-- omit in toc -->
 
