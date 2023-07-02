@@ -203,6 +203,7 @@ The `target` also supports Regular Expressions by starting and ending the value 
 Metadata
 
 `node:thisIsChildNode:Author` will return the user who created the `thisIsChildNode` node defined in a condition.
+
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FkyYbmJMBg0.png?alt=media&token=c62040c1-e35f-4b2a-a0f6-966614c7ae85)
 
 Attribute
