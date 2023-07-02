@@ -141,48 +141,51 @@ The `target` also supports Regular Expressions by starting and ending the value 
 
 # Selections
 
-## Add or Subtract
-
-`add({alias1},{alias2})` - Add the values of two columns.
-
-`subtract({alias1},{alias2})` - Subtract the values betweenn two columns.
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSQKkdU74Lj.png?alt=media&token=a90e6039-0273-43b1-b146-80461fced14d)
-
-Supports adding values to dates.
-
-If one of the aliases is `today`, then today's date will be used.
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
-
-## Attribute
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4X1a_dvjDL.png?alt=media&token=f391ddd5-7a93-4a4e-9ad2-8fa0839e5183)
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FVsL15EzoYE.png?alt=media&token=32aa9098-9a45-4b67-be96-68e78839e127)
-
 ## Author
 
-The user who created the block or page
-`Author` or `Created By` works.
+`Author` - The user who created the block or page
+
+`Created By` also works.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FQCmuF5z9S0.png?alt=media&token=399e1c7f-d4ce-495a-ada3-c6732f244c1d)
 
 ## Created Date
 
+`Created Date` - The date the block or page was created
+
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FwpdYTNTndC.png?alt=media&token=cf6f3925-f362-4a3d-8524-677ac8aa0998)
 
 ## Created Time
+
+`Created Time` - The time the block or page was created in `hh:mm` format
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FBAywiABniP.png?alt=media&token=3c91728e-6ddb-4248-b7cc-e61a4dcbb0b1)
 
 ## Edited Date
 
+`Edited Date` - The date the block or page was edited
+
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FjMVBuR7Z4g.png?alt=media&token=b57d283e-bb30-4a53-a8af-81e2f2476bfd)
 
 ## Edited Time
 
+`Edited Time` - The time the block or page was edited in `hh:mm` format
+
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fu6z6b9AoXT.png?alt=media&token=2287c3f5-6cb1-444e-ac62-bc9e8245602d)
+
+## Last Edited By
+
+`Last Edited By` - The user who created the block or page
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F7QbBrAWG28.png?alt=media&token=71854f68-b7a2-4a39-bcb1-ea022471a036)
+
+## Attribute
+
+`{attribute}` - Returns the value of an `{attribute}` associated with the queried
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4X1a_dvjDL.png?alt=media&token=f391ddd5-7a93-4a4e-9ad2-8fa0839e5183)
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FVsL15EzoYE.png?alt=media&token=32aa9098-9a45-4b67-be96-68e78839e127)
 
 ## Intermediate Node
 
@@ -208,16 +211,6 @@ Attribute
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FKJjaKl2L4m.png?alt=media&token=40b943a2-e005-45a1-b491-dd07a585cc92)
 
-## Last Edited By
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F7QbBrAWG28.png?alt=media&token=71854f68-b7a2-4a39-bcb1-ea022471a036)
-
-## Node
-
-`node` - Edit the column header of the first column
-
-![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4NcO5GSexN.png?alt=media&token=25f177d1-ba02-448c-be11-2d227228a092)
-
 ## Regular Expression
 
 `node:{node}:/regular_expression/` - returns match according to a regular expression between `/`'s.
@@ -229,6 +222,26 @@ Attribute
 `node:placeholder:/#([^\s]*)/` will return the text after the first hashtag from the `placeholder` node defined in a condition.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FNzKWXuYAkz.png?alt=media&token=bfd3e0b3-3eb8-4ebe-92e7-34a9e0c9a1ec)
+
+## First Column Header
+
+`node` - Use the label to edit the column header of the first column
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F4NcO5GSexN.png?alt=media&token=25f177d1-ba02-448c-be11-2d227228a092)
+
+## Add or Subtract
+
+`add({alias1},{alias2})` - Add the values of two columns.
+
+`subtract({alias1},{alias2})` - Subtract the values betweenn two columns.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FSQKkdU74Lj.png?alt=media&token=a90e6039-0273-43b1-b146-80461fced14d)
+
+Supports adding values to dates.
+
+If one of the aliases is `today`, then today's date will be used.
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2Fz7UNWC6zmZ.png?alt=media&token=e2f13f04-d2cb-4055-9493-4f9b367e97b7)
 
 # Layouts
 
