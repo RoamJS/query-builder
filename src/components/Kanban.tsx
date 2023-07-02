@@ -277,8 +277,7 @@ const Kanban = ({
   );
   return (
     <div
-      className="gap-4 items-start p-4 relative roamjs-kanban-container overflow-x-scroll"
-      style={{ display: "flex" }}
+      className="gap-4 items-start p-4 relative roamjs-kanban-container overflow-x-scroll grid"
       ref={containerRef}
     >
       {columns.map((col) => {

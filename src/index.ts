@@ -157,6 +157,14 @@ svg.rs-svg-container {
 .roamjs-kanban-container .react-draggable.roamjs-kanban-card > div {
   transform: rotate(0deg);
   cursor: pointer;
+}
+
+.roamjs-kanban-container {
+  grid-template-columns: repeat(auto-fit, minmax(10%, 1fr));
+}
+
+.roamjs-kanban-container .roamjs-kanban-column {
+  width: inherit;
 }`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
