@@ -416,8 +416,9 @@ type QueryEditorComponent = (props: {
   showAlias?: boolean;
   parentUid: string;
   onQuery?: () => void;
-  defaultReturnNode?: string;
   hideCustomSwitch?: boolean;
+  // @deprecated - we should hard code `node` as the return and not allow users to change it. ever.
+  defaultReturnNode?: string;
 }) => JSX.Element;
 
 const QueryEditor: QueryEditorComponent = ({
