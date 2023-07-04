@@ -61,13 +61,14 @@ const SavedQuery = ({
       .then((r) => {
         setColumns(args.columns);
         setResults(r);
+        setMinimized(false);
       })
       .catch(() => {
         setError(
           `Query failed to run. Try running a new query from the editor.`
         );
       });
-  }, [uid, setResults, setError, setColumns]);
+  }, [uid, setResults, setError, setColumns, setMinimized]);
   return (
     <div
       style={{
@@ -113,79 +114,6 @@ const SavedQuery = ({
                 </span>
               )}
               <div className="mr-16 mt-2">
-                <Tooltip content={"Edit"}>
-                  <Button
-                    icon={"edit"}
-                    onClick={() => {
-                      const parentUid = getParentUidByBlockUid(uid);
-                      const oldScratchUid = getSubTree({
-                        key: "scratch",
-                        parentUid,
-                      }).uid;
-                      (oldScratchUid
-                        ? deleteBlock(oldScratchUid)
-                        : Promise.resolve()
-                      )
-                        .then(() =>
-                          createBlock({
-                            parentUid,
-                            node: { text: "scratch" },
-                          })
-                        )
-                        .then((newUid) =>
-                          Promise.all(
-                            getShallowTreeByParentUid(
-                              getSubTree({
-                                key: "scratch",
-                                parentUid: uid,
-                              }).uid
-                            ).map((c, order) =>
-                              window.roamAlphaAPI.moveBlock({
-                                location: { "parent-uid": newUid, order },
-                                block: { uid: c.uid },
-                              })
-                            )
-                          )
-                        )
-                        .then(() => {
-                          editSavedQuery(label);
-                          onDelete?.();
-                        });
-                    }}
-                    minimal
-                  />
-                </Tooltip>
-                <Tooltip content={"Export Results"}>
-                  <Button
-                    icon={"export"}
-                    minimal
-                    onClick={() => {
-                      (results.length
-                        ? Promise.resolve(results)
-                        : fireQuery(parseQuery(uid))
-                      ).then((records) => {
-                        const cons = getQBClauses(
-                          parseQuery(uid).conditions
-                        ).map((c) => ({
-                          predicate: {
-                            text: c.target,
-                            uid: getPageUidByPageTitle(c.target),
-                          },
-                          relation: c.relation,
-                        }));
-                        exportRender({
-                          fromQuery: {
-                            nodes: records.concat(
-                              cons
-                                .map((c) => c.predicate)
-                                .filter((c) => !!c.uid)
-                            ),
-                          },
-                        });
-                      });
-                    }}
-                  />
-                </Tooltip>
                 {!isSavedToPage && (
                   <>
                     <Tooltip content={"Insert Results"}>
@@ -242,19 +170,49 @@ const SavedQuery = ({
                         minimal
                       />
                     </Tooltip>
-                    <Tooltip content={"Delete"}>
-                      <Button icon={"cross"} onClick={onDelete} minimal />
-                    </Tooltip>
                   </>
                 )}
               </div>
             </>
           )
         }
+        onDeleteQuery={onDelete}
+        onEdit={() => {
+          const parentUid = getParentUidByBlockUid(uid);
+          const oldScratchUid = getSubTree({
+            key: "scratch",
+            parentUid,
+          }).uid;
+          (oldScratchUid ? deleteBlock(oldScratchUid) : Promise.resolve())
+            .then(() =>
+              createBlock({
+                parentUid,
+                node: { text: "scratch" },
+              })
+            )
+            .then((newUid) =>
+              Promise.all(
+                getShallowTreeByParentUid(
+                  getSubTree({
+                    key: "scratch",
+                    parentUid: uid,
+                  }).uid
+                ).map((c, order) =>
+                  window.roamAlphaAPI.moveBlock({
+                    location: { "parent-uid": newUid, order },
+                    block: { uid: c.uid },
+                  })
+                )
+              )
+            )
+            .then(() => {
+              editSavedQuery(label);
+              onDelete?.();
+            });
+        }}
         hideResults={minimized}
         results={results.map(({ id, ...a }) => a)}
         columns={columns}
-        preventExport
         onResultsInViewChange={(r) => (resultsInViewRef.current = r)}
       />
     </div>
@@ -294,6 +252,7 @@ const SavedQueriesContainer = ({
           }}
           editSavedQuery={setQuery}
           initialResults={sq.results}
+          initialColumns={sq.columns}
         />
       ))}
     </>

@@ -39,6 +39,7 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
+import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
@@ -47,7 +48,6 @@ const VIEWS: Record<string, { value: boolean }> = {
   alias: { value: true },
 };
 
-const META_REGEX = /(-(uid|action|display)$|^uid$)/;
 type EnglishQueryPart = { text: string; clickId?: string };
 
 const QueryUsed = ({ parentUid }: { parentUid: string }) => {
@@ -217,8 +217,8 @@ type ResultsViewComponent = (props: {
   results: Result[];
   hideResults?: boolean;
   preventSavingSettings?: boolean;
-  preventExport?: boolean;
   onEdit?: () => void;
+  onDeleteQuery?: () => void;
   onRefresh: (loadInBackground?: boolean) => void;
   getExportTypes?: (r: Result[]) => ExportTypes;
   globalFiltersData?: Record<string, Filters>;
@@ -237,8 +237,8 @@ const ResultsView: ResultsViewComponent = ({
   results,
   hideResults = false,
   preventSavingSettings = false,
-  preventExport,
   onEdit,
+  onDeleteQuery,
   onRefresh,
   getExportTypes,
   onResultsInViewChange,
@@ -640,16 +640,17 @@ const ResultsView: ResultsViewComponent = ({
                       setMoreMenuOpen(false);
                     }}
                   />
-                  {!preventExport && (
-                    <MenuItem
-                      icon={"export"}
-                      text={"Export"}
-                      onClick={() => {
-                        setMoreMenuOpen(false);
-                        setIsExportOpen(true);
-                      }}
-                    />
-                  )}
+                  <MenuItem
+                    icon={"export"}
+                    text={"Export"}
+                    onClick={async () => {
+                      if (!results.length) {
+                        onRefresh();
+                      }
+                      setMoreMenuOpen(false);
+                      setIsExportOpen(true);
+                    }}
+                  />
                   <MenuItem
                     icon={"random"}
                     text={"Get Random"}
@@ -673,6 +674,20 @@ const ResultsView: ResultsViewComponent = ({
                         });
                       }}
                     />
+                  )}
+                  {onDeleteQuery && (
+                    <>
+                      <MenuItem
+                        icon={"trash"}
+                        text={"Delete Query"}
+                        onClick={() => {
+                          renderSimpleAlert({
+                            content: "Are you sure you want to delete this query?",
+                            onConfirm: onDeleteQuery,
+                          })
+                        }}
+                      />
+                    </>
                   )}
                   <MenuItem
                     icon={"search"}
@@ -736,93 +751,99 @@ const ResultsView: ResultsViewComponent = ({
             {header}
           </h4>
         )}
-        {!hideResults &&
-          (results.length !== 0 ? (
-            layoutMode === "table" ? (
-              <ResultsTable
-                layout={layout}
-                columns={columns}
-                results={paginatedResults}
-                parentUid={settings.resultNodeUid}
-                activeSort={activeSort}
-                setActiveSort={setActiveSort}
-                filters={filters}
-                setFilters={setFilters}
-                views={views}
-                page={page}
-                setPage={setPage}
-                pageSize={pageSize}
-                setPageSize={setPageSize}
-                pageSizeTimeoutRef={pageSizeTimeoutRef}
-                onRefresh={onRefresh}
-                allProcessedResults={allProcessedResults}
-                allResults={results}
-                showInterface={showInterface}
-              />
-            ) : layoutMode === "line" ? (
-              <Charts
-                type="line"
-                data={allProcessedResults}
-                columns={columns.slice(1)}
-              />
-            ) : layoutMode === "bar" ? (
-              <Charts
-                type="bar"
-                data={allProcessedResults}
-                columns={columns.slice(1)}
-              />
-            ) : layoutMode === "timeline" ? (
-              <Timeline timelineElements={allProcessedResults} />
-            ) : layoutMode === "kanban" ? (
-              <Kanban
-                data={allProcessedResults}
-                layout={layout}
-                onQuery={() => onRefresh(true)}
-                resultKeys={columns}
-              />
-            ) : (
-              <div style={{ padding: "16px 8px" }}>
-                Layout `{layoutMode}` is not supported
-              </div>
-            )
-          ) : (
-            <div
-              className="flex justify-between items-center mb-0"
-              style={{ padding: "16px 8px" }}
-            >
-              <i>No Results Found</i>
-            </div>
-          ))}
-        <div
-          style={
-            !showInterface ? { display: "none" } : { background: "#eeeeee80" }
-          }
-        >
-          <div
-            className="flex justify-between items-center text-xs px-1"
-            style={{
-              opacity: 0.8,
-              padding: 4,
-            }}
-          >
-            <span>
-              <i style={{ opacity: 0.8 }}>
-                <Button
-                  icon={showContent ? "caret-down" : "caret-right"}
-                  minimal
-                  small
-                  onClick={() => setShowContent(!showContent)}
-                  style={{
-                    minWidth: 16,
-                    minHeight: 16,
-                  }}
+        {!hideResults && (
+          <>
+            {results.length !== 0 ? (
+              layoutMode === "table" ? (
+                <ResultsTable
+                  layout={layout}
+                  columns={columns}
+                  results={paginatedResults}
+                  parentUid={settings.resultNodeUid}
+                  activeSort={activeSort}
+                  setActiveSort={setActiveSort}
+                  filters={filters}
+                  setFilters={setFilters}
+                  views={views}
+                  page={page}
+                  setPage={setPage}
+                  pageSize={pageSize}
+                  setPageSize={setPageSize}
+                  pageSizeTimeoutRef={pageSizeTimeoutRef}
+                  onRefresh={onRefresh}
+                  allProcessedResults={allProcessedResults}
+                  allResults={results}
+                  showInterface={showInterface}
                 />
-                Showing {paginatedResults.length} of {results.length} results
-              </i>
-            </span>
-          </div>
-          {showContent && <QueryUsed parentUid={parentUid} />}
-        </div>
+              ) : layoutMode === "line" ? (
+                <Charts
+                  type="line"
+                  data={allProcessedResults}
+                  columns={columns.slice(1)}
+                />
+              ) : layoutMode === "bar" ? (
+                <Charts
+                  type="bar"
+                  data={allProcessedResults}
+                  columns={columns.slice(1)}
+                />
+              ) : layoutMode === "timeline" ? (
+                <Timeline timelineElements={allProcessedResults} />
+              ) : layoutMode === "kanban" ? (
+                <Kanban
+                  data={allProcessedResults}
+                  layout={layout}
+                  onQuery={() => onRefresh(true)}
+                  resultKeys={columns}
+                />
+              ) : (
+                <div style={{ padding: "16px 8px" }}>
+                  Layout `{layoutMode}` is not supported
+                </div>
+              )
+            ) : (
+              <div
+                className="flex justify-between items-center mb-0"
+                style={{ padding: "16px 8px" }}
+              >
+                <i>No Results Found</i>
+              </div>
+            )}
+            <div
+              style={
+                !showInterface
+                  ? { display: "none" }
+                  : { background: "#eeeeee80" }
+              }
+            >
+              <div
+                className="flex justify-between items-center text-xs px-1"
+                style={{
+                  opacity: 0.8,
+                  padding: 4,
+                }}
+              >
+                <span>
+                  <i style={{ opacity: 0.8 }}>
+                    <Button
+                      icon={showContent ? "caret-down" : "caret-right"}
+                      minimal
+                      small
+                      onClick={() => setShowContent(!showContent)}
+                      style={{
+                        minWidth: 16,
+                        minHeight: 16,
+                      }}
+                    />
+                    Showing {paginatedResults.length} of {results.length}{" "}
+                    results
+                  </i>
+                </span>
+              </div>
+              {showContent && <QueryUsed parentUid={parentUid} />}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
