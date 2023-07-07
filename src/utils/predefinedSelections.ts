@@ -12,7 +12,7 @@ import datefnsFormat from "date-fns/format";
 import type { Result as QueryResult } from "./types";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
-import getAllPageNames from "roamjs-components/queries/getAllPageNames";
+import { IconNames } from "@blueprintjs/icons";
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
@@ -182,7 +182,6 @@ export type PredefinedSelection = {
   suggestions?: SelectionSuggestion[];
 };
 
-const allPages = getAllPageNames();
 const TIME_SUGGESTIONS = [
   { text: "since" },
   { text: "time" },
@@ -195,22 +194,25 @@ const CREATE_DATE_SUGGESTIONS: SelectionSuggestion[] = [
   },
 ];
 const EDIT_DATE_SUGGESTIONS: SelectionSuggestion[] = [
-  { text: "edit ", children: TIME_SUGGESTIONS },
   { text: "edited ", children: TIME_SUGGESTIONS },
 ];
-const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [
-  { text: "author" },
-  { text: "created by" },
-  { text: "create by" },
-];
-const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [
-  { text: "edit by" },
-  { text: "edited by" },
-  { text: "last edit by" },
-  { text: "last edited by" },
-];
-const PAGE_SUGGESTIONS: SelectionSuggestion[] = allPages.map((p) => ({
-  text: p,
+const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "created by" }];
+const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "edited by" }];
+const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
+  window.roamAlphaAPI.data.fast.q(
+    `[:find
+  (pull ?page [:node/title])
+:where
+[?b :attrs/lookup _]
+[?b :entity/attrs ?a]
+[(untuple ?a) [[?c ?d]]]
+[(get ?d :value) ?s]
+[(untuple ?s) [?e ?uid]]
+[?page :block/uid ?uid]
+]`
+  ) as [PullBlock][]
+).map((p) => ({
+  text: p[0]?.[":node/title"] || "",
   children: [],
 }));
 const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
@@ -218,7 +220,7 @@ const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
 )
   .concat(CREATE_BY_SUGGESTIONS)
   .concat(EDIT_BY_SUGGESTIONS)
-  .concat(PAGE_SUGGESTIONS);
+  .concat(ATTR_SUGGESTIONS);
 
 const predefinedSelections: PredefinedSelection[] = [
   {
@@ -341,11 +343,11 @@ const predefinedSelections: PredefinedSelection[] = [
     suggestions: [
       {
         text: "node:",
-        children: LEAF_SUGGESTIONS.concat([
+        children: [
           { text: "/^.+$/" },
           { text: "{{node}}:", children: LEAF_SUGGESTIONS },
           { text: "{{node}}" },
-        ]),
+        ],
       },
     ],
   },
@@ -378,7 +380,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) - (Number(val1) || 0);
       }
     },
-    suggestions: [{ text: "subtract({{node}},[###])" }],
+    suggestions: [{ text: "subtract({{selection}},[###])" }],
   },
   {
     test: ADD_TEST,
@@ -403,7 +405,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) + (Number(val1) || 0);
       }
     },
-    suggestions: [{ text: "add({{node}},[###])" }],
+    suggestions: [{ text: "add({{selection}},[###])" }],
   },
   {
     test: DATE_FORMAT_TEST,
@@ -446,7 +448,14 @@ const predefinedSelections: PredefinedSelection[] = [
         "-action": match[1],
       };
     },
-    suggestions: [{ text: "action:{{node}}:canvas" }],
+    suggestions: [
+      {
+        text: "action:canvas:",
+        children: Object.keys(IconNames).map((icon) => ({
+          text: icon.toLowerCase(),
+        })),
+      },
+    ],
   },
   {
     test: /.*/,
@@ -461,7 +470,7 @@ const predefinedSelections: PredefinedSelection[] = [
         text: blockText.replace(/(?<=::\s*)[^\s].*$/, value),
       });
     },
-    suggestions: PAGE_SUGGESTIONS,
+    suggestions: ATTR_SUGGESTIONS,
   },
 ];
 
