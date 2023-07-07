@@ -46,6 +46,10 @@ import {
 } from "../utils/types";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
+import {
+  ALL_SELECTION_SUGGESTIONS,
+  SelectionSuggestion,
+} from "../utils/predefinedSelections";
 
 const getSourceCandidates = (cs: Condition[]): string[] =>
   cs.flatMap((c) =>
@@ -60,14 +64,12 @@ const QueryClause = ({
   con,
   index,
   setConditions,
-  conditions,
-  availableSources,
+  getAvailableVariables,
 }: {
   con: QBClause | QBNot;
   index: number;
   setConditions: React.Dispatch<React.SetStateAction<Condition[]>>;
-  conditions: Condition[];
-  availableSources: string[];
+  getAvailableVariables: (index: number) => string[];
 }) => {
   const debounceRef = useRef(0);
   const conditionLabels = useMemo(getConditionLabels, []);
@@ -119,6 +121,10 @@ const QueryClause = ({
     },
     [setConditions, con.uid]
   );
+  const availableSources = useMemo(
+    () => getAvailableVariables(index),
+    [getAvailableVariables, index]
+  );
   return (
     <>
       <MenuItemSelect
@@ -129,17 +135,15 @@ const QueryClause = ({
           id: `${con.uid}-source`,
         }}
         activeItem={con.source}
-        items={Array.from(
-          new Set(getSourceCandidates(conditions.slice(0, index)))
-        ).concat(availableSources)}
+        items={availableSources}
         onItemSelect={(value) => {
           setInputSetting({
             blockUid: con.uid,
             key: "source",
             value,
           });
-          setConditions(
-            conditions.map((c) =>
+          setConditions((_conditions) =>
+            _conditions.map((c) =>
               c.uid === con.uid ? { ...con, source: value } : c
             )
           );
@@ -213,15 +217,14 @@ const QueryCondition = ({
   con,
   index,
   setConditions,
-  conditions,
-  availableSources,
+  getAvailableVariables,
   setView,
 }: {
   con: Condition;
   index: number;
   setConditions: React.Dispatch<React.SetStateAction<Condition[]>>;
-  conditions: Condition[];
-  availableSources: string[];
+  getAvailableVariables: (n: number) => string[];
+
   setView: (s: { uid: string; branch: number }) => void;
 }) => {
   return (
@@ -247,8 +250,8 @@ const QueryCondition = ({
                 text: value,
               })
           ).then(() => {
-            setConditions(
-              conditions.map((c) =>
+            setConditions((_conditions) =>
+              _conditions.map((c) =>
                 c.uid === con.uid
                   ? value === "clause" || value === "not"
                     ? {
@@ -274,8 +277,7 @@ const QueryCondition = ({
           con={con}
           index={index}
           setConditions={setConditions}
-          conditions={conditions}
-          availableSources={availableSources}
+          getAvailableVariables={getAvailableVariables}
         />
       )}
       {(con.type === "not or" || con.type === "or") && (
@@ -285,7 +287,9 @@ const QueryCondition = ({
         icon={"trash"}
         onClick={() => {
           deleteBlock(con.uid);
-          setConditions(conditions.filter((c) => c.uid !== con.uid));
+          setConditions((_conditions) =>
+            _conditions.filter((c) => c.uid !== con.uid)
+          );
         }}
         minimal
         style={{ alignSelf: "end", minWidth: 30 }}
@@ -297,9 +301,11 @@ const QueryCondition = ({
 const QuerySelection = ({
   sel,
   setSelections,
+  getAvailableVariables,
 }: {
   sel: Selection;
   setSelections: React.Dispatch<React.SetStateAction<Selection[]>>;
+  getAvailableVariables: (n: number) => string[];
 }) => {
   const debounceRef = useRef(0);
   const setSelectionLabel = useCallback(
@@ -321,9 +327,8 @@ const QuerySelection = ({
     [setSelections, sel.uid]
   );
   const setSelectionData = useCallback(
-    (e, timeout: boolean = true) => {
+    (text: string, timeout: boolean = true) => {
       window.clearTimeout(debounceRef.current);
-      const text = e.target.value;
       setSelections((selections) =>
         selections.map((s) => (s.uid === sel.uid ? { ...s, text } : s))
       );
@@ -336,6 +341,22 @@ const QuerySelection = ({
     },
     [setSelections, sel.uid]
   );
+  const setSelectionDataOnBlur = useCallback(
+    (e: string) => {
+      setSelectionData(e, false);
+    },
+    [setSelectionData]
+  );
+  const selectionOptions = useMemo(() => {
+    const variables = getAvailableVariables(Number.MAX_VALUE);
+    return ALL_SELECTION_SUGGESTIONS.flatMap((s) => {
+      if (s.includes("{{node}}")) {
+        return variables.map((v) => s.replace("{{node}}", v));
+      }
+      return [s];
+    });
+  }, [getAvailableVariables]);
+
   return (
     <div style={{ display: "flex", margin: "8px 0", alignItems: "center" }}>
       <span
@@ -372,14 +393,13 @@ const QuerySelection = ({
           minWidth: 240,
         }}
       >
-        <InputGroup
+        <AutocompleteInput
           value={sel.text}
-          style={{ width: "100%" }}
+          // style={{ width: "100%" }}
           id={`${sel.uid}-select`}
-          onChange={setSelectionData}
-          onBlur={(e) => {
-            setSelectionData(e, false);
-          }}
+          setValue={setSelectionData}
+          onBlur={setSelectionDataOnBlur}
+          options={selectionOptions}
         />
       </div>
       <Button
@@ -573,6 +593,13 @@ const QueryEditor: QueryEditorComponent = ({
         .catch(console.error);
     }
   }, [conditionLabels, setConditionLabels]);
+  const getAvailableVariables = useCallback(
+    (index: number) =>
+      Array.from(
+        new Set(getSourceCandidates(viewConditions.slice(0, index)))
+      ).concat(returnNode),
+    [returnNode, viewConditions]
+  );
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
       <H6
@@ -752,8 +779,7 @@ const QueryEditor: QueryEditorComponent = ({
               key={con.uid}
               con={con}
               index={index}
-              conditions={conditions}
-              availableSources={[returnNode]}
+              getAvailableVariables={getAvailableVariables}
               setConditions={setConditions}
               setView={(v) => setViewStack([...viewStack, v])}
             />
@@ -763,6 +789,7 @@ const QueryEditor: QueryEditorComponent = ({
               key={sel.uid}
               sel={sel}
               setSelections={setSelections}
+              getAvailableVariables={getAvailableVariables}
             />
           ))}
         </>
@@ -913,15 +940,7 @@ const QueryEditor: QueryEditorComponent = ({
                           key={con.uid}
                           con={con}
                           index={index}
-                          conditions={viewConditions}
-                          availableSources={[
-                            returnNode,
-                            ...conditions
-                              .filter(
-                                (c) => c.type === "clause" || c.type === "not"
-                              )
-                              .map((c) => (c as QBClauseData).target),
-                          ]}
+                          getAvailableVariables={getAvailableVariables}
                           setConditions={setConditions}
                           setView={(v) => setViewStack([...viewStack, v])}
                         />

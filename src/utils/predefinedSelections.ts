@@ -12,6 +12,7 @@ import datefnsFormat from "date-fns/format";
 import type { Result as QueryResult } from "./types";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
+import { IconNames } from "@blueprintjs/icons";
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
@@ -152,6 +153,11 @@ const isVariableExposed = (
     }
   });
 
+export type SelectionSuggestion = {
+  text: string;
+  children?: SelectionSuggestion[];
+};
+
 export type PredefinedSelection = {
   test: RegExp;
   pull: (a: {
@@ -173,7 +179,48 @@ export type PredefinedSelection = {
     // TODO - we wouldn't need this if `NODE_TEST` was separated out and not so overloaded.
     selection: string;
   }) => Promise<void>;
+  suggestions?: SelectionSuggestion[];
 };
+
+const TIME_SUGGESTIONS = [
+  { text: "since" },
+  { text: "time" },
+  { text: "date" },
+];
+const CREATE_DATE_SUGGESTIONS: SelectionSuggestion[] = [
+  {
+    text: "created ",
+    children: TIME_SUGGESTIONS,
+  },
+];
+const EDIT_DATE_SUGGESTIONS: SelectionSuggestion[] = [
+  { text: "edited ", children: TIME_SUGGESTIONS },
+];
+const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "created by" }];
+const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "edited by" }];
+const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
+  window.roamAlphaAPI.data.fast.q(
+    `[:find
+  (pull ?page [:node/title])
+:where
+[?b :attrs/lookup _]
+[?b :entity/attrs ?a]
+[(untuple ?a) [[?c ?d]]]
+[(get ?d :value) ?s]
+[(untuple ?s) [?e ?uid]]
+[?page :block/uid ?uid]
+]`
+  ) as [PullBlock][]
+).map((p) => ({
+  text: p[0]?.[":node/title"] || "",
+  children: [],
+}));
+const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
+  EDIT_DATE_SUGGESTIONS
+)
+  .concat(CREATE_BY_SUGGESTIONS)
+  .concat(EDIT_BY_SUGGESTIONS)
+  .concat(ATTR_SUGGESTIONS);
 
 const predefinedSelections: PredefinedSelection[] = [
   {
@@ -186,6 +233,7 @@ const predefinedSelections: PredefinedSelection[] = [
         value: r?.[":create/time"],
       });
     },
+    suggestions: CREATE_DATE_SUGGESTIONS,
   },
   {
     test: EDIT_DATE_TEST,
@@ -197,6 +245,7 @@ const predefinedSelections: PredefinedSelection[] = [
         value: r?.[":edit/time"],
       });
     },
+    suggestions: EDIT_DATE_SUGGESTIONS,
   },
   {
     test: CREATE_BY_TEST,
@@ -204,6 +253,7 @@ const predefinedSelections: PredefinedSelection[] = [
     mapper: (r) => {
       return getUserDisplayNameById(r?.[":create/user"]?.[":db/id"]);
     },
+    suggestions: CREATE_BY_SUGGESTIONS,
   },
   {
     test: EDIT_BY_TEST,
@@ -211,6 +261,7 @@ const predefinedSelections: PredefinedSelection[] = [
     mapper: (r) => {
       return getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"]);
     },
+    suggestions: EDIT_BY_SUGGESTIONS,
   },
   {
     test: NODE_TEST,
@@ -289,6 +340,16 @@ const predefinedSelections: PredefinedSelection[] = [
         });
       }
     },
+    suggestions: [
+      {
+        text: "node:",
+        children: [
+          { text: "/^.+$/" },
+          { text: "{{node}}:", children: LEAF_SUGGESTIONS },
+          { text: "{{node}}" },
+        ],
+      },
+    ],
   },
   {
     test: ALIAS_TEST,
@@ -296,6 +357,7 @@ const predefinedSelections: PredefinedSelection[] = [
     mapper: (r) => {
       return "";
     },
+    suggestions: [{ text: "node" }],
   },
   {
     test: SUBTRACT_TEST,
@@ -318,6 +380,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) - (Number(val1) || 0);
       }
     },
+    suggestions: [{ text: "subtract({{selection}},[###])" }],
   },
   {
     test: ADD_TEST,
@@ -342,6 +405,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) + (Number(val1) || 0);
       }
     },
+    suggestions: [{ text: "add({{selection}},[###])" }],
   },
   {
     test: DATE_FORMAT_TEST,
@@ -370,6 +434,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return { "": arg0, "-uid": uid, "-display": arg0 };
       }
     },
+    suggestions: [{ text: "date-format({{node}},[MMM do, yyyy])" }],
   },
   {
     test: ACTION_TEST,
@@ -383,6 +448,14 @@ const predefinedSelections: PredefinedSelection[] = [
         "-action": match[1],
       };
     },
+    suggestions: [
+      {
+        text: "action:canvas:",
+        children: Object.keys(IconNames).map((icon) => ({
+          text: icon.toLowerCase(),
+        })),
+      },
+    ],
   },
   {
     test: /.*/,
@@ -397,8 +470,27 @@ const predefinedSelections: PredefinedSelection[] = [
         text: blockText.replace(/(?<=::\s*)[^\s].*$/, value),
       });
     },
+    suggestions: ATTR_SUGGESTIONS,
   },
 ];
+
+const flattenSuggestions = (suggestions: SelectionSuggestion[]): string[] =>
+  suggestions
+    .map((s) => {
+      if (s.children?.length) {
+        return flattenSuggestions(s.children).map((c) => `${s.text}${c}`);
+      } else {
+        return s.text;
+      }
+    })
+    .flat();
+
+export const ALL_SELECTION_SUGGESTIONS = flattenSuggestions(
+  predefinedSelections
+    .map((s) => s.suggestions)
+    .filter((s): s is SelectionSuggestion[] => !!s?.length)
+    .flat()
+);
 
 export const registerSelection = (args: PredefinedSelection) => {
   predefinedSelections.splice(predefinedSelections.length - 1, 0, args);
