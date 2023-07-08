@@ -9,7 +9,9 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import type { Condition, Result as QueryResult, Selection } from "./types";
 import getSamePageAPI from "@samepage/external/getSamePageAPI";
 import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause";
-import predefinedSelections, { PredefinedSelection } from "./predefinedSelections";
+import predefinedSelections, {
+  PredefinedSelection,
+} from "./predefinedSelections";
 
 export type QueryArgs = {
   returnNode: string;
@@ -279,6 +281,14 @@ export const getDatalogQuery = ({
         ),
     inputs: expectedInputs.map((i) => inputs[i]),
   };
+};
+
+export const fireQuerySync = (args: FireQueryArgs): QueryResult[] => {
+  const { query } = getDatalogQuery(args);
+  return (window.roamAlphaAPI.data.fast.q(query) as [PullBlock][]).map((r) => ({
+    text: r[0][":node/title"] || r[0][":block/string"] || "",
+    uid: r[0][":block/uid"] || "",
+  }));
 };
 
 const fireQuery: FireQuery = async (_args) => {

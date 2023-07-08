@@ -14,7 +14,7 @@ import getDiscourseRelations from "./getDiscourseRelations";
 import matchDiscourseNode from "./matchDiscourseNode";
 import replaceDatalogVariables from "./replaceDatalogVariables";
 import parseQuery from "./parseQuery";
-import { getWhereClauses } from "./fireQuery";
+import fireQuery, { fireQuerySync, getWhereClauses } from "./fireQuery";
 
 const collectVariables = (
   clauses: (DatalogClause | DatalogAndClause)[]
@@ -213,7 +213,7 @@ const registerDiscourseDatalogTranslators = () => {
     return false; // !nodeLabelByType[condition.source] && !nodeLabelByType[condition.target]
   };
   const relationLabels = new Set(
-    discourseRelations.flatMap((d) => [d.label, d.complement])
+    discourseRelations.flatMap((d) => [d.label, d.complement].filter(Boolean))
   );
   relationLabels.add(ANY_RELATION_REGEX.source);
   relationLabels.forEach((label) => {
@@ -404,7 +404,6 @@ const registerDiscourseDatalogTranslators = () => {
           ];
         },
         targetOptions: (source) => {
-          const pageNames = getAllPageNames();
           const sourcedRelations = discourseRelations
             .flatMap((dr) => [
               { source: dr.source, relation: dr.label, target: dr.destination },
@@ -422,15 +421,22 @@ const registerDiscourseDatalogTranslators = () => {
                   nodeLabelByType[dr.source] === source) &&
                 nodeByType[dr.target]
             );
-          return pageNames
-            .filter((p) =>
-              sourcedRelations.some((sr) =>
-                matchDiscourseNode({
-                  ...nodeByType[sr.target],
-                  title: p,
-                })
-              )
-            )
+          return sourcedRelations
+            .flatMap((sr) => {
+              return fireQuerySync({
+                returnNode: "node",
+                conditions: [
+                  {
+                    source: "node",
+                    relation: "is a",
+                    target: sr.target,
+                    uid: window.roamAlphaAPI.util.generateUID(),
+                    type: "clause",
+                  },
+                ],
+                selections: [],
+              }).map((n) => n.text);
+            })
             .concat(
               ...Object.values(nodeLabelByType).filter((p) =>
                 sourcedRelations.some((sr) => nodeByType[sr.target].text === p)
