@@ -172,7 +172,7 @@ div[data-roamjs-message-block=true] .roamjs-message-body .rm-api-render--block >
             key={i}
             icon={
               <img
-                src="https://raw.githubusercontent.com/dvargas92495/roamjs-smartblocks/main/src/img/lego3blocks.png"
+                src="https://raw.githubusercontent.com/RoamJS/smartblocks/main/src/img/lego3blocks.png"
                 height={16}
                 width={16}
               />
