@@ -174,6 +174,8 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
+const SUPPORTED_COLUMN_FILTER_TYPES = [{ id: "contains" }];
+
 const SUPPORTED_LAYOUTS = [
   {
     id: "table",
@@ -249,14 +251,16 @@ const ResultsView: ResultsViewComponent = ({
     () => parseResultSettings(parentUid, columns, extensionAPI),
     [parentUid]
   );
-  const [activeSort, setActiveSort] = useState<Sorts>(settings.activeSort);
-  const [filters, setFilters] = useState<FilterData>(settings.filters);
+  const [activeSort, setActiveSort] = useState(settings.activeSort);
+  // @deprecated - use columnFilters
+  const [filters, setFilters] = useState(settings.filters);
   const randomRef = useRef(settings.random);
   const [random, setRandom] = useState({ count: settings.random });
   const [page, setPage] = useState(settings.page);
   const [pageSize, setPageSize] = useState(settings.pageSize);
   const pageSizeTimeoutRef = useRef(0);
-  const [views, setViews] = useState<Views>(settings.views);
+  const [views, setViews] = useState(settings.views);
+  const [columnFilters, setColumnFilters] = useState(settings.columnFilters);
   const [searchFilter, setSearchFilter] = useState(settings.searchFilter);
   const [showInterface, setShowInterface] = useState(settings.showInterface);
   const [showMenuIcons, setShowMenuIcons] = useState(false);
@@ -265,6 +269,7 @@ const ResultsView: ResultsViewComponent = ({
     return postProcessResults(results, {
       activeSort,
       filters,
+      columnFilters,
       random: random.count,
       page,
       pageSize,
@@ -279,6 +284,7 @@ const ResultsView: ResultsViewComponent = ({
     pageSize,
     random.count,
     searchFilter,
+    columnFilters,
   ]);
 
   const [showContent, setShowContent] = useState(false);
@@ -291,6 +297,7 @@ const ResultsView: ResultsViewComponent = ({
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
+  const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
@@ -526,6 +533,127 @@ const ResultsView: ResultsViewComponent = ({
                     );
                   })}
                 </div>
+              ) : isEditColumnFilter ? (
+                <div className="relative w-72 p-4">
+                  <h4 className="font-bold flex justify-between items-center">
+                    Set Filters
+                    <Button
+                      icon={"small-cross"}
+                      onClick={() => setIsEditColumnFilter(false)}
+                      minimal
+                      small
+                    />
+                  </h4>
+                  <div className="flex flex-col gap-4 items-start overflow-auto">
+                    {columnFilters.map(({ key, type, value, uid }) => (
+                      <div key={uid}>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <MenuItemSelect
+                            className="roamjs-column-filter-key flex-grow"
+                            items={columns.map((c) => c.key)}
+                            transformItem={(k) =>
+                              k.length > 8 ? `${k.slice(0, 5)}...` : k
+                            }
+                            activeItem={key}
+                            onItemSelect={(newKey) => {
+                              setColumnFilters(
+                                columnFilters.map((f) =>
+                                  f.uid === uid ? { ...f, key: newKey } : f
+                                )
+                              );
+                              updateBlock({ uid, text: newKey });
+                            }}
+                          />
+                          <MenuItemSelect
+                            className="roamjs-column-filter-type"
+                            items={SUPPORTED_COLUMN_FILTER_TYPES.map(
+                              (c) => c.id
+                            )}
+                            activeItem={type}
+                            onItemSelect={(newType) => {
+                              setColumnFilters(
+                                columnFilters.map((f) =>
+                                  f.uid === uid ? { ...f, type: newType } : f
+                                )
+                              );
+                              setInputSetting({
+                                blockUid: uid,
+                                key: "type",
+                                value: newType,
+                              });
+                            }}
+                          />
+                          <Button
+                            icon={"trash"}
+                            minimal
+                            onClick={() => {
+                              setColumnFilters(
+                                columnFilters.filter((f) => f.uid !== uid)
+                              );
+                              deleteBlock(uid);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <InputGroup
+                            className="roamjs-column-filter-value"
+                            value={value}
+                            placeholder="Type a value..."
+                            onChange={(e) => {
+                              const newValue = e.target.value;
+                              setColumnFilters(
+                                columnFilters.map((f) =>
+                                  f.uid === uid ? { ...f, value: newValue } : f
+                                )
+                              );
+                              setInputSetting({
+                                blockUid: uid,
+                                key: "value",
+                                value: newValue,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      text={"Add Filter"}
+                      intent="primary"
+                      onClick={() => {
+                        const newFilter = {
+                          key: columns[0].key,
+                          type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
+                          value: "",
+                          uid: window.roamAlphaAPI.util.generateUID(),
+                        };
+                        setColumnFilters([...columnFilters, newFilter]);
+                        const columnFiltersNode = getSubTree({
+                          key: "columnFilters",
+                          parentUid: settings.resultNodeUid,
+                        });
+                        createBlock({
+                          parentUid: columnFiltersNode.uid,
+                          order: Number.MAX_VALUE,
+                          node: {
+                            text: newFilter.key,
+                            uid: newFilter.uid,
+                            children: [
+                              {
+                                text: "type",
+                                children: [{ text: newFilter.type }],
+                              },
+                              {
+                                text: "value",
+                                children: [{ text: newFilter.value }],
+                              },
+                            ],
+                          },
+                        });
+                      }}
+                      rightIcon={"plus"}
+                    />
+                  </div>
+                </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
                   <h4 className="font-bold flex justify-between items-center">
@@ -539,7 +667,7 @@ const ResultsView: ResultsViewComponent = ({
                   </h4>
                   <div className="flex flex-col gap-1">
                     {views.map(({ column, mode, value }, i) => (
-                      <>
+                      <React.Fragment key={i}>
                         <div className="flex items-center justify-between gap-2">
                           <span style={{ flex: 1 }}>{column}</span>
                           <MenuItemSelect
@@ -562,40 +690,9 @@ const ResultsView: ResultsViewComponent = ({
                             }}
                           />
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </div>
-                  {/* 
-                Save this for when we move filters
-                <Button
-                  icon={"plus"}
-                  text={"Add Filter"}
-                  minimal
-                  className="w-full"
-                  onClick={() => {
-                    setViews(
-                      views.concat({ column: columns[0], mode: VIEWS[0] })
-                    );
-
-                    if (preventSavingSettings) return;
-                    const resultNode = getSubTree({
-                      key: "results",
-                      parentUid,
-                    });
-                    const viewsNode = getSubTree({
-                      key: "views",
-                      parentUid: resultNode.uid,
-                    });
-                    createBlock({
-                      node: {
-                        text: columns[0],
-                        children: [{ text: VIEWS[0] }],
-                      },
-                      order: viewsNode.children.length,
-                      parentUid: viewsNode.uid,
-                    });
-                  }}
-                /> */}
                 </div>
               ) : (
                 <Menu>
@@ -614,6 +711,13 @@ const ResultsView: ResultsViewComponent = ({
                     text={"Layout"}
                     onClick={() => {
                       setIsEditLayout(true);
+                    }}
+                  />
+                  <MenuItem
+                    icon={"filter"}
+                    text={"Filters"}
+                    onClick={() => {
+                      setIsEditColumnFilter(true);
                     }}
                   />
                   <MenuItem
@@ -682,9 +786,10 @@ const ResultsView: ResultsViewComponent = ({
                         text={"Delete Query"}
                         onClick={() => {
                           renderSimpleAlert({
-                            content: "Are you sure you want to delete this query?",
+                            content:
+                              "Are you sure you want to delete this query?",
                             onConfirm: onDeleteQuery,
-                          })
+                          });
                         }}
                       />
                     </>

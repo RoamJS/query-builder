@@ -6,6 +6,7 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
 import { Column } from "./types";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 
 export type Sorts = { key: string; descending: boolean }[];
 export type FilterData = Record<string, Filters>;
@@ -75,6 +76,10 @@ const parseResultSettings = (
   const resultNode = getSubTree({ tree, key: "results" });
   const sortsNode = getSubTree({ tree: resultNode.children, key: "sorts" });
   const filtersNode = getSubTree({ tree: resultNode.children, key: "filters" });
+  const columnFiltersNode = getSubTree({
+    tree: resultNode.children,
+    key: "columnFilters",
+  });
   const searchFilterNode = getSubTree({
     tree: resultNode.children,
     key: "searchFilter",
@@ -141,6 +146,14 @@ const parseResultSettings = (
         },
       ])
     ),
+    columnFilters: columnFiltersNode.children.map((c) => {
+      return {
+        key: c.text,
+        uid: c.uid,
+        value: getSettingValueFromTree({ tree: c.children, key: "value" }),
+        type: getSettingValueFromTree({ tree: c.children, key: "type" }),
+      };
+    }),
     views: columns.map(({ key: column }) => ({
       column,
       mode:

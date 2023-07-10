@@ -42,28 +42,42 @@ const postProcessResults = (
 ) => {
   const sortedResults = results
     .filter((r) => {
-      return Object.keys(settings.filters).every((filterKey) => {
-        const includeValues =
-          settings.filters[filterKey].includes.values || new Set();
-        const excludeValues =
-          settings.filters[filterKey].excludes.values || new Set();
-        return (
-          (includeValues.size === 0 &&
-            (typeof r[filterKey] !== "string" ||
-              !excludeValues.has(extractTag(r[filterKey] as string))) &&
-            (r[filterKey] instanceof Date ||
-              !excludeValues.has(
+      const deprecatedFilter = Object.keys(settings.filters).every(
+        (filterKey) => {
+          const includeValues =
+            settings.filters[filterKey].includes.values || new Set();
+          const excludeValues =
+            settings.filters[filterKey].excludes.values || new Set();
+          return (
+            (includeValues.size === 0 &&
+              (typeof r[filterKey] !== "string" ||
+                !excludeValues.has(extractTag(r[filterKey] as string))) &&
+              (r[filterKey] instanceof Date ||
+                !excludeValues.has(
+                  window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
+                )) &&
+              !excludeValues.has(r[filterKey] as string)) ||
+            (typeof r[filterKey] === "string" &&
+              includeValues.has(extractTag(r[filterKey] as string))) ||
+            (r[filterKey] instanceof Date &&
+              includeValues.has(
                 window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
-              )) &&
-            !excludeValues.has(r[filterKey] as string)) ||
-          (typeof r[filterKey] === "string" &&
-            includeValues.has(extractTag(r[filterKey] as string))) ||
-          (r[filterKey] instanceof Date &&
-            includeValues.has(
-              window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
-            )) ||
-          includeValues.has(r[filterKey] as string)
-        );
+              )) ||
+            includeValues.has(r[filterKey] as string)
+          );
+        }
+      );
+      if (!deprecatedFilter) return false;
+      return settings.columnFilters.every((columnFilter) => {
+        switch (columnFilter.type) {
+          case "contains":
+            const resultValue = r[columnFilter.key];
+            const resultValueString =
+              typeof resultValue === "string" ? resultValue : `${resultValue}`;
+            return resultValueString.includes(columnFilter.value);
+          default:
+            return true;
+        }
       });
     })
     .filter((r) => {
