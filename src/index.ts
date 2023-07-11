@@ -55,7 +55,9 @@ export default runExtension(async (onloadArgs) => {
     outline-width: 2px;
 }
 
-.bp-warning, .bp-warning.bp3-button .bp3-icon {
+.roamjs-item-dirty, 
+.roamjs-item-dirty.bp3-menu-item .bp3-icon, 
+.roamjs-item-dirty.bpt-button .bp3-icon {
   color: #a82a2a;
 }
 

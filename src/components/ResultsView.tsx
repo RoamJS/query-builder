@@ -19,11 +19,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
-import parseResultSettings, {
-  FilterData,
-  Sorts,
-  Views,
-} from "../utils/parseResultSettings";
+import parseResultSettings from "../utils/parseResultSettings";
 import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import postProcessResults from "../utils/postProcessResults";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -299,6 +295,10 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditLayout, setIsEditLayout] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
+  const isMenuIconDirty = useMemo(
+    () => !!searchFilter || !!columnFilters.length,
+    [searchFilter, columnFilters]
+  );
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
     () => (Array.isArray(layout.mode) ? layout.mode[0] : layout.mode),
@@ -399,9 +399,7 @@ const ResultsView: ResultsViewComponent = ({
               <Button
                 minimal
                 icon={"more"}
-                className={
-                  searchFilter && !isEditSearchFilter ? "bp-warning" : ""
-                }
+                className={isMenuIconDirty ? "roamjs-item-dirty" : ""}
               />
             }
             onInteraction={(next, e) => {
@@ -534,8 +532,8 @@ const ResultsView: ResultsViewComponent = ({
                   })}
                 </div>
               ) : isEditColumnFilter ? (
-                <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
+                <div className="relative w-80 p-2">
+                  <h4 className="font-bold flex justify-between items-center p-2">
                     Set Filters
                     <Button
                       icon={"small-cross"}
@@ -544,7 +542,7 @@ const ResultsView: ResultsViewComponent = ({
                       small
                     />
                   </h4>
-                  <div className="flex flex-col gap-4 items-start overflow-auto">
+                  <div className="flex flex-col gap-4 items-start overflow-auto p-2">
                     {columnFilters.map(({ key, type, value, uid }) => (
                       <div key={uid}>
                         <div className="flex items-center justify-between gap-2 mb-2">
@@ -552,7 +550,7 @@ const ResultsView: ResultsViewComponent = ({
                             className="roamjs-column-filter-key flex-grow"
                             items={columns.map((c) => c.key)}
                             transformItem={(k) =>
-                              k.length > 8 ? `${k.slice(0, 5)}...` : k
+                              k.length > 10 ? `${k.slice(0, 7)}...` : k
                             }
                             activeItem={key}
                             onItemSelect={(newKey) => {
@@ -716,8 +714,18 @@ const ResultsView: ResultsViewComponent = ({
                   <MenuItem
                     icon={"filter"}
                     text={"Filters"}
+                    className={columnFilters.length ? "roamjs-item-dirty" : ""}
                     onClick={() => {
                       setIsEditColumnFilter(true);
+                    }}
+                  />
+                  <MenuItem
+                    icon={"search"}
+                    text={isEditSearchFilter ? "Hide Search" : "Search"}
+                    className={searchFilter ? "roamjs-item-dirty" : ""}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      setIsEditSearchFilter((prevState) => !prevState);
                     }}
                   />
                   <MenuItem
@@ -794,17 +802,6 @@ const ResultsView: ResultsViewComponent = ({
                       />
                     </>
                   )}
-                  <MenuItem
-                    icon={"search"}
-                    text={isEditSearchFilter ? "Hide Search" : "Search"}
-                    className={
-                      searchFilter && !isEditSearchFilter ? "bp-warning" : ""
-                    }
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      setIsEditSearchFilter((prevState) => !prevState);
-                    }}
-                  />
                   <MenuItem
                     icon={"clipboard"}
                     text={"Copy Query"}
