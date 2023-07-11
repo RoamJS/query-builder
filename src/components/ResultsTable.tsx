@@ -295,7 +295,13 @@ const ResultRow = ({
           const val = r[key] || "";
           const { mode: view, value: viewValue } = viewsByColumn[key] || {};
           return (
-            <td className={"relative overflow-hidden text-ellipsis"} key={key}>
+            <td
+              className={"relative overflow-hidden text-ellipsis"}
+              key={key}
+              {...{
+                [`data-cell-${key}`]: typeof val === "string" ? val : `${val}`,
+              }}
+            >
               {val === "" ? (
                 <i>[block is blank]</i>
               ) : view === "link" || view === "alias" ? (
