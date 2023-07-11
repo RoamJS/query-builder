@@ -223,7 +223,6 @@ svg.rs-svg-container {
         renderQueryPage({
           pageUid: uid,
           parent,
-          defaultReturnNode: "node",
           onloadArgs,
         });
       }

@@ -106,7 +106,6 @@ const NodeSpecification = ({
         <QueryEditor
           parentUid={parentUid}
           key={Number(migrated)}
-          defaultReturnNode={"node"}
           hideCustomSwitch
         />
       </div>

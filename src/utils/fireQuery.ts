@@ -12,9 +12,10 @@ import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause
 import predefinedSelections, {
   PredefinedSelection,
 } from "./predefinedSelections";
+import { DEFAULT_RETURN_NODE } from "./parseQuery";
 
 export type QueryArgs = {
-  returnNode: string;
+  returnNode?: string;
   conditions: Condition[];
   selections: Selection[];
   inputs?: Record<string, string | number>;
@@ -151,7 +152,7 @@ const optimizeQuery = (
 
 export const getWhereClauses = ({
   conditions,
-  returnNode,
+  returnNode = DEFAULT_RETURN_NODE,
 }: Omit<QueryArgs, "selections">) => {
   return conditions.length
     ? conditions.flatMap(conditionToDatalog)
@@ -175,7 +176,7 @@ const getConditionTargets = (conditions: Condition[]): string[] =>
 export const getDatalogQuery = ({
   conditions,
   selections,
-  returnNode,
+  returnNode = DEFAULT_RETURN_NODE,
   inputs = {},
 }: FireQueryArgs) => {
   const expectedInputs = getConditionTargets(conditions)

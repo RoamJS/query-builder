@@ -33,7 +33,7 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import parseQuery from "../utils/parseQuery";
+import parseQuery, { DEFAULT_RETURN_NODE } from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import {
@@ -433,29 +433,24 @@ const getConditionByUid = (
 };
 
 type QueryEditorComponent = (props: {
-  showAlias?: boolean;
   parentUid: string;
   onQuery?: () => void;
   hideCustomSwitch?: boolean;
-  // @deprecated - we should hard code `node` as the return and not allow users to change it. ever.
-  defaultReturnNode?: string;
+  showAlias?: boolean;
 }) => JSX.Element;
 
 const QueryEditor: QueryEditorComponent = ({
-  showAlias,
   parentUid,
   onQuery,
-  defaultReturnNode, // returnNodeDisabled
   hideCustomSwitch,
+  showAlias,
 }) => {
   const [conditionLabels, setConditionLabels] = useState(
     () => new Set(getConditionLabels())
   );
   const {
-    returnNodeUid,
     conditionsNodesUid,
     selectionsNodesUid,
-    returnNode: initialReturnNode,
     conditions: initialConditions,
     selections: initialSelections,
     customNodeUid,
@@ -463,21 +458,7 @@ const QueryEditor: QueryEditorComponent = ({
     isCustomEnabled: initialIsCustomEnabled,
     isSamePageEnabled: initialIsSamePageEnabled,
   } = useMemo(() => parseQuery(parentUid), [parentUid]);
-  const [returnNode, setReturnNode] = useState(() => initialReturnNode);
   const debounceRef = useRef(0);
-  const returnNodeOnChange = (value: string) => {
-    window.clearTimeout(debounceRef.current);
-    setReturnNode(value);
-    debounceRef.current = window.setTimeout(() => {
-      const childUid = getFirstChildUidByBlockUid(returnNodeUid);
-      if (childUid)
-        updateBlock({
-          uid: childUid,
-          text: value,
-        });
-      else createBlock({ parentUid: returnNodeUid, node: { text: value } });
-    }, 1000);
-  };
   const [conditions, _setConditions] = useState(initialConditions);
   const [selections, setSelections] = useState(initialSelections);
   const [custom, setCustom] = useState(initialCustom);
@@ -491,7 +472,7 @@ const QueryEditor: QueryEditorComponent = ({
           uid: childUid,
           text: value,
         });
-      else createBlock({ parentUid: returnNodeUid, node: { text: value } });
+      else createBlock({ parentUid: customNodeUid, node: { text: value } });
     }, 1000);
   };
   const [viewStack, setViewStack] = useState([{ uid: parentUid, branch: 0 }]);
@@ -545,9 +526,6 @@ const QueryEditor: QueryEditorComponent = ({
         return `Condition ${index + 1} must have at least one sub-condition.`;
       }
     }
-    if (!returnNode) {
-      return `Query must have a value specified in the "FIND ... WHERE" input`;
-    }
     for (let index = 0; index < selections.length; index++) {
       const selection = selections[index];
       if (!selection.text) {
@@ -558,7 +536,7 @@ const QueryEditor: QueryEditorComponent = ({
       }
     }
     return "";
-  }, [returnNode, selections, conditionLabels, conditions]);
+  }, [selections, conditionLabels, conditions]);
   const [isCustomEnabled, setIsCustomEnabled] = useState(
     initialIsCustomEnabled
   );
@@ -597,8 +575,8 @@ const QueryEditor: QueryEditorComponent = ({
     (index: number) =>
       Array.from(
         new Set(getSourceCandidates(viewConditions.slice(0, index)))
-      ).concat(returnNode),
-    [returnNode, viewConditions]
+      ).concat(DEFAULT_RETURN_NODE),
+    [viewConditions]
   );
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
@@ -621,12 +599,8 @@ const QueryEditor: QueryEditorComponent = ({
             </span>
             <InputGroup
               autoFocus
-              value={returnNode}
-              disabled={!!defaultReturnNode}
-              onChange={(e) => {
-                returnNodeOnChange(e.target.value);
-              }}
-              placeholder={"Enter Label..."}
+              defaultValue={DEFAULT_RETURN_NODE}
+              disabled
               className="roamjs-query-return-node"
             />
             <span
@@ -730,7 +704,6 @@ const QueryEditor: QueryEditorComponent = ({
                   const { query: text } = getDatalogQuery({
                     conditions,
                     selections,
-                    returnNode,
                   });
                   if (contentUid) updateBlock({ text, uid: contentUid });
                   else
