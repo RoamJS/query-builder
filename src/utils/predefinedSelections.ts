@@ -198,29 +198,30 @@ const EDIT_DATE_SUGGESTIONS: SelectionSuggestion[] = [
 ];
 const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "created by" }];
 const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "edited by" }];
-const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
-  window.roamAlphaAPI.data.fast.q(
-    `[:find
-  (pull ?page [:node/title])
-:where
-[?b :attrs/lookup _]
-[?b :entity/attrs ?a]
-[(untuple ?a) [[?c ?d]]]
-[(get ?d :value) ?s]
-[(untuple ?s) [?e ?uid]]
-[?page :block/uid ?uid]
-]`
-  ) as [PullBlock][]
-).map((p) => ({
-  text: p[0]?.[":node/title"] || "",
-  children: [],
-}));
+// TOO SLOW
+// const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
+//   window.roamAlphaAPI.data.fast.q(
+//     `[:find
+//   (pull ?page [:node/title])
+// :where
+// [?b :attrs/lookup _]
+// [?b :entity/attrs ?a]
+// [(untuple ?a) [[?c ?d]]]
+// [(get ?d :value) ?s]
+// [(untuple ?s) [?e ?uid]]
+// [?page :block/uid ?uid]
+// ]`
+//   ) as [PullBlock][]
+// ).map((p) => ({
+//   text: p[0]?.[":node/title"] || "",
+//   children: [],
+// }));
 const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
   EDIT_DATE_SUGGESTIONS
 )
   .concat(CREATE_BY_SUGGESTIONS)
-  .concat(EDIT_BY_SUGGESTIONS)
-  .concat(ATTR_SUGGESTIONS);
+  .concat(EDIT_BY_SUGGESTIONS);
+// .concat(ATTR_SUGGESTIONS);
 
 const predefinedSelections: PredefinedSelection[] = [
   {
@@ -470,7 +471,7 @@ const predefinedSelections: PredefinedSelection[] = [
         text: blockText.replace(/(?<=::\s*)[^\s].*$/, value),
       });
     },
-    suggestions: ATTR_SUGGESTIONS,
+    suggestions: [],// ATTR_SUGGESTIONS,
   },
 ];
 
