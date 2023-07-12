@@ -96,7 +96,6 @@ const QueryPage = ({
                     node: { text: "results" },
                   })
             ).then(() => {
-              setHasResults(true);
               setLoading(false);
             });
           });
@@ -106,9 +105,13 @@ const QueryPage = ({
   );
   useEffect(() => {
     if (!isEdit) {
-      onRefresh();
+      if (hasResults) {
+        onRefresh();
+      } else {
+        setIsEdit(true);
+      }
     }
-  }, [isEdit, onRefresh]);
+  }, [isEdit, onRefresh, setIsEdit, hasResults]);
   useEffect(() => {
     const roamBlock = containerRef.current?.closest(".rm-block-main");
     if (roamBlock) {
@@ -155,7 +158,10 @@ const QueryPage = ({
           <>
             <QueryEditor
               parentUid={pageUid}
-              onQuery={() => setIsEdit(false)}
+              onQuery={() => {
+                setHasResults(true);
+                setIsEdit(false);
+              }}
               showAlias={showAlias}
             />
           </>
