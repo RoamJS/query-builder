@@ -9,10 +9,12 @@ import differenceInWeeks from "date-fns/differenceInWeeks";
 import differenceInMonths from "date-fns/differenceInMonths";
 import differenceInYears from "date-fns/differenceInYears";
 import datefnsFormat from "date-fns/format";
-import type { Result as QueryResult } from "./types";
+import type { QBClause, Result as QueryResult } from "./types";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import { IconNames } from "@blueprintjs/icons";
+import parseQuery from "./parseQuery";
+import toCellValue from "./toCellValue";
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
@@ -176,6 +178,8 @@ export type PredefinedSelection = {
   update?: (s: {
     uid: string;
     value: string;
+    parentUid: string; // Of the query instance
+    result: QueryResult;
     // TODO - we wouldn't need this if `NODE_TEST` was separated out and not so overloaded.
     selection: string;
   }) => Promise<void>;
@@ -319,7 +323,7 @@ const predefinedSelections: PredefinedSelection[] = [
             "-uid": r?.[":block/uid"] || "",
           };
     },
-    update: async ({ uid, value, selection }) => {
+    update: async ({ uid, value, selection, parentUid, result }) => {
       const match = (NODE_TEST.exec(selection)?.[2] || "").substring(1);
       // TODO - use selection to determine how to cover all cases
       if (REGEX_TEST.test(match)) {
@@ -333,12 +337,36 @@ const predefinedSelections: PredefinedSelection[] = [
             return value;
           }),
         });
-      } else {
+      } else if (match) {
         const blockText = getTextByBlockUid(uid);
         await updateBlock({
           uid,
           text: blockText.replace(/(?<=::\s*)[^\s].*$/, value),
         });
+      } else {
+        const { conditions } = parseQuery(parentUid);
+        const selectedVar = selection.replace(/^\s*node:/, "");
+        const introducedCondition = conditions.find(
+          (c): c is QBClause => c.type === "clause" && c.target === selectedVar
+        );
+        if (introducedCondition?.relation === "references") {
+          const sourceUid = result[
+            `${introducedCondition.source}-uid`
+          ] as string;
+          if (sourceUid) {
+            const blockText = getTextByBlockUid(sourceUid);
+            await updateBlock({
+              uid: sourceUid,
+              text: blockText.replace(
+                toCellValue({
+                  value: result[selectedVar],
+                  uid: result[`${selectedVar}-uid`],
+                }),
+                value
+              ),
+            });
+          }
+        }
       }
     },
     suggestions: [
@@ -464,14 +492,18 @@ const predefinedSelections: PredefinedSelection[] = [
     mapper: (r, key) => {
       return getBlockAttribute(key, r);
     },
-    update: async ({ uid, value }) => {
+    update: async ({ uid, value, result, selection }) => {
       const blockText = getTextByBlockUid(uid);
+      const oldValue = toCellValue({
+        value: result[selection],
+        uid: result[`${selection}-uid`],
+      });
       await updateBlock({
         uid,
-        text: blockText.replace(/(?<=::\s*)[^\s].*$/, value),
+        text: blockText.replace(oldValue, value),
       });
     },
-    suggestions: [],// ATTR_SUGGESTIONS,
+    suggestions: [], // ATTR_SUGGESTIONS,
   },
 ];
 

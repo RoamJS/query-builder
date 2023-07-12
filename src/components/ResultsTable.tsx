@@ -15,9 +15,6 @@ import {
 import { IconNames } from "@blueprintjs/icons";
 import { Column, Result } from "../utils/types";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import extractTag from "roamjs-components/util/extractTag";
-import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import type { FilterData, Sorts, Views } from "../utils/parseResultSettings";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
@@ -28,25 +25,11 @@ import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSettings from "roamjs-components/util/setInputSettings";
-
-const resolveRefs = (text: string, refs = new Set<string>()): string => {
-  return text.replace(new RegExp(BLOCK_REF_REGEX, "g"), (_, blockUid) => {
-    if (refs.has(blockUid)) return "";
-    const reference = getTextByBlockUid(blockUid);
-    return resolveRefs(reference, new Set(refs));
-  });
-};
+import toCellValue from "../utils/toCellValue";
 
 const dragImage = document.createElement("img");
 dragImage.src =
   "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
-
-const toCellValue = (v: number | Date | string) =>
-  v instanceof Date
-    ? window.roamAlphaAPI.util.dateToPageTitle(v)
-    : typeof v === "undefined" || v === null
-    ? ""
-    : extractTag(resolveRefs(v.toString()));
 
 const ResultHeader = React.forwardRef<
   Record<string, HTMLTableCellElement>,
@@ -77,7 +60,11 @@ const ResultHeader = React.forwardRef<
     const filterData = useMemo(
       () => ({
         values: Array.from(
-          new Set(allResults.map((r) => toCellValue(r[c.key])))
+          new Set(
+            allResults.map((r) =>
+              toCellValue({ value: r[c.key], uid: r[`${c.key}-uid`] })
+            )
+          )
         ),
       }),
       [allResults, c]
@@ -192,21 +179,11 @@ const ResultRow = ({
   onRefresh: () => void;
   onWidthUpdate: OnWidthUpdate;
 }) => {
-  const namespaceSetting = useMemo(
-    () =>
-      (
-        window.roamAlphaAPI.data.fast.q(
-          `[:find [pull ?u [:user/settings]] :where [?u :user/uid "${getCurrentUserUid()}"]]`
-        )?.[0]?.[0] as {
-          ":user/settings": {
-            ":namespace-options": { name: "partial" | "none" | "full" }[];
-          };
-        }
-      )?.[":user/settings"]?.[":namespace-options"]?.[0]?.name,
-    []
-  );
   const cell = (key: string) => {
-    const value = toCellValue(r[`${key}-display`] || r[key] || "");
+    const value = toCellValue({
+      value: r[`${key}-display`] || r[key] || "",
+      uid: (r[`${key}-uid`] as string) || "",
+    });
     const action = r[`${key}-action`];
     if (typeof action === "string") {
       const buttonProps =
@@ -231,20 +208,8 @@ const ResultRow = ({
         />
       );
     }
-    const formattedValue =
-      typeof value === "string" &&
-      r[`${key}-uid`] &&
-      !!getPageTitleByPageUid((r[`${key}-uid`] || "").toString())
-        ? namespaceSetting === "full"
-          ? value.split("/").slice(-1)[0]
-          : namespaceSetting === "partial"
-          ? value
-              .split("/")
-              .map((v, i, a) => (i === a.length - 1 ? v : v.slice(0, 1)))
-              .join("/")
-          : value
-        : value;
-    return formattedValue
+
+    return value
       .toString()
       .split("<span>")
       .map((s, i) => (
@@ -316,7 +281,7 @@ const ResultRow = ({
                       e.stopPropagation();
                     } else if (e.ctrlKey) {
                       ctrlClick?.({
-                        text: toCellValue(val),
+                        text: toCellValue({ value: val, uid }),
                         uid,
                       });
                       e.preventDefault();

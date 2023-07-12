@@ -9,6 +9,7 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 import { z } from "zod";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import predefinedSelections from "../utils/predefinedSelections";
+import toCellValue from "../utils/toCellValue";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -64,7 +65,10 @@ const KanbanCard = (card: {
         }}
       >
         <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
-          {card.result[card.$displayKey]}
+          {toCellValue({
+            value: card.result[card.$displayKey],
+            uid: card.result[`${card.$displayKey}-uid`],
+          })}
         </div>
       </div>
     </Draggable>
@@ -84,11 +88,13 @@ const Kanban = ({
   layout,
   onQuery,
   resultKeys,
+  parentUid,
 }: {
   resultKeys: Column[];
   data: Result[];
   layout: Record<string, string | string[]>;
   onQuery: () => void;
+  parentUid: string;
 }) => {
   const byUid = React.useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
@@ -185,7 +191,11 @@ const Kanban = ({
   const cards = React.useMemo(() => {
     const cards: Record<string, Result[]> = {};
     data.forEach((d) => {
-      const column = d[columnKey]?.toString() || `No ${columnKey}`;
+      const column = toCellValue({
+        value: d[columnKey],
+        defaultValue: `No ${columnKey}`,
+        uid: d[`${columnKey}-uid`]?.toString(),
+      });
       if (!cards[column]) {
         cards[column] = [];
       }
@@ -270,10 +280,12 @@ const Kanban = ({
           uid: columnUid,
           value: column,
           selection: columnKeySelection,
+          parentUid,
+          result,
         })
         .then(onQuery);
     },
-    [setPrioritization, cards, containerRef, byUid, columnKey]
+    [setPrioritization, cards, containerRef, byUid, columnKey, parentUid]
   );
   return (
     <div

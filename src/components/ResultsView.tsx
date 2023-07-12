@@ -897,6 +897,7 @@ const ResultsView: ResultsViewComponent = ({
                   layout={layout}
                   onQuery={() => onRefresh(true)}
                   resultKeys={columns}
+                  parentUid={parentUid}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>
