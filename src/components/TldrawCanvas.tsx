@@ -38,6 +38,7 @@ import {
   TEXT_PROPS,
   FONT_SIZES,
   FONT_FAMILIES,
+  OnBeforeCreateHandler,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -110,7 +111,8 @@ const discourseContext: {
   nodes: Record<string, DiscourseNode & { index: number }>;
   // { [Relation.Label] => DiscourseRelation[] }
   relations: Record<string, DiscourseRelation[]>;
-} = { nodes: {}, relations: {} };
+  lastAppEvent: string;
+} = { nodes: {}, relations: {}, lastAppEvent: "" };
 
 const getRelationIds = () =>
   new Set(
@@ -371,6 +373,8 @@ const LabelDialog = ({
         isOpen={isOpen}
         title={"Edit Discourse Node Label"}
         onClose={onCancelClick}
+        // Clicking the close button Wasn't working??
+        isCloseButtonShown={false}
         canOutsideClickClose
         canEscapeKeyClose
         autoFocus={false}
@@ -379,20 +383,6 @@ const LabelDialog = ({
         <div
           className={Classes.DIALOG_BODY}
           ref={containerRef}
-          // TODO - this was an attempt to fix a bug related to the dialog reappearing after
-          // closing by pressing enter. Still doesn't fix it however - document keyup handler
-          // is still being called which then sets the editing id to the current shape, reopening
-          // the dialog
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            e.nativeEvent.stopImmediatePropagation();
-            e.nativeEvent.stopPropagation();
-          }}
-          onKeyUp={(e) => {
-            e.stopPropagation();
-            e.nativeEvent.stopImmediatePropagation();
-            e.nativeEvent.stopPropagation();
-          }}
         >
           <AutocompleteInput
             value={initialValue}
@@ -591,6 +581,18 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     this.app.createShapes(toCreate);
   }
 
+  override onBeforeCreate = (shape: DiscourseNodeShape) => {
+    if (discourseContext.lastAppEvent === "pointer_down") {
+      setTimeout(() =>
+        document.body.dispatchEvent(
+          new CustomEvent("roamjs:query-builder:created-canvas-node", {
+            detail: shape.id,
+          })
+        )
+      );
+    }
+  };
+
   onBeforeDelete(shape: DiscourseNodeShape) {
     this.deleteRelationsInCanvas(shape);
   }
@@ -631,11 +633,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       () => this.app.editingId === shape.id,
       [this.app, shape.id]
     );
+    const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     useEffect(() => {
-      if (!shape.props.title) {
-        this.app.setEditingId(shape.id);
-      }
-    }, [shape.props.title, shape.id]);
+      if (isEditing) setIsEditLabelOpen(true);
+    }, [isEditing, setIsEditLabelOpen]);
     const contentRef = useRef<HTMLDivElement>(null);
     const [loaded, setLoaded] = useState("");
     useEffect(() => {
@@ -653,6 +654,21 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
+    useEffect(() => {
+      const listener = (e: CustomEvent) => {
+        if (e.detail === shape.id) setIsEditLabelOpen(true);
+      };
+      document.body.addEventListener(
+        "roamjs:query-builder:created-canvas-node",
+        listener as EventListener
+      );
+      return () => {
+        document.body.removeEventListener(
+          "roamjs:query-builder:created-canvas-node",
+          listener as EventListener
+        );
+      };
+    }, [setIsEditLabelOpen]);
     const { backgroundCss, textColor } = this.getColors();
     return (
       <HTMLContainer
@@ -670,70 +686,71 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 shape.props.title
               : shape.props.title}
           </div>
-          {isEditing && (
-            <LabelDialog
-              initialUid={shape.props.uid}
-              isOpen={true}
-              onClose={() => {
-                this.app.setEditingId(null);
-              }}
-              label={shape.props.title}
-              nodeType={this.type}
-              onSuccess={async ({ text, uid }) => {
-                // If we get a new uid, all the necessary updates happen below
-                if (shape.props.uid === uid) {
-                  if (shape.props.title) {
-                    if (shape.props.title === text) {
-                      // nothing to update I think
-                      return;
-                    } else {
-                      if (isPageUid(shape.props.uid))
-                        await window.roamAlphaAPI.updatePage({
-                          page: {
-                            uid: shape.props.uid,
-                            title: text,
-                          },
-                        });
-                      else await updateBlock({ uid: shape.props.uid, text });
-                    }
-                  } else if (!getPageUidByPageTitle(text)) {
-                    createDiscourseNode({
-                      type: shape.type,
-                      text,
-                      uid,
-                    });
+          <LabelDialog
+            initialUid={shape.props.uid}
+            isOpen={isLabelEditOpen}
+            onClose={() => {
+              this.app.setEditingId(null);
+              setIsEditLabelOpen(false);
+            }}
+            label={shape.props.title}
+            nodeType={this.type}
+            onSuccess={async ({ text, uid }) => {
+              // If we get a new uid, all the necessary updates happen below
+              if (shape.props.uid === uid) {
+                if (shape.props.title) {
+                  if (shape.props.title === text) {
+                    // nothing to update I think
+                    return;
+                  } else {
+                    if (isPageUid(shape.props.uid))
+                      await window.roamAlphaAPI.updatePage({
+                        page: {
+                          uid: shape.props.uid,
+                          title: text,
+                        },
+                      });
+                    else await updateBlock({ uid: shape.props.uid, text });
                   }
+                } else if (!getPageUidByPageTitle(text)) {
+                  createDiscourseNode({
+                    type: shape.type,
+                    text,
+                    uid,
+                  });
                 }
+              }
 
-                const allRecords = this.app.store.allRecords();
-                const relationIds = getRelationIds();
-                this.deleteRelationsInCanvas(shape, {
-                  allRecords,
-                  relationIds,
-                });
-                const { w, h } = this.app.textMeasure.measureText({
-                  ...DEFAULT_STYLE_PROPS,
-                  text,
-                });
-                this.updateProps(shape.id, {
-                  title: text,
-                  uid,
-                  w,
-                  h,
-                });
-                await this.createExistingRelations(shape, {
-                  allRecords,
-                  relationIds,
-                  finalUid: uid,
-                });
-              }}
-              onCancel={() => {
-                if (!isLiveBlock(shape.props.uid)) {
-                  this.app.deleteShapes([shape.id]);
-                }
-              }}
-            />
-          )}
+              const allRecords = this.app.store.allRecords();
+              const relationIds = getRelationIds();
+              this.deleteRelationsInCanvas(shape, {
+                allRecords,
+                relationIds,
+              });
+              const { w, h } = this.app.textMeasure.measureText({
+                ...DEFAULT_STYLE_PROPS,
+                text,
+              });
+              this.updateProps(shape.id, {
+                title: text,
+                uid,
+                w,
+                h,
+              });
+              await this.createExistingRelations(shape, {
+                allRecords,
+                relationIds,
+                finalUid: uid,
+              });
+            }}
+            onCancel={() => {
+              this.app.setEditingId(null);
+              setIsEditLabelOpen(false);
+              if (!isLiveBlock(shape.props.uid)) {
+                this.app.deleteShapes([shape.id]);
+              }
+            }}
+          />
         </div>
       </HTMLContainer>
     );
@@ -1249,19 +1266,7 @@ const TldrawCanvas = ({ title }: Props) => {
         const newState = rjsqb?.tldraw as Parameters<
           typeof store.deserialize
         >[0];
-        const editingUser = (after?.[":block/children"] || []).find(
-          (b) => b[":block/string"] === "timestamp"
-        )?.[":block/children"]?.[0]?.[":edit/user"]?.[":db/id"];
-        if (!newState || !editingUser) return;
-        const editingUserUid = window.roamAlphaAPI.pull(
-          "[:user/uid]",
-          editingUser
-        )?.[":user/uid"];
-        if (
-          !editingUserUid ||
-          TLUser.createCustomId(editingUserUid) === initialState.userId
-        )
-          return;
+        if (!newState) return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
           store.mergeRemoteChanges(() => {
@@ -1354,6 +1359,7 @@ const TldrawCanvas = ({ title }: Props) => {
           appRef.current = app;
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (e) => {
+            discourseContext.lastAppEvent = e.name;
             if (
               e.shiftKey &&
               e.shape &&
@@ -1372,6 +1378,8 @@ const TldrawCanvas = ({ title }: Props) => {
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
+            } else {
+              console.log(e);
             }
           });
           const oldOnBeforeDelete = app.store.onBeforeDelete;
