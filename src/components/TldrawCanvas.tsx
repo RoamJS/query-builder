@@ -1378,8 +1378,6 @@ const TldrawCanvas = ({ title }: Props) => {
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
-            } else {
-              console.log(e);
             }
           });
           const oldOnBeforeDelete = app.store.onBeforeDelete;
