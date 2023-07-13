@@ -989,6 +989,7 @@ const TldrawCanvas = ({ title }: Props) => {
             class extends TLSelectTool {
               // @ts-ignore
               static children: typeof TLSelectTool.children = () => {
+                const allRelationIdSet = new Set(allRelationIds);
                 return TLSelectTool.children().map((c) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
@@ -1000,6 +1001,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         });
                         const arrow = this.app.getShapeById(this.shapeId);
                         if (!arrow) return;
+                        if (!allRelationIdSet.has(arrow.type)) return;
                         const {
                           start,
                           end,
