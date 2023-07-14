@@ -63,6 +63,7 @@ const ResizableDrawer = ({
       canEscapeKeyClose
       portalClassName={"roamjs-discourse-drawer"}
       enforceFocus={false}
+      autoFocus={false}
       className={"pointer-events-auto"}
     >
       <style>{`

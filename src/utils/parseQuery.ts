@@ -53,6 +53,8 @@ type ParseQuery = (q: RoamBasicNode | string) => {
   columns: Column[];
 };
 
+export const DEFAULT_RETURN_NODE = "node";
+
 const parseQuery: ParseQuery = (parentUidOrNode) => {
   const queryNode =
     typeof parentUidOrNode === "string"
@@ -68,9 +70,6 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     });
     return newUid;
   };
-  const returnBlock = getSubTree({ tree: children, key: "return" });
-  const returnNodeUid = getOrCreateUid(returnBlock, "return");
-  const returnNode = returnBlock.children?.[0]?.text;
   const conditionsNode = getSubTree({
     tree: children,
     key: "conditions",
@@ -90,8 +89,9 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
   const customBlock = getSubTree({ tree: children, key: "custom" });
   const customNodeUid = getOrCreateUid(customBlock, "custom");
   const samePageBlock = getSubTree({ tree: children, key: "samepage" });
+  const returnNodeUid = window.roamAlphaAPI.util.generateUID();
   return {
-    returnNode,
+    returnNode: DEFAULT_RETURN_NODE,
     conditions,
     selections,
     customNode: customBlock.children[0]?.text || "",
@@ -103,13 +103,13 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     isSamePageEnabled: !!samePageBlock.uid,
     columns: [
       {
-        key: selections.find((s) => s.text === "node")?.label || "text",
+        key: selections.find((s) => s.text === DEFAULT_RETURN_NODE)?.label || "text",
         uid: returnNodeUid,
-        selection: "node",
+        selection: DEFAULT_RETURN_NODE,
       },
     ].concat(
       selections
-        .filter((s) => s.text !== "node")
+        .filter((s) => s.text !== DEFAULT_RETURN_NODE)
         .map((s) => ({ uid: s.uid, key: s.label, selection: s.text }))
     ),
   };

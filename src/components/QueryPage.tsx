@@ -22,54 +22,22 @@ import { OnloadArgs } from "roamjs-components/types/native";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
-import { Filters } from "roamjs-components/components/Filter";
 import { Column, ExportTypes } from "../utils/types";
 
 type QueryPageComponent = (props: {
-  showAlias?: boolean;
   pageUid: string;
-  configUid?: string;
-  defaultReturnNode?: string;
   getExportTypes?: (r: Result[]) => ExportTypes;
-  globalFiltersData?: Record<string, Filters>;
-  globalPageSize?: number;
-  hideMetadata?: boolean;
+  isEditBlock?: boolean;
+  showAlias?: boolean;
 }) => JSX.Element;
 
 type Props = Parameters<QueryPageComponent>[0];
 
-const ensureSetting = ({
-  parentUid,
-  key,
-  value,
-}: {
-  parentUid: string;
-  key: string;
-  value: string;
-}) => {
-  const [first, second] = key.split(".");
-  const tree = getBasicTreeByParentUid(parentUid);
-  const node = getSubTree({ tree, key: first });
-  return (
-    node.uid
-      ? Promise.resolve(node.uid)
-      : createBlock({ parentUid, node: { text: first } })
-  ).then((blockUid) =>
-    setInputSetting({
-      blockUid,
-      key: second,
-      value,
-    })
-  );
-};
-
 const QueryPage = ({
-  showAlias,
   pageUid,
-  defaultReturnNode,
   getExportTypes,
-  // @ts-ignore
   isEditBlock,
+  showAlias,
 }: Props) => {
   const extensionAPI = useExtensionAPI();
   const hideMetadata = useMemo(
@@ -107,59 +75,43 @@ const QueryPage = ({
       setLoading(!loadInBackground);
       const args = parseQuery(pageUid);
       setTimeout(() => {
-        const runFireQuery = (a: ReturnType<typeof parseQuery>) =>
-          fireQuery(a)
-            .then((results) => {
-              setColumns(a.columns);
-              setResults(results);
-            })
-            .catch(() => {
-              setError(
-                `Query failed to run. Try running a new query from the editor.`
-              );
-            })
-            .finally(() => {
-              const tree = getBasicTreeByParentUid(pageUid);
-              const node = getSubTree({ tree, key: "results" });
-              return (
-                node.uid
-                  ? Promise.resolve(node.uid)
-                  : createBlock({
-                      parentUid: pageUid,
-                      node: { text: "results" },
-                    })
-              ).then(() => setHasResults(true));
+        fireQuery(args)
+          .then((results) => {
+            setColumns(args.columns);
+            setResults(results);
+          })
+          .catch(() => {
+            setError(
+              `Query failed to run. Try running a new query from the editor.`
+            );
+          })
+          .finally(() => {
+            const tree = getBasicTreeByParentUid(pageUid);
+            const node = getSubTree({ tree, key: "results" });
+            return (
+              node.uid
+                ? Promise.resolve(node.uid)
+                : createBlock({
+                    parentUid: pageUid,
+                    node: { text: "results" },
+                  })
+            ).then(() => {
+              setLoading(false);
             });
-        (args.returnNode
-          ? runFireQuery(args)
-          : defaultReturnNode
-          ? ensureSetting({
-              key: "scratch.return",
-              value: defaultReturnNode,
-              parentUid: pageUid,
-            }).then(() => {
-              if (
-                defaultReturnNode === "block" ||
-                defaultReturnNode === "node"
-              ) {
-                setIsEdit(true);
-              } else {
-                runFireQuery({ ...args, returnNode: defaultReturnNode });
-              }
-            })
-          : setIsEdit(true)
-        ).finally(() => {
-          setLoading(false);
-        });
+          });
       }, 1);
     },
-    [setResults, pageUid, setLoading, defaultReturnNode, setColumns]
+    [setResults, pageUid, setLoading, setColumns]
   );
   useEffect(() => {
     if (!isEdit) {
-      onRefresh();
+      if (hasResults) {
+        onRefresh();
+      } else {
+        setIsEdit(true);
+      }
     }
-  }, [isEdit, onRefresh]);
+  }, [isEdit, onRefresh, setIsEdit, hasResults]);
   useEffect(() => {
     const roamBlock = containerRef.current?.closest(".rm-block-main");
     if (roamBlock) {
@@ -205,10 +157,12 @@ const QueryPage = ({
         {isEdit && (
           <>
             <QueryEditor
-              showAlias={showAlias}
               parentUid={pageUid}
-              onQuery={() => setIsEdit(false)}
-              defaultReturnNode={defaultReturnNode}
+              onQuery={() => {
+                setHasResults(true);
+                setIsEdit(false);
+              }}
+              showAlias={showAlias}
             />
           </>
         )}
@@ -241,15 +195,7 @@ const QueryPage = ({
 };
 
 export const renderQueryBlock = createComponentRender(
-  ({ blockUid }) => (
-    <QueryPage
-      showAlias={true}
-      pageUid={blockUid}
-      defaultReturnNode={"node"}
-      //@ts-ignore
-      isEditBlock
-    />
-  ),
+  ({ blockUid }) => <QueryPage pageUid={blockUid} isEditBlock showAlias />,
   "roamjs-query-builder-parent"
 );
 

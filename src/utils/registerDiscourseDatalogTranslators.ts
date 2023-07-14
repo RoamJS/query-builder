@@ -403,45 +403,54 @@ const registerDiscourseDatalogTranslators = () => {
             },
           ];
         },
-        targetOptions: (source) => {
-          const sourcedRelations = discourseRelations
-            .flatMap((dr) => [
-              { source: dr.source, relation: dr.label, target: dr.destination },
-              {
-                source: dr.destination,
-                relation: dr.complement,
-                target: dr.source,
-              },
-            ])
-            .filter(
-              (dr) =>
-                dr.relation === label &&
-                (!source ||
-                  dr.source === source ||
-                  nodeLabelByType[dr.source] === source) &&
-                nodeByType[dr.target]
-            );
-          return sourcedRelations
-            .flatMap((sr) => {
-              return fireQuerySync({
-                returnNode: "node",
-                conditions: [
-                  {
-                    source: "node",
-                    relation: "is a",
-                    target: sr.target,
-                    uid: window.roamAlphaAPI.util.generateUID(),
-                    type: "clause",
-                  },
-                ],
-                selections: [],
-              }).map((n) => n.text);
+        targetOptions: () => {
+          const allRelations = discourseRelations.flatMap((dr) => [
+            {
+              source: dr.source,
+              relation: dr.label,
+              target: dr.destination,
+            },
+            {
+              source: dr.destination,
+              relation: dr.complement,
+              target: dr.source,
+            },
+          ]);
+          const relevantRelations = ANY_RELATION_REGEX.test(label)
+            ? allRelations
+            : allRelations.filter(
+                (dr) => dr.relation === label && nodeByType[dr.target]
+              );
+          const relevantTargets = Array.from(
+            new Set(relevantRelations.map((rr) => rr.target))
+          );
+          if (relevantTargets.length === 0) return [];
+          try {
+            return fireQuerySync({
+              returnNode: "node",
+              conditions: [
+                {
+                  type: "or",
+                  conditions: relevantTargets.map((target) => [
+                    {
+                      source: "node",
+                      relation: "is a",
+                      target,
+                      uid: window.roamAlphaAPI.util.generateUID(),
+                      type: "clause",
+                    },
+                  ]),
+                  uid: window.roamAlphaAPI.util.generateUID(),
+                },
+              ],
+              selections: [],
             })
-            .concat(
-              ...Object.values(nodeLabelByType).filter((p) =>
-                sourcedRelations.some((sr) => nodeByType[sr.target].text === p)
-              )
-            );
+              .map((n) => n.text)
+              .concat(relevantTargets.map((rt) => nodeByType[rt].text));
+          } catch (e) {
+            debugger;
+            return [];
+          }
         },
         placeholder: "Enter a valid target",
       })
