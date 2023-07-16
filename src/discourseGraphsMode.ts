@@ -34,7 +34,7 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import isDiscourseNode from "./utils/isDiscourseNode";
 import isFlagEnabled from "./utils/isFlagEnabled";
 import addStyle from "roamjs-components/dom/addStyle";
-import { render as exportRender } from "./components/ExportDialog";
+import { render as exportRender } from "./components/Export";
 import { registerSelection } from "./utils/predefinedSelections";
 import deriveNodeAttribute from "./utils/deriveDiscourseNodeAttribute";
 import matchDiscourseNode from "./utils/matchDiscourseNode";
@@ -50,6 +50,8 @@ import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
 import CanvasReferences from "./components/CanvasReferences";
+import getExportTypes from "./utils/getExportTypes";
+import fireQuery from "./utils/fireQuery";
 
 export const SETTING = "discourse-graphs";
 
@@ -748,7 +750,36 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
 
       window.roamAlphaAPI.ui.commandPalette.addCommand({
         label: "Export Discourse Graph",
-        callback: () => exportRender({}),
+        callback: () => {
+          const discourseNodes = getDiscourseNodes().filter(
+            (r) => r.backedBy !== "default"
+          );
+          const results = (isSamePageEnabled: boolean) =>
+            Promise.all(
+              discourseNodes.map((d) =>
+                fireQuery({
+                  returnNode: "node",
+                  conditions: [
+                    {
+                      relation: "is a",
+                      source: "node",
+                      target: d.type,
+                      uid: window.roamAlphaAPI.util.generateUID(),
+                      type: "clause",
+                    },
+                  ],
+                  selections: [],
+                  isSamePageEnabled,
+                })
+              )
+            ).then((r) => r.flat());
+          exportRender({
+            results,
+            exportTypes: getExportTypes({
+              results,
+            }),
+          });
+        },
       });
       unloads.add(function removeExportCommand() {
         window.roamAlphaAPI.ui.commandPalette.removeCommand({

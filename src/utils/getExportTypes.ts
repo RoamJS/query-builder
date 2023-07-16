@@ -11,12 +11,11 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import XRegExp from "xregexp";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import getSamePageApi from "@samepage/external/getSamePageAPI";
 import getDiscourseNodes from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
 import matchDiscourseNode from "./matchDiscourseNode";
 import getDiscourseRelations from "./getDiscourseRelations";
-import type { ExportDialog } from "../components/Export";
+import type { ExportDialogProps } from "../components/Export";
 import getPageMetadata from "./getPageMetadata";
 import getDiscourseContextResults from "./getDiscourseContextResults";
 import fireQuery from "./fireQuery";
@@ -34,7 +33,7 @@ const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   children: ((n[":block/children"] || []) as PullBlock[])
     .sort(({ [":block/order"]: a = 0 }, { [":block/order"]: b = 0 }) => a - b)
     .map((r) => pullBlockToTreeNode(r, n[":children/view-type"] || v)),
-  parents: (n[":block/parents"] || []).map((p) => p[":db/id"]),
+  parents: (n[":block/parents"] || []).map((p) => p[":db/id"] || 0),
 });
 
 const getContentFromNodes = ({
@@ -183,7 +182,7 @@ const toMarkdown = ({
 };
 
 type Props = {
-  results?: Parameters<typeof ExportDialog>[0]["results"];
+  results?: ExportDialogProps["results"];
   relations?: {
     target: string;
     source: string;
@@ -194,7 +193,7 @@ type Props = {
 const getExportTypes = ({
   results,
   relations,
-}: Props): Parameters<typeof ExportDialog>[0]["exportTypes"] => {
+}: Props): ExportDialogProps["exportTypes"] => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
