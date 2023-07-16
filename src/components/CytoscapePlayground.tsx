@@ -29,7 +29,6 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import LivePreview, { Props as LivePreviewProps } from "./LivePreview";
-import { render as exportRender } from "./ExportDialog";
 import triplesToBlocks from "../utils/triplesToBlocks";
 import { renderLoading } from "roamjs-components/components/Loading";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
@@ -49,7 +48,10 @@ import getDiscourseRelationTriples from "../utils/getDiscourseRelationTriples";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import extractRef from "roamjs-components/util/extractRef";
 import fireQuery from "../utils/fireQuery";
-import { QBGlobalRefs } from "../utils/types";
+import { QBGlobalRefs, Result } from "../utils/types";
+import getExportTypes from "../utils/getExportTypes";
+import QBExportDialog from "./Export";
+import renderOverlay from "roamjs-components/util/renderOverlay";
 
 if (window.RoamLazy && !window.roamjs?.extension?.cytoscape) {
   window.RoamLazy.Cytoscape().then(navigator);
@@ -66,6 +68,69 @@ const editCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/edit.png";
 const trashCursor =
   "https://raw.githubusercontent.com/dvargas92495/roamjs-discourse-graph/main/src/cursors/trash.png";
+
+type ExportDialogProps = {
+  fromQuery?: {
+    nodes?: Result[];
+    relations?: {
+      target: string;
+      source: string;
+      label: string;
+    }[];
+  };
+};
+
+const ExportDialog = ({
+  onClose,
+  fromQuery,
+}: {
+  onClose: () => void;
+} & ExportDialogProps) => {
+  const exportArgs = useMemo(() => {
+    if (fromQuery) return fromQuery;
+    const discourseNodes = getDiscourseNodes().filter(
+      (r) => r.backedBy !== "default"
+    );
+    return {
+      nodes: (isSamePageEnabled: boolean) =>
+        Promise.all(
+          discourseNodes.map((d) =>
+            fireQuery({
+              returnNode: "node",
+              conditions: [
+                {
+                  relation: "is a",
+                  source: "node",
+                  target: d.type,
+                  uid: window.roamAlphaAPI.util.generateUID(),
+                  type: "clause",
+                },
+              ],
+              selections: [],
+              isSamePageEnabled,
+            })
+          )
+        ).then((r) => r.flat()),
+      relations: undefined,
+    };
+  }, [fromQuery]);
+  return (
+    <>
+      <QBExportDialog
+        isOpen={true}
+        onClose={onClose}
+        results={exportArgs.nodes}
+        exportTypes={getExportTypes({
+          results: exportArgs.nodes,
+          relations: exportArgs.relations,
+        })}
+      />
+    </>
+  );
+};
+
+const exportRender = (props: ExportDialogProps) =>
+  renderOverlay({ Overlay: ExportDialog, props });
 
 type NodeDialogProps = {
   node: cytoscape.NodeSingular;

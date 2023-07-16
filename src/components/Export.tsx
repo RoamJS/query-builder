@@ -19,13 +19,18 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
+import renderOverlay, {
+  RoamOverlayProps,
+} from "roamjs-components/util/renderOverlay";
 
-type ExportDialogComponent = (props: {
-  onClose: () => void;
-  isOpen: boolean;
+export type ExportDialogProps = {
   exportTypes?: ExportTypes;
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
-}) => JSX.Element;
+};
+
+type ExportDialogComponent = (
+  props: RoamOverlayProps<ExportDialogProps>
+) => JSX.Element;
 
 const viewTypeToPrefix = {
   bullet: "- ",
@@ -71,7 +76,7 @@ const toMarkdown = ({
     )
     .join("")}`;
 
-export const ExportDialog: ExportDialogComponent = ({
+const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
   results = [],
@@ -288,5 +293,8 @@ export const ExportDialog: ExportDialogComponent = ({
     </Dialog>
   );
 };
+
+export const render = (props: ExportDialogProps) =>
+  renderOverlay({ Overlay: ExportDialog, props });
 
 export default ExportDialog;
