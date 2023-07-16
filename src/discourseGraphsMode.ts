@@ -50,7 +50,6 @@ import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
 import CanvasReferences from "./components/CanvasReferences";
-import getExportTypes from "./utils/getExportTypes";
 import fireQuery from "./utils/fireQuery";
 
 export const SETTING = "discourse-graphs";
@@ -775,9 +774,6 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             ).then((r) => r.flat());
           exportRender({
             results,
-            exportTypes: getExportTypes({
-              results,
-            }),
           });
         },
       });

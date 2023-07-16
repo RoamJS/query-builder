@@ -120,10 +120,6 @@ const ExportDialog = ({
         isOpen={true}
         onClose={onClose}
         results={exportArgs.nodes}
-        exportTypes={getExportTypes({
-          results: exportArgs.nodes,
-          relations: exportArgs.relations,
-        })}
       />
     </>
   );

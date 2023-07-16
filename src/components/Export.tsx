@@ -9,22 +9,16 @@ import {
   ProgressBar,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useState, useEffect } from "react";
-import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
+import React, { useState, useEffect, useMemo } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
-import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
 import renderOverlay, {
   RoamOverlayProps,
 } from "roamjs-components/util/renderOverlay";
+import getExportTypes from "../utils/getExportTypes";
 
 export type ExportDialogProps = {
-  exportTypes?: ExportTypes;
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
 };
 
@@ -32,110 +26,12 @@ type ExportDialogComponent = (
   props: RoamOverlayProps<ExportDialogProps>
 ) => JSX.Element;
 
-const viewTypeToPrefix = {
-  bullet: "- ",
-  document: "",
-  numbered: "1. ",
-};
-
-const collectUids = (t: TreeNode): string[] => [
-  t.uid,
-  ...t.children.flatMap(collectUids),
-];
-
-const normalize = (t: string) => `${t.replace(/[<>:"/\\|?*[]]/g, "")}.md`;
-
-const titleToFilename = (t: string) => {
-  const name = normalize(t);
-  return name.length > 64
-    ? `${name.substring(0, 31)}...${name.slice(-30)}`
-    : name;
-};
-
-const toMarkdown = ({
-  c,
-  i = 0,
-  v = "bullet",
-}: {
-  c: TreeNode;
-  i?: number;
-  v?: ViewType;
-}): string =>
-  `${"".padStart(i * 4, " ")}${viewTypeToPrefix[v]}${
-    c.heading ? `${"".padStart(c.heading, "#")} ` : ""
-  }${c.text
-    .replace(BLOCK_REF_REGEX, (_, blockUid) => {
-      const reference = getTextByBlockUid(blockUid);
-      return reference || blockUid;
-    })
-    .trim()}${(c.children || [])
-    .filter((nested) => !!nested.text || !!nested.children?.length)
-    .map(
-      (nested) =>
-        `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v })}`
-    )
-    .join("")}`;
-
 const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen = true,
   results = [],
-  exportTypes = [
-    {
-      name: "CSV",
-      callback: async ({ filename, isSamePageEnabled }) => {
-        const resolvedResults = Array.isArray(results)
-          ? results
-          : await results(isSamePageEnabled);
-        const keys = Object.keys(resolvedResults[0]).filter(
-          (u) => !/uid/i.test(u)
-        );
-        const header = `${keys.join(",")}\n`;
-        const data = resolvedResults
-          .map((r) =>
-            keys
-              .map((k) => r[k].toString())
-              .map((v) => (v.includes(",") ? `"${v}"` : v))
-          )
-          .join("\n");
-        return [
-          {
-            title: `${filename.replace(/\.csv/, "")}.csv`,
-            content: `${header}${data}`,
-          },
-        ];
-      },
-    },
-    {
-      name: "Markdown",
-      callback: async ({ isSamePageEnabled }) =>
-        (Array.isArray(results) ? results : await results(isSamePageEnabled))
-          .map(({ uid, ...rest }) => {
-            const v = (
-              (
-                window.roamAlphaAPI.data.fast.q(
-                  `[:find (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
-                )[0]?.[0] as PullBlock
-              )?.[":children/view-type"] || ":bullet"
-            ).slice(1) as ViewType;
-            const treeNode = getFullTreeByParentUid(uid);
-
-            const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
-              .filter((k) => !/uid/i.test(k))
-              .map(
-                (k) => `${k}: ${rest[k].toString()}`
-              )}---\n\n${treeNode.children
-              .map((c) => toMarkdown({ c, v, i: 0 }))
-              .join("\n")}\n`;
-            return { title: rest.text, content };
-          })
-          .map(({ title, content }) => ({
-            title: titleToFilename(title),
-            content,
-          })),
-    },
-  ],
 }) => {
+  const exportTypes = useMemo(() => getExportTypes({ results }), [results]);
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState("");
@@ -211,34 +107,35 @@ const ExportDialog: ExportDialogComponent = ({
             onChange={(e) => setFilename(e.target.value)}
           />
         </Label>
-        <span>
-          Exporting{" "}
-          {typeof results === "function" ? "unknown number of" : results.length}{" "}
-          results
-        </span>
-
-        {window.samepage && (
-          <Checkbox
-            checked={isSamePageEnabled}
-            onChange={(e) =>
-              setIsSamePageEnabled((e.target as HTMLInputElement).checked)
-            }
-            style={{ marginBottom: 0 }}
-            labelElement={
-              <Tooltip
-                content={
-                  "Use SamePage's backend to gather this export [EXPERIMENTAL]."
-                }
-              >
-                <img
-                  src="https://samepage.network/images/logo.png"
-                  height={24}
-                  width={24}
-                />
-              </Tooltip>
-            }
-          />
-        )}
+        <div className="flex justify-between items-center">
+          <span>
+            {typeof results === "function"
+              ? "Calculating number of results..."
+              : `Exporting ${results.length} results`}
+          </span>
+          {window.samepage && (
+            <Checkbox
+              checked={isSamePageEnabled}
+              onChange={(e) =>
+                setIsSamePageEnabled((e.target as HTMLInputElement).checked)
+              }
+              style={{ marginBottom: 0 }}
+              labelElement={
+                <Tooltip
+                  content={
+                    "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+                  }
+                >
+                  <img
+                    src="https://samepage.network/images/logo.png"
+                    height={24}
+                    width={24}
+                  />
+                </Tooltip>
+              }
+            />
+          )}
+        </div>
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -266,7 +163,7 @@ const ExportDialog: ExportDialogComponent = ({
                       isSamePageEnabled,
                     });
                     if (!files.length) {
-                      onClose();
+                      setError("Failed to find any results to export.");
                     } else {
                       files.forEach(({ title, content }) =>
                         zip.file(title, content)
@@ -280,6 +177,7 @@ const ExportDialog: ExportDialogComponent = ({
                 } catch (e) {
                   console.error(e);
                   setError((e as Error).message);
+                } finally {
                   setLoading(false);
                   setLoadingProgress(0);
                 }
