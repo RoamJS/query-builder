@@ -169,17 +169,12 @@ svg.rs-svg-container {
   width: inherit;
 }
 
-.roamjs-context-row td,
-.roamjs-discourse-row td {
+.roamjs-extra-row td {
   position: relative;
   background-color: #F5F8FA;
   padding: 16px;
   max-height: 240px;
   overflow-y: scroll;
-}
-.roamjs-context-row .bp3-portal,
-.roamjs-discourse-row .bp3-portal {
-  position: relative;
 }`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =

@@ -89,7 +89,7 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
   const customBlock = getSubTree({ tree: children, key: "custom" });
   const customNodeUid = getOrCreateUid(customBlock, "custom");
   const samePageBlock = getSubTree({ tree: children, key: "samepage" });
-  const returnNodeUid = `return-uid`;
+  const returnNodeUid = `returnuid`;
   return {
     returnNode: DEFAULT_RETURN_NODE,
     conditions,

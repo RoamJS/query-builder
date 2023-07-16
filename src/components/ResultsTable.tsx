@@ -11,7 +11,6 @@ import {
   Icon,
   IconName,
   InputGroup,
-  Portal,
 } from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
 import { Column, Result } from "../utils/types";
@@ -592,7 +591,7 @@ const ResultsTable = ({
               onWidthUpdate={onWidthUpdate}
             />
             {extraRowUid === r.uid && (
-              <tr className={`roamjs-${extraRowType}-row`}>
+              <tr className={`roamjs-${extraRowType}-row roamjs-extra-row`}>
                 <td colSpan={columns.length}>
                   {extraRowUid && extraRowType === "context" ? (
                     <ExtraContextRow uid={extraRowUid} />
