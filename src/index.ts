@@ -686,6 +686,28 @@ svg.rs-svg-container {
       });
     },
   });
+
+  const pageActionListener = ((
+    e: CustomEvent<{
+      action: string;
+      uid: string;
+      val: string;
+      onRefresh: () => void;
+    }>
+  ) => {
+    if (!/page/i.test(e.detail.action)) return;
+    window.roamAlphaAPI.ui.mainWindow
+      .getOpenPageOrBlockUid()
+      .then((u) => u || window.roamAlphaAPI.util.dateToPageUid(new Date()))
+      .then((parentUid) => {
+        createBlock({
+          parentUid,
+          order: Number.MAX_VALUE,
+          node: { text: `[[${e.detail.val}]]` },
+        });
+      });
+  }) as EventListener;
+  document.addEventListener("roamjs:query-builder:action", pageActionListener);
   return {
     elements: [style],
     observers: [
@@ -701,6 +723,7 @@ svg.rs-svg-container {
       toggleDiscourseGraphsMode(false);
       // @ts-ignore - tldraw throws a warning on multiple loads
       delete window[Symbol.for("__signia__")];
+      document.removeEventListener("roamjs:query-builder:action", pageActionListener);
     },
   };
 });

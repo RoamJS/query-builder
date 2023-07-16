@@ -227,6 +227,12 @@ const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
   .concat(EDIT_BY_SUGGESTIONS);
 // .concat(ATTR_SUGGESTIONS);
 
+const ICON_SUGGESTIONS: SelectionSuggestion[] = Object.values(IconNames).map(
+  (text) => ({
+    text,
+  })
+);
+
 const predefinedSelections: PredefinedSelection[] = [
   {
     test: CREATE_DATE_TEST,
@@ -479,10 +485,17 @@ const predefinedSelections: PredefinedSelection[] = [
     },
     suggestions: [
       {
-        text: "action:canvas:",
-        children: Object.keys(IconNames).map((icon) => ({
-          text: icon.toLowerCase(),
-        })),
+        text: "action:",
+        children: [
+          {
+            text: "canvas:",
+            children: ICON_SUGGESTIONS,
+          },
+          {
+            text: "page:",
+            children: ICON_SUGGESTIONS,
+          },
+        ],
       },
     ],
   },

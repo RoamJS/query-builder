@@ -14,7 +14,6 @@ import {
 } from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
 import { Column, Result } from "../utils/types";
-import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import type { FilterData, Sorts, Views } from "../utils/parseResultSettings";
 import Filter, { Filters } from "roamjs-components/components/Filter";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
