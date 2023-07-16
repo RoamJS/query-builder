@@ -228,10 +228,6 @@ const ContextTab = ({
   onRefresh: () => void;
 }) => {
   const [subTabId, setSubTabId] = useState(0);
-  const hasExtra = useMemo(
-    () => Object.values(r.results).some((r) => !!(r.context || r.anchor)),
-    [r]
-  );
   const subTabs = useMemo(
     () =>
       groupByTarget

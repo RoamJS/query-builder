@@ -25,6 +25,34 @@ import deleteBlock from "roamjs-components/writes/deleteBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import toCellValue from "../utils/toCellValue";
+import nanoId from "nanoid";
+import { ContextContent } from "./DiscourseContext";
+
+const EXTRA_ROW_TYPES = ["context", "discourse"] as const;
+type ExtraRowType = (typeof EXTRA_ROW_TYPES)[number] | null;
+
+const ExtraContextRow = ({ uid }: { uid: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    if (getPageTitleByPageUid(uid)) {
+      window.roamAlphaAPI.ui.components.renderPage({
+        uid,
+        el: containerRef.current,
+        hideMentions: true,
+      });
+    } else {
+      window.roamAlphaAPI.ui.components.renderBlock({
+        uid,
+        el: containerRef.current,
+        zoomPath: true,
+      });
+    }
+  }, [containerRef, uid]);
+
+  return <div ref={containerRef} />;
+};
 
 const dragImage = document.createElement("img");
 dragImage.src =
@@ -165,6 +193,7 @@ type OnWidthUpdate = (args: {
 }) => void;
 const ResultRow = ({
   r,
+  parentUid,
   ctrlClick,
   views,
   onRefresh,
@@ -172,6 +201,7 @@ const ResultRow = ({
   onWidthUpdate,
 }: {
   r: Result;
+  parentUid: string;
   ctrlClick?: (e: Result) => void;
   views: { column: string; mode: string; value: string }[];
   columns: Column[];
@@ -187,7 +217,7 @@ const ResultRow = ({
     if (typeof action === "string") {
       const buttonProps =
         value.toUpperCase().replace(/\s/g, "_") in IconNames
-          ? { icon: value as IconName }
+          ? { icon: value as IconName, minimal: true }
           : { text: value };
       return (
         <Button
@@ -200,6 +230,7 @@ const ResultRow = ({
                   uid: r[`${key}-uid`],
                   val: r["text"],
                   onRefresh,
+                  queryUid: parentUid,
                 },
               })
             );
@@ -253,7 +284,7 @@ const ResultRow = ({
   );
   return (
     <>
-      <tr>
+      <tr ref={trRef} data-uid={r.uid}>
         {columns.map(({ key, uid: columnUid }, i) => {
           const uid = (r[`${key}-uid`] || "").toString();
           const val = r[key] || "";
@@ -481,6 +512,43 @@ const ResultsTable = ({
       layout.rowStyle !== "Bare" ? { striped: true, interactive: true } : {},
     [layout.rowStyle]
   );
+
+  const [extraRowUid, setExtraRowUid] = useState<string | null>(null);
+  const [extraRowType, setExtraRowType] = useState<ExtraRowType>(null);
+  useEffect(() => {
+    const actionListener = ((e: CustomEvent) => {
+      if (parentUid !== e.detail.queryUid) return;
+
+      const row = document.querySelector(
+        `table[data-parent-uid="${parentUid}"] tr[data-uid="${e.detail.uid}"]`
+      );
+      if (!row || !row.parentElement) return;
+
+      const actionRowType = EXTRA_ROW_TYPES.find((ert) =>
+        new RegExp(ert, "i").test(e.detail.action)
+      );
+      if (!actionRowType) return;
+
+      setExtraRowUid(e.detail.uid);
+      setExtraRowType((oldRowType) => {
+        if (oldRowType === actionRowType) {
+          return null;
+        } else {
+          return actionRowType;
+        }
+      });
+    }) as EventListener;
+    document.addEventListener("roamjs:query-builder:action", actionListener);
+    return () => {
+      document.removeEventListener(
+        "roamjs:query-builder:action",
+        actionListener
+      );
+    };
+  }, [parentUid, setExtraRowType]);
+  useEffect(() => {
+    if (extraRowType === null) setExtraRowUid(null);
+  }, [extraRowType, setExtraRowUid]);
   return (
     <HTMLTable
       style={{
@@ -490,6 +558,7 @@ const ResultsTable = ({
         tableLayout: "fixed",
         borderRadius: 3,
       }}
+      data-parent-uid={parentUid}
       {...tableProps}
     >
       <thead style={{ background: "#eeeeee80" }}>
@@ -512,14 +581,27 @@ const ResultsTable = ({
       </thead>
       <tbody>
         {results.map((r) => (
-          <ResultRow
-            key={Object.values(r).join("-")}
-            r={r}
-            views={views}
-            onRefresh={onRefresh}
-            columns={columns}
-            onWidthUpdate={onWidthUpdate}
-          />
+          <React.Fragment key={Object.values(r).join("-")}>
+            <ResultRow
+              r={r}
+              parentUid={parentUid}
+              views={views}
+              onRefresh={onRefresh}
+              columns={columns}
+              onWidthUpdate={onWidthUpdate}
+            />
+            {extraRowUid === r.uid && (
+              <tr className={`roamjs-${extraRowType}-row roamjs-extra-row`}>
+                <td colSpan={columns.length}>
+                  {extraRowUid && extraRowType === "context" ? (
+                    <ExtraContextRow uid={extraRowUid} />
+                  ) : extraRowUid && extraRowType === "discourse" ? (
+                    <ContextContent uid={extraRowUid} />
+                  ) : null}
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
         ))}
       </tbody>
       <tfoot style={!showInterface ? { display: "none" } : {}}>

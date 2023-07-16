@@ -167,6 +167,14 @@ svg.rs-svg-container {
 
 .roamjs-kanban-container .roamjs-kanban-column {
   width: inherit;
+}
+
+.roamjs-extra-row td {
+  position: relative;
+  background-color: #F5F8FA;
+  padding: 16px;
+  max-height: 240px;
+  overflow-y: scroll;
 }`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
@@ -723,7 +731,10 @@ svg.rs-svg-container {
       toggleDiscourseGraphsMode(false);
       // @ts-ignore - tldraw throws a warning on multiple loads
       delete window[Symbol.for("__signia__")];
-      document.removeEventListener("roamjs:query-builder:action", pageActionListener);
+      document.removeEventListener(
+        "roamjs:query-builder:action",
+        pageActionListener
+      );
     },
   };
 });
