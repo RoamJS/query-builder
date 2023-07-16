@@ -495,6 +495,14 @@ const predefinedSelections: PredefinedSelection[] = [
             text: "page:",
             children: ICON_SUGGESTIONS,
           },
+          {
+            text: "context:",
+            children: ICON_SUGGESTIONS,
+          },
+          {
+            text: "discourse:",
+            children: ICON_SUGGESTIONS,
+          },
         ],
       },
     ],

@@ -89,7 +89,7 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
   const customBlock = getSubTree({ tree: children, key: "custom" });
   const customNodeUid = getOrCreateUid(customBlock, "custom");
   const samePageBlock = getSubTree({ tree: children, key: "samepage" });
-  const returnNodeUid = window.roamAlphaAPI.util.generateUID();
+  const returnNodeUid = `return-uid`;
   return {
     returnNode: DEFAULT_RETURN_NODE,
     conditions,
@@ -103,7 +103,9 @@ const parseQuery: ParseQuery = (parentUidOrNode) => {
     isSamePageEnabled: !!samePageBlock.uid,
     columns: [
       {
-        key: selections.find((s) => s.text === DEFAULT_RETURN_NODE)?.label || "text",
+        key:
+          selections.find((s) => s.text === DEFAULT_RETURN_NODE)?.label ||
+          "text",
         uid: returnNodeUid,
         selection: DEFAULT_RETURN_NODE,
       },
