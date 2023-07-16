@@ -289,16 +289,6 @@ const ContextTab = ({
           </span>
         </>
       }
-      // extraColumn={
-      //   hasExtra
-      //     ? {
-      //         width: 72,
-      //         header: <Icon icon={"data-connection"} />,
-      //         row: ExtraColumnRow,
-      //         reserved: [/anchor/, /context/],
-      //       }
-      //     : undefined
-      // }
     />
   );
   return subTabs.length ? (
