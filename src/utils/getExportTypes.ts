@@ -21,6 +21,16 @@ import getDiscourseContextResults from "./getDiscourseContextResults";
 import fireQuery from "./fireQuery";
 import { ExportTypes } from "./types";
 
+export const updateExportProgress = (detail: {
+  progress: number;
+  id: string;
+}) =>
+  document.body.dispatchEvent?.(
+    new CustomEvent("roamjs:export:progress", {
+      detail,
+    })
+  );
+
 const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   text: n[":block/string"] || n[":node/title"] || "",
   open: typeof n[":block/open"] === "undefined" ? true : n[":block/open"],
@@ -184,9 +194,10 @@ const toMarkdown = ({
 
 type Props = {
   results?: ExportDialogProps["results"];
+  exportId: string;
 };
 
-const getExportTypes = ({ results }: Props): ExportTypes => {
+const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -347,17 +358,10 @@ const getExportTypes = ({ results }: Props): ExportTypes => {
               "date: {date}",
             ];
         const allPages = await getPageData(isSamePageEnabled);
-        const progressBody = document.querySelector(
-          ".roamjs-export-dialog-body"
-        );
         const gatherings = allPages.map(
           ({ text, uid, context: _, type, ...rest }, i, all) =>
             async function getMarkdownData() {
-              progressBody?.dispatchEvent?.(
-                new CustomEvent("roamjs:loading:progress", {
-                  detail: { progress: i / all.length },
-                })
-              );
+              updateExportProgress({ progress: i / all.length, id: exportId });
               // skip a beat to let progress render
               await new Promise((resolve) => setTimeout(resolve));
               const v = getPageViewType(text) || "bullet";
