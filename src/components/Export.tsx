@@ -106,6 +106,7 @@ const ExportDialog: ExportDialogComponent = ({
         isOpen={dialogOpen}
         canEscapeKeyClose={false}
         canOutsideClickClose={false}
+        isCloseButtonShown={false}
         title={`Export Query Results`}
         autoFocus={false}
         enforceFocus={false}
