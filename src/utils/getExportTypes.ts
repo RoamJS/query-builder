@@ -19,6 +19,17 @@ import type { ExportDialogProps } from "../components/Export";
 import getPageMetadata from "./getPageMetadata";
 import getDiscourseContextResults from "./getDiscourseContextResults";
 import fireQuery from "./fireQuery";
+import { ExportTypes } from "./types";
+
+export const updateExportProgress = (detail: {
+  progress: number;
+  id: string;
+}) =>
+  document.body.dispatchEvent?.(
+    new CustomEvent("roamjs:export:progress", {
+      detail,
+    })
+  );
 
 const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   text: n[":block/string"] || n[":node/title"] || "",
@@ -183,17 +194,10 @@ const toMarkdown = ({
 
 type Props = {
   results?: ExportDialogProps["results"];
-  relations?: {
-    target: string;
-    source: string;
-    label: string;
-  }[];
+  exportId: string;
 };
 
-const getExportTypes = ({
-  results,
-  relations,
-}: Props): ExportDialogProps["exportTypes"] => {
+const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -236,48 +240,46 @@ const getExportTypes = ({
     );
   };
   const getRelationData = (isSamePageEnabled: boolean) =>
-    relations
-      ? Promise.resolve(relations)
-      : Promise.all(
-          allRelations
-            .filter(
-              (s) =>
-                s.triples.some((t) => t[2] === "source") &&
-                s.triples.some((t) => t[2] === "destination")
-            )
-            .flatMap((s) => {
-              const sourceLabel = nodeLabelByType[s.source];
-              const targetLabel = nodeLabelByType[s.destination];
-              return !sourceLabel || !targetLabel
-                ? []
-                : fireQuery({
-                    returnNode: sourceLabel,
-                    conditions: [
-                      {
-                        relation: s.label,
-                        source: sourceLabel,
-                        target: targetLabel,
-                        uid: s.id,
-                        type: "clause",
-                      },
-                    ],
-                    selections: [
-                      {
-                        uid: window.roamAlphaAPI.util.generateUID(),
-                        text: `node:${targetLabel}`,
-                        label: "target",
-                      },
-                    ],
-                    isSamePageEnabled,
-                  }).then((results) =>
-                    results.map((result) => ({
-                      source: result.uid,
-                      target: result["target-uid"],
-                      label: s.label,
-                    }))
-                  );
-            })
-        ).then((r) => r.flat());
+    Promise.all(
+      allRelations
+        .filter(
+          (s) =>
+            s.triples.some((t) => t[2] === "source") &&
+            s.triples.some((t) => t[2] === "destination")
+        )
+        .flatMap((s) => {
+          const sourceLabel = nodeLabelByType[s.source];
+          const targetLabel = nodeLabelByType[s.destination];
+          return !sourceLabel || !targetLabel
+            ? []
+            : fireQuery({
+                returnNode: sourceLabel,
+                conditions: [
+                  {
+                    relation: s.label,
+                    source: sourceLabel,
+                    target: targetLabel,
+                    uid: s.id,
+                    type: "clause",
+                  },
+                ],
+                selections: [
+                  {
+                    uid: window.roamAlphaAPI.util.generateUID(),
+                    text: `node:${targetLabel}`,
+                    label: "target",
+                  },
+                ],
+                isSamePageEnabled,
+              }).then((results) =>
+                results.map((result) => ({
+                  source: result.uid,
+                  target: result["target-uid"],
+                  label: s.label,
+                }))
+              );
+        })
+    ).then((r) => r.flat());
   const getJsonData = async (isSamePageEnabled: boolean) => {
     const grammar = allRelations.map(({ label, destination, source }) => ({
       label,
@@ -356,17 +358,10 @@ const getExportTypes = ({
               "date: {date}",
             ];
         const allPages = await getPageData(isSamePageEnabled);
-        const progressBody = document.querySelector(
-          ".roamjs-export-dialog-body"
-        );
         const gatherings = allPages.map(
           ({ text, uid, context: _, type, ...rest }, i, all) =>
             async function getMarkdownData() {
-              progressBody?.dispatchEvent?.(
-                new CustomEvent("roamjs:loading:progress", {
-                  detail: { progress: i / all.length },
-                })
-              );
+              updateExportProgress({ progress: i / all.length, id: exportId });
               // skip a beat to let progress render
               await new Promise((resolve) => setTimeout(resolve));
               const v = getPageViewType(text) || "bullet";
@@ -388,6 +383,7 @@ const getExportTypes = ({
               const treeNode = getFullTreeByParentUid(uid);
               const discourseResults = await getDiscourseContextResults({
                 uid,
+                isSamePageEnabled,
               });
               const referenceResults = isFlagEnabled("render references")
                 ? (
@@ -487,7 +483,7 @@ const getExportTypes = ({
               })
             ),
           Promise.resolve(
-            [] as Awaited<ReturnType<typeof gatherings[number]>>[]
+            [] as Awaited<ReturnType<(typeof gatherings)[number]>>[]
           )
         );
         return pages.map(({ title, content }) => ({

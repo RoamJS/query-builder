@@ -34,7 +34,6 @@ export type ExportTypes = {
   name: string;
   callback: (args: {
     filename: string;
-    graph: string;
     isSamePageEnabled: boolean;
   }) => Promise<{ title: string; content: string }[]>;
 }[];

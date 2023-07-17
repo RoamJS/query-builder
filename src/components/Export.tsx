@@ -7,24 +7,53 @@ import {
   Intent,
   Label,
   ProgressBar,
+  Toaster,
+  Toast,
   Tooltip,
 } from "@blueprintjs/core";
-import React, { useState, useEffect } from "react";
-import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
-import type { TreeNode, ViewType, PullBlock } from "roamjs-components/types";
+import React, { useState, useEffect, useMemo } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
-import getRoamUrl from "roamjs-components/dom/getRoamUrl";
-import { ExportTypes } from "../utils/types";
 import { Result } from "roamjs-components/types/query-builder";
 import renderOverlay, {
   RoamOverlayProps,
 } from "roamjs-components/util/renderOverlay";
+import getExportTypes, { updateExportProgress } from "../utils/getExportTypes";
+import nanoid from "nanoid";
+import apiPost from "roamjs-components/util/apiPost";
+
+const ExportProgress = ({ id }: { id: string }) => {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const listener = ((e: CustomEvent) => {
+      if (e.detail.id === id) setProgress(e.detail.progress);
+    }) as EventListener;
+    document.body.addEventListener("roamjs:export:progress", listener);
+    return () =>
+      document.body.removeEventListener("roamjs:export:progress", listener);
+  }, [setProgress, id]);
+  return (
+    <Toaster position="bottom-right" maxToasts={1}>
+      {progress ? (
+        <Toast
+          timeout={0}
+          onDismiss={() => setProgress(0)}
+          intent={Intent.PRIMARY}
+          icon={"download"}
+          message={
+            <>
+              <div>Exporting data...</div>
+              <ProgressBar value={progress} intent={Intent.SUCCESS} />
+              <span>{(progress * 100).toFixed(2)}%</span>
+            </>
+          }
+        />
+      ) : null}
+    </Toaster>
+  );
+};
 
 export type ExportDialogProps = {
-  exportTypes?: ExportTypes;
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
 };
 
@@ -32,112 +61,27 @@ type ExportDialogComponent = (
   props: RoamOverlayProps<ExportDialogProps>
 ) => JSX.Element;
 
-const viewTypeToPrefix = {
-  bullet: "- ",
-  document: "",
-  numbered: "1. ",
-};
-
-const collectUids = (t: TreeNode): string[] => [
-  t.uid,
-  ...t.children.flatMap(collectUids),
+const EXPORT_DESTINATIONS = [
+  { id: "local", label: "Download Locally", active: true },
+  { id: "app", label: "Store in Roam", active: false },
+  { id: "samepage", label: "Store with SamePage", active: false },
 ];
-
-const normalize = (t: string) => `${t.replace(/[<>:"/\\|?*[]]/g, "")}.md`;
-
-const titleToFilename = (t: string) => {
-  const name = normalize(t);
-  return name.length > 64
-    ? `${name.substring(0, 31)}...${name.slice(-30)}`
-    : name;
-};
-
-const toMarkdown = ({
-  c,
-  i = 0,
-  v = "bullet",
-}: {
-  c: TreeNode;
-  i?: number;
-  v?: ViewType;
-}): string =>
-  `${"".padStart(i * 4, " ")}${viewTypeToPrefix[v]}${
-    c.heading ? `${"".padStart(c.heading, "#")} ` : ""
-  }${c.text
-    .replace(BLOCK_REF_REGEX, (_, blockUid) => {
-      const reference = getTextByBlockUid(blockUid);
-      return reference || blockUid;
-    })
-    .trim()}${(c.children || [])
-    .filter((nested) => !!nested.text || !!nested.children?.length)
-    .map(
-      (nested) =>
-        `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v })}`
-    )
-    .join("")}`;
+const exportDestinationById = Object.fromEntries(
+  EXPORT_DESTINATIONS.map((ed) => [ed.id, ed])
+);
 
 const ExportDialog: ExportDialogComponent = ({
   onClose,
-  isOpen = true,
+  isOpen,
   results = [],
-  exportTypes = [
-    {
-      name: "CSV",
-      callback: async ({ filename, isSamePageEnabled }) => {
-        const resolvedResults = Array.isArray(results)
-          ? results
-          : await results(isSamePageEnabled);
-        const keys = Object.keys(resolvedResults[0]).filter(
-          (u) => !/uid/i.test(u)
-        );
-        const header = `${keys.join(",")}\n`;
-        const data = resolvedResults
-          .map((r) =>
-            keys
-              .map((k) => r[k].toString())
-              .map((v) => (v.includes(",") ? `"${v}"` : v))
-          )
-          .join("\n");
-        return [
-          {
-            title: `${filename.replace(/\.csv/, "")}.csv`,
-            content: `${header}${data}`,
-          },
-        ];
-      },
-    },
-    {
-      name: "Markdown",
-      callback: async ({ isSamePageEnabled }) =>
-        (Array.isArray(results) ? results : await results(isSamePageEnabled))
-          .map(({ uid, ...rest }) => {
-            const v = (
-              (
-                window.roamAlphaAPI.data.fast.q(
-                  `[:find (pull ?b [:children/view-type]) :where [?b :block/uid "${uid}"]]`
-                )[0]?.[0] as PullBlock
-              )?.[":children/view-type"] || ":bullet"
-            ).slice(1) as ViewType;
-            const treeNode = getFullTreeByParentUid(uid);
-
-            const content = `---\nurl: ${getRoamUrl(uid)}\n${Object.keys(rest)
-              .filter((k) => !/uid/i.test(k))
-              .map(
-                (k) => `${k}: ${rest[k].toString()}`
-              )}---\n\n${treeNode.children
-              .map((c) => toMarkdown({ c, v, i: 0 }))
-              .join("\n")}\n`;
-            return { title: rest.text, content };
-          })
-          .map(({ title, content }) => ({
-            title: titleToFilename(title),
-            content,
-          })),
-    },
-  ],
 }) => {
+  const exportId = useMemo(() => nanoid(), []);
+  const [dialogOpen, setDialogOpen] = useState(isOpen);
+  const exportTypes = useMemo(
+    () => getExportTypes({ results, exportId }),
+    [results, exportId]
+  );
   const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState("");
   const today = new Date();
   const [filename, setFilename] = useState(
@@ -153,144 +97,162 @@ const ExportDialog: ExportDialogComponent = ({
   const [activeExportType, setActiveExportType] = useState<string>(
     exportTypes[0].name
   );
-  const [graph, setGraph] = useState<string>("");
+  const [activeExportDestination, setActiveExportDestination] =
+    useState<string>(EXPORT_DESTINATIONS[0].id);
   const [isSamePageEnabled, setIsSamePageEnabled] = useState(false);
-  useEffect(() => {
-    const body = document.querySelector(".roamjs-export-dialog-body");
-    if (body) {
-      const listener = ((e: CustomEvent) => {
-        setLoadingProgress(e.detail.progress);
-      }) as EventListener;
-      body.addEventListener("roamjs:loading:progress", listener);
-      return () =>
-        body.removeEventListener("roamjs:loading:progress", listener);
-    }
-  }, [setLoadingProgress]);
   return (
-    <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
-      canEscapeKeyClose
-      canOutsideClickClose
-      title={`Export Query Results`}
-      autoFocus={false}
-      enforceFocus={false}
-      portalClassName={"roamjs-export-dialog-body"}
-    >
-      <div className={Classes.DIALOG_BODY}>
-        <Label>
-          Export Type
-          <MenuItemSelect
-            items={[
-              ...exportTypes
-                .map((e) => e.name)
-                .filter(
-                  (t) =>
-                    window.roamjs.loaded.has("samepage") ||
-                    window.roamjs.loaded.has("multiplayer") ||
-                    t !== "graph"
-                ),
-            ]}
-            activeItem={activeExportType}
-            onItemSelect={(et) => setActiveExportType(et)}
-          />
-        </Label>
-        {activeExportType === "graph" && (
+    <>
+      <Dialog
+        isOpen={dialogOpen}
+        canEscapeKeyClose={false}
+        canOutsideClickClose={false}
+        title={`Export Query Results`}
+        autoFocus={false}
+        enforceFocus={false}
+        portalClassName={"roamjs-export-dialog-body"}
+      >
+        <div className={Classes.DIALOG_BODY}>
+          <div className="flex justify-between items-center gap-16">
+            <Label className="flex-grow">
+              Export Type
+              <MenuItemSelect
+                items={exportTypes.map((e) => e.name)}
+                activeItem={activeExportType}
+                onItemSelect={(et) => setActiveExportType(et)}
+              />
+            </Label>
+            <Label className="flex-grow">
+              Destination
+              <MenuItemSelect
+                items={EXPORT_DESTINATIONS.map((ed) => ed.id)}
+                transformItem={(s) => exportDestinationById[s].label}
+                activeItem={activeExportDestination}
+                onItemSelect={(et) => setActiveExportDestination(et)}
+              />
+            </Label>
+          </div>
           <Label>
-            Graph
+            Filename
             <InputGroup
-              value={graph}
-              onChange={(et) => setGraph(et.target.value)}
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
             />
           </Label>
-        )}
-        <Label>
-          Filename
-          <InputGroup
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-          />
-        </Label>
-        <span>
-          Exporting{" "}
-          {typeof results === "function" ? "unknown number of" : results.length}{" "}
-          results
-        </span>
-
-        {window.samepage && (
-          <Checkbox
-            checked={isSamePageEnabled}
-            onChange={(e) =>
-              setIsSamePageEnabled((e.target as HTMLInputElement).checked)
-            }
-            style={{ marginBottom: 0 }}
-            labelElement={
-              <Tooltip
-                content={
-                  "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+          <div className="flex justify-between items-center">
+            <span>
+              {typeof results === "function"
+                ? "Calculating number of results..."
+                : `Exporting ${results.length} results`}
+            </span>
+            {window.samepage && (
+              <Checkbox
+                checked={isSamePageEnabled}
+                onChange={(e) =>
+                  setIsSamePageEnabled((e.target as HTMLInputElement).checked)
                 }
-              >
-                <img
-                  src="https://samepage.network/images/logo.png"
-                  height={24}
-                  width={24}
-                />
-              </Tooltip>
-            }
-          />
-        )}
-      </div>
-      <div className={Classes.DIALOG_FOOTER}>
-        <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-          <span style={{ color: "darkred" }}>{error}</span>
-          {loading && <ProgressBar value={loadingProgress} />}
-          <Button
-            text={"Export"}
-            intent={Intent.PRIMARY}
-            onClick={() => {
-              setLoading(true);
-              setLoadingProgress(0);
-              setError("");
-              setTimeout(async () => {
-                try {
-                  const exportType = exportTypes.find(
-                    (e) => e.name === activeExportType
-                  );
-                  if (exportType && window.RoamLazy) {
-                    const zip = await window.RoamLazy.JSZip().then(
-                      (j) => new j()
-                    );
-                    const files = await exportType.callback({
-                      filename,
-                      graph,
-                      isSamePageEnabled,
-                    });
-                    if (!files.length) {
-                      onClose();
-                    } else {
-                      files.forEach(({ title, content }) =>
-                        zip.file(title, content)
-                      );
-                      zip.generateAsync({ type: "blob" }).then((content) => {
-                        saveAs(content, `${filename}.zip`);
-                        onClose();
-                      });
+                style={{ marginBottom: 0 }}
+                labelElement={
+                  <Tooltip
+                    content={
+                      "Use SamePage's backend to gather this export [EXPERIMENTAL]."
                     }
-                  }
-                } catch (e) {
-                  console.error(e);
-                  setError((e as Error).message);
-                  setLoading(false);
-                  setLoadingProgress(0);
+                  >
+                    <img
+                      src="https://samepage.network/images/logo.png"
+                      height={24}
+                      width={24}
+                    />
+                  </Tooltip>
                 }
-              }, 1);
-            }}
-            style={{ minWidth: 64 }}
-            disabled={loading}
-          />
+              />
+            )}
+          </div>
         </div>
-      </div>
-    </Dialog>
+        <div className={Classes.DIALOG_FOOTER}>
+          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+            <span style={{ color: "darkred" }}>{error}</span>
+            <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
+            <Button
+              text={"Export"}
+              intent={Intent.PRIMARY}
+              onClick={() => {
+                if (!exportDestinationById[activeExportDestination].active) {
+                  setError(
+                    `Export destination ${exportDestinationById[activeExportDestination].label} is not yet supported.`
+                  );
+                  return;
+                }
+                setLoading(true);
+                updateExportProgress({ progress: 0, id: exportId });
+                setError("");
+                setTimeout(async () => {
+                  try {
+                    const exportType = exportTypes.find(
+                      (e) => e.name === activeExportType
+                    );
+                    if (exportType && window.RoamLazy) {
+                      const zip = await window.RoamLazy.JSZip().then(
+                        (j) => new j()
+                      );
+                      setDialogOpen(false);
+                      setLoading(false);
+                      updateExportProgress({
+                        progress: 0.0001,
+                        id: exportId,
+                      });
+                      const files = await exportType.callback({
+                        filename,
+                        isSamePageEnabled,
+                      });
+                      if (!files.length) {
+                        setDialogOpen(true);
+                        setError("Failed to find any results to export.");
+                      } else {
+                        files.forEach(({ title, content }) =>
+                          zip.file(title, content)
+                        );
+                        zip.generateAsync({ type: "blob" }).then((content) => {
+                          saveAs(content, `${filename}.zip`);
+                          onClose();
+                        });
+                      }
+                    } else {
+                      setError(`Unsupported export type: ${exportType}`);
+                    }
+                  } catch (e) {
+                    const error = e as Error;
+                    apiPost({
+                      domain: "https://api.samepage.network",
+                      path: "errors",
+                      data: {
+                        method: "extension-error",
+                        type: "RoamJS Export Dialog Failed",
+                        data: {
+                          activeExportType,
+                          filename,
+                          results:
+                            typeof results === "function" ? "dynamic" : results,
+                        },
+                        message: error.message,
+                        stack: error.stack,
+                        version: process.env.VERSION,
+                      },
+                    }).catch(() => {});
+                    setDialogOpen(true);
+                    setError((e as Error).message);
+                  } finally {
+                    updateExportProgress({ progress: 0, id: exportId });
+                  }
+                }, 1);
+              }}
+              style={{ minWidth: 64 }}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </Dialog>
+      <ExportProgress id={exportId} />
+    </>
   );
 };
 

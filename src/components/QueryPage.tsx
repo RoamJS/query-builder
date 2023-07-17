@@ -17,7 +17,6 @@ import { createComponentRender } from "roamjs-components/components/ComponentCon
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
-import setInputSetting from "roamjs-components/util/setInputSetting";
 import { OnloadArgs } from "roamjs-components/types/native";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
@@ -26,7 +25,6 @@ import { Column, ExportTypes } from "../utils/types";
 
 type QueryPageComponent = (props: {
   pageUid: string;
-  getExportTypes?: (r: Result[]) => ExportTypes;
   isEditBlock?: boolean;
   showAlias?: boolean;
 }) => JSX.Element;
@@ -35,7 +33,6 @@ type Props = Parameters<QueryPageComponent>[0];
 
 const QueryPage = ({
   pageUid,
-  getExportTypes,
   isEditBlock,
   showAlias,
 }: Props) => {
@@ -174,7 +171,6 @@ const QueryPage = ({
           <ResultsView
             parentUid={pageUid}
             onEdit={() => setIsEdit(true)}
-            getExportTypes={getExportTypes}
             header={
               error ? (
                 <div className="text-red-700 mb-4">{error}</div>

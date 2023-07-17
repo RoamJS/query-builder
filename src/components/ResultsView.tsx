@@ -218,7 +218,6 @@ type ResultsViewComponent = (props: {
   onEdit?: () => void;
   onDeleteQuery?: () => void;
   onRefresh: (loadInBackground?: boolean) => void;
-  getExportTypes?: (r: Result[]) => ExportTypes;
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
   isEditBlock?: boolean;
@@ -238,7 +237,6 @@ const ResultsView: ResultsViewComponent = ({
   onEdit,
   onDeleteQuery,
   onRefresh,
-  getExportTypes,
   onResultsInViewChange,
   isEditBlock,
 }) => {
@@ -380,7 +378,6 @@ const ResultsView: ResultsViewComponent = ({
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         results={allProcessedResults}
-        exportTypes={getExportTypes?.(allProcessedResults)}
       />
       <div className="relative">
         <span
