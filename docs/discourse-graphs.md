@@ -12,12 +12,11 @@ Contact Joel Chan (joelchan@umd.edu or [@JoelChan86](https://twitter.com/joelcha
 
 The Discourse Graph plugin is bundled with the Query Builder plugin.
 
-To migrate to the new version, you must disable the old version in `roam/js`, then enable it in Query Builder
+To migrate to the new version, you must disable the old version in `roam/js`, then enable it in Query Builder.
 
 ### **Step 1**: Uninstall the `roam/js` Discourse Graph
 
-- Open this in the sidebar: Discourse Graph (Shift - Click)
-
+- Open the `[[roam/js]]` page in your graph
 - Click on the "Stop this" button. It will look something like:
 
 ![](media/discourse-graph-stop.png)
