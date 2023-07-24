@@ -227,12 +227,6 @@ const LEAF_SUGGESTIONS: SelectionSuggestion[] = CREATE_DATE_SUGGESTIONS.concat(
   .concat(EDIT_BY_SUGGESTIONS);
 // .concat(ATTR_SUGGESTIONS);
 
-const ICON_SUGGESTIONS: SelectionSuggestion[] = Object.values(IconNames).map(
-  (text) => ({
-    text,
-  })
-);
-
 const predefinedSelections: PredefinedSelection[] = [
   {
     test: CREATE_DATE_TEST,
@@ -489,19 +483,31 @@ const predefinedSelections: PredefinedSelection[] = [
         children: [
           {
             text: "canvas:",
-            children: ICON_SUGGESTIONS,
+            children: [
+              { text: "add" },
+              { text: "insert" },
+              { text: "presentation" },
+            ],
           },
           {
             text: "page:",
-            children: ICON_SUGGESTIONS,
+            children: [{ text: "add" }, { text: "insert" }, { text: "plus" }],
           },
           {
             text: "context:",
-            children: ICON_SUGGESTIONS,
+            children: [
+              { text: "book" },
+              { text: "document" }, // replace with { text: "eye-open" }, not supported yet
+              { text: "maximize" },
+            ],
           },
           {
             text: "discourse:",
-            children: ICON_SUGGESTIONS,
+            children: [
+              { text: "flows" },
+              { text: "graph" },
+              { text: "layout" }, // replace with { text: "search-around" }, not supported yet
+            ],
           },
         ],
       },
