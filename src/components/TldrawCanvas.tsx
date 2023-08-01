@@ -380,10 +380,7 @@ const LabelDialog = ({
         autoFocus={false}
         className={"roamjs-discourse-playground-dialog"}
       >
-        <div
-          className={Classes.DIALOG_BODY}
-          ref={containerRef}
-        >
+        <div className={Classes.DIALOG_BODY} ref={containerRef}>
           <AutocompleteInput
             value={initialValue}
             setValue={setValue}
@@ -1339,6 +1336,9 @@ const TldrawCanvas = ({ title }: Props) => {
     >
       <style>{`.roam-article .rm-block-children {
   display: none;
+}
+.rs-arrow-label__inner{
+  flex-direction: column;
 }${
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
