@@ -1338,7 +1338,7 @@ const TldrawCanvas = ({ title }: Props) => {
   display: none;
 }
 .rs-arrow-label__inner{
-  flex-direction: column;
+  min-width: initial;
 }${
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
