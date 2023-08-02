@@ -294,7 +294,8 @@ const ResultRow = ({
               className={"relative overflow-hidden text-ellipsis"}
               key={key}
               {...{
-                [`data-cell-${key}`]: typeof val === "string" ? val : `${val}`,
+                [`data-cell-content`]: typeof val === "string" ? val : `${val}`,
+                [`data-column-title`]: key,
               }}
             >
               {val === "" ? (
