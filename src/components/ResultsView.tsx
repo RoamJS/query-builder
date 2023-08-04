@@ -378,6 +378,7 @@ const ResultsView: ResultsViewComponent = ({
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         results={allProcessedResults}
+        parentUid={parentUid}
       />
       <div className="relative">
         <span
