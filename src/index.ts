@@ -47,7 +47,7 @@ const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
 
-const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
+export const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
 
 export default runExtension(async (onloadArgs) => {
   const { extensionAPI } = onloadArgs;

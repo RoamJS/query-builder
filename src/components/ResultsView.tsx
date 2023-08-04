@@ -752,7 +752,7 @@ const ResultsView: ResultsViewComponent = ({
                   />
                   <MenuItem
                     icon={"export"}
-                    text={"Export"}
+                    text={"Export/Send To"}
                     onClick={async () => {
                       if (!results.length) {
                         onRefresh();
