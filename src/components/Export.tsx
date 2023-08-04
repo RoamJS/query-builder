@@ -23,6 +23,10 @@ import renderOverlay, {
 import getExportTypes, { updateExportProgress } from "../utils/getExportTypes";
 import nanoid from "nanoid";
 import apiPost from "roamjs-components/util/apiPost";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import extensionAPI from "roamjs-components/util/extensionApiContext";
+import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -58,6 +62,7 @@ const ExportProgress = ({ id }: { id: string }) => {
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
   parentUid: string;
+  clearOnClick?: (text: string) => void;
 };
 
 type ExportDialogComponent = (
@@ -78,6 +83,7 @@ const ExportDialog: ExportDialogComponent = ({
   isOpen,
   results = [],
   parentUid,
+  clearOnClick,
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -252,27 +258,55 @@ const ExportDialog: ExportDialogComponent = ({
     </>
   );
 
+  const currentPageUid = getCurrentPageUid();
+  const currentPageTitle = getPageTitleByPageUid(currentPageUid);
+  const checkForCanvasPage = (title: string) => {
+    const canvasPageFormat =
+      (extensionAPI().settings.get("canvas-page-format") as string) ||
+      DEFAULT_CANVAS_PAGE_FORMAT;
+    return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
+  };
+  const isCanvasPage = checkForCanvasPage(currentPageTitle);
+
   const SendToPanel = (
-    <div className={Classes.DIALOG_FOOTER}>
-      <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-        <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
-        <Button
-          text={"Send To Current Canvas"}
-          intent={Intent.PRIMARY}
-          onClick={() => {
-            typeof results === "object"
-              ? tempAddToCurrentCanvas(results)
-              : null;
-            setDialogOpen(false);
-          }}
-          style={{ minWidth: 64 }}
-          disabled={loading}
-        />
+    <>
+      <div className={Classes.DIALOG_BODY}>
+        <p>
+          Sending to Current Page:{" "}
+          <span className="font-bold">{currentPageTitle}</span>
+        </p>
+        <span>
+          {typeof results === "object"
+            ? `Exporting ${results.length} results`
+            : "Not Yet Supported"}
+        </span>
       </div>
-    </div>
+      <div className={Classes.DIALOG_FOOTER}>
+        <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+          <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
+          <Button
+            text={"Send"}
+            intent={Intent.PRIMARY}
+            onClick={() => {
+              console.log(`isCanvasPage`, isCanvasPage);
+              if (typeof results === "object") {
+                isCanvasPage
+                  ? addToCurrentCanvas(results)
+                  : results.map((r) => {
+                      clearOnClick?.(r.text || "");
+                    });
+              }
+              setDialogOpen(false);
+            }}
+            style={{ minWidth: 64 }}
+            disabled={loading}
+          />
+        </div>
+      </div>
+    </>
   );
 
-  const tempAddToCurrentCanvas = (r: Result[]) => {
+  const addToCurrentCanvas = (r: Result[]) => {
     r.map((r) => {
       document.dispatchEvent(
         new CustomEvent("roamjs:query-builder:action", {
