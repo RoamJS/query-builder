@@ -20,6 +20,7 @@ import ResultsView from "./ResultsView";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 import QueryEditor from "./QueryEditor";
 import { Column } from "../utils/types";
+import Export from "./Export";
 
 type Props = {
   blockUid: string;
@@ -51,6 +52,7 @@ const SavedQuery = ({
   const [label, setLabel] = useState(() => getTextByBlockUid(uid));
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [error, setError] = useState("");
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const resultsInViewRef = useRef<Result[]>([]);
   const refresh = useCallback(() => {
     const args = parseQuery(uid);
@@ -75,6 +77,13 @@ const SavedQuery = ({
         margin: 4,
       }}
     >
+      <Export
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        results={results.map(({ id, ...a }) => a)}
+        parentUid={uid}
+        clearOnClick={clearOnClick}
+      />
       <ResultsView
         parentUid={uid}
         onRefresh={refresh}
@@ -118,9 +127,11 @@ const SavedQuery = ({
                         icon={"insert"}
                         minimal
                         onClick={() => {
-                          resultsInViewRef.current.map((r) => {
-                            clearOnClick?.(r.text || "");
-                          });
+                          if (!initialQuery && minimized) {
+                            setInitialQuery(true);
+                            refresh().finally(() => setMinimized(false));
+                          }
+                          setIsExportOpen(true);
                         }}
                       />
                     </Tooltip>
