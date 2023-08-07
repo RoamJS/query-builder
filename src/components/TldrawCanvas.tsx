@@ -463,6 +463,11 @@ const DEFAULT_STYLE_PROPS = {
   padding: "16px",
 };
 
+export const defaultDiscourseNodeShapeProps = {
+  opacity: "1" as DiscourseNodeShape["props"]["opacity"],
+  w: 160,
+  h: 64,
+};
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
@@ -475,9 +480,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
   override defaultProps(): DiscourseNodeShape["props"] {
     return {
-      opacity: "1",
-      w: 160,
-      h: 64,
+      ...defaultDiscourseNodeShapeProps,
       uid: window.roamAlphaAPI.util.generateUID(),
       title: "",
     };

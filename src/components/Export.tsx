@@ -27,6 +27,12 @@ import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import extensionAPI from "roamjs-components/util/extensionApiContext";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
+import getBlockProps from "../utils/getBlockProps";
+import { createShapeId } from "@tldraw/tlschema";
+import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
+import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import getAllPageNames from "roamjs-components/queries/getAllPageNames";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -258,55 +264,102 @@ const ExportDialog: ExportDialogComponent = ({
     </>
   );
 
-  const currentPageUid = getCurrentPageUid();
-  const currentPageTitle = getPageTitleByPageUid(currentPageUid);
   const checkForCanvasPage = (title: string) => {
     const canvasPageFormat =
       (extensionAPI().settings.get("canvas-page-format") as string) ||
       DEFAULT_CANVAS_PAGE_FORMAT;
     return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
   };
-  const isCanvasPage = checkForCanvasPage(currentPageTitle);
+  const currentPageUid = getCurrentPageUid();
+  const currentPageTitle = getPageTitleByPageUid(currentPageUid);
+  const [selectedPageTitle, setSelectedPageTitle] =
+    useState<string>(currentPageTitle);
+  const [selectedPageUid, setSelectedPageUid] =
+    useState<string>(currentPageUid);
 
-  const SendToPanel = (
-    <>
-      <div className={Classes.DIALOG_BODY}>
-        <p>
-          Sending to Current Page:{" "}
-          <span className="font-bold">{currentPageTitle}</span>
-        </p>
-        <span>
-          {typeof results === "object"
-            ? `Exporting ${results.length} results`
-            : "Not Yet Supported"}
-        </span>
-      </div>
-      <div className={Classes.DIALOG_FOOTER}>
-        <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-          <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
-          <Button
-            text={"Send"}
-            intent={Intent.PRIMARY}
-            onClick={() => {
-              console.log(`isCanvasPage`, isCanvasPage);
-              if (typeof results === "object") {
-                isCanvasPage
-                  ? addToCurrentCanvas(results)
-                  : results.map((r) => {
-                      clearOnClick?.(r.text || "");
-                    });
-              }
-              setDialogOpen(false);
-            }}
-            style={{ minWidth: 64 }}
-            disabled={loading}
-          />
-        </div>
-      </div>
-    </>
-  );
+  const handleSetSelectedPage = (title: string) => {
+    setSelectedPageTitle(title);
+    setSelectedPageUid(getPageUidByPageTitle(title));
+  };
+  const isCanvasPage = checkForCanvasPage(selectedPageTitle);
+
+  const addToSelectedCanvas = () => {
+    console.log(`addToSelectedCanvas`);
+    const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
+    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+    const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
+
+    const getPageKey = (obj: Record<string, unknown>): string | undefined => {
+      for (const key in obj) {
+        if (
+          obj[key] &&
+          typeof obj[key] === "object" &&
+          (obj[key] as any)["typeName"] === "page"
+        ) {
+          return key;
+        }
+      }
+    };
+
+    const pageKey = getPageKey(tldraw);
+
+    if (typeof results === "object") {
+      const newShapes = results.map((r, i) => {
+        const newShapeId = createShapeId();
+        const newShape = {
+          rotation: 0,
+          isLocked: false,
+          type: "page-node",
+          props: {
+            ...defaultDiscourseNodeShapeProps,
+            uid: r.uid,
+            title: r.text,
+          },
+          parentId: pageKey,
+          y: 50 + i * 50,
+          id: newShapeId,
+          typeName: "shape",
+          x: 50,
+        };
+        return newShape;
+      });
+      newShapes.map((s) => {
+        tldraw[s.id] = s;
+      });
+    }
+
+    window.roamAlphaAPI.updateBlock({
+      block: {
+        uid: selectedPageUid,
+        props: {
+          ...props,
+          ["roamjs-query-builder"]: {
+            ...rjsqb,
+          },
+        },
+      },
+    });
+  };
+
+  const addToSelectedPage = () => {
+    console.log(`addToSelectedPage`);
+    if (typeof results === "object") {
+      results.map((r) => {
+        window.roamAlphaAPI.data.block.create({
+          location: { "parent-uid": selectedPageUid, order: "last" },
+          block: {
+            string: r.text,
+          },
+        });
+      });
+    }
+  };
+
+  // TODO remove addToCurrentCanvas and addToCurrentPage
+  // Just use addToSelectedCanvas and addToSelectedPage
 
   const addToCurrentCanvas = (r: Result[]) => {
+    console.log(`addToCurrentCanvas`);
     r.map((r) => {
       document.dispatchEvent(
         new CustomEvent("roamjs:query-builder:action", {
@@ -321,6 +374,125 @@ const ExportDialog: ExportDialogComponent = ({
     });
   };
 
+  const addToCurrentPage = () => {
+    console.log(`addToCurrentPage`);
+    if (typeof results === "object") {
+      results.map((r) => {
+        clearOnClick?.(r.text || "");
+      });
+    }
+  };
+
+  // TEMP LOGGING
+  //
+  // const tempLogResults = () => {
+  //   const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
+  //   const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+  //   const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
+  //   console.log(`props`, props);
+  //   console.log(`rjsqb`, rjsqb);
+  //   console.log(`results`, results);
+
+  //   const getPageKey = (obj: Record<string, unknown>): string | undefined => {
+  //     for (const key in obj) {
+  //       if (
+  //         obj[key] &&
+  //         typeof obj[key] === "object" &&
+  //         (obj[key] as any)["typeName"] === "page"
+  //       ) {
+  //         return key;
+  //       }
+  //     }
+  //   };
+
+  //   const result = getPageKey(tldraw);
+
+  //   if (result) {
+  //     console.log(`pagekey`, result); // This will print: "page:DXNmy1t54dY14F-O0Hkxf"
+  //   } else {
+  //     console.log("No page found");
+  //   }
+  // };
+
+  const handleSendTo = () => {
+    const isCurrent = selectedPageUid === currentPageUid;
+    const isLocal = typeof results === "object";
+    if (isCurrent && isLocal) {
+      isCanvasPage ? addToCurrentCanvas(results) : addToCurrentPage();
+    } else {
+      isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
+    }
+
+    setDialogOpen(false);
+  };
+
+  const SendToPanel = (
+    <>
+      <div className={Classes.DIALOG_BODY}>
+        <div>
+          <Label>
+            Select A Destination Page
+            <AutocompleteInput
+              value={selectedPageTitle}
+              setValue={(title) => handleSetSelectedPage(title)}
+              onBlur={(title) => handleSetSelectedPage(title)}
+              options={getAllPageNames()}
+            />
+          </Label>
+        </div>
+        <p>
+          {typeof results === "object" ? (
+            <>
+              Sending {results.length} results to{" "}
+              <span className="font-bold">
+                [[
+                {selectedPageTitle.length > 20
+                  ? selectedPageTitle.substring(0, 20) + "..."
+                  : selectedPageTitle}
+                ]]
+              </span>
+            </>
+          ) : (
+            "Not Yet Supported"
+          )}
+        </p>
+        {/* <p>
+          selectedPageUid: <span className="font-bold">{selectedPageUid}</span>
+        </p>
+        <p>
+          selectedPageTitle:{" "}
+          <span className="font-bold">{selectedPageTitle}</span>
+        </p>
+        <p>
+          currentPageUid: <span className="font-bold">{currentPageUid}</span>
+        </p>
+        <p>
+          currentPageTitle:{" "}
+          <span className="font-bold">{currentPageTitle}</span>
+        </p> */}
+      </div>
+      <div className={Classes.DIALOG_FOOTER}>
+        <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+          <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
+          <Button
+            text={"Send"}
+            intent={Intent.PRIMARY}
+            onClick={handleSendTo}
+            style={{ minWidth: 64 }}
+            disabled={loading}
+          />
+          {/* <Button
+            text={"TEMP Log"}
+            intent={Intent.PRIMARY}
+            onClick={tempLogResults}
+            style={{ minWidth: 64 }}
+            disabled={loading}
+          /> */}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
       <Dialog
@@ -328,7 +500,7 @@ const ExportDialog: ExportDialogComponent = ({
         canEscapeKeyClose={false}
         canOutsideClickClose={false}
         isCloseButtonShown={false}
-        title={`Export Query Results`}
+        title={`Export / Send To Query Results`}
         autoFocus={false}
         enforceFocus={false}
         portalClassName={"roamjs-export-dialog-body"}
