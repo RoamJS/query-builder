@@ -632,6 +632,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     );
     const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     useEffect(() => {
+      if (!shape.props.title) {
+        this.app.setEditingId(shape.id);
+      }
+    }, [shape.props.title, shape.id]);
+    useEffect(() => {
       if (isEditing) setIsEditLabelOpen(true);
     }, [isEditing, setIsEditLabelOpen]);
     const contentRef = useRef<HTMLDivElement>(null);
