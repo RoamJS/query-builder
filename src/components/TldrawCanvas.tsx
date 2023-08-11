@@ -632,11 +632,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     );
     const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     useEffect(() => {
-      if (!shape.props.title) {
-        this.app.setEditingId(shape.id);
-      }
-    }, [shape.props.title, shape.id]);
-    useEffect(() => {
       if (isEditing) setIsEditLabelOpen(true);
     }, [isEditing, setIsEditLabelOpen]);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -658,7 +653,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
     useEffect(() => {
       const listener = (e: CustomEvent) => {
-        if (e.detail === shape.id) setIsEditLabelOpen(true);
+        if (e.detail === shape.id) {
+          setIsEditLabelOpen(true);
+          this.app.setEditingId(shape.id);
+        }
       };
       document.body.addEventListener(
         "roamjs:query-builder:created-canvas-node",
