@@ -373,9 +373,8 @@ const LabelDialog = ({
         isOpen={isOpen}
         title={"Edit Discourse Node Label"}
         onClose={onCancelClick}
-        // Clicking the close button Wasn't working??
-        isCloseButtonShown={false}
         canOutsideClickClose
+        // Escape isn't working?
         canEscapeKeyClose
         autoFocus={false}
         className={"roamjs-discourse-playground-dialog"}
