@@ -373,9 +373,8 @@ const LabelDialog = ({
         isOpen={isOpen}
         title={"Edit Discourse Node Label"}
         onClose={onCancelClick}
-        // Clicking the close button Wasn't working??
-        isCloseButtonShown={false}
         canOutsideClickClose
+        // Escape isn't working?
         canEscapeKeyClose
         autoFocus={false}
         className={"roamjs-discourse-playground-dialog"}
@@ -653,7 +652,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
     useEffect(() => {
       const listener = (e: CustomEvent) => {
-        if (e.detail === shape.id) setIsEditLabelOpen(true);
+        if (e.detail === shape.id) {
+          setIsEditLabelOpen(true);
+          this.app.setEditingId(shape.id);
+        }
       };
       document.body.addEventListener(
         "roamjs:query-builder:created-canvas-node",
