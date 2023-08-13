@@ -133,7 +133,7 @@ const runQueryTools = (extensionAPI: OnloadArgs["extensionAPI"]) => {
           const bTitle = (b.getElementsByClassName(
             "rm-ref-page-view-title"
           )[0] || b.querySelector(".rm-zoom-item-content")) as HTMLDivElement;
-          return sortBy(aTitle.textContent || "", bTitle.textContent || "");
+          return sortBy(aTitle?.textContent || "", bTitle?.textContent || "");
         });
         refsInView.forEach((r) => refContainer.appendChild(r));
       }
