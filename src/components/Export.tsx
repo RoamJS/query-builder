@@ -33,6 +33,7 @@ import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import findDiscourseNode from "../utils/findDiscourseNode";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -119,6 +120,152 @@ const ExportDialog: ExportDialogComponent = ({
   const [activeExportDestination, setActiveExportDestination] =
     useState<string>(EXPORT_DESTINATIONS[0].id);
   const [isSamePageEnabled, setIsSamePageEnabled] = useState(false);
+
+  const checkForCanvasPage = (title: string) => {
+    const canvasPageFormat =
+      (extensionAPI().settings.get("canvas-page-format") as string) ||
+      DEFAULT_CANVAS_PAGE_FORMAT;
+    return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
+  };
+  const currentPageUid = getCurrentPageUid();
+  const currentPageTitle = getPageTitleByPageUid(currentPageUid);
+  const [selectedPageTitle, setSelectedPageTitle] = useState(currentPageTitle);
+  const [selectedPageUid, setSelectedPageUid] = useState(currentPageUid);
+
+  const handleSetSelectedPage = (title: string) => {
+    setSelectedPageTitle(title);
+    setSelectedPageUid(getPageUidByPageTitle(title));
+  };
+  const isCanvasPage = checkForCanvasPage(selectedPageTitle);
+
+  const addToSelectedCanvas = () => {
+    const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
+    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+    const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
+
+    const getPageKey = (obj: Record<string, unknown>): string | undefined => {
+      for (const key in obj) {
+        if (
+          obj[key] &&
+          typeof obj[key] === "object" &&
+          (obj[key] as any)["typeName"] === "page"
+        ) {
+          return key;
+        }
+      }
+    };
+
+    const pageKey = getPageKey(tldraw);
+
+    // TEMP height calc
+    // should be using app.textmeasure.MeasureText() like in TldrawCanvas
+
+    const calculateHeightAndWidth = (text: String) => {
+      const maxWidthNum = 400;
+      const paddingNum = 16;
+      const avgCharPixels = 14;
+      const fontSize = 24;
+      const charsPerLine = maxWidthNum / avgCharPixels;
+      const totalCharCount = text.length;
+      const totalLines = Math.ceil(totalCharCount / charsPerLine);
+      const calculatedHeight = totalLines * (fontSize + 2) + paddingNum * 2;
+
+      return { w: maxWidthNum, h: calculatedHeight };
+    };
+
+    if (typeof results === "object") {
+      results.map((r, i) => {
+        const nodeType = findDiscourseNode(r.uid);
+        const { w, h } = calculateHeightAndWidth(r.text);
+        const newShapeId = createShapeId();
+        const newShape = {
+          rotation: 0,
+          isLocked: false,
+          type: nodeType ? nodeType.type : "page-node",
+          props: {
+            opacity: defaultDiscourseNodeShapeProps.opacity,
+            w,
+            h,
+            uid: r.uid,
+            title: r.text,
+          },
+          parentId: pageKey,
+          y: 50 + i * 100,
+          id: newShapeId,
+          typeName: "shape",
+          x: 50 * i,
+        };
+        tldraw[newShapeId] = newShape;
+      });
+    }
+
+    window.roamAlphaAPI.updateBlock({
+      block: {
+        uid: selectedPageUid,
+        props: {
+          ...props,
+          ["roamjs-query-builder"]: {
+            ...rjsqb,
+          },
+        },
+      },
+    });
+  };
+
+  const addToSelectedPage = () => {
+    // TODO: check if page or block
+    if (typeof results === "object") {
+      results.map((r) => {
+        window.roamAlphaAPI.data.block.create({
+          location: { "parent-uid": selectedPageUid, order: "last" },
+          block: {
+            string: `[[${r.text}]]`,
+          },
+        });
+      });
+    }
+  };
+
+  // TODO remove addToCurrentCanvas and addToCurrentPage
+  // Just use addToSelectedCanvas and addToSelectedPage
+
+  const addToCurrentCanvas = () => {
+    if (typeof results === "object") {
+      results.map((r) => {
+        document.dispatchEvent(
+          new CustomEvent("roamjs:query-builder:action", {
+            detail: {
+              action: "canvas",
+              uid: r.uid,
+              val: r.text,
+              queryUid: parentUid,
+            },
+          })
+        );
+      });
+    }
+  };
+
+  const addToCurrentPage = () => {
+    // TODO deal with DNP
+    if (typeof results === "object") {
+      results.map((r) => {
+        clearOnClick?.(r.text || "");
+      });
+    }
+  };
+
+  const handleSendTo = () => {
+    const isCurrentPage = selectedPageUid === currentPageUid;
+    const isLocal = typeof results === "object";
+    if (isCurrentPage && isLocal) {
+      isCanvasPage ? addToCurrentCanvas() : addToCurrentPage();
+    } else {
+      isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
+    }
+
+    setDialogOpen(false);
+  };
 
   const ExportPanel = (
     <>
@@ -263,169 +410,6 @@ const ExportDialog: ExportDialogComponent = ({
       </div>
     </>
   );
-
-  const checkForCanvasPage = (title: string) => {
-    const canvasPageFormat =
-      (extensionAPI().settings.get("canvas-page-format") as string) ||
-      DEFAULT_CANVAS_PAGE_FORMAT;
-    return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
-  };
-  const currentPageUid = getCurrentPageUid();
-  const currentPageTitle = getPageTitleByPageUid(currentPageUid);
-  const [selectedPageTitle, setSelectedPageTitle] =
-    useState<string>(currentPageTitle);
-  const [selectedPageUid, setSelectedPageUid] =
-    useState<string>(currentPageUid);
-
-  const handleSetSelectedPage = (title: string) => {
-    setSelectedPageTitle(title);
-    setSelectedPageUid(getPageUidByPageTitle(title));
-  };
-  const isCanvasPage = checkForCanvasPage(selectedPageTitle);
-
-  const addToSelectedCanvas = () => {
-    console.log(`addToSelectedCanvas`);
-    const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
-
-    const getPageKey = (obj: Record<string, unknown>): string | undefined => {
-      for (const key in obj) {
-        if (
-          obj[key] &&
-          typeof obj[key] === "object" &&
-          (obj[key] as any)["typeName"] === "page"
-        ) {
-          return key;
-        }
-      }
-    };
-
-    const pageKey = getPageKey(tldraw);
-
-    if (typeof results === "object") {
-      const newShapes = results.map((r, i) => {
-        const newShapeId = createShapeId();
-        const newShape = {
-          rotation: 0,
-          isLocked: false,
-          type: "page-node",
-          props: {
-            ...defaultDiscourseNodeShapeProps,
-            uid: r.uid,
-            title: r.text,
-          },
-          parentId: pageKey,
-          y: 50 + i * 50,
-          id: newShapeId,
-          typeName: "shape",
-          x: 50,
-        };
-        return newShape;
-      });
-      newShapes.map((s) => {
-        tldraw[s.id] = s;
-      });
-    }
-
-    window.roamAlphaAPI.updateBlock({
-      block: {
-        uid: selectedPageUid,
-        props: {
-          ...props,
-          ["roamjs-query-builder"]: {
-            ...rjsqb,
-          },
-        },
-      },
-    });
-  };
-
-  const addToSelectedPage = () => {
-    console.log(`addToSelectedPage`);
-    if (typeof results === "object") {
-      results.map((r) => {
-        window.roamAlphaAPI.data.block.create({
-          location: { "parent-uid": selectedPageUid, order: "last" },
-          block: {
-            string: r.text,
-          },
-        });
-      });
-    }
-  };
-
-  // TODO remove addToCurrentCanvas and addToCurrentPage
-  // Just use addToSelectedCanvas and addToSelectedPage
-
-  const addToCurrentCanvas = (r: Result[]) => {
-    console.log(`addToCurrentCanvas`);
-    r.map((r) => {
-      document.dispatchEvent(
-        new CustomEvent("roamjs:query-builder:action", {
-          detail: {
-            action: "canvas",
-            uid: r.uid,
-            val: r.text,
-            queryUid: parentUid,
-          },
-        })
-      );
-    });
-  };
-
-  const addToCurrentPage = () => {
-    console.log(`addToCurrentPage`);
-    if (typeof results === "object") {
-      results.map((r) => {
-        clearOnClick?.(r.text || "");
-      });
-    }
-  };
-
-  // TEMP LOGGING
-  //
-  // const tempLogResults = () => {
-  //   const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
-  //   const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-  //   const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
-  //   console.log(`props`, props);
-  //   console.log(`rjsqb`, rjsqb);
-  //   console.log(`results`, results);
-
-  //   const getPageKey = (obj: Record<string, unknown>): string | undefined => {
-  //     for (const key in obj) {
-  //       if (
-  //         obj[key] &&
-  //         typeof obj[key] === "object" &&
-  //         (obj[key] as any)["typeName"] === "page"
-  //       ) {
-  //         return key;
-  //       }
-  //     }
-  //   };
-
-  //   const result = getPageKey(tldraw);
-
-  //   if (result) {
-  //     console.log(`pagekey`, result); // This will print: "page:DXNmy1t54dY14F-O0Hkxf"
-  //   } else {
-  //     console.log("No page found");
-  //   }
-  // };
-
-  const handleSendTo = () => {
-    const isCurrent = selectedPageUid === currentPageUid;
-    const isLocal = typeof results === "object";
-    if (isCurrent && isLocal) {
-      isCanvasPage ? addToCurrentCanvas(results) : addToCurrentPage();
-    } else {
-      isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
-    }
-
-    setDialogOpen(false);
-  };
-
   const SendToPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
