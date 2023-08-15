@@ -88,7 +88,7 @@ import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
-import { nanoid } from "nanoid";
+import nanoid from "nanoid";
 
 declare global {
   interface Window {
