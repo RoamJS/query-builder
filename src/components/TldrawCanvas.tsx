@@ -88,6 +88,7 @@ import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
+import nanoid from "nanoid";
 
 declare global {
   interface Window {
@@ -1208,6 +1209,7 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, setMaximized] = useState(false);
+  const localStateIds: string[] = [];
   const store = useMemo(() => {
     const _store = customTldrawConfig.createStore({
       initialData: initialState.data,
@@ -1232,12 +1234,14 @@ const TldrawCanvas = ({ title }: Props) => {
           typeof props["roamjs-query-builder"] === "object"
             ? props["roamjs-query-builder"]
             : {};
-        // we need this bc Roam doesn't update edit/user or edit/time when we just edit block/props
         await setInputSetting({
           blockUid: pageUid,
           key: "timestamp",
           value: new Date().valueOf().toString(),
         });
+        const newstateId = nanoid();
+        localStateIds.push(newstateId);
+        localStateIds.splice(0, localStateIds.length - 25);
         window.roamAlphaAPI.updateBlock({
           block: {
             uid: pageUid,
@@ -1245,6 +1249,7 @@ const TldrawCanvas = ({ title }: Props) => {
               ...props,
               ["roamjs-query-builder"]: {
                 ...rjsqb,
+                stateId: newstateId,
                 tldraw: state,
               },
             },
@@ -1264,6 +1269,8 @@ const TldrawCanvas = ({ title }: Props) => {
           (after?.[":block/props"] || {}) as json
         ) as Record<string, json>;
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+        const propsStateId = rjsqb?.stateId as string;
+        if (localStateIds.some((s) => s === propsStateId)) return;
         const newState = rjsqb?.tldraw as Parameters<
           typeof store.deserialize
         >[0];
