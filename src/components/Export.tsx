@@ -163,9 +163,9 @@ const ExportDialog: ExportDialogComponent = ({
     const calculateHeightAndWidth = (text: String) => {
       const maxWidthNum = 400;
       const paddingNum = 16;
-      const avgCharPixels = 14;
+      const avgCharWidth = 14;
       const fontSize = 24;
-      const charsPerLine = maxWidthNum / avgCharPixels;
+      const charsPerLine = maxWidthNum / avgCharWidth;
       const totalCharCount = text.length;
       const totalLines = Math.ceil(totalCharCount / charsPerLine);
       const calculatedHeight = totalLines * (fontSize + 2) + paddingNum * 2;
@@ -185,7 +185,10 @@ const ExportDialog: ExportDialogComponent = ({
           props: {
             opacity: defaultDiscourseNodeShapeProps.opacity,
             w,
-            h,
+            h:
+              defaultDiscourseNodeShapeProps.h > h
+                ? defaultDiscourseNodeShapeProps.h
+                : h,
             uid: r.uid,
             title: r.text,
           },
@@ -440,20 +443,6 @@ const ExportDialog: ExportDialogComponent = ({
             "Not Yet Supported"
           )}
         </p>
-        {/* <p>
-          selectedPageUid: <span className="font-bold">{selectedPageUid}</span>
-        </p>
-        <p>
-          selectedPageTitle:{" "}
-          <span className="font-bold">{selectedPageTitle}</span>
-        </p>
-        <p>
-          currentPageUid: <span className="font-bold">{currentPageUid}</span>
-        </p>
-        <p>
-          currentPageTitle:{" "}
-          <span className="font-bold">{currentPageTitle}</span>
-        </p> */}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -465,13 +454,6 @@ const ExportDialog: ExportDialogComponent = ({
             style={{ minWidth: 64 }}
             disabled={loading}
           />
-          {/* <Button
-            text={"TEMP Log"}
-            intent={Intent.PRIMARY}
-            onClick={tempLogResults}
-            style={{ minWidth: 64 }}
-            disabled={loading}
-          /> */}
         </div>
       </div>
     </>
