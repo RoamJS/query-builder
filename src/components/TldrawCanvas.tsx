@@ -1241,9 +1241,7 @@ const TldrawCanvas = ({ title }: Props) => {
         });
         const newstateId = nanoid();
         localStateIds.push(newstateId);
-        if (localStateIds.length > 25) {
-          localStateIds.splice(0, 1);
-        }
+        localStateIds.splice(0, localStateIds.length - 25);
         window.roamAlphaAPI.updateBlock({
           block: {
             uid: pageUid,
