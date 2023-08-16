@@ -218,10 +218,11 @@ const ExportDialog: ExportDialogComponent = ({
     // TODO: check if page or block
     if (typeof results === "object") {
       results.map((r) => {
+        const isPage = !!getPageTitleByPageUid(r.uid);
         window.roamAlphaAPI.data.block.create({
           location: { "parent-uid": selectedPageUid, order: "last" },
           block: {
-            string: `[[${r.text}]]`,
+            string: isPage ? `[[${r.text}]]` : `((${r.uid}))`,
           },
         });
       });
