@@ -69,7 +69,6 @@ const ExportProgress = ({ id }: { id: string }) => {
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
   parentUid: string;
-  clearOnClick?: (text: string) => void;
 };
 
 type ExportDialogComponent = (
@@ -90,7 +89,6 @@ const ExportDialog: ExportDialogComponent = ({
   isOpen,
   results = [],
   parentUid,
-  clearOnClick,
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -201,7 +199,7 @@ const ExportDialog: ExportDialogComponent = ({
         tldraw[newShapeId] = newShape;
       });
     }
-
+    const newStateId = nanoid();
     window.roamAlphaAPI.updateBlock({
       block: {
         uid: selectedPageUid,
@@ -209,6 +207,7 @@ const ExportDialog: ExportDialogComponent = ({
           ...props,
           ["roamjs-query-builder"]: {
             ...rjsqb,
+            stateId: newStateId,
           },
         },
       },
@@ -229,45 +228,9 @@ const ExportDialog: ExportDialogComponent = ({
     }
   };
 
-  // TODO remove addToCurrentCanvas and addToCurrentPage
-  // Just use addToSelectedCanvas and addToSelectedPage
-
-  const addToCurrentCanvas = () => {
-    if (typeof results === "object") {
-      results.map((r) => {
-        document.dispatchEvent(
-          new CustomEvent("roamjs:query-builder:action", {
-            detail: {
-              action: "canvas",
-              uid: r.uid,
-              val: r.text,
-              queryUid: parentUid,
-            },
-          })
-        );
-      });
-    }
-  };
-
-  const addToCurrentPage = () => {
-    // TODO deal with DNP
-    if (typeof results === "object") {
-      results.map((r) => {
-        clearOnClick?.(r.text || "");
-      });
-    }
-  };
-
   const handleSendTo = () => {
-    const isCurrentPage = selectedPageUid === currentPageUid;
-    const isLocal = typeof results === "object";
-    if (isCurrentPage && isLocal) {
-      isCanvasPage ? addToCurrentCanvas() : addToCurrentPage();
-    } else {
-      isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
-    }
-
-    setDialogOpen(false);
+    isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
+    onClose();
   };
 
   const ExportPanel = (

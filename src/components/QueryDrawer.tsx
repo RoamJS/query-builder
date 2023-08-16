@@ -24,7 +24,6 @@ import Export from "./Export";
 
 type Props = {
   blockUid: string;
-  clearOnClick: (s: string) => void;
   onloadArgs: OnloadArgs;
 };
 
@@ -32,7 +31,6 @@ const SavedQuery = ({
   uid,
   isSavedToPage = false,
   onDelete,
-  clearOnClick,
   editSavedQuery,
   initialResults,
   initialColumns,
@@ -40,7 +38,6 @@ const SavedQuery = ({
   uid: string;
   onDelete?: () => void;
   isSavedToPage?: boolean;
-  clearOnClick: (s: string) => void;
   editSavedQuery: (s: string) => void;
   initialResults?: Result[];
   initialColumns?: Column[];
@@ -53,6 +50,9 @@ const SavedQuery = ({
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [error, setError] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const toggleExport = (isOpen: boolean) => {
+    setIsExportOpen(isOpen);
+  };
   const resultsInViewRef = useRef<Result[]>([]);
   const refresh = useCallback(() => {
     const args = parseQuery(uid);
@@ -77,14 +77,9 @@ const SavedQuery = ({
         margin: 4,
       }}
     >
-      <Export
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
-        results={results.map(({ id, ...a }) => a)}
-        parentUid={uid}
-        clearOnClick={clearOnClick}
-      />
       <ResultsView
+        exportIsOpen={isExportOpen}
+        toggleExport={toggleExport}
         parentUid={uid}
         onRefresh={refresh}
         header={
@@ -237,12 +232,10 @@ type SavedQuery = {
 const SavedQueriesContainer = ({
   savedQueries,
   setSavedQueries,
-  clearOnClick,
   setQuery,
 }: {
   savedQueries: SavedQuery[];
   setSavedQueries: (s: SavedQuery[]) => void;
-  clearOnClick: (s: string) => void;
   setQuery: (s: string) => void;
 }) => {
   return (
@@ -253,7 +246,6 @@ const SavedQueriesContainer = ({
         <SavedQuery
           uid={sq.uid}
           key={sq.uid}
-          clearOnClick={clearOnClick}
           onDelete={() => {
             setSavedQueries(savedQueries.filter((s) => s !== sq));
             deleteBlock(sq.uid);
@@ -268,7 +260,6 @@ const SavedQueriesContainer = ({
 };
 
 const QueryDrawerContent = ({
-  clearOnClick,
   blockUid,
   onloadArgs,
   ...exportRenderProps
@@ -351,7 +342,6 @@ const QueryDrawerContent = ({
           <SavedQueriesContainer
             savedQueries={savedQueries}
             setSavedQueries={setSavedQueries}
-            clearOnClick={clearOnClick}
             setQuery={setQuery}
             {...exportRenderProps}
           />
