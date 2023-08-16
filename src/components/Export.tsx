@@ -26,14 +26,14 @@ import apiPost from "roamjs-components/util/apiPost";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import extensionAPI from "roamjs-components/util/extensionApiContext";
-import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import getBlockProps from "../utils/getBlockProps";
-import { createShapeId } from "@tldraw/tlschema";
-import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import findDiscourseNode from "../utils/findDiscourseNode";
+import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
+import { createShapeId } from "@tldraw/tlschema";
+import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -88,7 +88,6 @@ const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen,
   results = [],
-  parentUid,
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -129,12 +128,12 @@ const ExportDialog: ExportDialogComponent = ({
   const currentPageTitle = getPageTitleByPageUid(currentPageUid);
   const [selectedPageTitle, setSelectedPageTitle] = useState(currentPageTitle);
   const [selectedPageUid, setSelectedPageUid] = useState(currentPageUid);
+  const isCanvasPage = checkForCanvasPage(selectedPageTitle);
 
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
     setSelectedPageUid(getPageUidByPageTitle(title));
   };
-  const isCanvasPage = checkForCanvasPage(selectedPageTitle);
 
   const addToSelectedCanvas = () => {
     const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
@@ -157,7 +156,6 @@ const ExportDialog: ExportDialogComponent = ({
 
     // TEMP height calc
     // should be using app.textmeasure.MeasureText() like in TldrawCanvas
-
     const calculateHeightAndWidth = (text: String) => {
       const maxWidthNum = 400;
       const paddingNum = 16;
@@ -167,7 +165,6 @@ const ExportDialog: ExportDialogComponent = ({
       const totalCharCount = text.length;
       const totalLines = Math.ceil(totalCharCount / charsPerLine);
       const calculatedHeight = totalLines * (fontSize + 2) + paddingNum * 2;
-
       return { w: maxWidthNum, h: calculatedHeight };
     };
 
@@ -215,7 +212,6 @@ const ExportDialog: ExportDialogComponent = ({
   };
 
   const addToSelectedPage = () => {
-    // TODO: check if page or block
     if (typeof results === "object") {
       results.map((r) => {
         const isPage = !!getPageTitleByPageUid(r.uid);
@@ -377,6 +373,7 @@ const ExportDialog: ExportDialogComponent = ({
       </div>
     </>
   );
+
   const SendToPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
