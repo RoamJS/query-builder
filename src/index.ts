@@ -47,7 +47,7 @@ const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
 
-const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
+export const DEFAULT_CANVAS_PAGE_FORMAT = "Canvas/*";
 
 export default runExtension(async (onloadArgs) => {
   const { extensionAPI } = onloadArgs;
@@ -175,6 +175,11 @@ svg.rs-svg-container {
   padding: 16px;
   max-height: 240px;
   overflow-y: scroll;
+}
+
+.roamjs-export-dialog-body .bp3-tab-list {
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(16,22,26,0.15);
 }`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =

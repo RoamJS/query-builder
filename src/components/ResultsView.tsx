@@ -221,6 +221,8 @@ type ResultsViewComponent = (props: {
   globalFiltersData?: Record<string, Filters>;
   globalPageSize?: number;
   isEditBlock?: boolean;
+  exportIsOpen?: boolean;
+  toggleExport?: (isOpen: boolean) => void;
   // @deprecated - should be inferred from the query or layout
   onResultsInViewChange?: (r: Result[]) => void;
 }) => JSX.Element;
@@ -239,6 +241,8 @@ const ResultsView: ResultsViewComponent = ({
   onRefresh,
   onResultsInViewChange,
   isEditBlock,
+  exportIsOpen = false,
+  toggleExport,
 }) => {
   const extensionAPI = useExtensionAPI();
   const settings = useMemo(
@@ -289,6 +293,15 @@ const ResultsView: ResultsViewComponent = ({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [isEditViews, setIsEditViews] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  useEffect(() => {
+    setIsExportOpen(exportIsOpen);
+  }, [exportIsOpen]);
+  const handleCloseExport = () => {
+    if (toggleExport) {
+      toggleExport(false);
+    }
+    setIsExportOpen(false);
+  };
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
@@ -376,8 +389,9 @@ const ResultsView: ResultsViewComponent = ({
       )}
       <Export
         isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
+        onClose={handleCloseExport}
         results={allProcessedResults}
+        parentUid={parentUid}
       />
       <div className="relative">
         <span
@@ -751,7 +765,7 @@ const ResultsView: ResultsViewComponent = ({
                   />
                   <MenuItem
                     icon={"export"}
-                    text={"Export"}
+                    text={"Export/Send To"}
                     onClick={async () => {
                       if (!results.length) {
                         onRefresh();
