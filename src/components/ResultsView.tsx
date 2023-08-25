@@ -513,7 +513,7 @@ const ResultsView: ResultsViewComponent = ({
                   {settingsById[layoutMode].map((s) => {
                     const options =
                       s.options === "columns"
-                        ? columns.slice(1).map((c) => c.key)
+                        ? columns.map((c) => c.key)
                         : s.options.slice();
                     return (
                       <Label key={s.key}>

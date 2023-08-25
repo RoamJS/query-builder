@@ -10,6 +10,7 @@ import { z } from "zod";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import predefinedSelections from "../utils/predefinedSelections";
 import toCellValue from "../utils/toCellValue";
+import extractTag from "roamjs-components/util/extractTag";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -156,7 +157,15 @@ const Kanban = ({
       prev[key] += 1;
       return prev;
     }, {} as Record<string, number>);
-    return Object.entries(valueCounts)
+    const cleanedValueCounts = Object.entries(valueCounts).reduce(
+      (prev, [key, value]) => {
+        const cleanedKey = extractTag(key);
+        prev[cleanedKey] = value;
+        return prev;
+      },
+      {} as Record<string, number>
+    );
+    return Object.entries(cleanedValueCounts)
       .sort((a, b) => b[1] - a[1])
       .map((c) => c[0])
       .slice(0, 3);
@@ -191,11 +200,12 @@ const Kanban = ({
   const cards = React.useMemo(() => {
     const cards: Record<string, Result[]> = {};
     data.forEach((d) => {
-      const column = toCellValue({
-        value: d[columnKey],
-        defaultValue: `No ${columnKey}`,
-        uid: d[`${columnKey}-uid`]?.toString(),
-      });
+      const column =
+        toCellValue({
+          value: d[columnKey],
+          defaultValue: `No ${columnKey}`,
+          uid: d[`${columnKey}-uid`]?.toString(),
+        }) || `No ${columnKey}`;
       if (!cards[column]) {
         cards[column] = [];
       }
