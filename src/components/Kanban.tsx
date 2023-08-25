@@ -1,7 +1,7 @@
 // Design inspiration from Trello
 import React from "react";
 import { Column, Result } from "../utils/types";
-import { Button, Icon, InputGroup } from "@blueprintjs/core";
+import { Button, Icon, InputGroup, Tooltip } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -288,53 +288,55 @@ const Kanban = ({
     [setPrioritization, cards, containerRef, byUid, columnKey, parentUid]
   );
   return (
-    <div
-      className="gap-4 items-start p-4 relative roamjs-kanban-container overflow-x-scroll grid"
-      ref={containerRef}
-    >
-      {columns.map((col) => {
-        return (
-          <div
-            key={col}
-            className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0 roamjs-kanban-column"
-            data-column={col}
-            style={{ display: "flex" }}
-          >
+    <div className="flex w-full p-4">
+      <div
+        className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll grid w-full"
+        ref={containerRef}
+      >
+        {columns.map((col) => {
+          return (
             <div
-              className="justify-between items-center mb-4"
+              key={col}
+              className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0 roamjs-kanban-column"
+              data-column={col}
               style={{ display: "flex" }}
             >
-              <span className="font-bold">{col}</span>
-              <Button
-                icon={"trash"}
-                minimal
-                onClick={() => {
-                  const values = columns.filter((c) => c !== col);
-                  setInputSettings({
-                    blockUid: layout.uid as string,
-                    key: "columns",
-                    values,
-                  });
-                  setColumns(values);
-                }}
-              />
+              <div
+                className="justify-between items-center mb-4"
+                style={{ display: "flex" }}
+              >
+                <span className="font-bold">{col}</span>
+                <Button
+                  icon={"trash"}
+                  minimal
+                  onClick={() => {
+                    const values = columns.filter((c) => c !== col);
+                    setInputSettings({
+                      blockUid: layout.uid as string,
+                      key: "columns",
+                      values,
+                    });
+                    setColumns(values);
+                  }}
+                />
+              </div>
+              {(cards[col] || [])?.map((d) => (
+                <KanbanCard
+                  key={d.uid}
+                  result={d}
+                  // we use $ to prefix these props to avoid collisions with the result object
+                  $priority={prioritization[d.uid]}
+                  $reprioritize={reprioritize}
+                  $getColumnElement={getColumnElement}
+                  $displayKey={displayKey}
+                />
+              ))}
             </div>
-            {(cards[col] || [])?.map((d) => (
-              <KanbanCard
-                key={d.uid}
-                result={d}
-                // we use $ to prefix these props to avoid collisions with the result object
-                $priority={prioritization[d.uid]}
-                $reprioritize={reprioritize}
-                $getColumnElement={getColumnElement}
-                $displayKey={displayKey}
-              />
-            ))}
-          </div>
-        );
-      })}
-      <div className="w-48 flex-shrink-0">
-        {isAdding ? (
+          );
+        })}
+      </div>
+      {isAdding ? (
+        <div className="w-48 ml-2">
           <div className="rounded-2xl p-4 bg-gray-100">
             <AutocompleteInput
               placeholder="Enter column title..."
@@ -370,15 +372,19 @@ const Kanban = ({
               />
             </div>
           </div>
-        ) : (
-          <div
-            className="rounded-2xl bg-opacity-50 p-8 cursor-pointer bg-gray-100 hover:bg-opacity-25"
-            onClick={() => setIsAdding(true)}
-          >
-            <Icon icon={"plus"} /> Add another column
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="w-fit ml-2">
+          <Tooltip content="Add another column">
+            <div
+              className="rounded-2xl p-4 cursor-pointer bg-gray-100 hover:bg-opacity-25"
+              onClick={() => setIsAdding(true)}
+            >
+              <Icon icon={"plus"} />
+            </div>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 };
