@@ -11,6 +11,8 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import predefinedSelections from "../utils/predefinedSelections";
 import toCellValue from "../utils/toCellValue";
 import extractTag from "roamjs-components/util/extractTag";
+import createBlock from "roamjs-components/writes/createBlock";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -245,7 +247,7 @@ const Kanban = ({
     },
     [containerRef]
   );
-  const reprioritize = React.useCallback<Reprioritize>(
+  const reprioritizeAndUpdateBlock = React.useCallback<Reprioritize>(
     ({ uid, x, y }) => {
       if (!containerRef.current) return;
       const newColumn = getColumnElement(x);
@@ -273,6 +275,7 @@ const Kanban = ({
       const priority = (topPriority + bottomPriority) / 2;
       setPrioritization((p) => ({ ...p, [uid]: priority }));
 
+      // Update block
       const result = byUid[uid];
       if (!result) return;
       const columnKeySelection = resultKeys.find(
@@ -284,11 +287,33 @@ const Kanban = ({
       );
       if (!predefinedSelection?.update) return;
       const { [`${columnKey}-uid`]: columnUid } = result;
+      const previousValue = toCellValue({
+        value: result[columnKey],
+        uid: columnUid?.toString(),
+      });
+      const isRemoveValue = column === `No ${columnKeySelection}`;
+      if (isRemoveValue && !previousValue) return;
       if (typeof columnUid !== "string") return;
+      if (!columnUid) {
+        createBlock({
+          parentUid: result.uid,
+          node: {
+            text: `${columnKeySelection}:: ${column}`,
+          },
+        }).then(onQuery);
+        return;
+      }
+      if (!previousValue) {
+        updateBlock({
+          uid: columnUid,
+          text: `${columnKeySelection}:: ${column}`,
+        }).then(onQuery);
+        return;
+      }
       predefinedSelection
         .update({
           uid: columnUid,
-          value: column,
+          value: isRemoveValue ? "" : column,
           selection: columnKeySelection,
           parentUid,
           result,
@@ -297,105 +322,128 @@ const Kanban = ({
     },
     [setPrioritization, cards, containerRef, byUid, columnKey, parentUid]
   );
+  const showLegend = React.useMemo(
+    () => (Array.isArray(layout.legend) ? layout.legend[0] : layout.legend),
+    [layout.legend]
+  );
   return (
-    <div className="flex w-full p-4">
-      <div
-        className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll grid w-full"
-        ref={containerRef}
-      >
-        {columns.map((col) => {
-          return (
-            <div
-              key={col}
-              className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0 roamjs-kanban-column"
-              data-column={col}
-              style={{ display: "flex" }}
-            >
+    <>
+      {showLegend === "Yes" && (
+        <div
+          className="p-4 w-full"
+          style={{
+            background: "#eeeeee80",
+          }}
+        >
+          <div className="inline-block mr-4">
+            <span className="font-bold">Group By:</span>
+            <span> {columnKey}</span>
+          </div>
+          <div className="inline-block">
+            <span className="font-bold">Display:</span>
+            <span> {displayKey}</span>
+          </div>
+        </div>
+      )}
+      <div className="flex w-full p-4">
+        <div
+          className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll grid w-full"
+          ref={containerRef}
+        >
+          {columns.map((col) => {
+            return (
               <div
-                className="justify-between items-center mb-4"
+                key={col}
+                className="p-4 rounded-2xl flex-col gap-2 bg-gray-100 w-48 flex-shrink-0 roamjs-kanban-column"
+                data-column={col}
                 style={{ display: "flex" }}
               >
-                <span className="font-bold">{col}</span>
+                <div
+                  className="justify-between items-center mb-4"
+                  style={{ display: "flex" }}
+                >
+                  <span className="font-bold">{col}</span>
+                  <Button
+                    icon={"trash"}
+                    minimal
+                    onClick={() => {
+                      const values = columns.filter((c) => c !== col);
+                      setInputSettings({
+                        blockUid: layout.uid as string,
+                        key: "columns",
+                        values,
+                      });
+                      setColumns(values);
+                    }}
+                  />
+                </div>
+                {(cards[col] || [])?.map((d) => (
+                  <KanbanCard
+                    key={d.uid}
+                    result={d}
+                    // we use $ to prefix these props to avoid collisions with the result object
+                    $priority={prioritization[d.uid]}
+                    $reprioritize={reprioritizeAndUpdateBlock}
+                    $getColumnElement={getColumnElement}
+                    $displayKey={displayKey}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        {isAdding ? (
+          <div className="w-48 ml-2">
+            <div className="rounded-2xl p-4 bg-gray-100">
+              <AutocompleteInput
+                placeholder="Enter column title..."
+                value={newColumn}
+                setValue={setNewColumn}
+                options={potentialColumns}
+              />
+              <div
+                className="justify-between items-center mt-2"
+                style={{ display: "flex" }}
+              >
                 <Button
-                  icon={"trash"}
-                  minimal
+                  intent="primary"
+                  text="Add column"
+                  className="text-xs"
+                  disabled={!newColumn}
                   onClick={() => {
-                    const values = columns.filter((c) => c !== col);
+                    const values = [...columns, newColumn];
                     setInputSettings({
                       blockUid: layout.uid as string,
                       key: "columns",
                       values,
                     });
                     setColumns(values);
+                    setIsAdding(false);
+                    setNewColumn("");
                   }}
                 />
-              </div>
-              {(cards[col] || [])?.map((d) => (
-                <KanbanCard
-                  key={d.uid}
-                  result={d}
-                  // we use $ to prefix these props to avoid collisions with the result object
-                  $priority={prioritization[d.uid]}
-                  $reprioritize={reprioritize}
-                  $getColumnElement={getColumnElement}
-                  $displayKey={displayKey}
+                <Button
+                  icon={"cross"}
+                  minimal
+                  onClick={() => setIsAdding(false)}
                 />
-              ))}
-            </div>
-          );
-        })}
-      </div>
-      {isAdding ? (
-        <div className="w-48 ml-2">
-          <div className="rounded-2xl p-4 bg-gray-100">
-            <AutocompleteInput
-              placeholder="Enter column title..."
-              value={newColumn}
-              setValue={setNewColumn}
-              options={potentialColumns}
-            />
-            <div
-              className="justify-between items-center mt-2"
-              style={{ display: "flex" }}
-            >
-              <Button
-                intent="primary"
-                text="Add column"
-                className="text-xs"
-                disabled={!newColumn}
-                onClick={() => {
-                  const values = [...columns, newColumn];
-                  setInputSettings({
-                    blockUid: layout.uid as string,
-                    key: "columns",
-                    values,
-                  });
-                  setColumns(values);
-                  setIsAdding(false);
-                  setNewColumn("");
-                }}
-              />
-              <Button
-                icon={"cross"}
-                minimal
-                onClick={() => setIsAdding(false)}
-              />
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="w-fit ml-2">
-          <Tooltip content="Add another column">
-            <div
-              className="rounded-2xl p-4 cursor-pointer bg-gray-100 hover:bg-opacity-25"
-              onClick={() => setIsAdding(true)}
-            >
-              <Icon icon={"plus"} />
-            </div>
-          </Tooltip>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className="w-fit ml-2">
+            <Tooltip content="Add another column">
+              <div
+                className="rounded-2xl p-4 cursor-pointer bg-gray-100 hover:bg-opacity-25"
+                onClick={() => setIsAdding(true)}
+              >
+                <Icon icon={"plus"} />
+              </div>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
