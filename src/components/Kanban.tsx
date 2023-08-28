@@ -129,6 +129,7 @@ const Kanban = ({
     });
     return defaultColumnKey;
   }, [layout.key]);
+  const DEFAULT_FORMAT = `No ${columnKey}`;
   const displayKey = React.useMemo(() => {
     const configuredDisplay = Array.isArray(layout.display)
       ? layout.display[0]
@@ -152,20 +153,18 @@ const Kanban = ({
       : undefined;
     if (configuredCols) return configuredCols;
     const valueCounts = data.reduce((prev, d) => {
-      const key = d[columnKey]?.toString() || `No ${columnKey}`;
+      const key = d[columnKey]?.toString() || DEFAULT_FORMAT;
       if (!prev[key]) {
         prev[key] = 0;
       }
       prev[key] += 1;
       return prev;
     }, {} as Record<string, number>);
-    const cleanedValueCounts = Object.entries(valueCounts).reduce(
-      (prev, [key, value]) => {
-        const cleanedKey = extractTag(key);
-        prev[cleanedKey] = value;
-        return prev;
-      },
-      {} as Record<string, number>
+    const cleanedValueCounts = Object.fromEntries(
+      Object.entries(valueCounts).map(([key, value]) => [
+        extractTag(key),
+        value,
+      ])
     );
     return Object.entries(cleanedValueCounts)
       .sort((a, b) => b[1] - a[1])
@@ -205,9 +204,9 @@ const Kanban = ({
       const column =
         toCellValue({
           value: d[columnKey],
-          defaultValue: `No ${columnKey}`,
+          defaultValue: DEFAULT_FORMAT,
           uid: d[`${columnKey}-uid`]?.toString(),
-        }) || `No ${columnKey}`;
+        }) || DEFAULT_FORMAT;
       if (!cards[column]) {
         cards[column] = [];
       }
@@ -291,25 +290,9 @@ const Kanban = ({
         value: result[columnKey],
         uid: columnUid?.toString(),
       });
-      const isRemoveValue = column === `No ${columnKeySelection}`;
+      const isRemoveValue = column === DEFAULT_FORMAT;
       if (isRemoveValue && !previousValue) return;
       if (typeof columnUid !== "string") return;
-      if (!columnUid) {
-        createBlock({
-          parentUid: result.uid,
-          node: {
-            text: `${columnKeySelection}:: ${column}`,
-          },
-        }).then(onQuery);
-        return;
-      }
-      if (!previousValue) {
-        updateBlock({
-          uid: columnUid,
-          text: `${columnKeySelection}:: ${column}`,
-        }).then(onQuery);
-        return;
-      }
       predefinedSelection
         .update({
           uid: columnUid,
@@ -317,6 +300,7 @@ const Kanban = ({
           selection: columnKeySelection,
           parentUid,
           result,
+          previousValue,
         })
         .then(onQuery);
     },
