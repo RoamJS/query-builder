@@ -201,6 +201,7 @@ const SUPPORTED_LAYOUTS = [
     settings: [
       { key: "key", label: "Group By", options: "columns" },
       { key: "display", label: "Display", options: "columns" },
+      { key: "legend", label: "Show Legend", options: ["No", "Yes"] },
     ],
   },
 ] as const;
@@ -513,7 +514,7 @@ const ResultsView: ResultsViewComponent = ({
                   {settingsById[layoutMode].map((s) => {
                     const options =
                       s.options === "columns"
-                        ? columns.slice(1).map((c) => c.key)
+                        ? columns.map((c) => c.key)
                         : s.options.slice();
                     return (
                       <Label key={s.key}>

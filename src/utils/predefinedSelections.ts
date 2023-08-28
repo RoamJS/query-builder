@@ -15,6 +15,7 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import { IconNames } from "@blueprintjs/icons";
 import parseQuery from "./parseQuery";
 import toCellValue from "./toCellValue";
+import createBlock from "roamjs-components/writes/createBlock";
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
@@ -182,6 +183,7 @@ export type PredefinedSelection = {
     result: QueryResult;
     // TODO - we wouldn't need this if `NODE_TEST` was separated out and not so overloaded.
     selection: string;
+    previousValue?: string;
   }) => Promise<void>;
   suggestions?: SelectionSuggestion[];
 };
@@ -519,15 +521,26 @@ const predefinedSelections: PredefinedSelection[] = [
     mapper: (r, key) => {
       return getBlockAttribute(key, r);
     },
-    update: async ({ uid, value, result, selection }) => {
+    update: async ({ uid, value, result, selection, previousValue }) => {
       const blockText = getTextByBlockUid(uid);
       const oldValue = toCellValue({
         value: result[selection],
         uid: result[`${selection}-uid`],
       });
+      if (!uid) {
+        createBlock({
+          parentUid: result.uid,
+          node: {
+            text: `${selection}:: ${value}`,
+          },
+        });
+        return;
+      }
       await updateBlock({
         uid,
-        text: blockText.replace(oldValue, value),
+        text: !previousValue
+          ? `${selection}:: ${value}`
+          : blockText.replace(oldValue, value),
       });
     },
     suggestions: [], // ATTR_SUGGESTIONS,
