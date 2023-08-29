@@ -128,6 +128,14 @@ Each column is also filterable. The filter works just like the page and referenc
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FG7d1TrIzNq.png?alt=media&token=8df90fc5-5e8d-4347-9721-bd067ac7616a)
 
+### Search
+
+Enable search by clicking on the Menu button, then Search.
+
+This will allow you to search across all columns, case-insensitive.
+
+https://github.com/RoamJS/query-builder/assets/3792666/6499147d-4d03-4767-b7e7-d1ea925697b5
+
 ### View Type<!-- omit in toc -->
 
 Each column also has a view type. Choosing a view type will change how the cell is displayed in the table.

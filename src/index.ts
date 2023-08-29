@@ -57,7 +57,7 @@ export default runExtension(async (onloadArgs) => {
 
 .roamjs-item-dirty, 
 .roamjs-item-dirty.bp3-menu-item .bp3-icon, 
-.roamjs-item-dirty.bpt-button .bp3-icon {
+.roamjs-item-dirty.bp3-button .bp3-icon {
   color: #a82a2a;
 }
 
