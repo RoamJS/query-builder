@@ -25,6 +25,8 @@ import {
 } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
+import toFlexRegex from "roamjs-components/util/toFlexRegex";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -93,24 +95,44 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
           )
           .then((pageUid) => {
             const nodeTree = getFullTreeByParentUid(nodeUid).children;
+            const useSmartBlocks = nodeTree.some((t) =>
+              toFlexRegex("use smartblocks").test(t.text)
+            );
             const nodes = getSubTree({
               tree: nodeTree,
               key: "template",
             }).children;
+            const templateUid = nodeTree.find(
+              (t) => t.text === "Template"
+            )?.uid;
             const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
               n.map(({ uid, children, ...c }) => ({
                 ...c,
                 children: stripUid(children),
               }));
-            return Promise.all(
-              stripUid(nodes).map(({ uid, ...node }, order) =>
-                createBlock({
-                  node,
-                  order,
-                  parentUid: pageUid,
-                })
-              )
-            )
+
+            return (async () => {
+              useSmartBlocks && !window.roamjs?.extension?.smartblocks
+                ? renderToast({
+                    content: "SmartBlocks extension not enabled",
+                    id: "smartblocks-extension-disabled",
+                    intent: "warning",
+                  })
+                : useSmartBlocks
+                ? window.roamjs.extension.smartblocks?.triggerSmartblock({
+                    srcUid: templateUid,
+                    targetUid: pageUid,
+                  })
+                : Promise.all(
+                    stripUid(nodes).map(({ uid, ...node }, order) =>
+                      createBlock({
+                        node,
+                        order,
+                        parentUid: pageUid,
+                      })
+                    )
+                  );
+            })()
               .then(() => openBlockInSidebar(pageUid))
               .then(() => {
                 setTimeout(() => {
