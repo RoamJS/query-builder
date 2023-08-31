@@ -34,7 +34,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
         uid: window.roamAlphaAPI.util.generateUID(),
       },
     ],
-    canvasSettings: {},
+    canvasSettings: { color: "#000000" },
     backedBy: "default",
   },
   {
@@ -51,7 +51,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
         uid: window.roamAlphaAPI.util.generateUID(),
       },
     ],
-    canvasSettings: {},
+    canvasSettings: { color: "#505050" },
     backedBy: "default",
   },
 ];
@@ -72,7 +72,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
         specification: !!getSubTree({ tree: specTree, key: "enabled" }).uid
           ? parseQuery(spec.uid).conditions
           : [],
-          backedBy: "user",
+        backedBy: "user",
         canvasSettings: Object.fromEntries(
           getSubTree({ tree: children, key: "canvas" }).children.map(
             (c) => [c.text, c.children[0]?.text || ""] as const
