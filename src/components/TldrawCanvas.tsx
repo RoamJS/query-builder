@@ -450,7 +450,7 @@ const COLOR_PALETTE: Record<string, string> = {
   white: "#ffffff",
   yellow: "#ffc078",
 };
-const COLOR_ARRAY = Array.from(TL_COLOR_TYPES);
+const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 
