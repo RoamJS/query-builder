@@ -114,7 +114,8 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
             return (async () => {
               useSmartBlocks && !window.roamjs?.extension?.smartblocks
                 ? renderToast({
-                    content: "SmartBlocks extension not enabled",
+                    content:
+                      "This template requires SmartBlocks. Enable SmartBlocks in Roam Depot to use this template.",
                     id: "smartblocks-extension-disabled",
                     intent: "warning",
                   })
