@@ -391,6 +391,7 @@ const QuerySelection = ({
         style={{
           flexGrow: 1,
           minWidth: 240,
+          paddingRight: 8,
         }}
       >
         <AutocompleteInput
@@ -774,12 +775,13 @@ const QueryEditor: QueryEditorComponent = ({
               !!disabledMessage && setShowDisabledMessage(true)
             }
             onMouseLeave={() => setShowDisabledMessage(false)}
+            onFocus={() => !!disabledMessage && setShowDisabledMessage(true)}
+            onBlur={() => setShowDisabledMessage(false)}
             text={"Query"}
             onClick={disabledMessage ? undefined : onQuery}
             className={disabledMessage ? "bp3-disabled" : ""}
             style={{
               maxHeight: 32,
-              outline: disabledMessage ? "none" : "inherit",
             }}
             intent={"primary"}
             rightIcon={"search-around"}
@@ -798,19 +800,25 @@ const QueryEditor: QueryEditorComponent = ({
                 node: {
                   text: "clause",
                 },
-              }).then((uid) =>
+              }).then((uid) => {
                 setConditions([
                   ...conditions,
                   {
                     uid,
-                    source: "",
+                    source: "node",
                     relation: "",
                     target: "",
                     not: false,
                     type: "clause",
                   },
-                ])
-              );
+                ]);
+                setInputSetting({
+                  blockUid: uid,
+                  key: "source",
+                  value: "node",
+                });
+                document.getElementById(`${uid}-relation`)?.focus();
+              });
             }}
           />
         </span>
@@ -827,9 +835,10 @@ const QueryEditor: QueryEditorComponent = ({
                 node: {
                   text: ``,
                 },
-              }).then((uid) =>
-                setSelections([...selections, { uid, text: "", label: "" }])
-              );
+              }).then((uid) => {
+                setSelections([...selections, { uid, text: "", label: "" }]);
+                document.getElementById(`${uid}-as`)?.focus();
+              });
             }}
           />
         </span>

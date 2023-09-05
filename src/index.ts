@@ -70,7 +70,8 @@ export default runExtension(async (onloadArgs) => {
 }
 
 .roamjs-query-condition-relation,
-.roamjs-query-return-node {
+.roamjs-query-return-node,
+.roamjs-query-condition-target {
   padding-right: 8px;
 }
 
