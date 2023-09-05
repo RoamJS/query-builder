@@ -25,6 +25,7 @@ import {
 } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -102,15 +103,43 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
                 ...c,
                 children: stripUid(children),
               }));
-            return Promise.all(
-              stripUid(nodes).map(({ uid, ...node }, order) =>
-                createBlock({
-                  node,
-                  order,
-                  parentUid: pageUid,
-                })
-              )
-            )
+            const createBlocksFromTemplate = async () => {
+              await Promise.all(
+                stripUid(nodes).map(({ uid, ...node }, order) =>
+                  createBlock({
+                    node,
+                    order,
+                    parentUid: pageUid,
+                  })
+                )
+              );
+            };
+            const useSmartBlocks =
+              nodes.filter((obj) => obj.text.includes("<%")).length > 0;
+            const templateUid = nodeTree.find(
+              (t) => t.text === "Template"
+            )?.uid;
+            return (async () => {
+              if (useSmartBlocks && !window.roamjs?.extension?.smartblocks) {
+                renderToast({
+                  content:
+                    "This template requires SmartBlocks. Enable SmartBlocks in Roam Depot to use this template.",
+                  id: "smartblocks-extension-disabled",
+                  intent: "warning",
+                });
+                await createBlocksFromTemplate();
+              } else if (
+                useSmartBlocks &&
+                window.roamjs?.extension?.smartblocks
+              ) {
+                window.roamjs.extension.smartblocks?.triggerSmartblock({
+                  srcUid: templateUid,
+                  targetUid: pageUid,
+                });
+              } else {
+                await createBlocksFromTemplate();
+              }
+            })()
               .then(() => openBlockInSidebar(pageUid))
               .then(() => {
                 setTimeout(() => {
