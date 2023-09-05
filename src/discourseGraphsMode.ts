@@ -205,12 +205,6 @@ export const renderDiscourseNodeTypeConfigPage = ({
             // @ts-ignore
             Panel: BlocksPanel,
           },
-          {
-            title: "Use SmartBlocks",
-            description: `Allow for SmartBlock workflows in the Template.`,
-            // @ts-ignore
-            Panel: FlagPanel,
-          },
           // @ts-ignore
           {
             title: "Attributes",

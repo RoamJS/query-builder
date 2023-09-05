@@ -25,7 +25,6 @@ import {
 } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
-import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { render as renderToast } from "roamjs-components/components/Toast";
 
 type Props = {
@@ -95,44 +94,51 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
           )
           .then((pageUid) => {
             const nodeTree = getFullTreeByParentUid(nodeUid).children;
-            const useSmartBlocks = nodeTree.some((t) =>
-              toFlexRegex("use smartblocks").test(t.text)
-            );
             const nodes = getSubTree({
               tree: nodeTree,
               key: "template",
             }).children;
-            const templateUid = nodeTree.find(
-              (t) => t.text === "Template"
-            )?.uid;
             const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
               n.map(({ uid, children, ...c }) => ({
                 ...c,
                 children: stripUid(children),
               }));
-
+            const createBlocksFromTemplate = async () => {
+              await Promise.all(
+                stripUid(nodes).map(({ uid, ...node }, order) =>
+                  createBlock({
+                    node,
+                    order,
+                    parentUid: pageUid,
+                  })
+                )
+              );
+            };
+            const useSmartBlocks =
+              nodes.filter((obj) => obj.text.includes("<%")).length > 0;
+            const templateUid = nodeTree.find(
+              (t) => t.text === "Template"
+            )?.uid;
             return (async () => {
-              useSmartBlocks && !window.roamjs?.extension?.smartblocks
-                ? renderToast({
-                    content:
-                      "This template requires SmartBlocks. Enable SmartBlocks in Roam Depot to use this template.",
-                    id: "smartblocks-extension-disabled",
-                    intent: "warning",
-                  })
-                : useSmartBlocks
-                ? window.roamjs.extension.smartblocks?.triggerSmartblock({
-                    srcUid: templateUid,
-                    targetUid: pageUid,
-                  })
-                : Promise.all(
-                    stripUid(nodes).map(({ uid, ...node }, order) =>
-                      createBlock({
-                        node,
-                        order,
-                        parentUid: pageUid,
-                      })
-                    )
-                  );
+              if (useSmartBlocks && !window.roamjs?.extension?.smartblocks) {
+                renderToast({
+                  content:
+                    "This template requires SmartBlocks. Enable SmartBlocks in Roam Depot to use this template.",
+                  id: "smartblocks-extension-disabled",
+                  intent: "warning",
+                });
+                await createBlocksFromTemplate();
+              } else if (
+                useSmartBlocks &&
+                window.roamjs?.extension?.smartblocks
+              ) {
+                window.roamjs.extension.smartblocks?.triggerSmartblock({
+                  srcUid: templateUid,
+                  targetUid: pageUid,
+                });
+              } else {
+                await createBlocksFromTemplate();
+              }
             })()
               .then(() => openBlockInSidebar(pageUid))
               .then(() => {
