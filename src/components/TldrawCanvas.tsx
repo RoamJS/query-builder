@@ -1340,6 +1340,53 @@ const TldrawCanvas = ({ title }: Props) => {
       );
     };
   }, [appRef, allNodes]);
+
+  // Menu Overrides
+  const addFullScreenToggle = (mainMenu: MenuGroup) => {
+    const viewSubMenu = mainMenu.children.find(
+      (m): m is SubMenu => m.type === "submenu" && m.id === "view"
+    );
+    const viewActionsGroup = viewSubMenu?.children.find(
+      (m): m is MenuGroup => m.type === "group" && m.id === "view-actions"
+    );
+    if (!viewActionsGroup) return;
+    viewActionsGroup.children.push({
+      type: "item",
+      readonlyOk: true,
+      id: "toggle-full-screen",
+      disabled: false,
+      checked: maximized,
+      actionItem: {
+        id: "toggle-full-screen",
+        label: "action.toggle-full-screen" as TLTranslationKey,
+        kbd: "!3",
+        onSelect: () => {
+          setMaximized(!maximized);
+        },
+        readonlyOk: true,
+      },
+    });
+  };
+  const addCopyAsPngShortcut = (mainMenu: MenuGroup) => {
+    const editSubMenu = mainMenu.children.find(
+      (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
+    );
+    const conversionsGroup = editSubMenu?.children.find(
+      (m): m is MenuGroup => m.type === "group" && m.id === "conversions"
+    );
+    const copyAsSubMenu = conversionsGroup?.children.find(
+      (m): m is SubMenu => m.type === "submenu" && m.id === "copy-as"
+    );
+    const copyAsGroup = copyAsSubMenu?.children.find(
+      (m): m is MenuGroup => m.type === "group" && m.id === "copy-as-group"
+    );
+    const copyAsPngItem = copyAsGroup?.children.find(
+      (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
+    );
+    if (!copyAsPngItem) return;
+    copyAsPngItem.actionItem.kbd = "$!X";
+  };
+
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -1574,63 +1621,8 @@ const TldrawCanvas = ({ title }: Props) => {
                 (m): m is MenuGroup => m.type === "group" && m.id === "menu"
               );
               if (mainMenu) {
-                const viewSubMenu = mainMenu.children.find(
-                  (m): m is SubMenu => m.type === "submenu" && m.id === "view"
-                );
-                if (viewSubMenu) {
-                  const viewActionsGroup = viewSubMenu.children.find(
-                    (m): m is MenuGroup =>
-                      m.type === "group" && m.id === "view-actions"
-                  );
-                  if (viewActionsGroup) {
-                    viewActionsGroup.children.push({
-                      type: "item",
-                      readonlyOk: true,
-                      id: "toggle-full-screen",
-                      disabled: false,
-                      checked: maximized,
-                      actionItem: {
-                        id: "toggle-full-screen",
-                        label: "action.toggle-full-screen" as TLTranslationKey,
-                        kbd: "!3",
-                        onSelect: () => {
-                          setMaximized(!maximized);
-                        },
-                        readonlyOk: true,
-                      },
-                    });
-                  }
-                }
-                const editSubMenu = mainMenu.children.find(
-                  (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
-                );
-                if (editSubMenu) {
-                  const conversionsGroup = editSubMenu.children.find(
-                    (m): m is MenuGroup =>
-                      m.type === "group" && m.id === "conversions"
-                  );
-                  if (conversionsGroup) {
-                    const copyAsSubMenu = conversionsGroup.children.find(
-                      (m): m is MenuGroup =>
-                        m.type === "submenu" && m.id === "copy-as"
-                    );
-                    if (copyAsSubMenu) {
-                      const copyAsGroup = copyAsSubMenu.children.find(
-                        (m): m is MenuGroup =>
-                          m.type === "group" && m.id === "copy-as-group"
-                      );
-                      if (copyAsGroup) {
-                        const copyAsPngItem = copyAsGroup.children.find(
-                          (m): m is MenuItem =>
-                            m.type === "item" && m.id === "copy-as-png"
-                        );
-                        if (copyAsPngItem) {
-                          copyAsPngItem.actionItem.kbd = "$!X";
-                        }
-                      }
-                    }
-                  }
-                }
+                addFullScreenToggle(mainMenu);
+                addCopyAsPngShortcut(mainMenu);
               }
               return menu;
             },
