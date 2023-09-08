@@ -39,6 +39,7 @@ import {
   FONT_SIZES,
   FONT_FAMILIES,
   OnBeforeCreateHandler,
+  MenuItem,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -1349,11 +1350,17 @@ const TldrawCanvas = ({ title }: Props) => {
       tabIndex={-1}
     >
       <style>{`.roam-article .rm-block-children {
-  display: none;
-}
-.rs-arrow-label__inner{
-  min-width: initial;
-}${
+        display: none;
+      }
+      .rs-arrow-label__inner{
+        min-width: initial;
+      }
+      kbd.tlui-kbd {
+        background-color: initial;
+        box-shadow: initial;
+        border-radius: initial;
+        padding: initial;
+      }${
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""
@@ -1592,6 +1599,36 @@ const TldrawCanvas = ({ title }: Props) => {
                         readonlyOk: true,
                       },
                     });
+                  }
+                }
+                const editSubMenu = mainMenu.children.find(
+                  (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
+                );
+                if (editSubMenu) {
+                  const conversionsGroup = editSubMenu.children.find(
+                    (m): m is MenuGroup =>
+                      m.type === "group" && m.id === "conversions"
+                  );
+                  if (conversionsGroup) {
+                    const copyAsSubMenu = conversionsGroup.children.find(
+                      (m): m is MenuGroup =>
+                        m.type === "submenu" && m.id === "copy-as"
+                    );
+                    if (copyAsSubMenu) {
+                      const copyAsGroup = copyAsSubMenu.children.find(
+                        (m): m is MenuGroup =>
+                          m.type === "group" && m.id === "copy-as-group"
+                      );
+                      if (copyAsGroup) {
+                        const copyAsPngItem = copyAsGroup.children.find(
+                          (m): m is MenuItem =>
+                            m.type === "item" && m.id === "copy-as-png"
+                        );
+                        if (copyAsPngItem) {
+                          copyAsPngItem.actionItem.kbd = "$!X";
+                        }
+                      }
+                    }
                   }
                 }
               }
