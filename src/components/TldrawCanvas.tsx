@@ -39,6 +39,7 @@ import {
   FONT_SIZES,
   FONT_FAMILIES,
   OnBeforeCreateHandler,
+  MenuItem,
 } from "@tldraw/tldraw";
 import {
   Button,
@@ -1592,6 +1593,36 @@ const TldrawCanvas = ({ title }: Props) => {
                         readonlyOk: true,
                       },
                     });
+                  }
+                }
+                const editSubMenu = mainMenu.children.find(
+                  (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
+                );
+                if (editSubMenu) {
+                  const conversionsGroup = editSubMenu.children.find(
+                    (m): m is MenuGroup =>
+                      m.type === "group" && m.id === "conversions"
+                  );
+                  if (conversionsGroup) {
+                    const copyAsSubMenu = conversionsGroup.children.find(
+                      (m): m is MenuGroup =>
+                        m.type === "submenu" && m.id === "copy-as"
+                    );
+                    if (copyAsSubMenu) {
+                      const copyAsGroup = copyAsSubMenu.children.find(
+                        (m): m is MenuGroup =>
+                          m.type === "group" && m.id === "copy-as-group"
+                      );
+                      if (copyAsGroup) {
+                        const copyAsPngItem = copyAsGroup.children.find(
+                          (m): m is MenuItem =>
+                            m.type === "item" && m.id === "copy-as-png"
+                        );
+                        if (copyAsPngItem) {
+                          copyAsPngItem.actionItem.kbd = "$!X";
+                        }
+                      }
+                    }
                   }
                 }
               }
