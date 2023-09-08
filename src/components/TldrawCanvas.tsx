@@ -1350,11 +1350,17 @@ const TldrawCanvas = ({ title }: Props) => {
       tabIndex={-1}
     >
       <style>{`.roam-article .rm-block-children {
-  display: none;
-}
-.rs-arrow-label__inner{
-  min-width: initial;
-}${
+        display: none;
+      }
+      .rs-arrow-label__inner{
+        min-width: initial;
+      }
+      kbd.tlui-kbd {
+        background-color: initial;
+        box-shadow: initial;
+        border-radius: initial;
+        padding: initial;
+      }${
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""
