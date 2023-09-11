@@ -1367,7 +1367,7 @@ const TldrawCanvas = ({ title }: Props) => {
       },
     });
   };
-  const addCopyAsPngShortcut = (mainMenu: MenuGroup) => {
+  const editCopyAsShortcuts = (mainMenu: MenuGroup) => {
     const editSubMenu = mainMenu.children.find(
       (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
     );
@@ -1383,8 +1383,12 @@ const TldrawCanvas = ({ title }: Props) => {
     const copyAsPngItem = copyAsGroup?.children.find(
       (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
     );
-    if (!copyAsPngItem) return;
-    copyAsPngItem.actionItem.kbd = "$!X";
+    const copyAsSvgItem = copyAsGroup?.children.find(
+      (m): m is MenuItem => m.type === "item" && m.id === "copy-as-svg"
+    );
+    if (!copyAsPngItem || !copyAsSvgItem) return;
+    copyAsPngItem.actionItem.kbd = "$!C";
+    copyAsSvgItem.actionItem.kbd = "$!X";
   };
 
   return (
@@ -1622,7 +1626,7 @@ const TldrawCanvas = ({ title }: Props) => {
               );
               if (mainMenu) {
                 addFullScreenToggle(mainMenu);
-                addCopyAsPngShortcut(mainMenu);
+                editCopyAsShortcuts(mainMenu);
               }
               return menu;
             },
