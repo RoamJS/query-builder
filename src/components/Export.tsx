@@ -12,6 +12,8 @@ import {
   Tooltip,
   Tab,
   Tabs,
+  RadioGroup,
+  Radio,
 } from "@blueprintjs/core";
 import React, { useState, useEffect, useMemo } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
@@ -30,6 +32,7 @@ import getBlockProps from "../utils/getBlockProps";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import { createShapeId } from "@tldraw/tlschema";
@@ -129,6 +132,8 @@ const ExportDialog: ExportDialogComponent = ({
   const [selectedPageTitle, setSelectedPageTitle] = useState(currentPageTitle);
   const [selectedPageUid, setSelectedPageUid] = useState(currentPageUid);
   const isCanvasPage = checkForCanvasPage(selectedPageTitle);
+  const [isSendToGraph, setIsSendToGraph] = useState(false);
+  const [livePages, setLivePages] = useState<Result[]>([]);
 
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
@@ -225,8 +230,32 @@ const ExportDialog: ExportDialogComponent = ({
     }
   };
 
+  useEffect(() => {
+    if (isSendToGraph) {
+      if (typeof results === "object") {
+        const livePages = results.filter((r) => !!getPageTitleByPageUid(r.uid));
+        setLivePages(livePages);
+      }
+    }
+  }, [isSendToGraph, results]);
+  const addToGraphOverView = () => {
+    if (typeof results === "object") {
+      window.roamAlphaAPI.ui.graphView.wholeGraph.setMode("Explore");
+      window.roamAlphaAPI.ui.graphView.wholeGraph.setExplorePages(
+        livePages.map((r) => r.text)
+      );
+      window.location.href = `${getRoamUrl()}/graph`;
+    }
+  };
+
   const handleSendTo = () => {
-    isCanvasPage ? addToSelectedCanvas() : addToSelectedPage();
+    if (isSendToGraph) {
+      addToGraphOverView();
+    } else if (isCanvasPage) {
+      addToSelectedCanvas();
+    } else {
+      addToSelectedPage();
+    }
     onClose();
   };
 
@@ -377,43 +406,40 @@ const ExportDialog: ExportDialogComponent = ({
   const SendToPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
-        <div>
-          <Label>
-            Select A Destination Page
+        <RadioGroup
+          onChange={(e: React.FormEvent<HTMLInputElement>) =>
+            setIsSendToGraph(isSendToGraph ? false : true)
+          }
+          selectedValue={isSendToGraph ? "graph" : "page"}
+        >
+          <Radio value="graph" label="Send to Graph Overview" />
+          <Radio value="page" label="Send to Page" />
+        </RadioGroup>
+        {!isSendToGraph && (
+          <div className="mb-2.5">
             <AutocompleteInput
               value={selectedPageTitle}
               setValue={(title) => handleSetSelectedPage(title)}
               onBlur={(title) => handleSetSelectedPage(title)}
               options={getAllPageNames()}
             />
-          </Label>
-        </div>
-        <p>
-          {typeof results === "object" ? (
-            <>
-              Sending {results.length} results to{" "}
-              <span className="font-bold">
-                [[
-                {selectedPageTitle.length > 20
-                  ? selectedPageTitle.substring(0, 20) + "..."
-                  : selectedPageTitle}
-                ]]
-              </span>
-            </>
-          ) : (
-            "Not Yet Supported"
-          )}
-        </p>
+          </div>
+        )}
+        {isSendToGraph && !livePages.length ? (
+          <div className="my-2.5">No Pages found in Results</div>
+        ) : null}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
           <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
           <Button
-            text={"Send"}
+            text={`Send ${
+              isSendToGraph ? livePages.length : results.length
+            } results`}
             intent={Intent.PRIMARY}
             onClick={handleSendTo}
             style={{ minWidth: 64 }}
-            disabled={loading}
+            disabled={isSendToGraph ? !livePages.length : false}
           />
         </div>
       </div>
