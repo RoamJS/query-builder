@@ -774,7 +774,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     rect.setAttribute("ry", "16");
     g.appendChild(rect);
 
-    // TODO: Look at ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/TLTextUtil/TLTextUtil.js toSvg method
+    // TODO: Look at Look at TLTextUtil / TLGeoUtil toSvg methods
+    // ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/
+    // /TLTextUtil/TLTextUtil.js
+    // /TLGeoUtil/TLGeoUtil.js
     // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
@@ -787,8 +790,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     text.setAttribute("font-family", "sans-serif");
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
-    text.setAttribute("stroke", textColor);
-    text.setAttribute("stroke-width", "1");
+    text.setAttribute("fill", textColor);
+    text.setAttribute("stroke", "none");
     const words = shape.props.title.split(/\s/g);
     let line = "";
     let lineCount = 0;
