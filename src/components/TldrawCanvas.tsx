@@ -249,6 +249,88 @@ const createDiscourseNode = async ({
   }
 };
 
+const LabelDialogAutocomplete = ({
+  setLabel,
+  setUid,
+  nodeType,
+  initialUid,
+  initialValue,
+  onSubmit,
+}: {
+  setLabel: (text: string) => void;
+  setUid: (uid: string) => void;
+  nodeType: string;
+  initialUid: string;
+  initialValue: { text: string; uid: string };
+  onSubmit: () => void;
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [options, setOptions] = useState<Result[]>([]);
+  useEffect(() => {
+    setIsLoading(true);
+    const conditionUid = window.roamAlphaAPI.util.generateUID();
+    setTimeout(() => {
+      fireQuery({
+        returnNode: "node",
+        selections: [],
+        conditions: [
+          {
+            source: "node",
+            relation: "is a",
+            target: nodeType,
+            uid: conditionUid,
+            type: "clause",
+          },
+        ],
+      }).then((results) => {
+        setOptions(results);
+        setIsLoading(false);
+      });
+    }, 100);
+  }, [nodeType, setOptions]);
+
+  const setValue = React.useCallback(
+    (r: Result) => {
+      setLabel(r.text);
+      setUid(r.uid);
+    },
+    [setLabel, setUid]
+  );
+  const onNewItem = React.useCallback(
+    (text: string) => ({ text, uid: initialUid }),
+    [initialUid]
+  );
+  const itemToQuery = React.useCallback(
+    (result?: Result) => result?.text || "",
+    []
+  );
+  const filterOptions = React.useCallback(
+    (o: Result[], q: string) =>
+      fuzzy
+        .filter(q, o, { extract: itemToQuery })
+        .map((f) => f.original)
+        .filter((f): f is Result => !!f),
+    [itemToQuery]
+  );
+
+  return (
+    <AutocompleteInput
+      value={initialValue}
+      setValue={setValue}
+      onConfirm={onSubmit}
+      options={options}
+      multiline
+      autoFocus
+      onNewItem={onNewItem}
+      itemToQuery={itemToQuery}
+      filterOptions={filterOptions}
+      // disabled={isLoading}
+      placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
+      // maxItemsDisplayed={15}
+    />
+  );
+};
+
 type NodeDialogProps = {
   label: string;
   onSuccess: (a: Result) => Promise<void>;
@@ -268,7 +350,6 @@ const LabelDialog = ({
 }: RoamOverlayProps<NodeDialogProps>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
-  const [options, setOptions] = useState<Result[]>([]);
   const initialLabel = useMemo(() => {
     if (_label) return _label;
     const { specification, text } = discourseContext.nodes[nodeType];
@@ -305,22 +386,8 @@ const LabelDialog = ({
     onCancel();
     onClose();
   };
-  useEffect(() => {
-    const conditionUid = window.roamAlphaAPI.util.generateUID();
-    fireQuery({
-      returnNode: "node",
-      selections: [],
-      conditions: [
-        {
-          source: "node",
-          relation: "is a",
-          target: nodeType,
-          uid: conditionUid,
-          type: "clause",
-        },
-      ],
-    }).then((results) => setOptions(results));
-  }, [nodeType, setOptions]);
+
+  // Listens for touch outside container to trigger close
   const touchRef = useRef<EventTarget | null>();
   useEffect(() => {
     const { current } = containerRef;
@@ -346,29 +413,7 @@ const LabelDialog = ({
       document.body.removeEventListener("touchend", touchEndListener);
     };
   }, [containerRef, onCancelClick, touchRef]);
-  const setValue = React.useCallback(
-    (r: Result) => {
-      setLabel(r.text);
-      setUid(r.uid);
-    },
-    [setLabel, setUid]
-  );
-  const onNewItem = React.useCallback(
-    (text: string) => ({ text, uid: initialUid }),
-    [initialUid]
-  );
-  const itemToQuery = React.useCallback(
-    (result?: Result) => result?.text || "",
-    []
-  );
-  const filterOptions = React.useCallback(
-    (o: Result[], q: string) =>
-      fuzzy
-        .filter(q, o, { extract: itemToQuery })
-        .map((f) => f.original)
-        .filter((f): f is Result => !!f),
-    [itemToQuery]
-  );
+
   return (
     <>
       <Dialog
@@ -382,16 +427,13 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
-          <AutocompleteInput
-            value={initialValue}
-            setValue={setValue}
-            onConfirm={onSubmit}
-            options={options}
-            multiline
-            autoFocus
-            onNewItem={onNewItem}
-            itemToQuery={itemToQuery}
-            filterOptions={filterOptions}
+          <LabelDialogAutocomplete
+            setLabel={setLabel}
+            setUid={setUid}
+            nodeType={nodeType}
+            initialUid={initialUid}
+            initialValue={initialValue}
+            onSubmit={onSubmit}
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
