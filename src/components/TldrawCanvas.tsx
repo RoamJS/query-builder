@@ -38,21 +38,15 @@ import {
   TEXT_PROPS,
   FONT_SIZES,
   FONT_FAMILIES,
-  OnBeforeCreateHandler,
   MenuItem,
 } from "@tldraw/tldraw";
 import {
   Button,
   Classes,
   Dialog,
-  // Icon,
-  // InputGroup,
   Intent,
-  // Position,
   Spinner,
   SpinnerSize,
-  TextArea,
-  // Tooltip,
 } from "@blueprintjs/core";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
