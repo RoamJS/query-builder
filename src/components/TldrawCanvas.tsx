@@ -61,11 +61,7 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import {
-  AddPullWatch,
-  InputTextNode,
-  RoamBasicNode,
-} from "roamjs-components/types";
+import { AddPullWatch, InputTextNode } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -80,7 +76,6 @@ import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getBlockProps, { json, normalizeProps } from "../utils/getBlockProps";
 import { QBClause, Result } from "../utils/types";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
@@ -90,6 +85,7 @@ import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
+import createDiscourseNodePage from "../utils/createDiscourseNodePage";
 
 declare global {
   interface Window {
@@ -219,17 +215,9 @@ const createDiscourseNode = async ({
   text: string;
   nodes?: DiscourseNode[];
 }) => {
-  const nodeTree = getFullTreeByParentUid(type).children;
-  const template = getSubTree({
-    tree: nodeTree,
-    key: "template",
-  }).children;
-  const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-    n.map(({ uid, children, ...c }) => ({
-      ...c,
-      children: stripUid(children),
-    }));
-  const tree = template.length ? stripUid(template) : [{ text: "" }];
+  // This solves for blck-type and creates block in the DNP
+  // but could have uninteded consequenses for other defined discourse nodes
+  // also TODO: create in `Auto generated from ${title}`
   const specification = nodes.find((n) => n.type === type)?.specification;
   if (
     specification?.find(
@@ -241,10 +229,11 @@ const createDiscourseNode = async ({
       node: { text, uid },
     });
   } else {
-    return await createPage({
-      title: text,
-      uid,
-      tree,
+    return await createDiscourseNodePage({
+      pageName: text,
+      configPageUid: type,
+      newPageUid: uid,
+      openInSidebar: true,
     });
   }
 };

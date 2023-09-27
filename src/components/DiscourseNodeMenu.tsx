@@ -7,25 +7,15 @@ import React, {
   useState,
 } from "react";
 import ReactDOM from "react-dom";
-import createBlock from "roamjs-components/writes/createBlock";
-import createPage from "roamjs-components/writes/createPage";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import getUids from "roamjs-components/dom/getUids";
-import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import { getCoordsFromTextarea } from "roamjs-components/components/CursorMenu";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import compileDatalog from "../utils/compileDatalog";
-import getSubTree from "roamjs-components/util/getSubTree";
-import {
-  InputTextNode,
-  PullBlock,
-  RoamBasicNode,
-} from "roamjs-components/types/native";
+import { PullBlock } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
-import { render as renderToast } from "roamjs-components/components/Toast";
+import createDiscourseNodePage from "../utils/createDiscourseNodePage";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -61,7 +51,7 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
       setTimeout(() => {
         const text = getTextByBlockUid(blockUid);
         const format = indexedByType[nodeUid]?.format || "";
-        const pagename = format.replace(/{([\w\d-]*)}/g, (_, val) => {
+        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
           if (/content/i.test(val)) return highlighted;
           const referencedNode = discourseNodes.find(({ text }) =>
             new RegExp(text, "i").test(val)
@@ -86,79 +76,15 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
         const newText = `${text.substring(
           0,
           textarea.selectionStart
-        )}[[${pagename}]]${text.substring(textarea.selectionEnd)}`;
-        updateBlock({ text: newText, uid: blockUid })
-          .then(
-            () =>
-              getPageUidByPageTitle(pagename) || createPage({ title: pagename })
-          )
-          .then((pageUid) => {
-            const nodeTree = getFullTreeByParentUid(nodeUid).children;
-            const nodes = getSubTree({
-              tree: nodeTree,
-              key: "template",
-            }).children;
-            const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-              n.map(({ uid, children, ...c }) => ({
-                ...c,
-                children: stripUid(children),
-              }));
-            const createBlocksFromTemplate = async () => {
-              await Promise.all(
-                stripUid(nodes).map(({ uid, ...node }, order) =>
-                  createBlock({
-                    node,
-                    order,
-                    parentUid: pageUid,
-                  })
-                )
-              );
-            };
-            const useSmartBlocks =
-              nodes.filter((obj) => obj.text.includes("<%")).length > 0;
-            const templateUid = nodeTree.find(
-              (t) => t.text === "Template"
-            )?.uid;
-            return (async () => {
-              if (useSmartBlocks && !window.roamjs?.extension?.smartblocks) {
-                renderToast({
-                  content:
-                    "This template requires SmartBlocks. Enable SmartBlocks in Roam Depot to use this template.",
-                  id: "smartblocks-extension-disabled",
-                  intent: "warning",
-                });
-                await createBlocksFromTemplate();
-              } else if (
-                useSmartBlocks &&
-                window.roamjs?.extension?.smartblocks
-              ) {
-                window.roamjs.extension.smartblocks?.triggerSmartblock({
-                  srcUid: templateUid,
-                  targetUid: pageUid,
-                });
-              } else {
-                await createBlocksFromTemplate();
-              }
-            })()
-              .then(() => openBlockInSidebar(pageUid))
-              .then(() => {
-                setTimeout(() => {
-                  const sidebarTitle = document.querySelector(
-                    ".rm-sidebar-outline .rm-title-display"
-                  );
-                  sidebarTitle?.dispatchEvent(
-                    new MouseEvent("mousedown", { bubbles: true })
-                  );
-                  setTimeout(() => {
-                    const ta = document.activeElement as HTMLTextAreaElement;
-                    if (ta.tagName === "TEXTAREA") {
-                      const index = ta.value.length;
-                      ta.setSelectionRange(index, index);
-                    }
-                  }, 1);
-                }, 100);
-              });
+        )}[[${pageName}]]${text.substring(textarea.selectionEnd)}`;
+
+        updateBlock({ text: newText, uid: blockUid }).then(() => {
+          createDiscourseNodePage({
+            pageName,
+            configPageUid: nodeUid,
+            openInSidebar: true,
           });
+        });
       });
       onClose();
     },
