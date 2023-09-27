@@ -1,20 +1,11 @@
 import { render as renderToast } from "roamjs-components/components/Toast";
 import createBlock from "roamjs-components/writes/createBlock";
-// import stripUid from "roamjs-components/util/stripUid"
+import stripUid from "roamjs-components/util/stripUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import createPage from "roamjs-components/writes/createPage";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
-
-// temp
-import { InputTextNode, RoamBasicNode } from "roamjs-components/types";
-const stripUid = (n: RoamBasicNode[]): InputTextNode[] => {
-  return n.map(({ uid: _uid, children, ...c }) => ({
-    ...c,
-    children: stripUid(children),
-  }));
-};
 
 type Props = {
   pageName: string;
