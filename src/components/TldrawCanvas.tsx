@@ -216,7 +216,7 @@ const createDiscourseNode = async ({
   nodes?: DiscourseNode[];
 }) => {
   // This solves for blck-type and creates block in the DNP
-  // but could have uninteded consequenses for other defined discourse nodes
+  // but could have unintended consequences for other defined discourse nodes
   // also TODO: create in `Auto generated from ${title}`
   const specification = nodes.find((n) => n.type === type)?.specification;
   if (
