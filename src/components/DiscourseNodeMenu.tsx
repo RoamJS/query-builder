@@ -78,12 +78,11 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
           textarea.selectionStart
         )}[[${pageName}]]${text.substring(textarea.selectionEnd)}`;
 
-        updateBlock({ text: newText, uid: blockUid }).then(() => {
-          createDiscourseNodePage({
-            pageName,
-            configPageUid: nodeUid,
-            openInSidebar: true,
-          });
+        updateBlock({ text: newText, uid: blockUid });
+        createDiscourseNodePage({
+          pageName,
+          configPageUid: nodeUid,
+          openInSidebar: true,
         });
       });
       onClose();
