@@ -61,11 +61,7 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import {
-  AddPullWatch,
-  InputTextNode,
-  RoamBasicNode,
-} from "roamjs-components/types";
+import { AddPullWatch, InputTextNode } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -80,7 +76,6 @@ import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import getBlockProps, { json, normalizeProps } from "../utils/getBlockProps";
 import { QBClause, Result } from "../utils/types";
-import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
@@ -90,6 +85,7 @@ import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
+import createDiscourseNode from "../utils/createDiscourseNode";
 
 declare global {
   interface Window {
@@ -205,48 +201,6 @@ const calculateDiff = (
         .filter((e): e is [string, any] => !!e)
     ),
   };
-};
-
-// TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
-const createDiscourseNode = async ({
-  type,
-  uid,
-  text,
-  nodes = Object.values(discourseContext.nodes),
-}: {
-  type: string;
-  uid?: string;
-  text: string;
-  nodes?: DiscourseNode[];
-}) => {
-  const nodeTree = getFullTreeByParentUid(type).children;
-  const template = getSubTree({
-    tree: nodeTree,
-    key: "template",
-  }).children;
-  const stripUid = (n: RoamBasicNode[]): InputTextNode[] =>
-    n.map(({ uid, children, ...c }) => ({
-      ...c,
-      children: stripUid(children),
-    }));
-  const tree = template.length ? stripUid(template) : [{ text: "" }];
-  const specification = nodes.find((n) => n.type === type)?.specification;
-  if (
-    specification?.find(
-      (spec) => spec.type === "clause" && spec.relation === "is in page"
-    )
-  ) {
-    return await createBlock({
-      parentUid: window.roamAlphaAPI.util.dateToPageUid(new Date()),
-      node: { text, uid },
-    });
-  } else {
-    return await createPage({
-      title: text,
-      uid,
-      tree,
-    });
-  }
 };
 
 const LabelDialogAutocomplete = ({
@@ -760,9 +714,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   }
                 } else if (!getPageUidByPageTitle(text)) {
                   createDiscourseNode({
-                    type: shape.type,
+                    configPageUid: shape.type,
                     text,
-                    uid,
+                    newPageUid: uid,
+                    discourseNodes: Object.values(discourseContext.nodes),
                   });
                 }
               }
@@ -1489,9 +1444,10 @@ const TldrawCanvas = ({ title }: Props) => {
                   return;
                 }
                 createDiscourseNode({
-                  uid: e.shape.props.uid,
+                  newPageUid: e.shape.props.uid,
                   text: e.shape.props.title,
-                  type: e.shape.type,
+                  configPageUid: e.shape.type,
+                  discourseNodes: Object.values(discourseContext.nodes),
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
@@ -1543,8 +1499,9 @@ const TldrawCanvas = ({ title }: Props) => {
                 if (!shape) return schema;
                 const convertToBlock = async (text: string) => {
                   const uid = await createDiscourseNode({
-                    type: "blck-node",
+                    configPageUid: "blck-node",
                     text,
+                    discourseNodes: Object.values(discourseContext.nodes),
                   });
                   const { x, y } = shape;
                   app.deleteShapes([shape.id]);
