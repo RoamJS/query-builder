@@ -15,7 +15,7 @@ import compileDatalog from "../utils/compileDatalog";
 import { PullBlock } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
-import createDiscourseNodePage from "../utils/createDiscourseNodePage";
+import createDiscourseNode from "../utils/createDiscourseNodePage";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -79,10 +79,10 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
         )}[[${pageName}]]${text.substring(textarea.selectionEnd)}`;
 
         updateBlock({ text: newText, uid: blockUid });
-        createDiscourseNodePage({
-          pageName,
+        createDiscourseNode({
+          text: pageName,
           configPageUid: nodeUid,
-          openInSidebar: true,
+          discourseNodes,
         });
       });
       onClose();

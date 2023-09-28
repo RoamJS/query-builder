@@ -6,28 +6,66 @@ import createPage from "roamjs-components/writes/createPage";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import { DiscourseNode } from "./getDiscourseNodes";
 
 type Props = {
-  pageName: string;
+  text: string;
   configPageUid: string;
   newPageUid?: string;
-  openInSidebar?: boolean;
+  discourseNodes: DiscourseNode[];
 };
 
-const createDiscourseNodePage = async ({
-  pageName,
+const createDiscourseNode = async ({
+  text,
   configPageUid,
   newPageUid,
-  openInSidebar = false,
+  discourseNodes,
 }: Props) => {
+  const handleOpenInSidebar = (uid: string) => {
+    openBlockInSidebar(uid);
+    setTimeout(() => {
+      const sidebarTitle = document.querySelector(
+        ".rm-sidebar-outline .rm-title-display"
+      );
+      sidebarTitle?.dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true })
+      );
+      setTimeout(() => {
+        const ta = document.activeElement as HTMLTextAreaElement;
+        if (ta.tagName === "TEXTAREA") {
+          const index = ta.value.length;
+          ta.setSelectionRange(index, index);
+        }
+      }, 1);
+    }, 100);
+  };
+
+  const specification = discourseNodes?.find(
+    (n) => n.type === configPageUid
+  )?.specification;
+  // This handles blck-type and creates block in the DNP
+  // but could have unintended consequences for other defined discourse nodes
+  if (
+    specification?.find(
+      (spec) => spec.type === "clause" && spec.relation === "is in page"
+    )
+  ) {
+    const blockUid = await createBlock({
+      // TODO: for canvas, create in `Auto generated from ${title}`
+      parentUid: window.roamAlphaAPI.util.dateToPageUid(new Date()),
+      node: { text, uid: newPageUid },
+    });
+    handleOpenInSidebar(blockUid);
+    return blockUid;
+  }
+
   let pageUid: string;
   if (newPageUid) {
-    await createPage({ title: pageName, uid: newPageUid });
+    await createPage({ title: text, uid: newPageUid });
     pageUid = newPageUid;
   } else {
     pageUid =
-      getPageUidByPageTitle(pageName) ||
-      (await createPage({ title: pageName }));
+      getPageUidByPageTitle(text) || (await createPage({ title: text }));
   }
 
   const nodeTree = getFullTreeByParentUid(configPageUid).children;
@@ -67,27 +105,8 @@ const createDiscourseNodePage = async ({
   } else {
     await createBlocksFromTemplate();
   }
-
-  if (openInSidebar) {
-    openBlockInSidebar(pageUid);
-    setTimeout(() => {
-      const sidebarTitle = document.querySelector(
-        ".rm-sidebar-outline .rm-title-display"
-      );
-      sidebarTitle?.dispatchEvent(
-        new MouseEvent("mousedown", { bubbles: true })
-      );
-      setTimeout(() => {
-        const ta = document.activeElement as HTMLTextAreaElement;
-        if (ta.tagName === "TEXTAREA") {
-          const index = ta.value.length;
-          ta.setSelectionRange(index, index);
-        }
-      }, 1);
-    }, 100);
-  }
-
+  handleOpenInSidebar(pageUid);
   return pageUid;
 };
 
-export default createDiscourseNodePage;
+export default createDiscourseNode;

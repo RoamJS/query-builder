@@ -85,7 +85,7 @@ import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
-import createDiscourseNodePage from "../utils/createDiscourseNodePage";
+import createDiscourseNode from "../utils/createDiscourseNodePage";
 
 declare global {
   interface Window {
@@ -201,41 +201,6 @@ const calculateDiff = (
         .filter((e): e is [string, any] => !!e)
     ),
   };
-};
-
-// TODO: consolidate with DiscourseNodeMenu and replace with Smartblocks
-const createDiscourseNode = async ({
-  type,
-  uid,
-  text,
-  nodes = Object.values(discourseContext.nodes),
-}: {
-  type: string;
-  uid?: string;
-  text: string;
-  nodes?: DiscourseNode[];
-}) => {
-  // This solves for blck-type and creates block in the DNP
-  // but could have unintended consequences for other defined discourse nodes
-  // also TODO: create in `Auto generated from ${title}`
-  const specification = nodes.find((n) => n.type === type)?.specification;
-  if (
-    specification?.find(
-      (spec) => spec.type === "clause" && spec.relation === "is in page"
-    )
-  ) {
-    return await createBlock({
-      parentUid: window.roamAlphaAPI.util.dateToPageUid(new Date()),
-      node: { text, uid },
-    });
-  } else {
-    return await createDiscourseNodePage({
-      pageName: text,
-      configPageUid: type,
-      newPageUid: uid,
-      openInSidebar: true,
-    });
-  }
 };
 
 const LabelDialogAutocomplete = ({
@@ -749,9 +714,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   }
                 } else if (!getPageUidByPageTitle(text)) {
                   createDiscourseNode({
-                    type: shape.type,
+                    configPageUid: shape.type,
                     text,
-                    uid,
+                    newPageUid: uid,
+                    discourseNodes: Object.values(discourseContext.nodes),
                   });
                 }
               }
@@ -1478,9 +1444,10 @@ const TldrawCanvas = ({ title }: Props) => {
                   return;
                 }
                 createDiscourseNode({
-                  uid: e.shape.props.uid,
+                  newPageUid: e.shape.props.uid,
                   text: e.shape.props.title,
-                  type: e.shape.type,
+                  configPageUid: e.shape.type,
+                  discourseNodes: Object.values(discourseContext.nodes),
                 });
               }
               openBlockInSidebar(e.shape.props.uid);
@@ -1532,8 +1499,9 @@ const TldrawCanvas = ({ title }: Props) => {
                 if (!shape) return schema;
                 const convertToBlock = async (text: string) => {
                   const uid = await createDiscourseNode({
-                    type: "blck-node",
+                    configPageUid: "blck-node",
                     text,
+                    discourseNodes: Object.values(discourseContext.nodes),
                   });
                   const { x, y } = shape;
                   app.deleteShapes([shape.id]);
