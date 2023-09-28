@@ -15,7 +15,7 @@ import compileDatalog from "../utils/compileDatalog";
 import { PullBlock } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
-import createDiscourseNode from "../utils/createDiscourseNodePage";
+import createDiscourseNode from "../utils/createDiscourseNode";
 
 type Props = {
   textarea: HTMLTextAreaElement;
