@@ -87,13 +87,19 @@ const isPageUid = (uid: string) =>
     ":node/title"
   ];
 
-export const discourseContext: {
+export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
   nodes: Record<string, DiscourseNode & { index: number }>;
   // { [Relation.Label] => DiscourseRelation[] }
   relations: Record<string, DiscourseRelation[]>;
   lastAppEvent: string;
-} = { nodes: {}, relations: {}, lastAppEvent: "" };
+};
+
+const discourseContext: DiscourseContextType = {
+  nodes: {},
+  relations: {},
+  lastAppEvent: "",
+};
 
 const getRelationIds = () =>
   new Set(
@@ -463,6 +469,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             }}
             label={shape.props.title}
             nodeType={this.type}
+            discourseContext={discourseContext}
             onSuccess={async ({ text, uid }) => {
               // If we get a new uid, all the necessary updates happen below
               if (shape.props.uid === uid) {

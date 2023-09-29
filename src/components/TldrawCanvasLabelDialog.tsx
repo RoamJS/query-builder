@@ -15,7 +15,7 @@ import fuzzy from "fuzzy";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import { QBClause, Result } from "../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
-import { discourseContext } from "./TldrawCanvas";
+import { DiscourseContextType } from "./TldrawCanvas";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -97,12 +97,14 @@ const LabelDialogAutocomplete = ({
     />
   );
 };
+
 type NodeDialogProps = {
   label: string;
   onSuccess: (a: Result) => Promise<void>;
   onCancel: () => void;
   nodeType: string;
   initialUid: string;
+  discourseContext: DiscourseContextType;
 };
 
 const LabelDialog = ({
@@ -113,6 +115,7 @@ const LabelDialog = ({
   onCancel,
   nodeType,
   initialUid,
+  discourseContext,
 }: RoamOverlayProps<NodeDialogProps>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
