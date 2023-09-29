@@ -1,12 +1,17 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   Button,
+  Callout,
   Classes,
   Dialog,
-  // Icon,
-  // InputGroup,
+  IconName,
   Intent,
-  // Position,
   Spinner,
   SpinnerSize,
 } from "@blueprintjs/core";
@@ -16,6 +21,7 @@ import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import { QBClause, Result } from "../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
+import { IconNames } from "@blueprintjs/icons";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -57,22 +63,19 @@ const LabelDialogAutocomplete = ({
     }, 100);
   }, [nodeType, setOptions]);
 
-  const setValue = React.useCallback(
+  const setValue = useCallback(
     (r: Result) => {
       setLabel(r.text);
       setUid(r.uid);
     },
     [setLabel, setUid]
   );
-  const onNewItem = React.useCallback(
+  const onNewItem = useCallback(
     (text: string) => ({ text, uid: initialUid }),
     [initialUid]
   );
-  const itemToQuery = React.useCallback(
-    (result?: Result) => result?.text || "",
-    []
-  );
-  const filterOptions = React.useCallback(
+  const itemToQuery = useCallback((result?: Result) => result?.text || "", []);
+  const filterOptions = useCallback(
     (o: Result[], q: string) =>
       fuzzy
         .filter(q, o, { extract: itemToQuery })
@@ -94,6 +97,7 @@ const LabelDialogAutocomplete = ({
       filterOptions={filterOptions}
       // disabled={isLoading}
       placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
+      // maxItemsDisplayed={10}
     />
   );
 };
@@ -117,7 +121,6 @@ const LabelDialog = ({
   initialUid,
   discourseContext,
 }: RoamOverlayProps<NodeDialogProps>) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const initialLabel = useMemo(() => {
     if (_label) return _label;
@@ -157,6 +160,7 @@ const LabelDialog = ({
   };
 
   // Listens for touch outside container to trigger close
+  const containerRef = useRef<HTMLDivElement>(null);
   const touchRef = useRef<EventTarget | null>();
   useEffect(() => {
     const { current } = containerRef;
@@ -183,11 +187,44 @@ const LabelDialog = ({
     };
   }, [containerRef, onCancelClick, touchRef]);
 
+  // TODO: need a better way to determine if editing or creating
+  const isEditing = !!initialLabel;
+  const renderCalloutText = () => {
+    if (!label) {
+      return {
+        title: "Please provide a label",
+        icon: IconNames.INFO_SIGN,
+      };
+    }
+
+    let title, icon;
+    if (isEditing) {
+      if (uid === initialUid) {
+        title = "Editing Label of Current Discourse Node";
+        icon = IconNames.EDIT;
+      } else {
+        title = "Change to Existing Node";
+        icon = IconNames.EXCHANGE;
+      }
+    } else {
+      if (uid === initialUid) {
+        title = "Creating New Discourse Node";
+        icon = IconNames.NEW_OBJECT;
+      } else {
+        title = "Setting to Existing Node";
+        icon = IconNames.LINK;
+      }
+    }
+
+    return { title, icon };
+  };
+  const calloutText = renderCalloutText();
+
   return (
     <>
       <Dialog
         isOpen={isOpen}
-        title={"Edit Discourse Node Label"}
+        title={isEditing ? "Edit Canvas Node" : "Create Canvas Node"}
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?
@@ -196,6 +233,25 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
+          <Callout
+            intent="primary"
+            className="mb-4"
+            title={calloutText.title}
+            icon={calloutText.icon as IconName}
+          >
+            <div className="mt-2">
+              <div className="truncate">
+                {isEditing ? (
+                  <>
+                    <span className="font-semibold">Current Label:</span>{" "}
+                    {initialLabel}
+                  </>
+                ) : (
+                  ""
+                )}
+              </div>
+            </div>
+          </Callout>
           <LabelDialogAutocomplete
             setLabel={setLabel}
             setUid={setUid}
@@ -210,11 +266,11 @@ const LabelDialog = ({
             className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center flex-row-reverse`}
           >
             <Button
-              text={"Set"}
+              text={"Confirm"}
               intent={Intent.PRIMARY}
               onClick={onSubmit}
               onTouchEnd={onSubmit}
-              disabled={loading}
+              disabled={loading || !label}
               className="flex-shrink-0"
             />
             <Button

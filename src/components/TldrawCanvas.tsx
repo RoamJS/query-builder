@@ -475,9 +475,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               if (shape.props.uid === uid) {
                 if (shape.props.title) {
                   if (shape.props.title === text) {
-                    // nothing to update I think
+                    // Nothing to update I think
                     return;
                   } else {
+                    // Update the block/page
                     if (isPageUid(shape.props.uid))
                       await window.roamAlphaAPI.updatePage({
                         page: {
@@ -497,6 +498,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 }
               }
 
+              // Update Shape Properties and Relations
               const allRecords = this.app.store.allRecords();
               const relationIds = getRelationIds();
               this.deleteRelationsInCanvas(shape, {
@@ -513,13 +515,14 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 w,
                 h,
               });
-              setIsEditLabelOpen(false);
-              this.app.setEditingId(null);
               await this.createExistingRelations(shape, {
                 allRecords,
                 relationIds,
                 finalUid: uid,
               });
+
+              setIsEditLabelOpen(false);
+              this.app.setEditingId(null);
             }}
             onCancel={() => {
               this.app.setEditingId(null);
@@ -618,6 +621,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 }
 
+//TODO fix this
+//@ts-ignore
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
