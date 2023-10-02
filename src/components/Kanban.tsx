@@ -326,8 +326,7 @@ const Kanban = ({
   ) => {
     const offset = direction === "left" ? -1 : 1;
     const newColumns = [...columns];
-
-    // Wwap elements
+    // Swap elements
     [newColumns[columnIndex], newColumns[columnIndex + offset]] = [
       newColumns[columnIndex + offset],
       newColumns[columnIndex],
@@ -337,7 +336,6 @@ const Kanban = ({
       key: "columns",
       parentUid: layoutUid,
     }).uid;
-
     await deleteBlock(columnUid);
 
     setInputSettings({
@@ -345,7 +343,6 @@ const Kanban = ({
       key: "columns",
       values: newColumns,
     });
-
     setColumns(newColumns);
     setOpenedPopoverIndex(null);
   };
@@ -383,7 +380,7 @@ const Kanban = ({
                 style={{ display: "flex" }}
               >
                 <div
-                  className="justify-between items-center mb-4 roamjs-kanban-column-header"
+                  className="justify-between items-center mb-4"
                   style={{ display: "flex" }}
                 >
                   <span className="font-bold">{col}</span>
