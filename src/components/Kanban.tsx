@@ -1,7 +1,7 @@
 // Design inspiration from Trello
 import React from "react";
 import { Column, Result } from "../utils/types";
-import { Button, Icon, InputGroup, Tooltip } from "@blueprintjs/core";
+import { Button, Icon, InputGroup, Popover, Tooltip } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -13,6 +13,8 @@ import toCellValue from "../utils/toCellValue";
 import extractTag from "roamjs-components/util/extractTag";
 import createBlock from "roamjs-components/writes/createBlock";
 import updateBlock from "roamjs-components/writes/updateBlock";
+import deleteBlock from "roamjs-components/writes/deleteBlock";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -310,6 +312,40 @@ const Kanban = ({
     () => (Array.isArray(layout.legend) ? layout.legend[0] : layout.legend),
     [layout.legend]
   );
+  const [openedPopoverIndex, setOpenedPopoverIndex] = React.useState<
+    number | null
+  >(null);
+
+  const moveColumn = async (
+    direction: "left" | "right",
+    columnIndex: number
+  ) => {
+    const offset = direction === "left" ? -1 : 1;
+    const newColumns = [...columns];
+
+    // Wwap elements
+    [newColumns[columnIndex], newColumns[columnIndex + offset]] = [
+      newColumns[columnIndex + offset],
+      newColumns[columnIndex],
+    ];
+
+    const columnUid = getSubTree({
+      key: "columns",
+      parentUid: layoutUid,
+    }).uid;
+
+    await deleteBlock(columnUid);
+
+    setInputSettings({
+      blockUid: layoutUid,
+      key: "columns",
+      values: newColumns,
+    });
+
+    setColumns(newColumns);
+    setOpenedPopoverIndex(null);
+  };
+
   return (
     <>
       {showLegend === "Yes" && (
@@ -334,7 +370,7 @@ const Kanban = ({
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll grid w-full"
           ref={containerRef}
         >
-          {columns.map((col) => {
+          {columns.map((col, columnIndex) => {
             return (
               <div
                 key={col}
@@ -343,23 +379,59 @@ const Kanban = ({
                 style={{ display: "flex" }}
               >
                 <div
-                  className="justify-between items-center mb-4"
+                  className="justify-between items-center mb-4 roamjs-kanban-column-header"
                   style={{ display: "flex" }}
                 >
                   <span className="font-bold">{col}</span>
-                  <Button
-                    icon={"trash"}
-                    minimal
-                    onClick={() => {
-                      const values = columns.filter((c) => c !== col);
-                      setInputSettings({
-                        blockUid: layout.uid as string,
-                        key: "columns",
-                        values,
-                      });
-                      setColumns(values);
-                    }}
-                  />
+                  <Popover
+                    autoFocus={false}
+                    interactionKind="hover"
+                    placement="bottom"
+                    isOpen={openedPopoverIndex === columnIndex}
+                    onInteraction={(next) =>
+                      next
+                        ? setOpenedPopoverIndex(columnIndex)
+                        : setOpenedPopoverIndex(null)
+                    }
+                    captureDismiss={true}
+                    content={
+                      <>
+                        <Button
+                          className="p-4"
+                          minimal
+                          icon="arrow-left"
+                          disabled={columnIndex === 0}
+                          onClick={() => moveColumn("left", columnIndex)}
+                        />
+                        <Button
+                          className="p-4"
+                          minimal
+                          icon="arrow-right"
+                          disabled={columnIndex === columns.length - 1}
+                          onClick={() => moveColumn("right", columnIndex)}
+                        />
+                        <Button
+                          className="p-4"
+                          intent="danger"
+                          minimal
+                          icon="trash"
+                          onClick={() => {
+                            const values = columns.filter((c) => c !== col);
+                            setInputSettings({
+                              blockUid: layout.uid as string,
+                              key: "columns",
+                              values,
+                            });
+                            setColumns(values);
+                            setOpenedPopoverIndex(null);
+                          }}
+                        />
+                      </>
+                    }
+                    position="bottom-left"
+                  >
+                    <Button icon="more" minimal />
+                  </Popover>
                 </div>
                 {(cards[col] || [])?.map((d) => (
                   <KanbanCard
@@ -397,7 +469,7 @@ const Kanban = ({
                   onClick={() => {
                     const values = [...columns, newColumn];
                     setInputSettings({
-                      blockUid: layout.uid as string,
+                      blockUid: layoutUid,
                       key: "columns",
                       values,
                     });
