@@ -320,7 +320,7 @@ const LabelDialogAutocomplete = ({
       filterOptions={filterOptions}
       disabled={isLoading}
       placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
-      maxItemsDisplayed={15}
+      maxItemsDisplayed={100}
     />
   );
 };
