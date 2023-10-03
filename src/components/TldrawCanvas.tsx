@@ -38,7 +38,6 @@ import {
   TEXT_PROPS,
   FONT_SIZES,
   FONT_FAMILIES,
-  OnBeforeCreateHandler,
   MenuItem,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
