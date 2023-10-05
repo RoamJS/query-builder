@@ -8,10 +8,12 @@ import React, {
 import {
   Button,
   Callout,
+  Checkbox,
   Classes,
   Dialog,
   IconName,
   Intent,
+  Label,
   Spinner,
   SpinnerSize,
 } from "@blueprintjs/core";
@@ -22,6 +24,7 @@ import { QBClause, Result } from "../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
 import { IconNames } from "@blueprintjs/icons";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -30,6 +33,9 @@ const LabelDialogAutocomplete = ({
   initialUid,
   initialValue,
   onSubmit,
+  referencedNode,
+  isEditingExistingNode,
+  actionState,
 }: {
   setLabel: (text: string) => void;
   setUid: (uid: string) => void;
@@ -37,9 +43,28 @@ const LabelDialogAutocomplete = ({
   initialUid: string;
   initialValue: { text: string; uid: string };
   onSubmit: () => void;
+  referencedNode: { name: string; nodeType: string } | null;
+  isEditingExistingNode: boolean;
+  actionState: string;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<Result[]>([]);
+
+  // TODO: referenceNode WIP
+  const [referencedNodeOptions, setReferencedNodeOptions] = useState<Result[]>(
+    []
+  );
+  const [referencedNodeValue, setReferencedNodeValue] = useState("");
+  const [referencedNodeUid, setReferencedNodeUid] = useState("");
+  const setValueforReferencedNode = useCallback(
+    (r: Result) => {
+      setReferencedNodeValue(r.text);
+      setReferencedNodeUid(r.uid);
+    },
+    [setReferencedNodeValue, setReferencedNodeUid]
+  );
+  const [addReferencedNode, setAddReferencedNode] = useState(false);
+
   useEffect(() => {
     setIsLoading(true);
     const conditionUid = window.roamAlphaAPI.util.generateUID();
@@ -63,6 +88,31 @@ const LabelDialogAutocomplete = ({
     }, 100);
   }, [nodeType, setOptions]);
 
+  // TODO: fix this or combine with above
+  useEffect(() => {
+    if (!referencedNode) return;
+    // setIsLoading(true);
+    const conditionUid = window.roamAlphaAPI.util.generateUID();
+    setTimeout(() => {
+      fireQuery({
+        returnNode: "node",
+        selections: [],
+        conditions: [
+          {
+            source: "node",
+            relation: "is a",
+            target: referencedNode.nodeType,
+            uid: conditionUid,
+            type: "clause",
+          },
+        ],
+      }).then((results) => {
+        setReferencedNodeOptions(results);
+        // setIsLoading(false);
+      });
+    }, 100);
+  }, [referencedNode, setReferencedNodeOptions]);
+
   const setValue = useCallback(
     (r: Result) => {
       setLabel(r.text);
@@ -85,20 +135,71 @@ const LabelDialogAutocomplete = ({
   );
 
   return (
-    <AutocompleteInput
-      value={initialValue}
-      setValue={setValue}
-      onConfirm={onSubmit}
-      options={options}
-      multiline
-      autoFocus
-      onNewItem={onNewItem}
-      itemToQuery={itemToQuery}
-      filterOptions={filterOptions}
-      // disabled={isLoading}
-      placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
-      // maxItemsDisplayed={10}
-    />
+    <>
+      <div className={referencedNode ? "mb-8" : ""}>
+        {referencedNode && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Label>Title</Label>
+            <Checkbox
+              label={`Set ${referencedNode?.name}`}
+              checked={addReferencedNode}
+              onChange={(e) => {
+                const checked = e.target as HTMLInputElement;
+                setAddReferencedNode(checked.checked);
+              }}
+              disabled={actionState === "changing" || actionState === "setting"}
+              indeterminate={
+                actionState === "changing" || actionState === "setting"
+              }
+            />
+          </div>
+        )}
+        <AutocompleteInput
+          value={isEditingExistingNode ? initialValue : { text: "", uid: "" }}
+          setValue={setValue}
+          onConfirm={onSubmit}
+          options={options}
+          multiline
+          autoFocus
+          onNewItem={onNewItem}
+          itemToQuery={itemToQuery}
+          filterOptions={filterOptions}
+          disabled={isLoading}
+          placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
+          maxItemsDisplayed={100}
+        />
+      </div>
+
+      {
+        // Ability to add referenced node
+        addReferencedNode &&
+          referencedNode &&
+          (actionState === "creating" || actionState === "editing") && (
+            <div>
+              <Label>{referencedNode.name}</Label>
+              <AutocompleteInput
+                value={{ text: "", uid: "" }}
+                setValue={setValueforReferencedNode}
+                options={referencedNodeOptions}
+                multiline
+                onNewItem={onNewItem}
+                itemToQuery={itemToQuery}
+                filterOptions={filterOptions}
+                placeholder={
+                  isLoading ? "..." : `Enter a ${referencedNode.name} ...`
+                }
+                maxItemsDisplayed={100}
+              />
+            </div>
+          )
+      }
+    </>
   );
 };
 
@@ -121,6 +222,36 @@ const LabelDialog = ({
   initialUid,
   discourseContext,
 }: RoamOverlayProps<NodeDialogProps>) => {
+  const { format } = discourseContext.nodes[nodeType];
+
+  const getReferencedNodeInFormat = (
+    format: string,
+    discourseContext: DiscourseContextType
+  ): { name: string; nodeType: string } | null => {
+    const regex = /{([\w\d-]*)}/g; // Add the 'g' flag to get all matches
+    const matches = [...format.matchAll(regex)];
+
+    for (const match of matches) {
+      const val = match[1];
+      if (val.toLowerCase() === "context") continue;
+
+      const referencedNode = Object.values(discourseContext.nodes).find(
+        ({ text }) => new RegExp(text, "i").test(val)
+      );
+
+      if (referencedNode) {
+        return {
+          name: referencedNode.text,
+          nodeType: referencedNode.type,
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const referencedNode = getReferencedNodeInFormat(format, discourseContext);
+
   const [error, setError] = useState("");
   const initialLabel = useMemo(() => {
     if (_label) return _label;
@@ -187,8 +318,9 @@ const LabelDialog = ({
     };
   }, [containerRef, onCancelClick, touchRef]);
 
-  // TODO: need a better way to determine if editing or creating
-  const isEditing = !!initialLabel;
+  const isEditingExistingNode = isLiveBlock(initialUid);
+
+  // TODO: Consolidate/Merge this with onSuccess()
   const renderCalloutText = () => {
     if (!label) {
       return {
@@ -197,26 +329,30 @@ const LabelDialog = ({
       };
     }
 
-    let title, icon;
-    if (isEditing) {
+    let title, icon, actionState;
+    if (isEditingExistingNode) {
       if (uid === initialUid) {
         title = "Editing Label of Current Discourse Node";
         icon = IconNames.EDIT;
+        actionState = "editing";
       } else {
         title = "Change to Existing Node";
         icon = IconNames.EXCHANGE;
+        actionState = "changing";
       }
     } else {
       if (uid === initialUid) {
         title = "Creating New Discourse Node";
         icon = IconNames.NEW_OBJECT;
+        actionState = "creating";
       } else {
         title = "Setting to Existing Node";
         icon = IconNames.LINK;
+        actionState = "setting";
       }
     }
 
-    return { title, icon };
+    return { title, icon, state: actionState };
   };
   const calloutText = renderCalloutText();
 
@@ -224,7 +360,9 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={isOpen}
-        title={isEditing ? "Edit Canvas Node" : "Create Canvas Node"}
+        title={
+          isEditingExistingNode ? "Edit Canvas Node" : "Create Canvas Node"
+        }
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?
@@ -241,7 +379,7 @@ const LabelDialog = ({
           >
             <div className="mt-2">
               <div className="truncate">
-                {isEditing ? (
+                {isEditingExistingNode ? (
                   <>
                     <span className="font-semibold">Current Label:</span>{" "}
                     {initialLabel}
@@ -253,6 +391,9 @@ const LabelDialog = ({
             </div>
           </Callout>
           <LabelDialogAutocomplete
+            actionState={calloutText.state || ""}
+            isEditingExistingNode={isEditingExistingNode}
+            referencedNode={referencedNode}
             setLabel={setLabel}
             setUid={setUid}
             nodeType={nodeType}
