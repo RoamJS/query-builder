@@ -478,6 +478,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                     // Nothing to update I think
                     return;
                   } else {
+                    // actionState: editing
                     // Update the block/page
                     if (isPageUid(shape.props.uid))
                       await window.roamAlphaAPI.updatePage({
@@ -489,6 +490,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                     else await updateBlock({ uid: shape.props.uid, text });
                   }
                 } else if (!getPageUidByPageTitle(text)) {
+                  // actionState: editing
                   createDiscourseNode({
                     configPageUid: shape.type,
                     text,

@@ -11,6 +11,7 @@ import {
   Checkbox,
   Classes,
   Dialog,
+  Divider,
   IconName,
   Intent,
   Label,
@@ -36,6 +37,7 @@ const LabelDialogAutocomplete = ({
   referencedNode,
   isEditingExistingNode,
   actionState,
+  format,
 }: {
   setLabel: (text: string) => void;
   setUid: (uid: string) => void;
@@ -46,23 +48,15 @@ const LabelDialogAutocomplete = ({
   referencedNode: { name: string; nodeType: string } | null;
   isEditingExistingNode: boolean;
   actionState: string;
+  format: string;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<Result[]>([]);
 
-  // TODO: referenceNode WIP
   const [referencedNodeOptions, setReferencedNodeOptions] = useState<Result[]>(
     []
   );
   const [referencedNodeValue, setReferencedNodeValue] = useState("");
-  const [referencedNodeUid, setReferencedNodeUid] = useState("");
-  const setValueforReferencedNode = useCallback(
-    (r: Result) => {
-      setReferencedNodeValue(r.text);
-      setReferencedNodeUid(r.uid);
-    },
-    [setReferencedNodeValue, setReferencedNodeUid]
-  );
   const [addReferencedNode, setAddReferencedNode] = useState(false);
 
   useEffect(() => {
@@ -111,15 +105,60 @@ const LabelDialogAutocomplete = ({
         // setIsLoading(false);
       });
     }, 100);
-  }, [referencedNode, setReferencedNodeOptions]);
+  }, [referencedNode?.nodeType, setReferencedNodeOptions]);
 
+  const [content, setContent] = useState(initialValue.text);
+
+  // TODO: consolidate setValue and setValueFromReferencedNode
   const setValue = useCallback(
     (r: Result) => {
-      setLabel(r.text);
+      if (
+        // addReferencedNode &&
+        // referencedNode?.name &&
+        actionState === "creating" &&
+        r.uid === initialUid
+        // || actionState === "editing"
+        // || addReferencedNode
+      ) {
+        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
+          if (/content/i.test(val)) return r.text;
+          if (
+            referencedNode &&
+            new RegExp(referencedNode.name, "i").test(val) &&
+            addReferencedNode
+          )
+            return referencedNodeValue;
+          return "";
+        });
+        setLabel(pageName);
+      } else {
+        setLabel(r.text);
+      }
       setUid(r.uid);
+      setContent(r.text);
     },
-    [setLabel, setUid]
+    [setLabel, setUid, addReferencedNode, referencedNode]
   );
+
+  const setValueFromReferencedNode = useCallback(
+    (r) => {
+      if (!referencedNode) return;
+      if (actionState === "editing") {
+        // TODO: make this deterministic based on where source is
+        setLabel(`${content} - ${r.text}`);
+      } else {
+        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
+          if (/content/i.test(val)) return content;
+          if (new RegExp(referencedNode.name, "i").test(val)) return r.text;
+          return "";
+        });
+        setLabel(pageName);
+      }
+      setReferencedNodeValue(r.text);
+    },
+    [setLabel, referencedNode, content, referencedNodeValue]
+  );
+
   const onNewItem = useCallback(
     (text: string) => ({ text, uid: initialUid }),
     [initialUid]
@@ -134,8 +173,18 @@ const LabelDialogAutocomplete = ({
     [itemToQuery]
   );
 
+  const [isEditExistingLabel, setIsEditExistingLabel] = useState(false);
+
   return (
     <>
+      {/* DEV */}
+      {/* <div>referVal: {referencedNodeValue}</div>
+      <div>content: {content}</div>
+      <Divider />
+      <div>addReferencedNode: {addReferencedNode ? "true" : "false"}</div>
+      <div>referencedNode: {referencedNode ? "true" : "false"}</div>
+      <div>actionState: {actionState}</div>
+      <Divider /> */}
       <div className={referencedNode ? "mb-8" : ""}>
         {referencedNode && (
           <div
@@ -145,7 +194,21 @@ const LabelDialogAutocomplete = ({
               alignItems: "center",
             }}
           >
-            <Label>Title</Label>
+            {actionState === "editing" ? (
+              <Checkbox
+                label={`Edit Label`}
+                checked={isEditExistingLabel}
+                onChange={(e) => {
+                  const checked = e.target as HTMLInputElement;
+                  setIsEditExistingLabel(checked.checked);
+                }}
+                disabled={addReferencedNode}
+                indeterminate={addReferencedNode}
+              />
+            ) : (
+              <Label>Title</Label>
+            )}
+
             <Checkbox
               label={`Set ${referencedNode?.name}`}
               checked={addReferencedNode}
@@ -153,9 +216,15 @@ const LabelDialogAutocomplete = ({
                 const checked = e.target as HTMLInputElement;
                 setAddReferencedNode(checked.checked);
               }}
-              disabled={actionState === "changing" || actionState === "setting"}
+              disabled={
+                actionState === "changing" ||
+                actionState === "setting" ||
+                isEditExistingLabel
+              }
               indeterminate={
-                actionState === "changing" || actionState === "setting"
+                actionState === "changing" ||
+                actionState === "setting" ||
+                isEditExistingLabel
               }
             />
           </div>
@@ -170,12 +239,16 @@ const LabelDialogAutocomplete = ({
           onNewItem={onNewItem}
           itemToQuery={itemToQuery}
           filterOptions={filterOptions}
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            (actionState === "editing" &&
+              !!referencedNode &&
+              !isEditExistingLabel)
+          }
           placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
           maxItemsDisplayed={100}
         />
       </div>
-
       {
         // Ability to add referenced node
         addReferencedNode &&
@@ -184,8 +257,13 @@ const LabelDialogAutocomplete = ({
             <div>
               <Label>{referencedNode.name}</Label>
               <AutocompleteInput
-                value={{ text: "", uid: "" }}
-                setValue={setValueforReferencedNode}
+                value={
+                  // this feels wrong, we only need `text`, but we are reusing onNewItem, itemToQuery, filterOptions
+                  referencedNodeValue
+                    ? { text: referencedNodeValue, uid: "" }
+                    : { text: "", uid: "" }
+                }
+                setValue={setValueFromReferencedNode}
                 options={referencedNodeOptions}
                 multiline
                 onNewItem={onNewItem}
@@ -272,6 +350,7 @@ const LabelDialog = ({
       .replace(/\\\]/g, "]")
       .replace(/\(\.[\*\+](\?)?\)/g, "");
   }, [_label, nodeType]);
+  // Need useMemo ?
   const initialValue = useMemo(() => {
     return { text: initialLabel, uid: initialUid };
   }, [initialLabel, initialUid]);
@@ -318,7 +397,7 @@ const LabelDialog = ({
     };
   }, [containerRef, onCancelClick, touchRef]);
 
-  const isEditingExistingNode = isLiveBlock(initialUid);
+  const isCreateCanvasNode = !isLiveBlock(initialUid);
 
   // TODO: Consolidate/Merge this with onSuccess()
   const renderCalloutText = () => {
@@ -330,23 +409,23 @@ const LabelDialog = ({
     }
 
     let title, icon, actionState;
-    if (isEditingExistingNode) {
+    if (!isCreateCanvasNode) {
       if (uid === initialUid) {
-        title = "Editing Label of Current Discourse Node";
+        title = "Edit title of current discourse node";
         icon = IconNames.EDIT;
         actionState = "editing";
       } else {
-        title = "Change to Existing Node";
+        title = "Change to existing discourse dode";
         icon = IconNames.EXCHANGE;
         actionState = "changing";
       }
     } else {
       if (uid === initialUid) {
-        title = "Creating New Discourse Node";
+        title = "Create new discourse node";
         icon = IconNames.NEW_OBJECT;
         actionState = "creating";
       } else {
-        title = "Setting to Existing Node";
+        title = "Set to existing discourse node";
         icon = IconNames.LINK;
         actionState = "setting";
       }
@@ -360,9 +439,7 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={isOpen}
-        title={
-          isEditingExistingNode ? "Edit Canvas Node" : "Create Canvas Node"
-        }
+        title={!isCreateCanvasNode ? "Edit Canvas Node" : "Create Canvas Node"}
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?
@@ -379,7 +456,7 @@ const LabelDialog = ({
           >
             <div className="mt-2">
               <div className="truncate">
-                {isEditingExistingNode ? (
+                {!isCreateCanvasNode ? (
                   <>
                     <span className="font-semibold">Current Label:</span>{" "}
                     {initialLabel}
@@ -390,9 +467,10 @@ const LabelDialog = ({
               </div>
             </div>
           </Callout>
+          <div className="m-4 truncate">{label}</div>
           <LabelDialogAutocomplete
             actionState={calloutText.state || ""}
-            isEditingExistingNode={isEditingExistingNode}
+            isEditingExistingNode={!isCreateCanvasNode}
             referencedNode={referencedNode}
             setLabel={setLabel}
             setUid={setUid}
@@ -400,6 +478,7 @@ const LabelDialog = ({
             initialUid={initialUid}
             initialValue={initialValue}
             onSubmit={onSubmit}
+            format={format}
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
