@@ -490,7 +490,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                     else await updateBlock({ uid: shape.props.uid, text });
                   }
                 } else if (!getPageUidByPageTitle(text)) {
-                  // actionState: editing
+                  // actionState: creating
                   createDiscourseNode({
                     configPageUid: shape.type,
                     text,

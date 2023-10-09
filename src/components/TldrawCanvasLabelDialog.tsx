@@ -302,6 +302,7 @@ const LabelDialog = ({
 }: RoamOverlayProps<NodeDialogProps>) => {
   const { format } = discourseContext.nodes[nodeType];
 
+  // Only returning first match
   const getReferencedNodeInFormat = (
     format: string,
     discourseContext: DiscourseContextType
