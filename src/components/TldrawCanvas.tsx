@@ -470,34 +470,25 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             label={shape.props.title}
             nodeType={this.type}
             discourseContext={discourseContext}
-            onSuccess={async ({ text, uid }) => {
-              // If we get a new uid, all the necessary updates happen below
-              if (shape.props.uid === uid) {
-                if (shape.props.title) {
-                  if (shape.props.title === text) {
-                    // Nothing to update I think
-                    return;
-                  } else {
-                    // actionState: editing
-                    // Update the block/page
-                    if (isPageUid(shape.props.uid))
-                      await window.roamAlphaAPI.updatePage({
-                        page: {
-                          uid: shape.props.uid,
-                          title: text,
-                        },
-                      });
-                    else await updateBlock({ uid: shape.props.uid, text });
-                  }
-                } else if (!getPageUidByPageTitle(text)) {
-                  // actionState: creating
-                  createDiscourseNode({
-                    configPageUid: shape.type,
-                    text,
-                    newPageUid: uid,
-                    discourseNodes: Object.values(discourseContext.nodes),
+            onSuccess={async ({ text, uid, actionState }) => {
+              if (actionState === "editing") {
+                if (isPageUid(shape.props.uid))
+                  await window.roamAlphaAPI.updatePage({
+                    page: {
+                      uid: shape.props.uid,
+                      title: text,
+                    },
                   });
-                }
+                else await updateBlock({ uid: shape.props.uid, text });
+              }
+
+              if (actionState === "creating" && !getPageUidByPageTitle(text)) {
+                createDiscourseNode({
+                  configPageUid: shape.type,
+                  text,
+                  newPageUid: uid,
+                  discourseNodes: Object.values(discourseContext.nodes),
+                });
               }
 
               // Update Shape Properties and Relations

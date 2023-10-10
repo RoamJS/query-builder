@@ -358,9 +358,44 @@ const LabelDialog = ({
   const [label, setLabel] = useState(initialValue.text);
   const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
+  const isCreateCanvasNode = !isLiveBlock(initialUid);
+
+  const renderCalloutText = () => {
+    let title = "Please provide a label";
+    let icon = IconNames.INFO_SIGN;
+    let actionState = "initial";
+
+    if (!label) return { title, icon, actionState };
+
+    if (!isCreateCanvasNode) {
+      if (uid === initialUid) {
+        title = "Edit title of current discourse node";
+        icon = IconNames.EDIT;
+        actionState = "editing";
+      } else {
+        title = "Change to existing discourse dode";
+        icon = IconNames.EXCHANGE;
+        actionState = "changing";
+      }
+    } else {
+      if (uid === initialUid) {
+        title = "Create new discourse node";
+        icon = IconNames.NEW_OBJECT;
+        actionState = "creating";
+      } else {
+        title = "Set to existing discourse node";
+        icon = IconNames.LINK;
+        actionState = "setting";
+      }
+    }
+
+    return { title, icon, actionState };
+  };
+  const calloutText = renderCalloutText();
+
   const onSubmit = () => {
     setLoading(true);
-    onSuccess({ text: label, uid })
+    onSuccess({ text: label, uid, actionState: calloutText.actionState })
       .then(onClose)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -398,44 +433,6 @@ const LabelDialog = ({
     };
   }, [containerRef, onCancelClick, touchRef]);
 
-  const isCreateCanvasNode = !isLiveBlock(initialUid);
-
-  // TODO: Consolidate/Merge this with onSuccess()
-  const renderCalloutText = () => {
-    if (!label) {
-      return {
-        title: "Please provide a label",
-        icon: IconNames.INFO_SIGN,
-      };
-    }
-
-    let title, icon, actionState;
-    if (!isCreateCanvasNode) {
-      if (uid === initialUid) {
-        title = "Edit title of current discourse node";
-        icon = IconNames.EDIT;
-        actionState = "editing";
-      } else {
-        title = "Change to existing discourse dode";
-        icon = IconNames.EXCHANGE;
-        actionState = "changing";
-      }
-    } else {
-      if (uid === initialUid) {
-        title = "Create new discourse node";
-        icon = IconNames.NEW_OBJECT;
-        actionState = "creating";
-      } else {
-        title = "Set to existing discourse node";
-        icon = IconNames.LINK;
-        actionState = "setting";
-      }
-    }
-
-    return { title, icon, state: actionState };
-  };
-  const calloutText = renderCalloutText();
-
   return (
     <>
       <Dialog
@@ -470,7 +467,7 @@ const LabelDialog = ({
           </Callout>
           <div className="m-4 truncate">{label}</div>
           <LabelDialogAutocomplete
-            actionState={calloutText.state || ""}
+            actionState={calloutText.actionState || ""}
             isEditingExistingNode={!isCreateCanvasNode}
             referencedNode={referencedNode}
             setLabel={setLabel}
