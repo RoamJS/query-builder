@@ -71,7 +71,7 @@ const ExportProgress = ({ id }: { id: string }) => {
 
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
-  parentUid: string;
+  title?: string;
 };
 
 type ExportDialogComponent = (
@@ -91,6 +91,7 @@ const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen,
   results = [],
+  title = "Share Data",
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -412,7 +413,7 @@ const ExportDialog: ExportDialogComponent = ({
           }
           selectedValue={isSendToGraph ? "graph" : "page"}
         >
-          <Radio value="graph" label="Send to Graph Overview" />
+          <Radio value="graph" label="Visualize in Graph Overview" />
           <Radio value="page" label="Send to Page" />
         </RadioGroup>
         {!isSendToGraph && (
@@ -453,7 +454,7 @@ const ExportDialog: ExportDialogComponent = ({
         canEscapeKeyClose={false}
         canOutsideClickClose={false}
         isCloseButtonShown={false}
-        title={`Export / Send To Query Results`}
+        title={title}
         autoFocus={false}
         enforceFocus={false}
         portalClassName={"roamjs-export-dialog-body"}
