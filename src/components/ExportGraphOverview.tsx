@@ -118,7 +118,10 @@ const GraphExportDialog = ({
     setDegreesOut(degreesOut);
     setDiscourseContextDepth(Math.max(degreesIn, degreesOut));
   }, []);
+
+  // TODO: Remove tempResults (dev testing)
   const [tempResults, setTempResults] = useState<Result[]>([]);
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -136,6 +139,8 @@ const GraphExportDialog = ({
           value={discourseContextDepth}
         />
       </div>
+
+      {/* TODO: Remove tempResults (dev testing) */}
       <Button
         disabled={loading}
         onClick={() => {
@@ -158,6 +163,7 @@ const GraphExportDialog = ({
             return <div>{r.text}</div>;
           })}
       </div>
+
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
           <Button onClick={onClose}>Cancel</Button>
