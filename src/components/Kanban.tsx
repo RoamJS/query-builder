@@ -1,7 +1,13 @@
 // Design inspiration from Trello
-import React from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Column, Result } from "../utils/types";
-import { Button, Icon, InputGroup, Tooltip } from "@blueprintjs/core";
+import { Button, Icon, Popover, Tooltip } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -11,8 +17,8 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import predefinedSelections from "../utils/predefinedSelections";
 import toCellValue from "../utils/toCellValue";
 import extractTag from "roamjs-components/util/extractTag";
-import createBlock from "roamjs-components/writes/createBlock";
-import updateBlock from "roamjs-components/writes/updateBlock";
+import deleteBlock from "roamjs-components/writes/deleteBlock";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -25,7 +31,7 @@ const KanbanCard = (card: {
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
   result: Result;
 }) => {
-  const [isDragging, setIsDragging] = React.useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   return (
     <Draggable
@@ -99,11 +105,11 @@ const Kanban = ({
   onQuery: () => void;
   parentUid: string;
 }) => {
-  const byUid = React.useMemo(
+  const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
   );
-  const columnKey = React.useMemo(() => {
+  const columnKey = useMemo(() => {
     const configuredKey = Array.isArray(layout.key)
       ? layout.key[0]
       : typeof layout.key === "string"
@@ -130,7 +136,7 @@ const Kanban = ({
     return defaultColumnKey;
   }, [layout.key]);
   const DEFAULT_FORMAT = `No ${columnKey}`;
-  const displayKey = React.useMemo(() => {
+  const displayKey = useMemo(() => {
     const configuredDisplay = Array.isArray(layout.display)
       ? layout.display[0]
       : typeof layout.display === "string"
@@ -145,7 +151,7 @@ const Kanban = ({
     });
     return defaultDisplayKey;
   }, [layout.key]);
-  const [columns, setColumns] = React.useState(() => {
+  const [columns, setColumns] = useState(() => {
     const configuredCols = Array.isArray(layout.columns)
       ? layout.columns
       : typeof layout.columns === "string"
@@ -172,7 +178,7 @@ const Kanban = ({
       .slice(0, 3);
   });
 
-  const [prioritization, setPrioritization] = React.useState(() => {
+  const [prioritization, setPrioritization] = useState(() => {
     const base64 = Array.isArray(layout.prioritization)
       ? layout.prioritization[0]
       : typeof layout.prioritization === "string"
@@ -189,16 +195,16 @@ const Kanban = ({
     });
     return stored;
   });
-  const layoutUid = React.useMemo(() => {
+  const layoutUid = useMemo(() => {
     return Array.isArray(layout.uid)
       ? layout.uid[0]
       : typeof layout.uid === "string"
       ? layout.uid
       : ""; // should we throw an error here? Should never happen in practice...
   }, [layout.uid]);
-  const [isAdding, setIsAdding] = React.useState(false);
-  const [newColumn, setNewColumn] = React.useState("");
-  const cards = React.useMemo(() => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newColumn, setNewColumn] = useState("");
+  const cards = useMemo(() => {
     const cards: Record<string, Result[]> = {};
     data.forEach((d) => {
       const column =
@@ -219,11 +225,11 @@ const Kanban = ({
     });
     return cards;
   }, [data, prioritization, columnKey]);
-  const potentialColumns = React.useMemo(() => {
+  const potentialColumns = useMemo(() => {
     const columnSet = new Set(columns);
     return Object.keys(cards).filter((c) => !columnSet.has(c));
   }, [cards, columns]);
-  React.useEffect(() => {
+  useEffect(() => {
     const base64 = window.btoa(JSON.stringify(prioritization));
     setInputSetting({
       blockUid: layoutUid,
@@ -231,8 +237,8 @@ const Kanban = ({
       value: base64,
     });
   }, [prioritization]);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const getColumnElement = React.useCallback(
+  const containerRef = useRef<HTMLDivElement>(null);
+  const getColumnElement = useCallback(
     (x: number) => {
       if (!containerRef.current) return;
       const columnEls = Array.from<HTMLDivElement>(
@@ -246,7 +252,7 @@ const Kanban = ({
     },
     [containerRef]
   );
-  const reprioritizeAndUpdateBlock = React.useCallback<Reprioritize>(
+  const reprioritizeAndUpdateBlock = useCallback<Reprioritize>(
     ({ uid, x, y }) => {
       if (!containerRef.current) return;
       const newColumn = getColumnElement(x);
@@ -306,10 +312,41 @@ const Kanban = ({
     },
     [setPrioritization, cards, containerRef, byUid, columnKey, parentUid]
   );
-  const showLegend = React.useMemo(
+  const showLegend = useMemo(
     () => (Array.isArray(layout.legend) ? layout.legend[0] : layout.legend),
     [layout.legend]
   );
+  const [openedPopoverIndex, setOpenedPopoverIndex] = useState<number | null>(
+    null
+  );
+
+  const moveColumn = async (
+    direction: "left" | "right",
+    columnIndex: number
+  ) => {
+    const offset = direction === "left" ? -1 : 1;
+    const newColumns = [...columns];
+    // Swap elements
+    [newColumns[columnIndex], newColumns[columnIndex + offset]] = [
+      newColumns[columnIndex + offset],
+      newColumns[columnIndex],
+    ];
+
+    const columnUid = getSubTree({
+      key: "columns",
+      parentUid: layoutUid,
+    }).uid;
+    await deleteBlock(columnUid);
+
+    setInputSettings({
+      blockUid: layoutUid,
+      key: "columns",
+      values: newColumns,
+    });
+    setColumns(newColumns);
+    setOpenedPopoverIndex(null);
+  };
+
   return (
     <>
       {showLegend === "Yes" && (
@@ -334,7 +371,7 @@ const Kanban = ({
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll grid w-full"
           ref={containerRef}
         >
-          {columns.map((col) => {
+          {columns.map((col, columnIndex) => {
             return (
               <div
                 key={col}
@@ -347,19 +384,55 @@ const Kanban = ({
                   style={{ display: "flex" }}
                 >
                   <span className="font-bold">{col}</span>
-                  <Button
-                    icon={"trash"}
-                    minimal
-                    onClick={() => {
-                      const values = columns.filter((c) => c !== col);
-                      setInputSettings({
-                        blockUid: layout.uid as string,
-                        key: "columns",
-                        values,
-                      });
-                      setColumns(values);
-                    }}
-                  />
+                  <Popover
+                    autoFocus={false}
+                    interactionKind="hover"
+                    placement="bottom"
+                    isOpen={openedPopoverIndex === columnIndex}
+                    onInteraction={(next) =>
+                      next
+                        ? setOpenedPopoverIndex(columnIndex)
+                        : setOpenedPopoverIndex(null)
+                    }
+                    captureDismiss={true}
+                    content={
+                      <>
+                        <Button
+                          className="p-4"
+                          minimal
+                          icon="arrow-left"
+                          disabled={columnIndex === 0}
+                          onClick={() => moveColumn("left", columnIndex)}
+                        />
+                        <Button
+                          className="p-4"
+                          minimal
+                          icon="arrow-right"
+                          disabled={columnIndex === columns.length - 1}
+                          onClick={() => moveColumn("right", columnIndex)}
+                        />
+                        <Button
+                          className="p-4"
+                          intent="danger"
+                          minimal
+                          icon="trash"
+                          onClick={() => {
+                            const values = columns.filter((c) => c !== col);
+                            setInputSettings({
+                              blockUid: layout.uid as string,
+                              key: "columns",
+                              values,
+                            });
+                            setColumns(values);
+                            setOpenedPopoverIndex(null);
+                          }}
+                        />
+                      </>
+                    }
+                    position="bottom-left"
+                  >
+                    <Button icon="more" minimal />
+                  </Popover>
                 </div>
                 {(cards[col] || [])?.map((d) => (
                   <KanbanCard
@@ -397,7 +470,7 @@ const Kanban = ({
                   onClick={() => {
                     const values = [...columns, newColumn];
                     setInputSettings({
-                      blockUid: layout.uid as string,
+                      blockUid: layoutUid,
                       key: "columns",
                       values,
                     });
