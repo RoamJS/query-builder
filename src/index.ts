@@ -42,7 +42,7 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
-import { render as renderGraphOverviewExport } from "./components/ExportGraphOverview";
+import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
