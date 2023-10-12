@@ -7,6 +7,8 @@ import {
   Slider,
   Tab,
   Tabs,
+  Tooltip,
+  Callout,
 } from "@blueprintjs/core";
 import ReactDOM from "react-dom";
 import renderOverlay, {
@@ -17,7 +19,7 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import { Result } from "../utils/types";
 import { render as exportRender } from "./Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import getPageTitlesandBlockUidsReferencingPage from "roamjs-components/queries/getPageTitlesandBlockUidsReferencingPage";
+import getPageTitlesandBlockUidsReferencingPage from "roamjs-components/queries/getPageTitlesAndBlockUidsReferencingPage";
 import getLinkedPageTitlesUnderUid from "roamjs-components/queries/getLinkedPageTitlesUnderUid";
 import isDiscourseNode from "../utils/isDiscourseNode";
 
@@ -230,7 +232,7 @@ const GraphExportDialog = ({
   // const initialResults = pages.map((pageTitle) =>
   //   convertToResult({ pageTitle })
   // );
-  const [currentTab, setCurrentTab] = useState("by-backlinks");
+  const [currentTab, setCurrentTab] = useState("by-references");
   const [degreesIn, setDegreesIn] = useState(0);
   const [degreesOut, setDegreesOut] = useState(0);
   const [discourseContextDepth, setDiscourseContextDepth] = useState(0);
@@ -246,6 +248,10 @@ const GraphExportDialog = ({
 
   const ByDiscourseContextPanel = (
     <>
+      <Callout className="mb-5">
+        Export Discourse Nodes and their Discourse Context based on relation
+        depth from the initial nodes.
+      </Callout>
       <Label>Depth</Label>
       <Slider
         min={0}
@@ -255,32 +261,18 @@ const GraphExportDialog = ({
         onChange={(v) => setDiscourseContextDepth(v)}
         value={discourseContextDepth}
       />
-
-      {/* TODO: Remove tempResults (dev testing) */}
-
-      {/* <Button
-        disabled={loading}
-        onClick={() => {
-          setLoading(true);
-
-          setTimeout(async () => {
-            const tempResults = await getDiscourseContext(
-              initialUids,
-              discourseContextDepth
-            );
-            setTempResults(tempResults);
-            setLoading(false);
-          }, 0);
-        }}
-      >
-        Temp Results
-      </Button> */}
     </>
   );
 
-  const ByBacklinksPanel = (
+  const ByReferencesPanel = (
     <>
-      <Label>Degrees In</Label>
+      <Callout className="mb-5">
+        Export any Discourse Nodes and their Discourse Context that reference or
+        are referenced by any page starting from the initial pages.
+      </Callout>
+      <Tooltip placement="top" content={"Pages that link to a selected page"}>
+        <Label>Degrees In</Label>
+      </Tooltip>
       <Slider
         min={0}
         max={5}
@@ -289,7 +281,9 @@ const GraphExportDialog = ({
         onChange={(v) => setDegreesIn(v)}
         value={degreesIn}
       />
-      <Label>Degrees Out</Label>
+      <Tooltip placement="top" content={"Pages that link from a selected page"}>
+        <Label>Degrees Out</Label>
+      </Tooltip>
       <Slider
         min={0}
         max={5}
@@ -339,7 +333,7 @@ const GraphExportDialog = ({
   );
 
   const getResults = async () => {
-    if (currentTab === "by-backlinks") {
+    if (currentTab === "by-references") {
       const { inbound, outbound } = await getAllReferencesByDegree(
         initialUids,
         degreesIn,
@@ -398,9 +392,9 @@ const GraphExportDialog = ({
           large={true}
         >
           <Tab
-            id="by-backlinks"
-            title="By Backlinks"
-            panel={ByBacklinksPanel}
+            id="by-references"
+            title="By References"
+            panel={ByReferencesPanel}
           />
           <Tab
             id="by-discourse-relations"
