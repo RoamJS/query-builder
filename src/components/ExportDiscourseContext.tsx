@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import ReactDOM from "react-dom";
 import {
   Button,
   Classes,
@@ -9,128 +10,94 @@ import {
   Tabs,
   Tooltip,
   Callout,
+  Collapse,
 } from "@blueprintjs/core";
-import ReactDOM from "react-dom";
 import renderOverlay, {
   RoamOverlayProps,
 } from "roamjs-components/util/renderOverlay";
-import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import { Result } from "../utils/types";
-import { render as exportRender } from "./Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageTitlesandBlockUidsReferencingPage from "roamjs-components/queries/getPageTitlesAndBlockUidsReferencingPage";
 import getLinkedPageTitlesUnderUid from "roamjs-components/queries/getLinkedPageTitlesUnderUid";
 import isDiscourseNode from "../utils/isDiscourseNode";
-
-const convertToResult = (params: { uid?: string; pageTitle?: string }) => {
-  const { uid, pageTitle } = params;
-
-  if (!uid && !pageTitle) {
-    throw new Error("Either uid or pageTitle must be provided.");
-  }
-
-  return {
-    uid: uid || getPageUidByPageTitle(pageTitle!),
-    text: pageTitle || getPageTitleByPageUid(uid!),
-  };
-};
+import getDiscourseContextResults from "../utils/getDiscourseContextResults";
+import { render as exportRender } from "./Export";
+import { Result } from "../utils/types";
 
 const getInboundReferences = async (uid: string) => {
-  const pageName = getPageTitleByPageUid(uid);
-  const directReferences = getPageTitlesandBlockUidsReferencingPage(pageName);
-  // convert page names to UIDs
-  const inboundUids = directReferences.map((r) =>
-    getPageUidByPageTitle(r.title)
-  );
-
-  return inboundUids;
+  // TODO: Optimize this with custom query to take in and return Result[]
+  const pageTitle = getPageTitleByPageUid(uid);
+  const refs = getPageTitlesandBlockUidsReferencingPage(pageTitle);
+  const refPageUids = refs.map((r) => getPageUidByPageTitle(r.title));
+  return refPageUids;
 };
 
 const getOutboundReferences = async (uid: string) => {
-  const outboundPageNames = getLinkedPageTitlesUnderUid(uid);
-
-  // Convert page names to UIDs
-  const outboundUids = outboundPageNames.map((name) =>
-    getPageUidByPageTitle(name)
+  // TODO: Optimize this with custom query take in and return Result[]
+  const refPageTitles = getLinkedPageTitlesUnderUid(uid);
+  const refPageUids = refPageTitles.map((title) =>
+    getPageUidByPageTitle(title)
   );
+  return refPageUids;
+};
 
-  return outboundUids;
+const getReferencesByDegree = async (
+  initialUids: string[],
+  degrees: number,
+  getReferences: (uid: string) => Promise<string[]>
+): Promise<Set<string>> => {
+  let currentUids = [...initialUids];
+  const visitedUids = new Set<string>();
+
+  for (let i = 0; i < degrees; i++) {
+    const nextUids = [];
+    for (let uid of currentUids) {
+      const refs = await getReferences(uid);
+      nextUids.push(...refs.filter((ref) => !visitedUids.has(ref)));
+    }
+
+    nextUids.forEach((uid) => visitedUids.add(uid));
+    currentUids = nextUids;
+  }
+
+  return visitedUids;
 };
 
 const getAllReferencesByDegree = async (
   initialUids: string[],
   degreesIn: number,
   degreesOut: number
-) => {
-  let currentInboundUids = [...initialUids];
-  let currentOutboundUids = [...initialUids];
-  const visitedInboundUids = new Set<string>();
-  const visitedOutboundUids = new Set<string>();
+): Promise<Set<string>> => {
+  const inboundUids = await getReferencesByDegree(
+    initialUids,
+    degreesIn,
+    getInboundReferences
+  );
+  const outboundUids = await getReferencesByDegree(
+    initialUids,
+    degreesOut,
+    getOutboundReferences
+  );
 
-  for (let i = 0; i < degreesIn; i++) {
-    const nextInboundUids = [];
-
-    for (const uid of currentInboundUids) {
-      const refs = await getInboundReferences(uid);
-      nextInboundUids.push(
-        ...refs.filter((ref) => !visitedInboundUids.has(ref))
-      );
-    }
-
-    nextInboundUids.forEach((uid) => visitedInboundUids.add(uid));
-    currentInboundUids = nextInboundUids;
-  }
-
-  for (let j = 0; j < degreesOut; j++) {
-    const nextOutboundUids = [];
-
-    for (const uid of currentOutboundUids) {
-      const refs = await getOutboundReferences(uid);
-      nextOutboundUids.push(
-        ...refs.filter((ref) => !visitedOutboundUids.has(ref))
-      );
-    }
-
-    nextOutboundUids.forEach((uid) => visitedOutboundUids.add(uid));
-    currentOutboundUids = nextOutboundUids;
-  }
-
-  return {
-    inbound: [...visitedInboundUids],
-    outbound: [...visitedOutboundUids],
-  };
+  return new Set([...inboundUids, ...outboundUids, ...initialUids]);
 };
 
-const getDiscourseContextResultsForUids = async (uids: string[]) => {
-  let allResults: Result[] = [];
+const getDiscourseContextResultsByDepth = async ({
+  uid,
+  title,
+  currentDepth,
+  maxDepth,
+  visitedUids,
+}: {
+  uid: string;
+  title?: string;
+  currentDepth: number;
+  maxDepth: number;
+  visitedUids: Set<string>;
+}) => {
+  if (!isDiscourseNode(uid)) return [];
 
-  for (const uid of uids) {
-    const response = await getDiscourseContextResults({ uid });
-    const resultItems = response.map((r) => Object.values(r.results)).flat();
-    console.log(resultItems);
-
-    const items = resultItems
-      .filter(
-        (item): item is { uid: string; text: string } =>
-          typeof item.uid === "string" && typeof item.text === "string"
-      )
-      .map(({ uid, text }) => ({ uid, text }));
-
-    allResults = [...allResults, ...items];
-  }
-  console.log(allResults);
-
-  return allResults;
-};
-
-const getDiscourseContextResultsByLevel = async (
-  uid: string,
-  currentDepth: number,
-  maxDepth: number,
-  visitedUids: Set<string>
-) => {
-  const initialResult = { uid, text: getPageTitleByPageUid(uid) };
+  const initialResult = { uid, text: title || getPageTitleByPageUid(uid) };
   let aggregatedResults: Result[] = [initialResult];
 
   if (currentDepth >= maxDepth || visitedUids.has(uid)) {
@@ -142,16 +109,16 @@ const getDiscourseContextResultsByLevel = async (
   const discourseContextResults = await getDiscourseContextResults({ uid });
 
   for (const { results } of discourseContextResults) {
-    for (const resultUid in results) {
-      const result = results[resultUid];
-      aggregatedResults.push(result as Result);
-      if (typeof result.uid !== "string") continue;
-      const deeperResults = await getDiscourseContextResultsByLevel(
-        result.uid,
-        currentDepth + 1,
-        maxDepth,
-        visitedUids
-      );
+    for (const result in results) {
+      const r = results[result] as Result;
+      aggregatedResults.push(r);
+      const deeperResults = await getDiscourseContextResultsByDepth({
+        uid: r.uid,
+        title: r.text,
+        currentDepth: currentDepth + 1,
+        maxDepth: maxDepth,
+        visitedUids,
+      });
       aggregatedResults = aggregatedResults.concat(deeperResults);
     }
   }
@@ -159,37 +126,34 @@ const getDiscourseContextResultsByLevel = async (
   return aggregatedResults;
 };
 
-const getDiscourseContext = async (
+const getAllDiscourseContext = async (
   initialUids: string[],
   discourseContextDepth = 1,
   visitedUids = new Set<string>()
 ) => {
   const allResults = await Promise.all(
     initialUids.map((uid) =>
-      getDiscourseContextResultsByLevel(
+      getDiscourseContextResultsByDepth({
         uid,
-        0,
-        discourseContextDepth,
-        visitedUids
-      )
+        currentDepth: 0,
+        maxDepth: discourseContextDepth,
+        visitedUids,
+      })
     )
   );
 
-  // Flatten the results into one array
+  // Remove duplicates
   const flattenedResults = allResults.flat();
-
-  // Create uniqueResults using a Map for deduplication
   const uidToResultMap = new Map();
   for (const result of flattenedResults) {
     uidToResultMap.set(result.uid, result);
   }
-  // Convert the Map values back to an array
   const uniqueResults: Result[] = [...uidToResultMap.values()];
 
   return uniqueResults;
 };
 
-const getDepthValues = () => {
+const getGraphOverviewDepthValues = () => {
   const controlPanelEl = document.querySelector(
     "div.rm-graph-view-control-panel__main-options"
   );
@@ -221,30 +185,34 @@ const getDepthValues = () => {
   };
 };
 
-const GraphExportDialog = ({
+type GraphExportDialogProps = {
+  initialDegreesIn?: number;
+  initialDegreesOut?: number;
+  initialDiscourseContextDepth?: number;
+};
+
+type GraphExportDialogComponent = (
+  props: RoamOverlayProps<GraphExportDialogProps>
+) => JSX.Element;
+
+const GraphExportDialog: GraphExportDialogComponent = ({
   isOpen,
   onClose,
-}: RoamOverlayProps<{ blockUid: string }>) => {
+  initialDegreesIn = 0,
+  initialDegreesOut = 0,
+  initialDiscourseContextDepth,
+}) => {
   const [loading, setLoading] = useState(false);
   const pages = window.roamAlphaAPI.ui.graphView.wholeGraph.getExplorePages();
   const initialUids = pages.map((x) => getPageUidByPageTitle(x)) || [];
-  //convert uids to results
-  // const initialResults = pages.map((pageTitle) =>
-  //   convertToResult({ pageTitle })
-  // );
   const [currentTab, setCurrentTab] = useState("by-references");
-  const [degreesIn, setDegreesIn] = useState(0);
-  const [degreesOut, setDegreesOut] = useState(0);
-  const [discourseContextDepth, setDiscourseContextDepth] = useState(0);
-  useEffect(() => {
-    const { degreesIn, degreesOut } = getDepthValues();
-    setDegreesIn(degreesIn);
-    setDegreesOut(degreesOut);
-    setDiscourseContextDepth(Math.max(degreesIn, degreesOut));
-  }, []);
-
-  // TODO: Remove tempResults (dev testing)
-  const [tempResults, setTempResults] = useState<Result[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewResults, setPreviewResults] = useState<Result[]>([]);
+  const [degreesIn, setDegreesIn] = useState(initialDegreesIn);
+  const [degreesOut, setDegreesOut] = useState(initialDegreesOut);
+  const [discourseContextDepth, setDiscourseContextDepth] = useState(
+    initialDiscourseContextDepth || Math.max(degreesIn, degreesOut)
+  );
 
   const ByDiscourseContextPanel = (
     <>
@@ -292,83 +260,42 @@ const GraphExportDialog = ({
         onChange={(v) => setDegreesOut(v)}
         value={degreesOut}
       />
-      {/* TODO: Remove tempResults (dev testing) */}
-      {/* <Button
-        onClick={async () => {
-          const { inbound, outbound } = await getAllReferencesByDegree(
-            initialUids,
-            degreesIn,
-            degreesOut
-          );
-          const uids = [...inbound, ...outbound, ...initialUids];
-          const uniqueUids = [...new Set(uids)];
-          const results = uniqueUids.map((uid) => convertToResult({ uid }));
-          setTempByPageResults(results);
-        }}
-      >
-        Process Block References
-      </Button> */}
-      {/* <Button
-        onClick={async () => {
-          const { inbound, outbound } = await getAllReferencesByDegree(
-            initialUids,
-            degreesIn,
-            degreesOut
-          );
-          const uids = [...inbound, ...outbound, ...initialUids];
-          const uniqueUids = [...new Set(uids)];
-          const discourseNodeUids = uniqueUids.filter((uid) =>
-            isDiscourseNode(uid)
-          );
-          const results = await getDiscourseContext(
-            discourseNodeUids,
-            Math.max(degreesIn, degreesOut)
-          );
-          setTempByPageResults(results);
-        }}
-      >
-        Get Discourse Context Results
-      </Button> */}
     </>
   );
 
   const getResults = async () => {
     if (currentTab === "by-references") {
-      const { inbound, outbound } = await getAllReferencesByDegree(
+      const referenceUids = await getAllReferencesByDegree(
         initialUids,
         degreesIn,
         degreesOut
       );
-      const uids = [...inbound, ...outbound, ...initialUids];
-      const uniqueUids = [...new Set(uids)];
-      const discourseNodeUids = uniqueUids.filter((uid) =>
+      const discourseNodeUids = Array.from(referenceUids).filter((uid) =>
         isDiscourseNode(uid)
       );
-      return await getDiscourseContext(
+      return await getAllDiscourseContext(
         discourseNodeUids,
         Math.max(degreesIn, degreesOut)
       );
     }
     if (currentTab === "by-discourse-relations") {
-      return await getDiscourseContext(initialUids, discourseContextDepth);
+      return await getAllDiscourseContext(initialUids, discourseContextDepth);
     }
     return [];
   };
 
-  // TODO: Remove tempResults (dev testing)
-  const previewResults = async () => {
+  const onSubmit = async (preview?: boolean) => {
     setLoading(true);
     setTimeout(async () => {
       const results = await getResults();
-      setTempResults(results);
-      setLoading(false);
-    }, 0);
-  };
 
-  const onSubmit = async () => {
-    setLoading(true);
-    setTimeout(async () => {
-      const results = await getResults();
+      if (preview) {
+        setPreviewResults(results);
+        setShowPreview(true);
+        setLoading(false);
+        return;
+      }
+
       exportRender({
         results,
         title: "Export Discourse Graph",
@@ -383,12 +310,16 @@ const GraphExportDialog = ({
       isOpen={isOpen}
       title="Discourse Graph Context Export"
       onClose={onClose}
+      autoFocus={false}
     >
       <div className={Classes.DIALOG_BODY}>
         <Tabs
           id="discourse-graph-export-tabs"
           selectedTabId={currentTab}
-          onChange={(id) => setCurrentTab(id as string)}
+          onChange={(id) => {
+            setShowPreview(false);
+            setCurrentTab(id as string);
+          }}
           large={true}
         >
           <Tab
@@ -402,28 +333,33 @@ const GraphExportDialog = ({
             panel={ByDiscourseContextPanel}
           />
         </Tabs>
-        {/* TEMP DEV REMOVE */}
-        <div>
-          {tempResults && (
-            <ul>
-              {tempResults.map((r) => {
-                return <li>{r.text}</li>;
-              })}
-            </ul>
-          )}
-        </div>
       </div>
 
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-          <Button loading={loading} onClick={previewResults} intent="warning">
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            loading={loading}
+            onClick={() => onSubmit(true)}
+            intent="warning"
+          >
             Preview
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button loading={loading} intent="primary" onClick={onSubmit}>
+          <Button loading={loading} intent="primary" onClick={() => onSubmit()}>
             Export
           </Button>
         </div>
+        <Collapse isOpen={showPreview}>
+          {previewResults.length > 0 ? (
+            <ul>
+              {previewResults.map((r) => {
+                return <li>{r.text}</li>;
+              })}
+            </ul>
+          ) : (
+            "No results"
+          )}
+        </Collapse>
       </div>
     </Dialog>
   );
@@ -434,12 +370,17 @@ const GraphExportButton = () => {
     <Button
       className="w-full"
       icon="export"
-      onClick={() =>
+      onClick={() => {
+        const { degreesIn, degreesOut } = getGraphOverviewDepthValues();
         renderOverlay({
           id: "graph-export",
           Overlay: GraphExportDialog,
-        })
-      }
+          props: {
+            initialDegreesIn: degreesIn,
+            initialDegreesOut: degreesOut,
+          },
+        });
+      }}
     >
       Export
     </Button>
@@ -448,6 +389,7 @@ const GraphExportButton = () => {
 
 export const render = (block: HTMLDivElement) => {
   const div = document.createElement("div");
+  div.className = "roamjs-discourse-graph-export-button";
   ReactDOM.render(<GraphExportButton />, div);
   block.appendChild(div);
 };
