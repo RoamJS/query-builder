@@ -42,7 +42,6 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
-import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -487,15 +486,6 @@ svg.rs-svg-container {
 
   const qtObserver = runQueryTools(extensionAPI);
 
-  const graphOverviewExportObserver = createHTMLObserver({
-    tag: "DIV",
-    className: "rm-graph-view-control-panel__main-options",
-    callback: (el) => {
-      const div = el as HTMLDivElement;
-      renderGraphOverviewExport(div);
-    },
-  });
-
   registerSmartBlocksCommand({
     text: "QUERYBUILDER",
     delayArgs: true,
@@ -741,7 +731,6 @@ svg.rs-svg-container {
       editQueryBuilderObserver,
       queryBlockObserver,
       viewBlockObserver,
-      graphOverviewExportObserver,
     ],
     unload: () => {
       window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
