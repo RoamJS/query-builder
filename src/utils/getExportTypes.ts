@@ -393,8 +393,8 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
                       )}"] [?r :block/refs ?p] [?r :block/page ?pr]]`
                     ) as [PullBlock, PullBlock][]
                   ).filter(
-                    ([, { [":block/children"]: children = [] }]) =>
-                      !!children.length
+                    ([, { [":block/children"]: children }]) =>
+                      Array.isArray(children) && children.length
                   )
                 : [];
               const content = `---\n${yamlLines
