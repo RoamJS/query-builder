@@ -95,8 +95,6 @@ const getDiscourseContextResultsByDepth = async ({
   maxDepth: number;
   visitedUids: Set<string>;
 }) => {
-  if (!isDiscourseNode(uid)) return [];
-
   const initialResult = { uid, text: title || getPageTitleByPageUid(uid) };
   let aggregatedResults: Result[] = [initialResult];
 
