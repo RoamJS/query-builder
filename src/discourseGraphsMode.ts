@@ -51,6 +51,7 @@ import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
 import CanvasReferences from "./components/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
+import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 
 export const SETTING = "discourse-graphs";
 
@@ -712,9 +713,21 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           }
         },
       });
-      unloads.add(function removeDiscourseContextObserver() {
+
+      const graphOverviewExportObserver = createHTMLObserver({
+        tag: "DIV",
+        className: "rm-graph-view-control-panel__main-options",
+        callback: (el) => {
+          const div = el as HTMLDivElement;
+          renderGraphOverviewExport(div);
+        },
+      });
+
+      unloads.add(function removeObservers() {
+        graphOverviewExportObserver.disconnect();
         discourseContextObserver.disconnect();
-        unloads.delete(removeDiscourseContextObserver);
+
+        unloads.delete(removeObservers);
       });
 
       if (isFlagEnabled("preview")) pageRefObservers.add(previewPageRefHandler);
@@ -774,6 +787,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             ).then((r) => r.flat());
           exportRender({
             results,
+            title: "Export Discourse Graph",
           });
         },
       });

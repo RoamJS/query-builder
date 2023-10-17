@@ -389,10 +389,10 @@ const ResultsView: ResultsViewComponent = ({
         </div>
       )}
       <Export
+        title="Share Query Results"
         isOpen={isExportOpen}
         onClose={handleCloseExport}
         results={allProcessedResults}
-        parentUid={parentUid}
       />
       <div className="relative">
         <span
@@ -766,7 +766,7 @@ const ResultsView: ResultsViewComponent = ({
                   />
                   <MenuItem
                     icon={"export"}
-                    text={"Export/Send To"}
+                    text={"Share Data"}
                     onClick={async () => {
                       if (!results.length) {
                         onRefresh();
