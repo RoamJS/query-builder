@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ReactDOM from "react-dom";
 import {
   Button,
@@ -17,8 +17,8 @@ import renderOverlay, {
 } from "roamjs-components/util/renderOverlay";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import getPageTitlesandBlockUidsReferencingPage from "roamjs-components/queries/getPageTitlesAndBlockUidsReferencingPage";
 import getLinkedPageTitlesUnderUid from "roamjs-components/queries/getLinkedPageTitlesUnderUid";
+import getPageTitlesAndBlockUidsReferencingPage from "roamjs-components/queries/getPageTitlesAndBlockUidsReferencingPage";
 import isDiscourseNode from "../utils/isDiscourseNode";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { render as exportRender } from "./Export";
@@ -27,13 +27,14 @@ import { Result } from "../utils/types";
 const getInboundReferences = async (uid: string) => {
   // TODO: Optimize this with custom query to take in and return Result[]
   const pageTitle = getPageTitleByPageUid(uid);
-  const refs = getPageTitlesandBlockUidsReferencingPage(pageTitle);
+  const refs = getPageTitlesAndBlockUidsReferencingPage(pageTitle);
   const refPageUids = refs.map((r) => getPageUidByPageTitle(r.title));
   return refPageUids;
 };
 
 const getOutboundReferences = async (uid: string) => {
-  // TODO: Optimize this with custom query take in and return Result[]
+  // TODO: Optimize this with custom recursive query take in and return Result[]
+  // https://github.com/RoamJS/query-builder/pull/165
   const refPageTitles = getLinkedPageTitlesUnderUid(uid);
   const refPageUids = refPageTitles.map((title) =>
     getPageUidByPageTitle(title)
@@ -50,14 +51,14 @@ const getReferencesByDegree = async (
   const visitedUids = new Set<string>();
 
   for (let i = 0; i < degrees; i++) {
-    const nextUids = [];
+    const nextUids = new Set<string>();
     for (let uid of currentUids) {
       const refs = await getReferences(uid);
-      nextUids.push(...refs.filter((ref) => !visitedUids.has(ref)));
+      refs.forEach(ref => !visitedUids.has(ref) ? nextUids.add(ref) : "");
     }
 
     nextUids.forEach((uid) => visitedUids.add(uid));
-    currentUids = nextUids;
+    currentUids = Array.from(nextUids);
   }
 
   return visitedUids;
@@ -201,8 +202,15 @@ const GraphExportDialog: GraphExportDialogComponent = ({
   initialDiscourseContextDepth,
 }) => {
   const [loading, setLoading] = useState(false);
-  const pages = window.roamAlphaAPI.ui.graphView.wholeGraph.getExplorePages();
-  const initialUids = pages.map((x) => getPageUidByPageTitle(x)) || [];
+
+  const pages = useMemo(() => {
+    return window.roamAlphaAPI.ui.graphView.wholeGraph.getExplorePages();
+  }, []);
+
+  const initialUids = useMemo(() => {
+    return pages.map((x) => getPageUidByPageTitle(x)) || [];
+  }, [pages]);
+
   const [currentTab, setCurrentTab] = useState("by-references");
   const [showPreview, setShowPreview] = useState(false);
   const [previewResults, setPreviewResults] = useState<Result[]>([]);
