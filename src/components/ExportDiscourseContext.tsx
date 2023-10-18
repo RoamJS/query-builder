@@ -11,6 +11,8 @@ import {
   Tooltip,
   Callout,
   Collapse,
+  ProgressBar,
+  Intent,
 } from "@blueprintjs/core";
 import renderOverlay, {
   RoamOverlayProps,
@@ -23,6 +25,13 @@ import isDiscourseNode from "../utils/isDiscourseNode";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import { render as exportRender } from "./Export";
 import { Result } from "../utils/types";
+
+type UpdateProgressWithDelay = (params: {
+  progress: number;
+  delayAmount?: number;
+  message?: string;
+  isDiscourse?: boolean;
+}) => Promise<void>;
 
 const getInboundReferences = async (uid: string) => {
   // TODO: Optimize this with custom query to take in and return Result[]
@@ -54,7 +63,7 @@ const getReferencesByDegree = async (
     const nextUids = new Set<string>();
     for (let uid of currentUids) {
       const refs = await getReferences(uid);
-      refs.forEach(ref => !visitedUids.has(ref) ? nextUids.add(ref) : "");
+      refs.forEach((ref) => (!visitedUids.has(ref) ? nextUids.add(ref) : ""));
     }
 
     nextUids.forEach((uid) => visitedUids.add(uid));
@@ -89,12 +98,16 @@ const getDiscourseContextResultsByDepth = async ({
   currentDepth,
   maxDepth,
   visitedUids,
+  updateProgressWithDelay,
+  progressRefresh = 0.1,
 }: {
   uid: string;
   title?: string;
   currentDepth: number;
   maxDepth: number;
   visitedUids: Set<string>;
+  updateProgressWithDelay: UpdateProgressWithDelay;
+  progressRefresh?: number;
 }) => {
   const initialResult = { uid, text: title || getPageTitleByPageUid(uid) };
   let aggregatedResults: Result[] = [initialResult];
@@ -106,9 +119,13 @@ const getDiscourseContextResultsByDepth = async ({
   visitedUids.add(uid);
 
   const discourseContextResults = await getDiscourseContextResults({ uid });
-
   for (const { results } of discourseContextResults) {
     for (const result in results) {
+      await updateProgressWithDelay({
+        progress: progressRefresh,
+        message: "Processing",
+        isDiscourse: true,
+      });
       const r = results[result] as Result;
       aggregatedResults.push(r);
       const deeperResults = await getDiscourseContextResultsByDepth({
@@ -117,7 +134,10 @@ const getDiscourseContextResultsByDepth = async ({
         currentDepth: currentDepth + 1,
         maxDepth: maxDepth,
         visitedUids,
+        updateProgressWithDelay,
+        progressRefresh,
       });
+      progressRefresh = progressRefresh === 0.9 ? 0.1 : progressRefresh + 0.1;
       aggregatedResults = aggregatedResults.concat(deeperResults);
     }
   }
@@ -128,18 +148,41 @@ const getDiscourseContextResultsByDepth = async ({
 const getAllDiscourseContext = async (
   initialUids: string[],
   discourseContextDepth = 1,
+  updateProgressWithDelay: UpdateProgressWithDelay,
   visitedUids = new Set<string>()
 ) => {
-  const allResults = await Promise.all(
-    initialUids.map((uid) =>
-      getDiscourseContextResultsByDepth({
-        uid,
-        currentDepth: 0,
-        maxDepth: discourseContextDepth,
-        visitedUids,
-      })
-    )
-  );
+  await updateProgressWithDelay({
+    progress: 0.01,
+    message: "Gathering Initial Discourse Results",
+  });
+  const discourseNodeUids = initialUids.filter((uid) => isDiscourseNode(uid));
+
+  const allResults = [];
+  for (let i = 0; i < discourseNodeUids.length; i++) {
+    const progress = i / discourseNodeUids.length;
+    await updateProgressWithDelay({
+      progress: progress || 0.01,
+      message: `Processing Result ${i + 1} of ${discourseNodeUids.length}`,
+    });
+
+    const result = await getDiscourseContextResultsByDepth({
+      uid: discourseNodeUids[i],
+      currentDepth: 0,
+      maxDepth: discourseContextDepth,
+      updateProgressWithDelay,
+      visitedUids,
+    });
+    allResults.push(result);
+  }
+
+  await updateProgressWithDelay({
+    progress: 1,
+    isDiscourse: true,
+  });
+  await updateProgressWithDelay({
+    progress: 0.9,
+    message: "Cleaning up Results",
+  });
 
   // Remove duplicates
   const flattenedResults = allResults.flat();
@@ -201,6 +244,11 @@ const GraphExportDialog: GraphExportDialogComponent = ({
   initialDegreesOut = 0,
   initialDiscourseContextDepth,
 }) => {
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("Exporting data");
+  const [discourseProgress, setDiscourseProgress] = useState(0);
+  const [discourseMessage, setDiscourseProgressMessage] =
+    useState("Exporting data");
   const [loading, setLoading] = useState(false);
 
   const pages = useMemo(() => {
@@ -212,13 +260,19 @@ const GraphExportDialog: GraphExportDialogComponent = ({
   }, [pages]);
 
   const [currentTab, setCurrentTab] = useState("by-references");
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewResults, setPreviewResults] = useState<Result[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState<Result[]>([]);
   const [degreesIn, setDegreesIn] = useState(initialDegreesIn);
   const [degreesOut, setDegreesOut] = useState(initialDegreesOut);
   const [discourseContextDepth, setDiscourseContextDepth] = useState(
     initialDiscourseContextDepth || Math.max(degreesIn, degreesOut)
   );
+
+  const onTabOrDegreeChange = () => {
+    updateProgressWithDelay({ progress: 0 });
+    setShowResults(false);
+    setResults([]);
+  };
 
   const ByDiscourseContextPanel = (
     <>
@@ -232,7 +286,10 @@ const GraphExportDialog: GraphExportDialogComponent = ({
         max={5}
         stepSize={1}
         labelStepSize={1}
-        onChange={(v) => setDiscourseContextDepth(v)}
+        onChange={(v) => {
+          onTabOrDegreeChange();
+          setDiscourseContextDepth(v);
+        }}
         value={discourseContextDepth}
       />
     </>
@@ -252,7 +309,10 @@ const GraphExportDialog: GraphExportDialogComponent = ({
         max={5}
         stepSize={1}
         labelStepSize={1}
-        onChange={(v) => setDegreesIn(v)}
+        onChange={(v) => {
+          onTabOrDegreeChange();
+          setDegreesIn(v);
+        }}
         value={degreesIn}
       />
       <Tooltip placement="top" content={"Pages that link from a selected page"}>
@@ -263,52 +323,154 @@ const GraphExportDialog: GraphExportDialogComponent = ({
         max={5}
         stepSize={1}
         labelStepSize={1}
-        onChange={(v) => setDegreesOut(v)}
+        onChange={(v) => {
+          onTabOrDegreeChange();
+          setDegreesOut(v);
+        }}
         value={degreesOut}
       />
     </>
   );
 
+  const ResultsProgress = ({
+    progress,
+    progressMessage,
+  }: {
+    progress: number;
+    progressMessage: string;
+  }) => {
+    return (
+      <>
+        {progress ? (
+          <Callout className="mt-2">
+            <div className="mb-2">{progressMessage}</div>
+            <ProgressBar
+              value={progress}
+              intent={progress === 1 ? Intent.SUCCESS : Intent.PRIMARY}
+              animate={progress !== 1}
+              className="mb-2"
+            />
+          </Callout>
+        ) : null}
+      </>
+    );
+  };
+  const DiscourseContextDepthProgress = ({
+    discourseProgress,
+    discourseMessage,
+  }: {
+    discourseProgress: number;
+    discourseMessage: string;
+  }) => {
+    return (
+      <>
+        {discourseProgress && discourseProgress !== 1 ? (
+          <Callout className="mt-2">
+            <div className="mb-2">{discourseMessage}</div>
+            <ProgressBar
+              value={discourseProgress}
+              intent={Intent.PRIMARY}
+              className="mb-2"
+            />
+          </Callout>
+        ) : null}
+      </>
+    );
+  };
+
+  // Delay before and after seemed to the only way to consistently update the progress bar
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const updateProgressWithDelay: UpdateProgressWithDelay = async ({
+    progress,
+    delayAmount = 500,
+    message,
+    isDiscourse = false,
+  }) => {
+    await delay(delayAmount);
+    if (isDiscourse) {
+      setDiscourseProgress(progress);
+      if (message) setDiscourseProgressMessage(message);
+      return;
+    } else {
+      setProgress(progress);
+      if (message) setProgressMessage(message);
+    }
+    await delay(delayAmount);
+  };
+
   const getResults = async () => {
     if (currentTab === "by-references") {
+      await updateProgressWithDelay({
+        progress: 0.1,
+        message: "Getting References",
+      });
       const referenceUids = await getAllReferencesByDegree(
         initialUids,
         degreesIn,
         degreesOut
       );
+
+      await updateProgressWithDelay({
+        progress: 0.5,
+        message: "Filtering Discourse Nodes",
+      });
       const discourseNodeUids = Array.from(referenceUids).filter((uid) =>
         isDiscourseNode(uid)
       );
-      return await getAllDiscourseContext(
-        discourseNodeUids,
-        Math.max(degreesIn, degreesOut)
-      );
+
+      await updateProgressWithDelay({
+        progress: 0.75,
+        message: "Grabbing Page Titles",
+      });
+      const discourseNodeResults = discourseNodeUids.map((uid) => ({
+        uid,
+        text: getPageTitleByPageUid(uid),
+      }));
+
+      // Saved for when user requests to get discourse context from results
+      //
+      // await updateProgressWithDelay({
+      //   progress: 0.5,
+      //   message: "Getting discourse context...",
+      // });
+      // const allDiscourseContextResults = await getAllDiscourseContext(
+      //   discourseNodeUids,
+      //   Math.max(degreesIn, degreesOut),
+      //   new Set<string>(),
+      //   updateProgressWithDelay
+      // );
+
+      return discourseNodeResults;
     }
     if (currentTab === "by-discourse-relations") {
-      return await getAllDiscourseContext(initialUids, discourseContextDepth);
+      return await getAllDiscourseContext(
+        initialUids,
+        discourseContextDepth,
+        updateProgressWithDelay
+      );
     }
     return [];
   };
 
-  const onSubmit = async (preview?: boolean) => {
+  const onPreview = async () => {
     setLoading(true);
     setTimeout(async () => {
       const results = await getResults();
-
-      if (preview) {
-        setPreviewResults(results);
-        setShowPreview(true);
-        setLoading(false);
-        return;
-      }
-
-      exportRender({
-        results,
-        title: "Export Discourse Graph",
-      });
-      onClose();
+      await updateProgressWithDelay({ progress: 1, message: "Done!" });
+      setResults(results);
+      setShowResults(true);
       setLoading(false);
     }, 0);
+  };
+
+  const onExport = async () => {
+    exportRender({
+      results,
+      title: "Export Discourse Graph",
+    });
+    onClose();
   };
 
   return (
@@ -323,7 +485,7 @@ const GraphExportDialog: GraphExportDialogComponent = ({
           id="discourse-graph-export-tabs"
           selectedTabId={currentTab}
           onChange={(id) => {
-            setShowPreview(false);
+            onTabOrDegreeChange();
             setCurrentTab(id as string);
           }}
           large={true}
@@ -346,19 +508,32 @@ const GraphExportDialog: GraphExportDialogComponent = ({
           <Button onClick={onClose}>Cancel</Button>
           <Button
             loading={loading}
-            onClick={() => onSubmit(true)}
+            onClick={() => onPreview()}
             intent="warning"
           >
             Preview
           </Button>
-          <Button loading={loading} intent="primary" onClick={() => onSubmit()}>
+          <Button
+            intent="primary"
+            onClick={() => onExport()}
+            disabled={!results.length}
+          >
             Export
           </Button>
         </div>
-        <Collapse isOpen={showPreview}>
-          {previewResults.length > 0 ? (
+        <ResultsProgress
+          progress={progress}
+          progressMessage={progressMessage}
+        />
+        <DiscourseContextDepthProgress
+          discourseProgress={discourseProgress}
+          discourseMessage={discourseMessage}
+        />
+
+        <Collapse isOpen={showResults}>
+          {results.length > 0 ? (
             <ul>
-              {previewResults.map((r) => {
+              {results.map((r) => {
                 return <li>{r.text}</li>;
               })}
             </ul>
