@@ -25,6 +25,7 @@ import Export from "./Export";
 type Props = {
   blockUid: string;
   onloadArgs: OnloadArgs;
+  clearOnClick?: (tag: string) => Promise<void>;
 };
 
 const SavedQuery = ({
