@@ -47,7 +47,7 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { AddPullWatch, InputTextNode } from "roamjs-components/types";
+import { AddPullWatch, InputTextNode, TreeNode } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -68,6 +68,8 @@ import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
 import createDiscourseNode from "../utils/createDiscourseNode";
 import LabelDialog from "./TldrawCanvasLabelDialog";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 
 declare global {
   interface Window {
@@ -199,6 +201,7 @@ type DiscourseNodeShape = TLBaseShape<
     opacity: TLOpacityType;
     uid: string;
     title: string;
+    imageUrl?: string;
   }
 >;
 
@@ -442,7 +445,168 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         );
       };
     }, [setIsEditLabelOpen]);
+
     const { backgroundCss, textColor } = this.getColors();
+
+    const canvasConfigUid = useMemo(
+      () => getPageUidByPageTitle("roam/js/discourse-graph"),
+      []
+    );
+    const tree = useMemo(
+      () => getBasicTreeByParentUid(canvasConfigUid),
+      [canvasConfigUid]
+    );
+
+    const canvasTree = getSubTree({
+      tree,
+      key: "canvas",
+    });
+
+    const isKeyImage = useMemo(
+      () =>
+        getSettingValueFromTree({
+          parentUid: canvasTree.uid,
+          key: "key-image",
+        }) === "true",
+      [tree]
+    );
+
+    const findImage = (text: string): string | null => {
+      const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
+      const result = text.match(regex);
+      return result ? result[1] : null;
+    };
+
+    const getFirstImageByUid = (uid: string): string | null => {
+      const tree = getFullTreeByParentUid(uid);
+
+      const findFirstImage = (node: TreeNode): string | null => {
+        const imageUrl = findImage(node.text);
+        if (imageUrl) return imageUrl;
+
+        if (node.children) {
+          for (const child of node.children) {
+            const childImageUrl = findFirstImage(child);
+            if (childImageUrl) return childImageUrl;
+          }
+        }
+
+        return null;
+      };
+
+      return findFirstImage(tree);
+    };
+
+    const setDimensions = async ({
+      context,
+      text,
+      uid,
+    }: {
+      context: DiscourseNodeUtil;
+      text: string;
+      uid: string;
+    }) => {
+      const { w, h } = context.app.textMeasure.measureText({
+        ...DEFAULT_STYLE_PROPS,
+        text,
+      });
+
+      // Just update the dimensions
+      if (!isKeyImage) {
+        context.updateProps(shape.id, {
+          w,
+          h,
+        });
+
+        return;
+      }
+
+      const smartblocks = window.roamjs?.extension?.smartblocks;
+      console.log("smartblock", smartblocks);
+
+      // Get Key Image and update dimensions based on image aspect ratio
+      const keyImageOption = getSettingValueFromTree({
+        parentUid: canvasTree.uid,
+        key: "key-image-option",
+      });
+      const smartBlockTemplateUid = getSubTree({
+        tree: canvasTree.children,
+        key: "smartblock-template",
+      }).uid;
+
+      // Get Image URL
+      let imageUrl;
+
+      if (
+        keyImageOption === "smartblock" &&
+        !window.roamjs?.extension?.smartblocks
+      ) {
+        renderToast({
+          content:
+            "Key Image requires SmartBlocks.  Enable SmartBlocks in Roam Depot.  Continuing with default image.",
+          id: "smartblocks-extension-disabled",
+          intent: "warning",
+        });
+        imageUrl = getFirstImageByUid(uid);
+      } else if (
+        keyImageOption === "smartblock" &&
+        window.roamjs?.extension?.smartblocks
+      ) {
+        const results =
+          (await window.roamjs.extension.smartblocks.triggerSmartblock({
+            srcUid: smartBlockTemplateUid,
+            variables: {
+              NODEUID: uid,
+              NODETEXT: text,
+            },
+          })) as InputTextNode[];
+        const nodeText = results[0].text;
+        imageUrl = findImage(nodeText);
+      } else {
+        imageUrl = getFirstImageByUid(uid);
+      }
+
+      // Calculate new node height
+      const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+      const maxWidth = Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""));
+      const effectiveWidth = maxWidth - 2 * padding;
+
+      const img = new Image();
+      if (imageUrl) img.src = imageUrl;
+
+      try {
+        if (!img.src) throw new Error("No Image URL");
+        const loadImage = new Promise<{ width: number; height: number }>(
+          (resolve, reject) => {
+            img.onload = () => {
+              resolve({ width: img.width, height: img.height });
+            };
+            img.onerror = () => {
+              reject(new Error("Failed to load image"));
+            };
+
+            setTimeout(() => {
+              reject(new Error("Image load timeout"));
+            }, 3000);
+          }
+        );
+        const { width, height } = await loadImage;
+        const aspectRatio = width / height;
+        const nodeImageHeight = effectiveWidth / aspectRatio;
+
+        context.updateProps(shape.id, {
+          w,
+          h: h + nodeImageHeight + padding * 2,
+          imageUrl: img.src,
+        });
+      } catch {
+        context.updateProps(shape.id, {
+          w,
+          h,
+        });
+      }
+    };
+
     return (
       <HTMLContainer
         id={shape.id}
@@ -453,6 +617,15 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         }}
       >
         <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
+          {shape.props.imageUrl && isKeyImage ? (
+            <img
+              src={shape.props.imageUrl}
+              className="w-full object-cover h-auto"
+              draggable="false"
+              style={{ pointerEvents: "none" }}
+            />
+          ) : null}
+
           <div ref={contentRef} style={DEFAULT_STYLE_PROPS}>
             {alias
               ? new RegExp(alias).exec(shape.props.title)?.[1] ||
@@ -474,7 +647,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               if (shape.props.uid === uid) {
                 if (shape.props.title) {
                   if (shape.props.title === text) {
-                    // nothing to update I think
+                    setDimensions({ context: this, text, uid });
                     return;
                   } else {
                     if (isPageUid(shape.props.uid))
@@ -502,15 +675,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 allRecords,
                 relationIds,
               });
-              const { w, h } = this.app.textMeasure.measureText({
-                ...DEFAULT_STYLE_PROPS,
-                text,
-              });
+              setDimensions({ context: this, text, uid });
               this.updateProps(shape.id, {
                 title: text,
                 uid,
-                w,
-                h,
               });
               setIsEditLabelOpen(false);
               this.app.setEditingId(null);
@@ -536,6 +704,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   toSvg(shape: DiscourseNodeShape) {
     const { backgroundColor, textColor } = this.getColors();
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+    // Create and set attributes for the rectangle (background of the shape)
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("width", shape.props.w.toString());
     rect.setAttribute("height", shape.props.h.toString());
@@ -551,6 +721,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     // /TLGeoUtil/TLGeoUtil.js
     // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    // Calculate text dimensions and positioning
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const textWidth = Math.min(
       shape.props.w - padding * 2,
@@ -558,16 +729,22 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     );
     const textX = (shape.props.w / 2 - textWidth / 2).toString();
     text.setAttribute("x", textX.toString());
+
+    // set attributes for the text
     text.setAttribute("font-family", "sans-serif");
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
     text.setAttribute("fill", textColor);
     text.setAttribute("stroke", "none");
+
+    // Split the title into words and wrap them based on width constraints
     const words = shape.props.title.split(/\s/g);
     let line = "";
     let lineCount = 0;
     const lineHeight =
       DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+
+    // Loop through words and add them to lines, wrapping as needed
     const addTspan = () => {
       const tspan = document.createElementNS(
         "http://www.w3.org/2000/svg",
@@ -579,6 +756,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       text.appendChild(tspan);
       lineCount++;
     };
+
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
       const testLine = line + word + " ";
@@ -596,11 +774,28 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     if (line) {
       addTspan();
     }
+
+    // Position the text vertically in the center of the shape
     text.setAttribute(
       "y",
       (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
     );
+
     g.appendChild(text);
+
+    // Add image to the SVG if imageUrl exists
+    if (shape.props.imageUrl) {
+      const image = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "image"
+      );
+      image.setAttribute("href", shape.props.imageUrl);
+      image.setAttribute("width", shape.props.w.toString());
+      image.setAttribute("height", shape.props.h.toString());
+      image.setAttribute("preserveAspectRatio", "xMidYMid slice"); // This makes it cover the rect, similar to object-cover in CSS
+      g.appendChild(image);
+    }
+
     return g;
   }
 
