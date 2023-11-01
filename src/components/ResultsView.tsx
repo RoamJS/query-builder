@@ -809,6 +809,7 @@ const ResultsView: ResultsViewComponent = ({
                             content:
                               "Are you sure you want to delete this query?",
                             onConfirm: onDeleteQuery,
+                            onCancel: true,
                           });
                         }}
                       />
