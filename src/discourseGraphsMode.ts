@@ -49,6 +49,7 @@ import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
+import CanvasSettings from "./components/CanvasSettings";
 import CanvasReferences from "./components/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
@@ -465,12 +466,21 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 {
                   title: "preview",
                   description:
-                    "Whether or not to display page previews when hovering over page refs",
+                    "Whether or not to display page previews when hovering over page refs.",
                   Panel: FlagPanel,
                   options: {
                     onChange: onPageRefObserverChange(previewPageRefHandler),
                   },
                 } as Field<FlagField>,
+                // @ts-ignore
+                {
+                  title: "canvas",
+                  Panel: CustomPanel,
+                  description: "Settings related to the Canvas.",
+                  options: {
+                    component: CanvasSettings,
+                  },
+                } as Field<CustomField>,
               ],
             },
             {
