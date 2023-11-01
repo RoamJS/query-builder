@@ -226,13 +226,13 @@ const COLOR_PALETTE: Record<string, string> = {
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
+const MAX_WIDTH = "400px";
 
 const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: FONT_SIZES.m,
   fontFamily: FONT_FAMILIES.sans,
   width: "fit-content",
-  maxWidth: "400px",
   padding: "16px",
 };
 
@@ -508,6 +508,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     }) => {
       const { w, h } = context.app.textMeasure.measureText({
         ...DEFAULT_STYLE_PROPS,
+        maxWidth: MAX_WIDTH,
         text,
       });
 
@@ -568,7 +569,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
       // Calculate new node height
       const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-      const maxWidth = Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""));
+      const maxWidth = Number(MAX_WIDTH.replace("px", ""));
       const effectiveWidth = maxWidth - 2 * padding;
 
       const img = new Image();
@@ -610,7 +611,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node"
+        className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node overflow-hidden"
         style={{
           background: backgroundCss,
           color: textColor,
@@ -725,7 +726,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const textWidth = Math.min(
       shape.props.w - padding * 2,
-      Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""))
+      Number(MAX_WIDTH.replace("px", ""))
     );
     const textX = (shape.props.w / 2 - textWidth / 2).toString();
     text.setAttribute("x", textX.toString());
@@ -762,6 +763,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const testLine = line + word + " ";
       const testWidth = this.app.textMeasure.measureText({
         ...DEFAULT_STYLE_PROPS,
+        maxWidth: MAX_WIDTH,
         text: testLine,
       }).w;
       if (testWidth > textWidth) {
@@ -1369,7 +1371,8 @@ const TldrawCanvas = ({ title }: Props) => {
       ref={containerRef}
       tabIndex={-1}
     >
-      <style>{`.roam-article .rm-block-children {
+      <style>
+        {`.roam-article .rm-block-children {
         display: none;
       }
       .rs-arrow-label__inner{
@@ -1384,7 +1387,11 @@ const TldrawCanvas = ({ title }: Props) => {
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""
-      }`}</style>
+      }
+      #roamjs-tldraw-canvas-container .rs-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
+        display: none;
+      }`}
+      </style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}
