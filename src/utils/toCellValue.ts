@@ -28,6 +28,7 @@ const getNamespaceSetting = () => {
 const resolveRefs = (text: string, refs = new Set<string>()): string => {
   return text.replace(new RegExp(BLOCK_REF_REGEX, "g"), (_, blockUid) => {
     if (refs.has(blockUid)) return "";
+    refs.add(blockUid);
     const reference = getTextByBlockUid(blockUid);
     return resolveRefs(reference, new Set(refs));
   });
