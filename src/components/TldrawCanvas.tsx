@@ -779,8 +779,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       addTspan();
     }
 
-    g.appendChild(text);
-
     // Add image to the node if imageUrl exists
 
     // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
@@ -833,6 +831,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
       );
     }
+
+    g.appendChild(text);
 
     return g;
   }
