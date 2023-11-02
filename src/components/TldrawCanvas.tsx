@@ -818,14 +818,14 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const imageXOffset = (shape.props.w - width) / 2;
       image.setAttribute("x", imageXOffset.toString());
 
-      g.appendChild(image);
-
       // Adjust text y attribute to be positioned below the image
       const textYOffset =
         imageHeight +
         (shape.props.h - imageHeight) / 2 -
         (lineHeight * lineCount) / 2;
       text.setAttribute("y", textYOffset.toString());
+
+      g.appendChild(image);
     } else {
       // Position the text vertically in the center of the shape
       text.setAttribute(

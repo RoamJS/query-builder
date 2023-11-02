@@ -57,7 +57,7 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({
 
   return (
     <>
-      <Tooltip content="Add an Image to each Discourse Node">
+      <Tooltip content="Add an image to each Discourse Node">
         <Switch
           label="Use Key Images"
           checked={isKeyImage}
@@ -81,10 +81,11 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({
           }}
         />
       </Tooltip>
+
       <RadioGroup
         disabled={!isKeyImage}
-        label="Key Image Value"
         selectedValue={!!keyImageOption ? keyImageOption : "first-image"}
+        label="Key Image Location"
         onChange={(e) => {
           const target = e.target as HTMLInputElement;
           setKeyImageOption(target.value);
@@ -95,8 +96,11 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({
           });
         }}
       >
-        <Radio label="First Image on Page" value="first-image" />
-        <Radio label="SmartBlock" value="smartblock" />
+        <Tooltip content="Where to get the image from" />
+        <Radio label="First image on page" value="first-image" />
+        <Radio value="smartblock">
+          <Tooltip content="Must return an image URL.">SmartBlock</Tooltip>
+        </Radio>
       </RadioGroup>
       {keyImageOption === "smartblock" && (
         <div
