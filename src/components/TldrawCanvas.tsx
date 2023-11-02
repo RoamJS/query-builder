@@ -702,7 +702,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     );
   }
 
-  toSvg(shape: DiscourseNodeShape) {
+  async toSvg(shape: DiscourseNodeShape) {
     const { backgroundColor, textColor } = this.getColors();
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
 
@@ -724,6 +724,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     // Calculate text dimensions and positioning
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+
+    // TODO - allow for wider than MAX_WIDTH
     const textWidth = Math.min(
       shape.props.w - padding * 2,
       Number(MAX_WIDTH.replace("px", ""))
@@ -777,25 +779,59 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       addTspan();
     }
 
-    // Position the text vertically in the center of the shape
-    text.setAttribute(
-      "y",
-      (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
-    );
-
     g.appendChild(text);
 
-    // Add image to the SVG if imageUrl exists
+    // Add image to the node if imageUrl exists
+
+    // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
+    async function getDataURIFromURL(url: string): Promise<string> {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
     if (shape.props.imageUrl) {
       const image = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "image"
       );
-      image.setAttribute("href", shape.props.imageUrl);
-      image.setAttribute("width", shape.props.w.toString());
-      image.setAttribute("height", shape.props.h.toString());
-      image.setAttribute("preserveAspectRatio", "xMidYMid slice"); // This makes it cover the rect, similar to object-cover in CSS
+      const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
+      image.setAttribute("href", src);
+      const width = shape.props.w - padding * 2;
+      image.setAttribute("width", width.toString());
+
+      // Calculate height based on aspect ratio like in the HTML
+      const img = new Image();
+      img.src = src;
+      const aspectRatio = img.width / img.height || 1;
+      const imageHeight = width / aspectRatio;
+
+      // TODO - allow for cropped images (css overflow-hidden)
+      image.setAttribute("height", imageHeight.toString());
+
+      // Center the image horizontally
+      const imageXOffset = (shape.props.w - width) / 2;
+      image.setAttribute("x", imageXOffset.toString());
+
       g.appendChild(image);
+
+      // Adjust text y attribute to be positioned below the image
+      const textYOffset =
+        imageHeight +
+        (shape.props.h - imageHeight) / 2 -
+        (lineHeight * lineCount) / 2;
+      text.setAttribute("y", textYOffset.toString());
+    } else {
+      // Position the text vertically in the center of the shape
+      text.setAttribute(
+        "y",
+        (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
+      );
     }
 
     return g;
