@@ -325,7 +325,8 @@ const fireQuery: FireQuery = async (_args) => {
   try {
     if (getNodeEnv() === "development") {
       console.log("Query to Roam:");
-      console.log(query, ...inputs);
+      console.log(query);
+      if (inputs) console.log("Inputs:", ...inputs);
     }
     return Promise.all(
       window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)

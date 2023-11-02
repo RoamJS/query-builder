@@ -396,32 +396,55 @@ const translator: Record<string, Translator> = {
     placeholder: "Enter any text",
   },
   "created by": {
-    callback: ({ source, target }) => [
-      {
-        type: "data-pattern",
-        arguments: [
-          { type: "variable", value: source },
-          { type: "constant", value: ":create/user" },
-          { type: "variable", value: `${source}-User` },
-        ],
-      },
-      {
-        type: "data-pattern",
-        arguments: [
-          { type: "variable", value: `${source}-User` },
-          { type: "constant", value: ":user/display-page" },
-          { type: "variable", value: `${source}-User-Display` },
-        ],
-      },
-      {
-        type: "data-pattern",
-        arguments: [
-          { type: "variable", value: `${source}-User-Display` },
-          { type: "constant", value: ":node/title" },
-          { type: "constant", value: `"${normalizePageTitle(target)}"` },
-        ],
-      },
-    ],
+    callback: ({ source, target }) => {
+      const initialDatalog: DatalogClause[] = [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":create/user" },
+            { type: "variable", value: `${source}-User` },
+          ],
+        },
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: `${source}-User` },
+            { type: "constant", value: ":user/display-page" },
+            { type: "variable", value: `${source}-User-Display` },
+          ],
+        },
+      ];
+      return INPUT_REGEX.test(target)
+        ? [
+            ...initialDatalog,
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${source}-User-Display` },
+                { type: "constant", value: ":node/title" },
+                {
+                  type: "variable",
+                  value: target.replace(INPUT_REGEX, ""),
+                },
+              ],
+            },
+          ]
+        : [
+            ...initialDatalog,
+            {
+              type: "data-pattern",
+              arguments: [
+                { type: "variable", value: `${source}-User-Display` },
+                { type: "constant", value: ":node/title" },
+                {
+                  type: "constant",
+                  value: `"${normalizePageTitle(target)}"`,
+                },
+              ],
+            },
+          ];
+    },
     targetOptions: () =>
       (
         window.roamAlphaAPI.data.fast.q(
@@ -756,7 +779,7 @@ const translator: Record<string, Translator> = {
             { type: "variable", value: `${target}-TLDraw-Value` },
           ],
         },
-      }, 
+      },
       {
         type: "fn-expr",
         fn: "get",
