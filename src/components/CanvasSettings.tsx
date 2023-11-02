@@ -99,7 +99,7 @@ const DiscourseNodeConfigPanel: CustomField["options"]["component"] = ({
         <Tooltip content="Where to get the image from" />
         <Radio label="First image on page" value="first-image" />
         <Radio value="smartblock">
-          <Tooltip content="Must return an image URL.">SmartBlock</Tooltip>
+          <Tooltip content="Must return an image URL">SmartBlock</Tooltip>
         </Radio>
       </RadioGroup>
       {keyImageOption === "smartblock" && (
