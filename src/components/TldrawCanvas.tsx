@@ -452,8 +452,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           color: textColor,
         }}
       >
-        <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
-          <div ref={contentRef} style={DEFAULT_STYLE_PROPS}>
+        <div style={{ pointerEvents: "all" }}>
+          <div
+            ref={contentRef}
+            style={{ ...DEFAULT_STYLE_PROPS, maxWidth: "" }}
+          >
             {alias
               ? new RegExp(alias).exec(shape.props.title)?.[1] ||
                 shape.props.title
@@ -502,7 +505,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 allRecords,
                 relationIds,
               });
-              const { w, h } = this.app.textMeasure.measureText({
+              const { w, h } = measureCanvasNodeText({
                 ...DEFAULT_STYLE_PROPS,
                 text,
               });
@@ -545,11 +548,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     rect.setAttribute("ry", "16");
     g.appendChild(rect);
 
-    // TODO: Look at Look at TLTextUtil / TLGeoUtil toSvg methods
-    // ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/
-    // /TLTextUtil/TLTextUtil.js
-    // /TLGeoUtil/TLGeoUtil.js
-    // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const textWidth = measureCanvasNodeText({
@@ -557,48 +555,48 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       maxWidth: shape.props.w - padding * 2 + "px",
       text: shape.props.title,
     }).w;
+
+    const textLines = this.app.textMeasure.getTextLines({
+      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+      fontSize: DEFAULT_STYLE_PROPS.fontSize,
+      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+      height: shape.props.h,
+      text: shape.props.title,
+      padding,
+      textAlign: "start",
+      width: textWidth + padding * 2, //getTextLines removes padding
+      wrap: true,
+    });
+
+    text.setAttribute("font-family", DEFAULT_STYLE_PROPS.fontFamily);
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
     text.setAttribute("fill", textColor);
     text.setAttribute("stroke", "none");
-    const words = shape.props.title.split(/\s/g);
-    let line = "";
-    let lineCount = 0;
+
+    const textX = (shape.props.w - textWidth) / 2;
     const lineHeight =
       DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
-    const addTspan = () => {
+
+    textLines.forEach((line, index) => {
       const tspan = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "tspan"
       );
-      tspan.setAttribute("x", textX);
-      tspan.setAttribute("dy", lineHeight.toString());
+      tspan.setAttribute("x", textX.toString());
+      tspan.setAttribute("dy", (index === 0 ? 0 : lineHeight).toString());
       tspan.textContent = line;
       text.appendChild(tspan);
-      lineCount++;
-    };
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const testLine = line + word + " ";
-      const testWidth = this.app.textMeasure.measureText({
-        ...DEFAULT_STYLE_PROPS,
-        text: testLine,
-      }).w;
-      if (testWidth > textWidth) {
-        addTspan();
-        line = word + " ";
-      } else {
-        line = testLine;
-      }
-    }
-    if (line) {
-      addTspan();
-    }
-    text.setAttribute(
-      "y",
-      (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
-    );
+    });
+
+    const textY =
+      (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
+    text.setAttribute("y", textY.toString());
+
     g.appendChild(text);
+
     return g;
   }
 
@@ -614,7 +612,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     this.app.updateShapes([{ id, props }]);
   }
 }
-
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
