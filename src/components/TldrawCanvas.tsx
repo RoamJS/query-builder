@@ -37,7 +37,6 @@ import {
   TLTextShape,
   TEXT_PROPS,
   FONT_SIZES,
-  FONT_FAMILIES,
   MenuItem,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -68,6 +67,7 @@ import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
 import createDiscourseNode from "../utils/createDiscourseNode";
 import LabelDialog from "./TldrawCanvasLabelDialog";
+import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
 
 declare global {
   interface Window {
@@ -224,13 +224,13 @@ const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 
-const DEFAULT_STYLE_PROPS = {
+export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: FONT_SIZES.m,
-  fontFamily: FONT_FAMILIES.sans,
+  fontFamily: "sans",
   width: "fit-content",
   maxWidth: "400px",
-  padding: "16px",
+  padding: "40px",
 };
 
 export const defaultDiscourseNodeShapeProps = {
@@ -552,13 +552,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-    const textWidth = Math.min(
-      shape.props.w - padding * 2,
-      Number(DEFAULT_STYLE_PROPS.maxWidth.replace("px", ""))
-    );
-    const textX = (shape.props.w / 2 - textWidth / 2).toString();
-    text.setAttribute("x", textX.toString());
-    text.setAttribute("font-family", "sans-serif");
+    const textWidth = measureCanvasNodeText({
+      ...DEFAULT_STYLE_PROPS,
+      maxWidth: shape.props.w - padding * 2 + "px",
+      text: shape.props.title,
+    }).w;
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
     text.setAttribute("fill", textColor);
