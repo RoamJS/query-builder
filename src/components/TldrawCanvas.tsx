@@ -564,9 +564,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
       height: shape.props.h,
       text: shape.props.title,
-      padding,
+      padding: 0,
       textAlign: "start",
-      width: textWidth + padding * 2, //getTextLines removes padding
+      width: textWidth,
       wrap: true,
     });
 
