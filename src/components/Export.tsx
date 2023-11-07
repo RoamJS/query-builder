@@ -36,7 +36,11 @@ import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import { createShapeId } from "@tldraw/tlschema";
-import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
+import {
+  DEFAULT_STYLE_PROPS,
+  defaultDiscourseNodeShapeProps,
+} from "./TldrawCanvas";
+import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -160,24 +164,13 @@ const ExportDialog: ExportDialogComponent = ({
 
     const pageKey = getPageKey(tldraw);
 
-    // TEMP height calc
-    // should be using app.textmeasure.MeasureText() like in TldrawCanvas
-    const calculateHeightAndWidth = (text: String) => {
-      const maxWidthNum = 400;
-      const paddingNum = 16;
-      const avgCharWidth = 14;
-      const fontSize = 24;
-      const charsPerLine = maxWidthNum / avgCharWidth;
-      const totalCharCount = text.length;
-      const totalLines = Math.ceil(totalCharCount / charsPerLine);
-      const calculatedHeight = totalLines * (fontSize + 2) + paddingNum * 2;
-      return { w: maxWidthNum, h: calculatedHeight };
-    };
-
     if (typeof results === "object") {
       results.map((r, i) => {
         const nodeType = findDiscourseNode(r.uid);
-        const { w, h } = calculateHeightAndWidth(r.text);
+        const { w, h } = measureCanvasNodeText({
+          ...DEFAULT_STYLE_PROPS,
+          text: r.text,
+        });
         const newShapeId = createShapeId();
         const newShape = {
           rotation: 0,
