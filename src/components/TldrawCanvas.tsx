@@ -37,7 +37,6 @@ import {
   TLTextShape,
   TEXT_PROPS,
   FONT_SIZES,
-  FONT_FAMILIES,
   MenuItem,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -70,6 +69,7 @@ import createDiscourseNode from "../utils/createDiscourseNode";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
+import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
 
 declare global {
   interface Window {
@@ -226,20 +226,40 @@ const COLOR_PALETTE: Record<string, string> = {
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
-const MAX_WIDTH = "400px";
+export const MAX_WIDTH = "400px";
 
-const DEFAULT_STYLE_PROPS = {
+export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: FONT_SIZES.m,
-  fontFamily: FONT_FAMILIES.sans,
+  fontFamily: "sans",
   width: "fit-content",
-  padding: "16px",
+  padding: "40px",
 };
 
 export const defaultDiscourseNodeShapeProps = {
   opacity: "1" as DiscourseNodeShape["props"]["opacity"],
   w: 160,
   h: 64,
+};
+
+const loadImage = (url: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height });
+    };
+
+    img.onerror = () => {
+      reject(new Error("Failed to load image"));
+    };
+
+    setTimeout(() => {
+      reject(new Error("Image load timeout"));
+    }, 3000);
+
+    img.src = url;
+  });
 };
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type: string) {
@@ -506,7 +526,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       text: string;
       uid: string;
     }) => {
-      const { w, h } = context.app.textMeasure.measureText({
+      const { w, h } = measureCanvasNodeText({
         ...DEFAULT_STYLE_PROPS,
         maxWidth: MAX_WIDTH,
         text,
@@ -521,9 +541,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
         return;
       }
-
-      const smartblocks = window.roamjs?.extension?.smartblocks;
-      console.log("smartblock", smartblocks);
 
       // Get Key Image and update dimensions based on image aspect ratio
       const keyImageOption = getSettingValueFromTree({
@@ -572,33 +589,18 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const maxWidth = Number(MAX_WIDTH.replace("px", ""));
       const effectiveWidth = maxWidth - 2 * padding;
 
-      const img = new Image();
-      if (imageUrl) img.src = imageUrl;
-
       try {
-        if (!img.src) throw new Error("No Image URL");
-        const loadImage = new Promise<{ width: number; height: number }>(
-          (resolve, reject) => {
-            img.onload = () => {
-              resolve({ width: img.width, height: img.height });
-            };
-            img.onerror = () => {
-              reject(new Error("Failed to load image"));
-            };
+        if (!imageUrl) throw new Error("No Image URL");
 
-            setTimeout(() => {
-              reject(new Error("Image load timeout"));
-            }, 3000);
-          }
-        );
-        const { width, height } = await loadImage;
+        const { width, height } = await loadImage(imageUrl);
+
         const aspectRatio = width / height;
         const nodeImageHeight = effectiveWidth / aspectRatio;
 
         context.updateProps(shape.id, {
           w,
           h: h + nodeImageHeight + padding * 2,
-          imageUrl: img.src,
+          imageUrl,
         });
       } catch {
         context.updateProps(shape.id, {
@@ -617,7 +619,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           color: textColor,
         }}
       >
-        <div className="px-8 py-2" style={{ pointerEvents: "all" }}>
+        <div style={{ pointerEvents: "all" }}>
           {shape.props.imageUrl && isKeyImage ? (
             <img
               src={shape.props.imageUrl}
@@ -627,7 +629,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             />
           ) : null}
 
-          <div ref={contentRef} style={DEFAULT_STYLE_PROPS}>
+          <div
+            ref={contentRef}
+            style={{ ...DEFAULT_STYLE_PROPS, maxWidth: "" }}
+          >
             {alias
               ? new RegExp(alias).exec(shape.props.title)?.[1] ||
                 shape.props.title
@@ -716,68 +721,52 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     rect.setAttribute("ry", "16");
     g.appendChild(rect);
 
-    // TODO: Look at Look at TLTextUtil / TLGeoUtil toSvg methods
-    // ./node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/lib/app/shapeutils/
-    // /TLTextUtil/TLTextUtil.js
-    // /TLGeoUtil/TLGeoUtil.js
-    // for non-manual way to implement this
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+
     // Calculate text dimensions and positioning
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+    const textWidth = measureCanvasNodeText({
+      ...DEFAULT_STYLE_PROPS,
+      maxWidth: shape.props.w - padding * 2 + "px",
+      text: shape.props.title,
+    }).w;
 
-    // TODO - allow for wider than MAX_WIDTH
-    const textWidth = Math.min(
-      shape.props.w - padding * 2,
-      Number(MAX_WIDTH.replace("px", ""))
-    );
-    const textX = (shape.props.w / 2 - textWidth / 2).toString();
-    text.setAttribute("x", textX.toString());
+    const textLines = this.app.textMeasure.getTextLines({
+      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+      fontSize: DEFAULT_STYLE_PROPS.fontSize,
+      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+      height: shape.props.h,
+      text: shape.props.title,
+      padding: 0,
+      textAlign: "start",
+      width: textWidth,
+      wrap: true,
+    });
 
     // set attributes for the text
-    text.setAttribute("font-family", "sans-serif");
+    text.setAttribute("font-family", DEFAULT_STYLE_PROPS.fontFamily);
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
     text.setAttribute("fill", textColor);
     text.setAttribute("stroke", "none");
 
-    // Split the title into words and wrap them based on width constraints
-    const words = shape.props.title.split(/\s/g);
-    let line = "";
-    let lineCount = 0;
+    const textX = (shape.props.w - textWidth) / 2;
     const lineHeight =
       DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
 
     // Loop through words and add them to lines, wrapping as needed
-    const addTspan = () => {
+    textLines.forEach((line, index) => {
       const tspan = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "tspan"
       );
-      tspan.setAttribute("x", textX);
-      tspan.setAttribute("dy", lineHeight.toString());
+      tspan.setAttribute("x", textX.toString());
+      tspan.setAttribute("dy", (index === 0 ? 0 : lineHeight).toString());
       tspan.textContent = line;
       text.appendChild(tspan);
-      lineCount++;
-    };
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const testLine = line + word + " ";
-      const testWidth = this.app.textMeasure.measureText({
-        ...DEFAULT_STYLE_PROPS,
-        maxWidth: MAX_WIDTH,
-        text: testLine,
-      }).w;
-      if (testWidth > textWidth) {
-        addTspan();
-        line = word + " ";
-      } else {
-        line = testLine;
-      }
-    }
-    if (line) {
-      addTspan();
-    }
+    });
 
     // Add image to the node if imageUrl exists
 
@@ -801,35 +790,33 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
       image.setAttribute("href", src);
       const width = shape.props.w - padding * 2;
-      image.setAttribute("width", width.toString());
+      image.setAttribute("width", shape.props.w.toString());
 
       // Calculate height based on aspect ratio like in the HTML
-      const img = new Image();
-      img.src = src;
-      const aspectRatio = img.width / img.height || 1;
-      const imageHeight = width / aspectRatio;
+      const { width: imageWidth, height: imageGeight } = await loadImage(src);
+      const aspectRatio = imageWidth / imageGeight || 1;
+      const svgImageHeight = shape.props.w / aspectRatio;
 
       // TODO - allow for cropped images (css overflow-hidden)
-      image.setAttribute("height", imageHeight.toString());
+      image.setAttribute("height", svgImageHeight.toString());
 
       // Center the image horizontally
-      const imageXOffset = (shape.props.w - width) / 2;
-      image.setAttribute("x", imageXOffset.toString());
+      const imageXOffset = shape.props.w / 2;
+      // image.setAttribute("x", imageXOffset.toString());
 
       // Adjust text y attribute to be positioned below the image
       const textYOffset =
-        imageHeight +
-        (shape.props.h - imageHeight) / 2 -
-        (lineHeight * lineCount) / 2;
+        svgImageHeight +
+        (shape.props.h - svgImageHeight) / 2 -
+        (lineHeight * textLines.length) / 2;
       text.setAttribute("y", textYOffset.toString());
 
       g.appendChild(image);
     } else {
       // Position the text vertically in the center of the shape
-      text.setAttribute(
-        "y",
-        (shape.props.h / 2 - (lineHeight * lineCount) / 2).toString()
-      );
+      const textY =
+        (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
+      text.setAttribute("y", textY.toString());
     }
 
     g.appendChild(text);
@@ -850,6 +837,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 }
 
+//@ts-ignore
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
