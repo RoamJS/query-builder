@@ -46,7 +46,12 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { AddPullWatch, InputTextNode, TreeNode } from "roamjs-components/types";
+import {
+  AddPullWatch,
+  InputTextNode,
+  OnloadArgs,
+  TreeNode,
+} from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -70,6 +75,11 @@ import LabelDialog from "./TldrawCanvasLabelDialog";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
+import runQuery from "../utils/runQuery";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
+import resolveQueryBuilderRef from "../utils/resolveQueryBuilderRef";
 
 declare global {
   interface Window {
@@ -419,8 +429,15 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 
   render(shape: DiscourseNodeShape) {
-    const { canvasSettings: { alias = "" } = {} } =
-      discourseContext.nodes[this.type] || {};
+    const extensionAPI = useExtensionAPI();
+    const {
+      canvasSettings: {
+        alias = "",
+        "query-builder-alias": qbAlias = "",
+        "key-image": isKeyImage = "",
+        "key-image-option": keyImageOption = "",
+      } = {},
+    } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
@@ -468,30 +485,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
     const { backgroundCss, textColor } = this.getColors();
 
-    const canvasConfigUid = useMemo(
-      () => getPageUidByPageTitle("roam/js/discourse-graph"),
-      []
-    );
-    const tree = useMemo(
-      () => getBasicTreeByParentUid(canvasConfigUid),
-      [canvasConfigUid]
-    );
-
-    const canvasTree = getSubTree({
-      tree,
-      key: "canvas",
-    });
-
-    const isKeyImage = useMemo(
-      () =>
-        getSettingValueFromTree({
-          parentUid: canvasTree.uid,
-          key: "key-image",
-        }) === "true",
-      [tree]
-    );
-
-    const findImage = (text: string): string | null => {
+    const extractFirstImageUrl = (text: string): string | null => {
       const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
       const result = text.match(regex);
       return result ? result[1] : null;
@@ -501,7 +495,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const tree = getFullTreeByParentUid(uid);
 
       const findFirstImage = (node: TreeNode): string | null => {
-        const imageUrl = findImage(node.text);
+        const imageUrl = extractFirstImageUrl(node.text);
         if (imageUrl) return imageUrl;
 
         if (node.children) {
@@ -542,44 +536,21 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         return;
       }
 
-      // Get Key Image and update dimensions based on image aspect ratio
-      const keyImageOption = getSettingValueFromTree({
-        parentUid: canvasTree.uid,
-        key: "key-image-option",
-      });
-      const smartBlockTemplateUid = getSubTree({
-        tree: canvasTree.children,
-        key: "smartblock-template",
-      }).uid;
-
       // Get Image URL
       let imageUrl;
-
-      if (
-        keyImageOption === "smartblock" &&
-        !window.roamjs?.extension?.smartblocks
-      ) {
-        renderToast({
-          content:
-            "Key Image requires SmartBlocks.  Enable SmartBlocks in Roam Depot.  Continuing with default image.",
-          id: "smartblocks-extension-disabled",
-          intent: "warning",
+      if (keyImageOption === "query-builder") {
+        if (!extensionAPI) return console.log("no extensionAPI");
+        const parentUid = resolveQueryBuilderRef({
+          queryRef: qbAlias,
+          extensionAPI,
         });
-        imageUrl = getFirstImageByUid(uid);
-      } else if (
-        keyImageOption === "smartblock" &&
-        window.roamjs?.extension?.smartblocks
-      ) {
-        const results =
-          (await window.roamjs.extension.smartblocks.triggerSmartblock({
-            srcUid: smartBlockTemplateUid,
-            variables: {
-              NODEUID: uid,
-              NODETEXT: text,
-            },
-          })) as InputTextNode[];
-        const nodeText = results[0].text;
-        imageUrl = findImage(nodeText);
+        const results = await runQuery({
+          extensionAPI,
+          parentUid,
+          inputs: { NODETEXT: text, NODEUID: uid },
+        });
+        const result = results.allProcessedResults[0]?.text || "";
+        imageUrl = extractFirstImageUrl(result);
       } else {
         imageUrl = getFirstImageByUid(uid);
       }
@@ -1643,7 +1614,7 @@ const TldrawCanvas = ({ title }: Props) => {
   );
 };
 
-export const renderTldrawCanvas = (title: string) => {
+export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
@@ -1657,7 +1628,9 @@ export const renderTldrawCanvas = (title: string) => {
     children.parentElement.appendChild(parent);
     parent.style.height = "500px";
     renderWithUnmount(
-      <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />,
+      <ExtensionApiContextProvider {...onloadArgs}>
+        <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />
+      </ExtensionApiContextProvider>,
       parent
     );
   }
