@@ -27,7 +27,7 @@ import nanoid from "nanoid";
 import apiPost from "roamjs-components/util/apiPost";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import extensionAPI from "roamjs-components/util/extensionApiContext";
+import getExtensionAPI from "roamjs-components/util/extensionApiContext";
 import getBlockProps from "../utils/getBlockProps";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getAllPageNames from "roamjs-components/queries/getAllPageNames";
@@ -36,12 +36,8 @@ import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import { createShapeId } from "@tldraw/tlschema";
-import {
-  DEFAULT_STYLE_PROPS,
-  defaultDiscourseNodeShapeProps,
-  MAX_WIDTH,
-} from "./TldrawCanvas";
-import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
+import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
+import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -129,7 +125,7 @@ const ExportDialog: ExportDialogComponent = ({
 
   const checkForCanvasPage = (title: string) => {
     const canvasPageFormat =
-      (extensionAPI().settings.get("canvas-page-format") as string) ||
+      (getExtensionAPI().settings.get("canvas-page-format") as string) ||
       DEFAULT_CANVAS_PAGE_FORMAT;
     return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
   };
@@ -146,7 +142,7 @@ const ExportDialog: ExportDialogComponent = ({
     setSelectedPageUid(getPageUidByPageTitle(title));
   };
 
-  const addToSelectedCanvas = () => {
+  const addToSelectedCanvas = async () => {
     const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
     const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
@@ -165,38 +161,40 @@ const ExportDialog: ExportDialogComponent = ({
 
     const pageKey = getPageKey(tldraw);
 
-    if (typeof results === "object") {
-      results.map((r, i) => {
-        const nodeType = findDiscourseNode(r.uid);
-        const { w, h } = measureCanvasNodeText({
-          ...DEFAULT_STYLE_PROPS,
-          maxWidth: MAX_WIDTH,
-          text: r.text,
-        });
-        const newShapeId = createShapeId();
-        const newShape = {
-          rotation: 0,
-          isLocked: false,
-          type: nodeType ? nodeType.type : "page-node",
-          props: {
-            opacity: defaultDiscourseNodeShapeProps.opacity,
-            w,
-            h:
-              defaultDiscourseNodeShapeProps.h > h
-                ? defaultDiscourseNodeShapeProps.h
-                : h,
-            uid: r.uid,
-            title: r.text,
-          },
-          parentId: pageKey,
-          y: 50 + i * 100,
-          id: newShapeId,
-          typeName: "shape",
-          x: 50 * i,
-        };
-        tldraw[newShapeId] = newShape;
+    if (typeof results !== "object") return;
+    for (const [i, r] of results.entries()) {
+      const discourseNode = findDiscourseNode(r.uid);
+      const nodeType = discourseNode ? discourseNode.type : "page-node";
+      const extensionAPI = getExtensionAPI();
+      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+        text: r.text,
+        uid: r.uid,
+        nodeType,
+        extensionAPI,
       });
+      const newShapeId = createShapeId();
+      const newShape = {
+        rotation: 0,
+        isLocked: false,
+        type: nodeType,
+        props: {
+          opacity: defaultDiscourseNodeShapeProps.opacity,
+          w,
+          h,
+          uid: r.uid,
+          title: r.text,
+          imageUrl,
+        },
+        parentId: pageKey,
+        y: 50 + i * 100,
+        id: newShapeId,
+        typeName: "shape",
+        x: 50 * i,
+      };
+
+      tldraw[newShapeId] = newShape;
     }
+
     const newStateId = nanoid();
     window.roamAlphaAPI.updateBlock({
       block: {
