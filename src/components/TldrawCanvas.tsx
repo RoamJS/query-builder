@@ -429,12 +429,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   render(shape: DiscourseNodeShape) {
     const extensionAPI = useExtensionAPI();
     const {
-      canvasSettings: {
-        alias = "",
-        "query-builder-alias": qbAlias = "",
-        "key-image": isKeyImage = "",
-        "key-image-option": keyImageOption = "",
-      } = {},
+      canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
     } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
@@ -483,7 +478,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
     const { backgroundCss, textColor } = this.getColors();
 
-    const setSizeAndImg = async ({
+    const setSizeAndImgProps = async ({
       context,
       text,
       uid,
@@ -505,101 +500,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         imageUrl,
       });
     };
-    // const extractFirstImageUrl = (text: string): string | null => {
-    //   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
-    //   const result = text.match(regex);
-    //   return result ? result[1] : null;
-    // };
-
-    // const getFirstImageByUid = (uid: string): string | null => {
-    //   const tree = getFullTreeByParentUid(uid);
-
-    //   const findFirstImage = (node: TreeNode): string | null => {
-    //     const imageUrl = extractFirstImageUrl(node.text);
-    //     if (imageUrl) return imageUrl;
-
-    //     if (node.children) {
-    //       for (const child of node.children) {
-    //         const childImageUrl = findFirstImage(child);
-    //         if (childImageUrl) return childImageUrl;
-    //       }
-    //     }
-
-    //     return null;
-    //   };
-
-    //   return findFirstImage(tree);
-    // };
-
-    // const setDimensions = async ({
-    //   context,
-    //   text,
-    //   uid,
-    // }: {
-    //   context: DiscourseNodeUtil;
-    //   text: string;
-    //   uid: string;
-    // }) => {
-    //   const { w, h } = measureCanvasNodeText({
-    //     ...DEFAULT_STYLE_PROPS,
-    //     maxWidth: MAX_WIDTH,
-    //     text,
-    //   });
-
-    //   // Just update the dimensions
-    //   if (!isKeyImage) {
-    //     context.updateProps(shape.id, {
-    //       w,
-    //       h,
-    //     });
-
-    //     return;
-    //   }
-
-    //   // Get Image URL
-    //   let imageUrl;
-    //   if (keyImageOption === "query-builder") {
-    //     if (!extensionAPI) return console.log("no extensionAPI");
-    //     const parentUid = resolveQueryBuilderRef({
-    //       queryRef: qbAlias,
-    //       extensionAPI,
-    //     });
-    //     const results = await runQuery({
-    //       extensionAPI,
-    //       parentUid,
-    //       inputs: { NODETEXT: text, NODEUID: uid },
-    //     });
-    //     const result = results.allProcessedResults[0]?.text || "";
-    //     imageUrl = extractFirstImageUrl(result);
-    //   } else {
-    //     imageUrl = getFirstImageByUid(uid);
-    //   }
-
-    //   // Calculate new node height
-    //   const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-    //   const maxWidth = Number(MAX_WIDTH.replace("px", ""));
-    //   const effectiveWidth = maxWidth - 2 * padding;
-
-    //   try {
-    //     if (!imageUrl) throw new Error("No Image URL");
-
-    //     const { width, height } = await loadImage(imageUrl);
-
-    //     const aspectRatio = width / height;
-    //     const nodeImageHeight = effectiveWidth / aspectRatio;
-
-    //     context.updateProps(shape.id, {
-    //       w,
-    //       h: h + nodeImageHeight + padding * 2,
-    //       imageUrl,
-    //     });
-    //   } catch {
-    //     context.updateProps(shape.id, {
-    //       w,
-    //       h,
-    //     });
-    //   }
-    // };
 
     return (
       <HTMLContainer
@@ -644,7 +544,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               if (shape.props.uid === uid) {
                 if (shape.props.title) {
                   if (shape.props.title === text) {
-                    setSizeAndImg({ context: this, text, uid });
+                    setSizeAndImgProps({ context: this, text, uid });
                     return;
                   } else {
                     if (isPageUid(shape.props.uid))
@@ -672,7 +572,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 allRecords,
                 relationIds,
               });
-              setSizeAndImg({ context: this, text, uid });
+              setSizeAndImgProps({ context: this, text, uid });
               this.updateProps(shape.id, {
                 title: text,
                 uid,
@@ -780,7 +680,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       );
       const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
       image.setAttribute("href", src);
-      const width = shape.props.w - padding * 2;
       image.setAttribute("width", shape.props.w.toString());
 
       // Calculate height based on aspect ratio like in the HTML
@@ -790,10 +689,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
       // TODO - allow for cropped images (css overflow-hidden)
       image.setAttribute("height", svgImageHeight.toString());
-
-      // Center the image horizontally
-      const imageXOffset = shape.props.w / 2;
-      // image.setAttribute("x", imageXOffset.toString());
 
       // Adjust text y attribute to be positioned below the image
       const textYOffset =
