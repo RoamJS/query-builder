@@ -46,7 +46,11 @@ import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
-import { AddPullWatch, InputTextNode } from "roamjs-components/types";
+import {
+  AddPullWatch,
+  InputTextNode,
+  OnloadArgs,
+} from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -68,6 +72,10 @@ import nanoid from "nanoid";
 import createDiscourseNode from "../utils/createDiscourseNode";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
+import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 
 declare global {
   interface Window {
@@ -191,7 +199,7 @@ const calculateDiff = (
   };
 };
 
-type DiscourseNodeShape = TLBaseShape<
+export type DiscourseNodeShape = TLBaseShape<
   string,
   {
     w: number;
@@ -199,6 +207,7 @@ type DiscourseNodeShape = TLBaseShape<
     opacity: TLOpacityType;
     uid: string;
     title: string;
+    imageUrl?: string;
   }
 >;
 
@@ -223,13 +232,13 @@ const COLOR_PALETTE: Record<string, string> = {
 const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
+export const MAX_WIDTH = "400px";
 
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: FONT_SIZES.m,
   fontFamily: "sans",
   width: "fit-content",
-  maxWidth: "400px",
   padding: "40px",
 };
 
@@ -237,6 +246,28 @@ export const defaultDiscourseNodeShapeProps = {
   opacity: "1" as DiscourseNodeShape["props"]["opacity"],
   w: 160,
   h: 64,
+};
+
+export const loadImage = (
+  url: string
+): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height });
+    };
+
+    img.onerror = () => {
+      reject(new Error("Failed to load image"));
+    };
+
+    setTimeout(() => {
+      reject(new Error("Image load timeout"));
+    }, 3000);
+
+    img.src = url;
+  });
 };
 class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   constructor(app: TldrawApp, type: string) {
@@ -396,8 +427,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 
   render(shape: DiscourseNodeShape) {
-    const { canvasSettings: { alias = "" } = {} } =
-      discourseContext.nodes[this.type] || {};
+    const extensionAPI = useExtensionAPI();
+    const {
+      canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
+    } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
       () => this.app.editingId === shape.id,
@@ -442,17 +475,51 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         );
       };
     }, [setIsEditLabelOpen]);
+
     const { backgroundCss, textColor } = this.getColors();
+
+    const setSizeAndImgProps = async ({
+      context,
+      text,
+      uid,
+    }: {
+      context: DiscourseNodeUtil;
+      text: string;
+      uid: string;
+    }) => {
+      if (!extensionAPI) return;
+      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+        text,
+        uid,
+        nodeType: this.type,
+        extensionAPI,
+      });
+      context.updateProps(shape.id, {
+        h,
+        w,
+        imageUrl,
+      });
+    };
+
     return (
       <HTMLContainer
         id={shape.id}
-        className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node"
+        className="flex items-center justify-center pointer-events-auto rounded-2xl roamjs-tldraw-node overflow-hidden"
         style={{
           background: backgroundCss,
           color: textColor,
         }}
       >
         <div style={{ pointerEvents: "all" }}>
+          {shape.props.imageUrl && isKeyImage ? (
+            <img
+              src={shape.props.imageUrl}
+              className="w-full object-cover h-auto"
+              draggable="false"
+              style={{ pointerEvents: "none" }}
+            />
+          ) : null}
+
           <div
             ref={contentRef}
             style={{ ...DEFAULT_STYLE_PROPS, maxWidth: "" }}
@@ -477,7 +544,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               if (shape.props.uid === uid) {
                 if (shape.props.title) {
                   if (shape.props.title === text) {
-                    // nothing to update I think
+                    setSizeAndImgProps({ context: this, text, uid });
                     return;
                   } else {
                     if (isPageUid(shape.props.uid))
@@ -505,15 +572,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 allRecords,
                 relationIds,
               });
-              const { w, h } = measureCanvasNodeText({
-                ...DEFAULT_STYLE_PROPS,
-                text,
-              });
+              setSizeAndImgProps({ context: this, text, uid });
               this.updateProps(shape.id, {
                 title: text,
                 uid,
-                w,
-                h,
               });
               setIsEditLabelOpen(false);
               this.app.setEditingId(null);
@@ -536,9 +598,11 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     );
   }
 
-  toSvg(shape: DiscourseNodeShape) {
+  async toSvg(shape: DiscourseNodeShape) {
     const { backgroundColor, textColor } = this.getColors();
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+    // Create and set attributes for the rectangle (background of the shape)
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("width", shape.props.w.toString());
     rect.setAttribute("height", shape.props.h.toString());
@@ -549,6 +613,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     g.appendChild(rect);
 
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+
+    // Calculate text dimensions and positioning
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const textWidth = measureCanvasNodeText({
       ...DEFAULT_STYLE_PROPS,
@@ -570,6 +636,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       wrap: true,
     });
 
+    // set attributes for the text
     text.setAttribute("font-family", DEFAULT_STYLE_PROPS.fontFamily);
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
@@ -580,6 +647,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     const lineHeight =
       DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
 
+    // Loop through words and add them to lines, wrapping as needed
     textLines.forEach((line, index) => {
       const tspan = document.createElementNS(
         "http://www.w3.org/2000/svg",
@@ -591,9 +659,51 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       text.appendChild(tspan);
     });
 
-    const textY =
-      (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
-    text.setAttribute("y", textY.toString());
+    // Add image to the node if imageUrl exists
+
+    // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
+    async function getDataURIFromURL(url: string): Promise<string> {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    if (shape.props.imageUrl) {
+      const image = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "image"
+      );
+      const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
+      image.setAttribute("href", src);
+      image.setAttribute("width", shape.props.w.toString());
+
+      // Calculate height based on aspect ratio like in the HTML
+      const { width: imageWidth, height: imageGeight } = await loadImage(src);
+      const aspectRatio = imageWidth / imageGeight || 1;
+      const svgImageHeight = shape.props.w / aspectRatio;
+
+      // TODO - allow for cropped images (css overflow-hidden)
+      image.setAttribute("height", svgImageHeight.toString());
+
+      // Adjust text y attribute to be positioned below the image
+      const textYOffset =
+        svgImageHeight +
+        (shape.props.h - svgImageHeight) / 2 -
+        (lineHeight * textLines.length) / 2;
+      text.setAttribute("y", textYOffset.toString());
+
+      g.appendChild(image);
+    } else {
+      // Position the text vertically in the center of the shape
+      const textY =
+        (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
+      text.setAttribute("y", textY.toString());
+    }
 
     g.appendChild(text);
 
@@ -612,6 +722,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     this.app.updateShapes([{ id, props }]);
   }
 }
+
+//@ts-ignore
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
@@ -1169,7 +1281,8 @@ const TldrawCanvas = ({ title }: Props) => {
       ref={containerRef}
       tabIndex={-1}
     >
-      <style>{`.roam-article .rm-block-children {
+      <style>
+        {`.roam-article .rm-block-children {
         display: none;
       }
       .rs-arrow-label__inner{
@@ -1184,7 +1297,11 @@ const TldrawCanvas = ({ title }: Props) => {
         maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""
-      }`}</style>
+      }
+      #roamjs-tldraw-canvas-container .rs-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
+        display: none;
+      }`}
+      </style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
         instanceId={initialState.instanceId}
@@ -1412,7 +1529,7 @@ const TldrawCanvas = ({ title }: Props) => {
   );
 };
 
-export const renderTldrawCanvas = (title: string) => {
+export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
@@ -1426,7 +1543,9 @@ export const renderTldrawCanvas = (title: string) => {
     children.parentElement.appendChild(parent);
     parent.style.height = "500px";
     renderWithUnmount(
-      <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />,
+      <ExtensionApiContextProvider {...onloadArgs}>
+        <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />
+      </ExtensionApiContextProvider>,
       parent
     );
   }

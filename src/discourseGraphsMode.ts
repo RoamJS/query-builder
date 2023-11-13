@@ -456,7 +456,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 {
                   title: "trigger",
                   description:
-                    "The trigger to create the node menu. Must refresh after editing.",
+                    "The trigger to create the node menu. Must refresh after editing",
                   defaultValue: "\\",
                   // @ts-ignore
                   Panel: TextPanel,

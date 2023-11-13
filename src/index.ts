@@ -42,6 +42,7 @@ import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
+import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -246,7 +247,7 @@ svg.rs-svg-container {
     ) {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
-      renderTldrawCanvas(title);
+      renderTldrawCanvas(title, onloadArgs);
     }
   };
   extensionAPI.settings.panel.create({
@@ -511,20 +512,7 @@ svg.rs-svg-container {
             }
           : { text: formatArg, children: [], uid: "" };
         const queryRef = variables[arg] || arg;
-        const parentUid = isLiveBlock(extractRef(queryRef))
-          ? extractRef(queryRef)
-          : window.roamAlphaAPI.data.fast
-              .q(
-                `[:find ?uid :where [?b :block/uid ?uid] [or-join [?b] 
-                 [and [?b :block/string ?s] [[clojure.string/includes? ?s "{{query block:${queryRef}}}"]] ]
-                 ${getQueryPages(extensionAPI).map(
-                   (p) =>
-                     `[and [?b :node/title "${p.replace(/\*/, queryRef)}"]]`
-                 )}
-                  [and [?b :node/title "${queryRef}"]]
-            ]]`
-              )[0]
-              ?.toString() || "";
+        const parentUid = resolveQueryBuilderRef({ queryRef, extensionAPI });
         return runQuery({
           parentUid,
           extensionAPI,
