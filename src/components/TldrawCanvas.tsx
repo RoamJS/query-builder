@@ -487,7 +487,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       text: string;
       uid: string;
     }) => {
-      if (!extensionAPI) return console.log("no extensionAPI");
+      if (!extensionAPI) return;
       const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
         text,
         uid,

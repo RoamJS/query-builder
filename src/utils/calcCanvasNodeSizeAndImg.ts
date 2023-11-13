@@ -10,6 +10,7 @@ import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";
 import getDiscourseNodes from "./getDiscourseNodes";
 import resolveRefs from "roamjs-components/dom/resolveRefs";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
@@ -82,16 +83,14 @@ const calcCanvasNodeSizeAndImg = async ({
   } else {
     imageUrl = getFirstImageByUid(uid);
   }
+  if (!imageUrl) return { w, h, imageUrl: "" };
 
   const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
   const maxWidth = Number(MAX_WIDTH.replace("px", ""));
   const effectiveWidth = maxWidth - 2 * padding;
 
   try {
-    if (!imageUrl) throw new Error("No Image URL");
-
     const { width, height } = await loadImage(imageUrl);
-
     const aspectRatio = width / height;
     const nodeImageHeight = effectiveWidth / aspectRatio;
 
@@ -101,6 +100,11 @@ const calcCanvasNodeSizeAndImg = async ({
       imageUrl,
     };
   } catch {
+    renderToast({
+      id: "tldraw-image-load-fail",
+      content: "Failed to load image",
+      intent: "warning",
+    });
     return { w, h, imageUrl: "" };
   }
 };
