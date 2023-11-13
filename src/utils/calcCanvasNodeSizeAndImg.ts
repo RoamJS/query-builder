@@ -9,10 +9,11 @@ import { measureCanvasNodeText } from "./measureCanvasNodeText";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";
 import getDiscourseNodes from "./getDiscourseNodes";
+import resolveRefs from "roamjs-components/dom/resolveRefs";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
-  const result = text.match(regex);
+  const result = text.match(regex) || resolveRefs(text).match(regex);
   return result ? result[1] : null;
 };
 
