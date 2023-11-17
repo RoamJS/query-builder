@@ -86,9 +86,7 @@ const DiscourseNodeCanvasSettings = ({ uid }: { uid: string }) => {
           }}
         />
       </Label>
-      {/* <Tooltip content="Add an image to each Discourse Node"> */}
       <Switch
-        // label="Use Key Images"
         style={{ width: 240, lineHeight: "normal" }}
         alignIndicator="right"
         checked={isKeyImage}
