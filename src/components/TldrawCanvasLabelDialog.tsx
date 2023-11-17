@@ -13,9 +13,10 @@ import {
 import fireQuery from "../utils/fireQuery";
 import fuzzy from "fuzzy";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
-import { QBClause, Result } from "../utils/types";
+import { Result } from "../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
+import { getPlainTitleFromSpecification } from "../discourseGraphsMode";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -124,20 +125,7 @@ const LabelDialog = ({
     if (_label) return _label;
     const { specification, text } = discourseContext.nodes[nodeType];
     if (!specification.length) return "";
-    // CURRENT ASSUMPTIONS:
-    // - conditions are properly ordered
-    // - there is a has title condition somewhere
-    const titleCondition = specification.find(
-      (s): s is QBClause =>
-        s.type === "clause" && s.relation === "has title" && s.source === text
-    );
-    if (!titleCondition) return "";
-    return titleCondition.target
-      .replace(/^\/(\^)?/, "")
-      .replace(/(\$)?\/$/, "")
-      .replace(/\\\[/g, "[")
-      .replace(/\\\]/g, "]")
-      .replace(/\(\.[\*\+](\?)?\)/g, "");
+    return getPlainTitleFromSpecification({ specification, text });
   }, [_label, nodeType]);
   const initialValue = useMemo(() => {
     return { text: initialLabel, uid: initialUid };
