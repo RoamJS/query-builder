@@ -414,8 +414,16 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           ? discourseNodeIndex
           : 0
       ];
-    const backgroundInfo = backgroundColor
-      ? { backgroundColor, backgroundCss: backgroundColor }
+    const formattedBackgroundColor =
+      backgroundColor && !backgroundColor.startsWith("#")
+        ? `#${backgroundColor}`
+        : backgroundColor;
+
+    const backgroundInfo = formattedBackgroundColor
+      ? {
+          backgroundColor: formattedBackgroundColor,
+          backgroundCss: formattedBackgroundColor,
+        }
       : {
           backgroundColor: COLOR_PALETTE[paletteColor],
           backgroundCss: `var(--palette-${paletteColor})`,
