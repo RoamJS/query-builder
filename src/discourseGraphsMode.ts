@@ -237,6 +237,13 @@ export const renderDiscourseNodeTypeConfigPage = ({
               component: DiscourseNodeCanvasSettings,
             },
           } as Field<CustomField>,
+          // @ts-ignore
+          {
+            title: "Graph Overview",
+            Panel: FlagPanel,
+            description: `Whether to color the node in the graph overview based on canvas color`,
+            defaultValue: true,
+          } as FieldPanel<FlagField>,
         ],
       });
 

@@ -17,6 +17,7 @@ export type DiscourseNode = {
   };
   // @deprecated - use specification instead
   format: string;
+  graphOverview?: boolean;
 };
 
 const DEFAULT_NODES: DiscourseNode[] = [
@@ -78,6 +79,8 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
             (c) => [c.text, c.children[0]?.text || ""] as const
           )
         ),
+        graphOverview:
+          children.filter((c) => c.text === "Graph Overview").length > 0,
       };
     })
     .concat(
