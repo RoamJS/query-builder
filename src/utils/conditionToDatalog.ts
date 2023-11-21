@@ -254,24 +254,49 @@ const translator: Record<string, Translator> = {
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
-    callback: ({ source, target }) => [
-      {
-        type: "data-pattern",
-        arguments: [
-          { type: "variable", value: source },
-          { type: "constant", value: ":node/title" },
-          { type: "variable", value: `${source}-Title` },
-        ],
-      },
-      {
-        type: "pred-expr",
-        pred: "clojure.string/includes?",
-        arguments: [
-          { type: "variable", value: `${source}-Title` },
-          { type: "constant", value: `"${normalizePageTitle(target)}"` },
-        ],
-      },
-    ],
+    callback: ({ source, target }) => {
+      const initialDatalog: DatalogClause[] = [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":node/title" },
+            { type: "variable", value: `${source}-Title` },
+          ],
+        },
+      ];
+      const currentMatch = /^\s*{current}\s*$/i.test(target);
+      if (currentMatch) {
+        const uid = getCurrentPageUid();
+        return [
+          ...initialDatalog,
+          {
+            type: "pred-expr",
+            pred: "clojure.string/includes?",
+            arguments: [
+              { type: "variable", value: `${source}-Title` },
+              {
+                type: "constant",
+                value: `"${getPageTitleByPageUid(uid)}"`,
+              },
+            ],
+          },
+        ];
+      } else {
+        return [
+          ...initialDatalog,
+          {
+            type: "pred-expr",
+            pred: "clojure.string/includes?",
+            arguments: [
+              { type: "variable", value: `${source}-Title` },
+              { type: "constant", value: `"${normalizePageTitle(target)}"` },
+            ],
+          },
+        ];
+      }
+    },
+    targetOptions: ["{current}"],
     placeholder: "Enter any text",
   },
   "has attribute": {
