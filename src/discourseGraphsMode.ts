@@ -846,6 +846,12 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           });
         },
       });
+      unloads.add(function removeGraphViewCallback() {
+        window.roamAlphaAPI.ui.graphView.wholeGraph.removeCallback({
+          label: "discourse-node-styling",
+        });
+        unloads.delete(removeGraphViewCallback);
+      });
 
       window.roamAlphaAPI.ui.commandPalette.addCommand({
         label: "Export Discourse Graph",
