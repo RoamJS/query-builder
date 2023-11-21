@@ -6,6 +6,7 @@ import {
   Switch,
   Tooltip,
   Icon,
+  ControlGroup,
 } from "@blueprintjs/core";
 import React, { useRef, useState, useMemo } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -14,9 +15,17 @@ import setInputSetting from "roamjs-components/util/setInputSetting";
 
 const DiscourseNodeCanvasSettings = ({ uid }: { uid: string }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(uid), [uid]);
-  const [color, setColor] = useState<string>(() =>
-    getSettingValueFromTree({ tree, key: "color" })
-  );
+  const [color, setColor] = useState<string>(() => {
+    const color = getSettingValueFromTree({ tree, key: "color" });
+    const COLOR_TEST = /^[0-9a-f]{6}$/i;
+    if (color.startsWith("#")) {
+      return color;
+      // handle legacy color format
+    } else if (COLOR_TEST.test(color)) {
+      return "#" + color;
+    }
+    return "";
+  });
   const [alias, setAlias] = useState<string>(() =>
     getSettingValueFromTree({ tree, key: "alias" })
   );
@@ -31,21 +40,38 @@ const DiscourseNodeCanvasSettings = ({ uid }: { uid: string }) => {
   );
   return (
     <div>
-      <Label style={{ width: 120 }}>
-        Color Picker
-        <InputGroup
-          type={"color"}
-          value={color}
-          onChange={(e) => {
-            setColor(e.target.value);
-            setInputSetting({
-              blockUid: uid,
-              key: "color",
-              value: e.target.value,
-            });
-          }}
-        />
-      </Label>
+      <div className="mb-4">
+        <Label style={{ marginBottom: "4px" }}>Color Picker</Label>
+        <ControlGroup>
+          <InputGroup
+            style={{ width: 120 }}
+            type={"color"}
+            value={color}
+            onChange={(e) => {
+              setColor(e.target.value);
+              setInputSetting({
+                blockUid: uid,
+                key: "color",
+                value: e.target.value.replace("#", ""), // remove hash to not create roam link
+              });
+            }}
+          />
+          <Tooltip content={color ? "Unset" : "Color not set"}>
+            <Icon
+              className={"align-middle opacity-80 ml-2"}
+              icon={color ? "delete" : "info-sign"}
+              onClick={() => {
+                setColor("");
+                setInputSetting({
+                  blockUid: uid,
+                  key: "color",
+                  value: "",
+                });
+              }}
+            />
+          </Tooltip>
+        </ControlGroup>
+      </div>
       <Label style={{ width: 240 }}>
         Display Alias
         <InputGroup
@@ -60,9 +86,7 @@ const DiscourseNodeCanvasSettings = ({ uid }: { uid: string }) => {
           }}
         />
       </Label>
-      {/* <Tooltip content="Add an image to each Discourse Node"> */}
       <Switch
-        // label="Use Key Images"
         style={{ width: 240, lineHeight: "normal" }}
         alignIndicator="right"
         checked={isKeyImage}

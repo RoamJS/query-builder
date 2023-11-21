@@ -5,6 +5,7 @@ import {
 import {
   CustomField,
   Field,
+  FieldPanel,
   FlagField,
   SelectField,
   TextField,
@@ -52,6 +53,7 @@ import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSetting
 import CanvasReferences from "./components/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
+import { Condition, QBClause } from "./utils/types";
 
 export const SETTING = "discourse-graphs";
 
@@ -237,11 +239,41 @@ export const renderDiscourseNodeTypeConfigPage = ({
               component: DiscourseNodeCanvasSettings,
             },
           } as Field<CustomField>,
+          // @ts-ignore
+          {
+            title: "Graph Overview",
+            Panel: FlagPanel,
+            description: `Whether to color the node in the graph overview based on canvas color`,
+            defaultValue: true,
+          } as FieldPanel<FlagField>,
         ],
       });
 
     renderNode();
   }
+};
+
+export const getPlainTitleFromSpecification = ({
+  specification,
+  text,
+}: {
+  specification: Condition[];
+  text: string;
+}) => {
+  // Assumptions:
+  // - Conditions are properly ordered
+  // - There is a 'has title' condition somewhere
+  const titleCondition = specification.find(
+    (s): s is QBClause =>
+      s.type === "clause" && s.relation === "has title" && s.source === text
+  );
+  if (!titleCondition) return "";
+  return titleCondition.target
+    .replace(/^\/(\^)?/, "")
+    .replace(/(\$)?\/$/, "")
+    .replace(/\\\[/g, "[")
+    .replace(/\\\]/g, "]")
+    .replace(/\(\.[\*\+](\?)?\)/g, "");
 };
 
 const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
@@ -758,6 +790,67 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           ).filter((s) => s !== "discourse-graph/queries/*")
         );
         unloads.delete(removeQueryPage);
+      });
+
+      type SigmaRenderer = {
+        setSetting: (settingName: string, value: any) => void;
+        getSetting: (settingName: string) => any;
+      };
+      type nodeData = {
+        x: number;
+        y: number;
+        label: string;
+        size: number;
+      };
+
+      window.roamAlphaAPI.ui.graphView.wholeGraph.addCallback({
+        label: "discourse-node-styling",
+        callback: ({ "sigma-renderer": sigma }) => {
+          const sig = sigma as SigmaRenderer;
+          const allNodes = getDiscourseNodes();
+          const prefixColors = allNodes.map((n) => {
+            const formattedTitle = getPlainTitleFromSpecification({
+              specification: n.specification,
+              text: n.text,
+            });
+            const formattedBackgroundColor =
+              n.canvasSettings.color && !n.canvasSettings.color.startsWith("#")
+                ? `#${n.canvasSettings.color}`
+                : n.canvasSettings.color;
+
+            return {
+              prefix: formattedTitle,
+              color: formattedBackgroundColor,
+              showInGraphOverview: n.graphOverview,
+            };
+          });
+
+          const originalReducer = sig.getSetting("nodeReducer");
+          sig.setSetting("nodeReducer", (id: string, nodeData: nodeData) => {
+            let modifiedData = originalReducer
+              ? originalReducer(id, nodeData)
+              : nodeData;
+
+            const { label } = modifiedData;
+
+            for (const { prefix, color, showInGraphOverview } of prefixColors) {
+              if (showInGraphOverview && label.startsWith(prefix)) {
+                return {
+                  ...modifiedData,
+                  color,
+                };
+              }
+            }
+
+            return modifiedData;
+          });
+        },
+      });
+      unloads.add(function removeGraphViewCallback() {
+        window.roamAlphaAPI.ui.graphView.wholeGraph.removeCallback({
+          label: "discourse-node-styling",
+        });
+        unloads.delete(removeGraphViewCallback);
       });
 
       window.roamAlphaAPI.ui.commandPalette.addCommand({

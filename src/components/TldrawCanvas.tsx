@@ -37,6 +37,7 @@ import {
   TLTextShape,
   TEXT_PROPS,
   FONT_SIZES,
+  FONT_FAMILIES,
   MenuItem,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -234,10 +235,15 @@ const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 export const MAX_WIDTH = "400px";
 
+// FONT_FAMILIES.sans or tldraw_sans not working in toSvg()
+// maybe check getSvg()
+// in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
+const SVG_FONT_FAMILY = "sans-serif";
+
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: FONT_SIZES.m,
-  fontFamily: "sans",
+  fontFamily: FONT_FAMILIES.sans,
   width: "fit-content",
   padding: "40px",
 };
@@ -414,8 +420,16 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           ? discourseNodeIndex
           : 0
       ];
-    const backgroundInfo = backgroundColor
-      ? { backgroundColor, backgroundCss: backgroundColor }
+    const formattedBackgroundColor =
+      backgroundColor && !backgroundColor.startsWith("#")
+        ? `#${backgroundColor}`
+        : backgroundColor;
+
+    const backgroundInfo = formattedBackgroundColor
+      ? {
+          backgroundColor: formattedBackgroundColor,
+          backgroundCss: formattedBackgroundColor,
+        }
       : {
           backgroundColor: COLOR_PALETTE[paletteColor],
           backgroundCss: `var(--palette-${paletteColor})`,
@@ -637,7 +651,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     });
 
     // set attributes for the text
-    text.setAttribute("font-family", DEFAULT_STYLE_PROPS.fontFamily);
+    text.setAttribute("font-family", SVG_FONT_FAMILY);
     text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
     text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
     text.setAttribute("fill", textColor);
