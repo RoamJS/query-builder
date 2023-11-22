@@ -19,6 +19,7 @@ import toCellValue from "../utils/toCellValue";
 import extractTag from "roamjs-components/util/extractTag";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -30,8 +31,43 @@ const KanbanCard = (card: {
   $displayKey: string;
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
   result: Result;
+  view: string;
+  viewValue: string;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+
+  const CellEmbed = ({
+    uid,
+    viewValue,
+  }: {
+    uid: string;
+    viewValue: string;
+  }) => {
+    console.log("CellEmbed render");
+    const title = getPageTitleByPageUid(uid);
+    const contentRef = useRef(null);
+    const open =
+      viewValue === "open" ? true : viewValue === "closed" ? false : null;
+
+    useEffect(() => {
+      const el = contentRef.current;
+      if (el) {
+        window.roamAlphaAPI.ui.components.renderBlock({
+          uid,
+          el,
+          "open?": open,
+        });
+      }
+    }, [contentRef]);
+    return (
+      <div className="roamjs-query-embed rounded-xl bg-white p-4 hover:bg-gray-200">
+        <div
+          ref={contentRef}
+          className={!!title ? "page-embed" : "block-embed"}
+        />
+      </div>
+    );
+  };
 
   return (
     <Draggable
@@ -73,12 +109,17 @@ const KanbanCard = (card: {
           }
         }}
       >
-        <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
-          {toCellValue({
-            value: card.result[card.$displayKey],
-            uid: card.result[`${card.$displayKey}-uid`],
-          })}
-        </div>
+        {card.view === "embed" ? (
+          <CellEmbed uid={card.result.uid} viewValue={card.viewValue} />
+        ) : (
+          <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
+            {console.log("toCellValue render")}
+            {toCellValue({
+              value: card.result[card.$displayKey],
+              uid: card.result[`${card.$displayKey}-uid`],
+            })}
+          </div>
+        )}
       </div>
     </Draggable>
   );
@@ -98,12 +139,14 @@ const Kanban = ({
   onQuery,
   resultKeys,
   parentUid,
+  views,
 }: {
   resultKeys: Column[];
   data: Result[];
   layout: Record<string, string | string[]>;
   onQuery: () => void;
   parentUid: string;
+  views: { column: string; mode: string; value: string }[];
 }) => {
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
@@ -347,6 +390,12 @@ const Kanban = ({
     setOpenedPopoverIndex(null);
   };
 
+  const viewsByColumn = useMemo(
+    () => Object.fromEntries(views.map((v) => [v.column, v])),
+    [views]
+  );
+  const { mode: view, value: viewValue } = viewsByColumn[displayKey] || {};
+
   return (
     <>
       {showLegend === "Yes" && (
@@ -438,6 +487,8 @@ const Kanban = ({
                   <KanbanCard
                     key={d.uid}
                     result={d}
+                    view={view}
+                    viewValue={viewValue}
                     // we use $ to prefix these props to avoid collisions with the result object
                     $priority={prioritization[d.uid]}
                     $reprioritize={reprioritizeAndUpdateBlock}

@@ -40,9 +40,10 @@ import { render as renderSimpleAlert } from "roamjs-components/components/Simple
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
   plain: { value: false },
-  embed: { value: false },
+  embed: { value: true },
   alias: { value: true },
 };
+const EMBED_FOLD_VALUES = ["default", "open", "closed"];
 
 type EnglishQueryPart = { text: string; clickId?: string };
 
@@ -347,8 +348,6 @@ const ResultsView: ResultsViewComponent = ({
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={() => setShowMenuIcons(true)}
-      onMouseOut={() => setShowMenuIcons(false)}
     >
       {isEditSearchFilter && (
         <div
@@ -395,134 +394,110 @@ const ResultsView: ResultsViewComponent = ({
         results={allProcessedResults}
       />
       <div className="relative">
-        <span
-          className="absolute top-1 right-0 z-10"
-          style={!showMenuIcons && !showInterface ? { display: "none" } : {}}
+        <div
+          className="absolute top-0 right-0 h-20 w-24 z-20"
+          // if this is set to the main div, mouse events on CellEmbed cause re-renders
+          onMouseEnter={() => {
+            if (!showInterface) setShowMenuIcons(true);
+          }}
+          onMouseLeave={() => {
+            if (!showInterface) setShowMenuIcons(false);
+          }}
         >
-          {onRefresh && (
-            <Tooltip content={"Refresh Results"}>
-              <Button icon={"refresh"} minimal onClick={() => onRefresh()} />
-            </Tooltip>
-          )}
-          <Popover
-            placement="left-end"
-            isOpen={moreMenuOpen}
-            target={
-              <Button
-                minimal
-                icon={"more"}
-                className={isMenuIconDirty ? "roamjs-item-dirty" : ""}
-              />
-            }
-            onInteraction={(next, e) => {
-              if (!e) return;
-              const target = e.target as HTMLElement;
-              if (
-                target.classList.contains("bp3-menu-item") ||
-                target.closest(".bp3-menu-item")
-              ) {
-                return;
+          <div
+            style={!showMenuIcons && !showInterface ? { display: "none" } : {}}
+            className="absolute right-0 z-10 p-1"
+          >
+            {onRefresh && (
+              <Tooltip content={"Refresh Results"}>
+                <Button icon={"refresh"} minimal onClick={() => onRefresh()} />
+              </Tooltip>
+            )}
+            <Popover
+              placement="left-end"
+              isOpen={moreMenuOpen}
+              target={
+                <Button
+                  minimal
+                  icon={"more"}
+                  className={isMenuIconDirty ? "roamjs-item-dirty" : ""}
+                />
               }
-              setMoreMenuOpen(next);
-            }}
-            content={
-              isEditRandom ? (
-                <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Get Random
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditRandom(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
-                  <InputGroup
-                    defaultValue={settings.random.toString()}
-                    onChange={(e) =>
-                      (randomRef.current = Number(e.target.value))
-                    }
-                    rightElement={
-                      <Tooltip content={"Select Random Results"}>
-                        <Button
-                          icon={"random"}
-                          onClick={() => {
-                            setRandom({ count: randomRef.current });
+              onInteraction={(next, e) => {
+                if (!e) return;
+                const target = e.target as HTMLElement;
+                if (
+                  target.classList.contains("bp3-menu-item") ||
+                  target.closest(".bp3-menu-item")
+                ) {
+                  return;
+                }
+                setMoreMenuOpen(next);
+              }}
+              content={
+                isEditRandom ? (
+                  <div className="relative w-72 p-4">
+                    <h4 className="font-bold flex justify-between items-center">
+                      Get Random
+                      <Button
+                        icon={"small-cross"}
+                        onClick={() => setIsEditRandom(false)}
+                        minimal
+                        small
+                      />
+                    </h4>
+                    <InputGroup
+                      defaultValue={settings.random.toString()}
+                      onChange={(e) =>
+                        (randomRef.current = Number(e.target.value))
+                      }
+                      rightElement={
+                        <Tooltip content={"Select Random Results"}>
+                          <Button
+                            icon={"random"}
+                            onClick={() => {
+                              setRandom({ count: randomRef.current });
 
-                            if (preventSavingSettings) return;
-                            const resultNode = getSubTree({
-                              key: "results",
-                              parentUid,
-                            });
-                            setInputSetting({
-                              key: "random",
-                              value: randomRef.current.toString(),
-                              blockUid: resultNode.uid,
-                            });
-                          }}
-                          minimal
-                        />
-                      </Tooltip>
-                    }
-                    type={"number"}
-                    style={{ width: 80 }}
-                  />
-                </div>
-              ) : isEditLayout ? (
-                <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Layout
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditLayout(false)}
-                      minimal
-                      small
+                              if (preventSavingSettings) return;
+                              const resultNode = getSubTree({
+                                key: "results",
+                                parentUid,
+                              });
+                              setInputSetting({
+                                key: "random",
+                                value: randomRef.current.toString(),
+                                blockUid: resultNode.uid,
+                              });
+                            }}
+                            minimal
+                          />
+                        </Tooltip>
+                      }
+                      type={"number"}
+                      style={{ width: 80 }}
                     />
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    {SUPPORTED_LAYOUTS.map((l) => (
-                      <div
-                        className={`rounded-sm border p-2 flex flex-col gap-2 items-center justify-center cursor-pointer ${
-                          l.id === layoutMode
-                            ? "border-blue-800 border-opacity-75 text-blue-800"
-                            : "border-gray-800 border-opacity-25 text-gray-800"
-                        }`}
-                        onClick={() => {
-                          setLayout({ ...layout, mode: l.id });
-                          const resultNode = getSubTree({
-                            key: "results",
-                            parentUid,
-                          });
-                          const layoutNode = getSubTree({
-                            key: "layout",
-                            parentUid: resultNode.uid,
-                          });
-                          setInputSetting({
-                            key: "mode",
-                            value: l.id,
-                            blockUid: layoutNode.uid,
-                          });
-                          setIsEditLayout(false);
-                          setMoreMenuOpen(false);
-                        }}
-                      >
-                        <Icon icon={l.icon} />
-                        <span className="capitalize text-sm">{l.id}</span>
-                      </div>
-                    ))}
                   </div>
-                  {settingsById[layoutMode].map((s) => {
-                    const options =
-                      s.options === "columns"
-                        ? columns.map((c) => c.key)
-                        : s.options.slice();
-                    return (
-                      <Label key={s.key}>
-                        {s.label}
-                        <MenuItemSelect
-                          activeItem={head(layout[s.key]) || options[0]}
-                          onItemSelect={(value) => {
-                            setLayout({ ...layout, [s.key]: value });
+                ) : isEditLayout ? (
+                  <div className="relative w-72 p-4">
+                    <h4 className="font-bold flex justify-between items-center">
+                      Layout
+                      <Button
+                        icon={"small-cross"}
+                        onClick={() => setIsEditLayout(false)}
+                        minimal
+                        small
+                      />
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      {SUPPORTED_LAYOUTS.map((l) => (
+                        <div
+                          className={`rounded-sm border p-2 flex flex-col gap-2 items-center justify-center cursor-pointer ${
+                            l.id === layoutMode
+                              ? "border-blue-800 border-opacity-75 text-blue-800"
+                              : "border-gray-800 border-opacity-25 text-gray-800"
+                          }`}
+                          onClick={() => {
+                            setLayout({ ...layout, mode: l.id });
                             const resultNode = getSubTree({
                               key: "results",
                               parentUid,
@@ -532,328 +507,395 @@ const ResultsView: ResultsViewComponent = ({
                               parentUid: resultNode.uid,
                             });
                             setInputSetting({
-                              key: s.key,
-                              value,
+                              key: "mode",
+                              value: l.id,
                               blockUid: layoutNode.uid,
                             });
+                            setIsEditLayout(false);
+                            setMoreMenuOpen(false);
                           }}
-                          items={options}
-                        />
-                      </Label>
-                    );
-                  })}
-                </div>
-              ) : isEditColumnFilter ? (
-                <div className="relative w-80 p-2">
-                  <h4 className="font-bold flex justify-between items-center p-2">
-                    Set Filters
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditColumnFilter(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
-                  <div className="flex flex-col gap-4 items-start overflow-auto p-2">
-                    {columnFilters.map(({ key, type, value, uid }) => (
-                      <div key={uid}>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        >
+                          <Icon icon={l.icon} />
+                          <span className="capitalize text-sm">{l.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {settingsById[layoutMode].map((s) => {
+                      const options =
+                        s.options === "columns"
+                          ? columns.map((c) => c.key)
+                          : s.options.slice();
+                      return (
+                        <Label key={s.key}>
+                          {s.label}
                           <MenuItemSelect
-                            className="roamjs-column-filter-key flex-grow"
-                            items={columns.map((c) => c.key)}
-                            transformItem={(k) =>
-                              k.length > 10 ? `${k.slice(0, 7)}...` : k
-                            }
-                            activeItem={key}
-                            onItemSelect={(newKey) => {
-                              setColumnFilters(
-                                columnFilters.map((f) =>
-                                  f.uid === uid ? { ...f, key: newKey } : f
-                                )
-                              );
-                              updateBlock({ uid, text: newKey });
-                            }}
-                          />
-                          <MenuItemSelect
-                            className="roamjs-column-filter-type"
-                            items={SUPPORTED_COLUMN_FILTER_TYPES.map(
-                              (c) => c.id
-                            )}
-                            activeItem={type}
-                            onItemSelect={(newType) => {
-                              setColumnFilters(
-                                columnFilters.map((f) =>
-                                  f.uid === uid ? { ...f, type: newType } : f
-                                )
-                              );
+                            activeItem={head(layout[s.key]) || options[0]}
+                            onItemSelect={(value) => {
+                              setLayout({ ...layout, [s.key]: value });
+                              const resultNode = getSubTree({
+                                key: "results",
+                                parentUid,
+                              });
+                              const layoutNode = getSubTree({
+                                key: "layout",
+                                parentUid: resultNode.uid,
+                              });
                               setInputSetting({
-                                blockUid: uid,
-                                key: "type",
-                                value: newType,
+                                key: s.key,
+                                value,
+                                blockUid: layoutNode.uid,
                               });
                             }}
+                            items={options}
                           />
-                          <Button
-                            icon={"trash"}
-                            minimal
-                            onClick={() => {
-                              setColumnFilters(
-                                columnFilters.filter((f) => f.uid !== uid)
-                              );
-                              deleteBlock(uid);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <InputGroup
-                            className="roamjs-column-filter-value"
-                            value={value}
-                            placeholder="Type a value..."
-                            onChange={(e) => {
-                              const newValue = e.target.value;
-                              setColumnFilters(
-                                columnFilters.map((f) =>
-                                  f.uid === uid ? { ...f, value: newValue } : f
-                                )
-                              );
-                              setInputSetting({
-                                blockUid: uid,
-                                key: "value",
-                                value: newValue,
-                              });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      text={"Add Filter"}
-                      intent="primary"
-                      onClick={() => {
-                        const newFilter = {
-                          key: columns[0].key,
-                          type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
-                          value: "",
-                          uid: window.roamAlphaAPI.util.generateUID(),
-                        };
-                        setColumnFilters([...columnFilters, newFilter]);
-                        const columnFiltersNode = getSubTree({
-                          key: "columnFilters",
-                          parentUid: settings.resultNodeUid,
-                        });
-                        createBlock({
-                          parentUid: columnFiltersNode.uid,
-                          order: Number.MAX_VALUE,
-                          node: {
-                            text: newFilter.key,
-                            uid: newFilter.uid,
-                            children: [
-                              {
-                                text: "type",
-                                children: [{ text: newFilter.type }],
-                              },
-                              {
-                                text: "value",
-                                children: [{ text: newFilter.value }],
-                              },
-                            ],
-                          },
-                        });
-                      }}
-                      rightIcon={"plus"}
-                    />
+                        </Label>
+                      );
+                    })}
                   </div>
-                </div>
-              ) : isEditViews ? (
-                <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Set Column Views
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditViews(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
-                  <div className="flex flex-col gap-1">
-                    {views.map(({ column, mode, value }, i) => (
-                      <React.Fragment key={i}>
-                        <div className="flex items-center justify-between gap-2">
-                          <span style={{ flex: 1 }}>{column}</span>
-                          <MenuItemSelect
-                            className="roamjs-view-select"
-                            items={Object.keys(VIEWS)}
-                            activeItem={mode}
-                            onItemSelect={(m) => {
-                              onViewChange({ mode: m, column, value }, i);
-                            }}
-                          />
+                ) : isEditColumnFilter ? (
+                  <div className="relative w-80 p-2">
+                    <h4 className="font-bold flex justify-between items-center p-2">
+                      Set Filters
+                      <Button
+                        icon={"small-cross"}
+                        onClick={() => setIsEditColumnFilter(false)}
+                        minimal
+                        small
+                      />
+                    </h4>
+                    <div className="flex flex-col gap-4 items-start overflow-auto p-2">
+                      {columnFilters.map(({ key, type, value, uid }) => (
+                        <div key={uid}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <MenuItemSelect
+                              className="roamjs-column-filter-key flex-grow"
+                              items={columns.map((c) => c.key)}
+                              transformItem={(k) =>
+                                k.length > 10 ? `${k.slice(0, 7)}...` : k
+                              }
+                              activeItem={key}
+                              onItemSelect={(newKey) => {
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid ? { ...f, key: newKey } : f
+                                  )
+                                );
+                                updateBlock({ uid, text: newKey });
+                              }}
+                            />
+                            <MenuItemSelect
+                              className="roamjs-column-filter-type"
+                              items={SUPPORTED_COLUMN_FILTER_TYPES.map(
+                                (c) => c.id
+                              )}
+                              activeItem={type}
+                              onItemSelect={(newType) => {
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid ? { ...f, type: newType } : f
+                                  )
+                                );
+                                setInputSetting({
+                                  blockUid: uid,
+                                  key: "type",
+                                  value: newType,
+                                });
+                              }}
+                            />
+                            <Button
+                              icon={"trash"}
+                              minimal
+                              onClick={() => {
+                                setColumnFilters(
+                                  columnFilters.filter((f) => f.uid !== uid)
+                                );
+                                deleteBlock(uid);
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <InputGroup
+                              className="roamjs-column-filter-value"
+                              value={value}
+                              placeholder="Type a value..."
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid
+                                      ? { ...f, value: newValue }
+                                      : f
+                                  )
+                                );
+                                setInputSetting({
+                                  blockUid: uid,
+                                  key: "value",
+                                  value: newValue,
+                                });
+                              }}
+                            />
+                          </div>
                         </div>
-                        {VIEWS[mode]?.value && (
-                          <InputGroup
-                            value={value}
-                            onChange={(e) => {
-                              onViewChange(
-                                { mode, column, value: e.target.value },
-                                i
-                              );
-                            }}
-                          />
-                        )}
-                      </React.Fragment>
-                    ))}
+                      ))}
+                      <Button
+                        text={"Add Filter"}
+                        intent="primary"
+                        onClick={() => {
+                          const newFilter = {
+                            key: columns[0].key,
+                            type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
+                            value: "",
+                            uid: window.roamAlphaAPI.util.generateUID(),
+                          };
+                          setColumnFilters([...columnFilters, newFilter]);
+                          const columnFiltersNode = getSubTree({
+                            key: "columnFilters",
+                            parentUid: settings.resultNodeUid,
+                          });
+                          createBlock({
+                            parentUid: columnFiltersNode.uid,
+                            order: Number.MAX_VALUE,
+                            node: {
+                              text: newFilter.key,
+                              uid: newFilter.uid,
+                              children: [
+                                {
+                                  text: "type",
+                                  children: [{ text: newFilter.type }],
+                                },
+                                {
+                                  text: "value",
+                                  children: [{ text: newFilter.value }],
+                                },
+                              ],
+                            },
+                          });
+                        }}
+                        rightIcon={"plus"}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Menu>
-                  {onEdit && (
+                ) : isEditViews ? (
+                  <div className="relative w-72 p-4">
+                    <h4 className="font-bold flex justify-between items-center">
+                      Set Column Views
+                      <Button
+                        icon={"small-cross"}
+                        onClick={() => setIsEditViews(false)}
+                        minimal
+                        small
+                      />
+                    </h4>
+                    <div className="flex flex-col gap-1">
+                      {views.map(({ column, mode, value }, i) => (
+                        <React.Fragment key={i}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span style={{ flex: 1 }} className="font-semibold">
+                              {column}
+                            </span>
+                            <MenuItemSelect
+                              className="roamjs-view-select"
+                              items={Object.keys(VIEWS)}
+                              activeItem={mode}
+                              onItemSelect={(m) => {
+                                onViewChange({ mode: m, column, value }, i);
+                              }}
+                            />
+                          </div>
+                          {VIEWS[mode]?.value && mode === "alias" && (
+                            <InputGroup
+                              value={value}
+                              onChange={(e) => {
+                                onViewChange(
+                                  { mode, column, value: e.target.value },
+                                  i
+                                );
+                              }}
+                            />
+                          )}
+                          {VIEWS[mode]?.value && mode === "embed" && (
+                            <div className="flex items-center justify-between gap-2">
+                              <div style={{ flex: 1 }}>
+                                <span>Fold</span>
+                                <Tooltip content={"Initial folded state"}>
+                                  <Icon
+                                    icon={"info-sign"}
+                                    iconSize={12}
+                                    className={"opacity-80 ml-2"}
+                                    style={{ verticalAlign: "initial" }}
+                                  />
+                                </Tooltip>
+                              </div>
+                              <MenuItemSelect
+                                className="roamjs-view-select"
+                                items={EMBED_FOLD_VALUES}
+                                activeItem={
+                                  !!value ? value : EMBED_FOLD_VALUES[0]
+                                }
+                                onItemSelect={(value) => {
+                                  onViewChange({ mode, column, value }, i);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Menu>
+                    {onEdit && (
+                      <MenuItem
+                        icon={"annotation"}
+                        text={"Edit Query"}
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          onEdit();
+                        }}
+                      />
+                    )}
                     <MenuItem
-                      icon={"annotation"}
-                      text={"Edit Query"}
+                      icon={"layout"}
+                      text={"Layout"}
+                      onClick={() => {
+                        setIsEditLayout(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"filter"}
+                      text={"Filters"}
+                      className={
+                        columnFilters.length ? "roamjs-item-dirty" : ""
+                      }
+                      onClick={() => {
+                        setIsEditColumnFilter(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"search"}
+                      text={isEditSearchFilter ? "Hide Search" : "Search"}
+                      className={searchFilter ? "roamjs-item-dirty" : ""}
                       onClick={() => {
                         setMoreMenuOpen(false);
-                        onEdit();
+                        setIsEditSearchFilter((prevState) => !prevState);
                       }}
                     />
-                  )}
-                  <MenuItem
-                    icon={"layout"}
-                    text={"Layout"}
-                    onClick={() => {
-                      setIsEditLayout(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"filter"}
-                    text={"Filters"}
-                    className={columnFilters.length ? "roamjs-item-dirty" : ""}
-                    onClick={() => {
-                      setIsEditColumnFilter(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"search"}
-                    text={isEditSearchFilter ? "Hide Search" : "Search"}
-                    className={searchFilter ? "roamjs-item-dirty" : ""}
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      setIsEditSearchFilter((prevState) => !prevState);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"eye-open"}
-                    text={"Column Views"}
-                    onClick={() => {
-                      setIsEditViews(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={showInterface ? "th-disconnect" : "th"}
-                    text={showInterface ? "Hide Interface" : "Show Interface"}
-                    onClick={() => {
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
-                      setInputSetting({
-                        key: "interface",
-                        value: showInterface ? "hide" : "show",
-                        blockUid: resultNode.uid,
-                      });
-                      setShowInterface((s) => !s);
-                      setMoreMenuOpen(false);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"export"}
-                    text={"Share Data"}
-                    onClick={async () => {
-                      if (!results.length) {
-                        onRefresh();
-                      }
-                      setMoreMenuOpen(false);
-                      setIsExportOpen(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"random"}
-                    text={"Get Random"}
-                    onClick={() => setIsEditRandom(true)}
-                  />
-                  {isEditBlock && (
                     <MenuItem
-                      icon={"edit"}
-                      text={"Edit Block"}
+                      icon={"eye-open"}
+                      text={"Column Views"}
                       onClick={() => {
-                        const location = getUids(
-                          containerRef.current?.closest(
-                            ".roam-block"
-                          ) as HTMLDivElement
-                        );
-                        window.roamAlphaAPI.ui.setBlockFocusAndSelection({
-                          location: {
-                            "window-id": location.windowId,
-                            "block-uid": location.blockUid,
-                          },
-                        });
+                        setIsEditViews(true);
                       }}
                     />
-                  )}
-                  {onDeleteQuery && (
-                    <>
+                    <MenuItem
+                      icon={showInterface ? "th-disconnect" : "th"}
+                      text={showInterface ? "Hide Interface" : "Show Interface"}
+                      onClick={() => {
+                        const resultNode = getSubTree({
+                          key: "results",
+                          parentUid,
+                        });
+                        setInputSetting({
+                          key: "interface",
+                          value: showInterface ? "hide" : "show",
+                          blockUid: resultNode.uid,
+                        });
+                        setShowInterface((s) => !s);
+                        setMoreMenuOpen(false);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"export"}
+                      text={"Share Data"}
+                      onClick={async () => {
+                        if (!results.length) {
+                          onRefresh();
+                        }
+                        setMoreMenuOpen(false);
+                        setIsExportOpen(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"random"}
+                      text={"Get Random"}
+                      onClick={() => setIsEditRandom(true)}
+                    />
+                    {isEditBlock && (
                       <MenuItem
-                        icon={"trash"}
-                        text={"Delete Query"}
+                        icon={"edit"}
+                        text={"Edit Block"}
                         onClick={() => {
-                          renderSimpleAlert({
-                            content:
-                              "Are you sure you want to delete this query?",
-                            onConfirm: onDeleteQuery,
-                            onCancel: true,
+                          const location = getUids(
+                            containerRef.current?.closest(
+                              ".roam-block"
+                            ) as HTMLDivElement
+                          );
+                          window.roamAlphaAPI.ui.setBlockFocusAndSelection({
+                            location: {
+                              "window-id": location.windowId,
+                              "block-uid": location.blockUid,
+                            },
                           });
                         }}
                       />
-                    </>
-                  )}
-                  <MenuItem
-                    icon={"clipboard"}
-                    text={"Copy Query"}
-                    onClick={() => {
-                      const getTextFromTreeToPaste = (
-                        items: RoamBasicNode[],
-                        indentLevel = 0
-                      ): string => {
-                        const indentation = "    ".repeat(indentLevel);
+                    )}
+                    {onDeleteQuery && (
+                      <>
+                        <MenuItem
+                          icon={"trash"}
+                          text={"Delete Query"}
+                          onClick={() => {
+                            renderSimpleAlert({
+                              content:
+                                "Are you sure you want to delete this query?",
+                              onConfirm: onDeleteQuery,
+                              onCancel: true,
+                            });
+                          }}
+                        />
+                      </>
+                    )}
+                    <MenuItem
+                      icon={"clipboard"}
+                      text={"Copy Query"}
+                      onClick={() => {
+                        const getTextFromTreeToPaste = (
+                          items: RoamBasicNode[],
+                          indentLevel = 0
+                        ): string => {
+                          const indentation = "    ".repeat(indentLevel);
 
-                        return items
-                          .map((item) => {
-                            const childrenText =
-                              item.children.length > 0
-                                ? getTextFromTreeToPaste(
-                                    item.children,
-                                    indentLevel + 1
-                                  )
-                                : "";
-                            return `${indentation}- ${item.text}\n${childrenText}`;
-                          })
-                          .join("");
-                      };
-                      const tree = getBasicTreeByParentUid(parentUid);
-                      navigator.clipboard.writeText(
-                        "- {{query block}}\n" + getTextFromTreeToPaste(tree, 1)
-                      );
-                      renderToast({
-                        id: "query-copy",
-                        content: "Copied Query",
-                        intent: Intent.PRIMARY,
-                      });
-                    }}
-                  />
-                </Menu>
-              )
-            }
-          />
-        </span>
+                          return items
+                            .map((item) => {
+                              const childrenText =
+                                item.children.length > 0
+                                  ? getTextFromTreeToPaste(
+                                      item.children,
+                                      indentLevel + 1
+                                    )
+                                  : "";
+                              return `${indentation}- ${item.text}\n${childrenText}`;
+                            })
+                            .join("");
+                        };
+                        const tree = getBasicTreeByParentUid(parentUid);
+                        navigator.clipboard.writeText(
+                          "- {{query block}}\n" +
+                            getTextFromTreeToPaste(tree, 1)
+                        );
+                        renderToast({
+                          id: "query-copy",
+                          content: "Copied Query",
+                          intent: Intent.PRIMARY,
+                        });
+                      }}
+                    />
+                  </Menu>
+                )
+              }
+            />
+          </div>
+        </div>
         {header && (
           <h4
             style={{
@@ -911,6 +953,7 @@ const ResultsView: ResultsViewComponent = ({
                   onQuery={() => onRefresh(true)}
                   resultKeys={columns}
                   parentUid={parentUid}
+                  views={views}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>
