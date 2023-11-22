@@ -495,6 +495,17 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 },
                 // @ts-ignore
                 {
+                  title: "open in sidebar",
+                  description:
+                    "Whether or not to open nodes in the sidebar when created",
+                  Panel: FlagPanel,
+                  options: {
+                    onChange: onPageRefObserverChange(previewPageRefHandler),
+                  },
+                  defaultValue: true,
+                } as Field<FlagField>,
+                // @ts-ignore
+                {
                   title: "preview",
                   description:
                     "Whether or not to display page previews when hovering over page refs",
