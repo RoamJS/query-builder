@@ -606,6 +606,60 @@ svg.rs-svg-container {
         })
       ),
   });
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Create Query Block",
+    callback: async () => {
+      const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+      if (!uid) return;
+      await updateBlock({
+        uid,
+        text: "{{query block}}",
+        open: false,
+      });
+
+      await createBlock({
+        node: {
+          text: "scratch",
+          children: [
+            {
+              text: "custom",
+            },
+            {
+              text: "selections",
+            },
+            {
+              text: "conditions",
+              children: [
+                {
+                  text: "clause",
+                  children: [
+                    {
+                      text: "source",
+                      children: [{ text: "node" }],
+                    },
+                    {
+                      text: "relation",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        parentUid: uid,
+      });
+      document.querySelector("body")?.click();
+      setTimeout(() => {
+        const conditionEl = document.querySelector(
+          ".roamjs-query-condition-relation"
+        );
+        const conditionInput = conditionEl?.querySelector(
+          "input"
+        ) as HTMLInputElement;
+        conditionInput?.focus();
+      }, 200);
+    },
+  });
 
   const renderCustomBlockView = ({
     view,
