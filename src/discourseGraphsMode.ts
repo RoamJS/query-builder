@@ -499,9 +499,6 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                   description:
                     "Whether or not to open nodes in the sidebar when created",
                   Panel: FlagPanel,
-                  options: {
-                    onChange: onPageRefObserverChange(previewPageRefHandler),
-                  },
                   defaultValue: true,
                 } as Field<FlagField>,
                 // @ts-ignore
