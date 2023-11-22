@@ -33,6 +33,7 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import parseQuery, { DEFAULT_RETURN_NODE } from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
@@ -436,6 +437,7 @@ const getConditionByUid = (
 type QueryEditorComponent = (props: {
   parentUid: string;
   onQuery?: () => void;
+  setHasResults?: () => void;
   hideCustomSwitch?: boolean;
   showAlias?: boolean;
 }) => JSX.Element;
@@ -443,9 +445,29 @@ type QueryEditorComponent = (props: {
 const QueryEditor: QueryEditorComponent = ({
   parentUid,
   onQuery,
+  setHasResults,
   hideCustomSwitch,
   showAlias,
 }) => {
+  const previewQuery = useCallback(
+    (e) => {
+      if (e.altKey && e.key === "q") {
+        const target = document.activeElement as HTMLElement;
+        const uid = getBlockUidFromTarget(target);
+        if (uid !== parentUid) return;
+        if (setHasResults) setHasResults();
+      }
+    },
+    [setHasResults]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", previewQuery);
+
+    return () => {
+      window.removeEventListener("keydown", previewQuery);
+    };
+  }, [previewQuery]);
   const [conditionLabels, setConditionLabels] = useState(
     () => new Set(getConditionLabels())
   );
