@@ -97,6 +97,9 @@ const KanbanCard = ({
         }}
       >
         <Icon
+          icon="drag-handle-horizontal"
+          className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
+        />
         <div
           ref={contentRef}
           className={!!title ? "page-embed" : "block-embed"}
@@ -104,9 +107,9 @@ const KanbanCard = ({
       </div>
     );
   };
-
   return (
     <Draggable
+      handle={card.view === "embed" ? ".embed-handle" : ""}
       onDrag={(_, data) => {
         const { x, width } = data.node.getBoundingClientRect();
         const el = card.$getColumnElement(x + width / 2);
@@ -131,6 +134,7 @@ const KanbanCard = ({
         data-uid={card.result.uid}
         data-priority={card.$priority}
         onClick={(e) => {
+          if (card.view === "embed") return;
           if (isDragging) return;
           if (e.shiftKey) {
             openBlockInSidebar(card.result.uid);
@@ -148,8 +152,7 @@ const KanbanCard = ({
         {card.view === "embed" ? (
           <CellEmbed uid={card.result.uid} viewValue={card.viewValue} />
         ) : (
-          <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
-            {console.log("toCellValue render")}
+          <div className={`rounded-xl bg-white p-4 hover:bg-gray-200 `}>
             {toCellValue({
               value: card.result[card.$displayKey],
               uid: card.result[`${card.$displayKey}-uid`],
