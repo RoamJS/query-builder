@@ -25,15 +25,27 @@ const zPriority = z.record(z.number().min(0).max(1));
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
-const KanbanCard = (card: {
-  $priority: number;
-  $reprioritize: Reprioritize;
-  $displayKey: string;
-  $getColumnElement: (x: number) => HTMLDivElement | undefined;
-  result: Result;
-  view: string;
-  viewValue: string;
-}) => {
+type KanbanCardProps = {
+  card: {
+    $priority: number;
+    $reprioritize: Reprioritize;
+    $displayKey: string;
+    $getColumnElement: (x: number) => HTMLDivElement | undefined;
+    result: Result;
+    view: string;
+    viewValue: string;
+  };
+  localFoldStates: Map<string, boolean>;
+  setLocalFoldStates: React.Dispatch<
+    React.SetStateAction<Map<string, boolean>>
+  >;
+};
+
+const KanbanCard = ({
+  card,
+  localFoldStates,
+  setLocalFoldStates,
+}: KanbanCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const CellEmbed = ({
@@ -43,11 +55,15 @@ const KanbanCard = (card: {
     uid: string;
     viewValue: string;
   }) => {
-    console.log("CellEmbed render");
     const title = getPageTitleByPageUid(uid);
     const contentRef = useRef(null);
-    const open =
-      viewValue === "open" ? true : viewValue === "closed" ? false : null;
+    const open = localFoldStates.has(uid)
+      ? localFoldStates.get(uid)
+      : viewValue === "open"
+      ? true
+      : viewValue === "closed"
+      ? false
+      : null;
 
     useEffect(() => {
       const el = contentRef.current;
@@ -60,7 +76,27 @@ const KanbanCard = (card: {
       }
     }, [contentRef]);
     return (
-      <div className="roamjs-query-embed rounded-xl bg-white p-4 hover:bg-gray-200">
+      <div
+        className="roamjs-query-embed rounded-xl bg-white p-4 "
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (!target.classList.contains("rm-caret")) return;
+
+          const kanbanCard = target.closest(".roamjs-kanban-card");
+          const uid = kanbanCard?.getAttribute("data-uid");
+          if (!uid) return;
+
+          const isOpen = target.classList.contains("rm-caret-open");
+          const storedOpenState = !isOpen;
+
+          setLocalFoldStates((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(uid, storedOpenState);
+            return newMap;
+          });
+        }}
+      >
+        <Icon
         <div
           ref={contentRef}
           className={!!title ? "page-embed" : "block-embed"}
@@ -148,6 +184,9 @@ const Kanban = ({
   parentUid: string;
   views: { column: string; mode: string; value: string }[];
 }) => {
+  const [localFoldStates, setLocalFoldStates] = useState(
+    new Map<string, boolean>()
+  );
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
@@ -486,14 +525,17 @@ const Kanban = ({
                 {(cards[col] || [])?.map((d) => (
                   <KanbanCard
                     key={d.uid}
-                    result={d}
-                    view={view}
-                    viewValue={viewValue}
-                    // we use $ to prefix these props to avoid collisions with the result object
-                    $priority={prioritization[d.uid]}
-                    $reprioritize={reprioritizeAndUpdateBlock}
-                    $getColumnElement={getColumnElement}
-                    $displayKey={displayKey}
+                    card={{
+                      result: d,
+                      view: view,
+                      viewValue: viewValue,
+                      $priority: prioritization[d.uid],
+                      $reprioritize: reprioritizeAndUpdateBlock,
+                      $getColumnElement: getColumnElement,
+                      $displayKey: displayKey,
+                    }}
+                    localFoldStates={localFoldStates}
+                    setLocalFoldStates={setLocalFoldStates}
                   />
                 ))}
               </div>
