@@ -153,7 +153,7 @@ svg.rs-svg-container {
 }
 
 .roamjs-kanban-container div.react-draggable-dragging.roamjs-kanban-card > div {
-  transform: rotate(20deg);
+  transform: rotate(5deg);
   cursor: grabbing;
   z-index: 1000;
 }
@@ -182,7 +182,14 @@ svg.rs-svg-container {
 .roamjs-export-dialog-body .bp3-tab-list {
   padding: 10px 20px;
   border-bottom: 1px solid rgba(16,22,26,0.15);
-}`);
+}
+.roamjs-query-column-views .bp3-running-text table th,
+.roamjs-query-column-views table.bp3-html-table th, 
+.roamjs-query-column-views .bp3-running-text table td, 
+.roamjs-query-column-views table.bp3-html-table td {
+  vertical-align: initial;
+}
+`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
       (extensionAPI.settings.get("canvas-page-format") as string) ||
