@@ -681,7 +681,10 @@ const ResultsView: ResultsViewComponent = ({
                     </div>
                   </div>
                 ) : isEditViews ? (
-                  <div className="relative max-w-md p-4 roamjs-query-column-views ">
+                  <div
+                    className="relative max-w-md p-4 roamjs-query-column-views"
+                    style={{ minWidth: "26rem" }}
+                  >
                     <h4 className="font-bold flex justify-between items-center">
                       Set Column Views
                       <Button
