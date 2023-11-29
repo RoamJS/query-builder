@@ -182,7 +182,15 @@ svg.rs-svg-container {
 .roamjs-export-dialog-body .bp3-tab-list {
   padding: 10px 20px;
   border-bottom: 1px solid rgba(16,22,26,0.15);
-}`);
+}
+
+.roamjs-kanban-card .card-selections tr:first-child td {
+  box-shadow: none;
+}
+.roamjs-query-results-view .roamjs-kanban-card .card-selections table.bp3-html-table td {
+  padding: 0.50rem;
+}
+`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
       (extensionAPI.settings.get("canvas-page-format") as string) ||
