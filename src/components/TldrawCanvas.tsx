@@ -77,6 +77,7 @@ import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 declare global {
   interface Window {
@@ -1332,25 +1333,36 @@ const TldrawCanvas = ({ title }: Props) => {
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (e) => {
             discourseContext.lastAppEvent = e.name;
-            if (
-              e.shiftKey &&
-              e.shape &&
-              e.shape.props?.uid &&
-              e.name === "pointer_up"
-            ) {
-              if (!isLiveBlock(e.shape.props.uid)) {
-                // TODO - it shouldn't be possible to shift click a discourse node that isn't a live block - turn into a warning instead
-                if (!e.shape.props.title) {
-                  return;
-                }
-                createDiscourseNode({
-                  newPageUid: e.shape.props.uid,
-                  text: e.shape.props.title,
-                  configPageUid: e.shape.type,
-                  discourseNodes: Object.values(discourseContext.nodes),
+
+            const validModifier = e.shiftKey || e.ctrlKey;
+            if (!(e.name === "pointer_up" && e.shape && validModifier)) return;
+            if (app.selectedIds.length) return; // User is positioning selected shape
+
+            const shapeUid = e.shape?.props.uid;
+            if (!isLiveBlock(shapeUid)) {
+              if (!e.shape.props.title) return;
+              renderToast({
+                id: "tldraw-warning",
+                intent: "warning",
+                content: `Not a valid UID. Cannot Open.`,
+              });
+            }
+
+            if (e.shiftKey) {
+              // TODO - do not openBlockInSidebar if user is using shift to select
+              openBlockInSidebar(e.shape.props.uid);
+            }
+            if (e.ctrlKey) {
+              const isPage = !!getPageTitleByPageUid(shapeUid);
+              if (isPage) {
+                window.roamAlphaAPI.ui.mainWindow.openPage({
+                  page: { uid: shapeUid },
+                });
+              } else {
+                window.roamAlphaAPI.ui.mainWindow.openBlock({
+                  block: { uid: shapeUid },
                 });
               }
-              openBlockInSidebar(e.shape.props.uid);
             }
           });
           const oldOnBeforeDelete = app.store.onBeforeDelete;
