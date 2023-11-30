@@ -610,12 +610,22 @@ svg.rs-svg-container {
     label: "Create Query Block",
     callback: async () => {
       const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
-      if (!uid) return;
-      await updateBlock({
-        uid,
-        text: "{{query block}}",
-        open: false,
-      });
+      if (!uid) {
+        renderToast({
+          id: "query-builder-create-block",
+          content: "Must be focused on a block to create a Query Block",
+        });
+        return;
+      }
+
+      // setTimeout is needed because sometimes block is left blank
+      setTimeout(async () => {
+        await updateBlock({
+          uid,
+          text: "{{query block}}",
+          open: false,
+        });
+      }, 200);
 
       await createBlock({
         node: {
@@ -649,8 +659,10 @@ svg.rs-svg-container {
         parentUid: uid,
       });
       document.querySelector("body")?.click();
+      // TODO replace with document.body.dispatchEvent(new CustomEvent)
       setTimeout(() => {
-        const conditionEl = document.querySelector(
+        const el = document.querySelector(`.roam-block[id*="${uid}"]`);
+        const conditionEl = el?.querySelector(
           ".roamjs-query-condition-relation"
         );
         const conditionInput = conditionEl?.querySelector(
