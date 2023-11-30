@@ -31,11 +31,7 @@ type QueryPageComponent = (props: {
 
 type Props = Parameters<QueryPageComponent>[0];
 
-const QueryPage = ({
-  pageUid,
-  isEditBlock,
-  showAlias,
-}: Props) => {
+const QueryPage = ({ pageUid, isEditBlock, showAlias }: Props) => {
   const extensionAPI = useExtensionAPI();
   const hideMetadata = useMemo(
     () => !!extensionAPI && !!extensionAPI.settings.get("hide-metadata"),
@@ -158,6 +154,10 @@ const QueryPage = ({
               onQuery={() => {
                 setHasResults(true);
                 setIsEdit(false);
+              }}
+              setHasResults={() => {
+                setHasResults(true);
+                onRefresh();
               }}
               showAlias={showAlias}
             />
