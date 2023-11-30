@@ -449,25 +449,23 @@ const QueryEditor: QueryEditorComponent = ({
   hideCustomSwitch,
   showAlias,
 }) => {
-  const previewQuery = useCallback(
-    (e) => {
-      if (e.altKey && e.key === "q") {
-        const target = document.activeElement as HTMLElement;
-        const uid = getBlockUidFromTarget(target);
-        if (uid !== parentUid) return;
-        if (setHasResults) setHasResults();
-      }
-    },
-    [setHasResults]
-  );
-
   useEffect(() => {
-    window.addEventListener("keydown", previewQuery);
+    const previewQuery = ((e: CustomEvent) => {
+      if (parentUid !== e.detail) return;
+      if (setHasResults) setHasResults();
+    }) as EventListener;
+    document.body.addEventListener(
+      "roamjs-query-builder:fire-query",
+      previewQuery
+    );
 
     return () => {
-      window.removeEventListener("keydown", previewQuery);
+      document.body.removeEventListener(
+        "roamjs-query-builder:fire-query",
+        previewQuery
+      );
     };
-  }, [previewQuery]);
+  }, [setHasResults, parentUid]);
   const [conditionLabels, setConditionLabels] = useState(
     () => new Set(getConditionLabels())
   );

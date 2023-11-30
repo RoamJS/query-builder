@@ -43,6 +43,9 @@ import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
+import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
+import { render as renderToast } from "roamjs-components/components/Toast";
+import { render } from "react-dom";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -670,6 +673,17 @@ svg.rs-svg-container {
         ) as HTMLInputElement;
         conditionInput?.focus();
       }, 200);
+    },
+  });
+
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Preview Current Query Builder Results",
+    callback: () => {
+      const target = document.activeElement as HTMLElement;
+      const uid = getBlockUidFromTarget(target);
+      document.body.dispatchEvent(
+        new CustomEvent("roamjs-query-builder:fire-query", { detail: uid })
+      );
     },
   });
 
