@@ -495,11 +495,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 },
                 // @ts-ignore
                 {
-                  title: "open in sidebar",
+                  title: "disable sidebar open",
                   description:
-                    "Whether or not to open nodes in the sidebar when created",
+                    "Disable opening new nodes in the sidebar when created",
                   Panel: FlagPanel,
-                  defaultValue: true,
                 } as Field<FlagField>,
                 // @ts-ignore
                 {

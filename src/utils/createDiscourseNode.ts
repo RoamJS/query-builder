@@ -23,7 +23,7 @@ const createDiscourseNode = async ({
   discourseNodes,
 }: Props) => {
   const handleOpenInSidebar = (uid: string) => {
-    if (!isFlagEnabled("open in sidebar")) return;
+    if (isFlagEnabled("disable sidebar open")) return;
     openBlockInSidebar(uid);
     setTimeout(() => {
       const sidebarTitle = document.querySelector(
