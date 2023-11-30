@@ -436,6 +436,7 @@ const getConditionByUid = (
 type QueryEditorComponent = (props: {
   parentUid: string;
   onQuery?: () => void;
+  setHasResults?: () => void;
   hideCustomSwitch?: boolean;
   showAlias?: boolean;
 }) => JSX.Element;
@@ -443,9 +444,27 @@ type QueryEditorComponent = (props: {
 const QueryEditor: QueryEditorComponent = ({
   parentUid,
   onQuery,
+  setHasResults,
   hideCustomSwitch,
   showAlias,
 }) => {
+  useEffect(() => {
+    const previewQuery = ((e: CustomEvent) => {
+      if (parentUid !== e.detail) return;
+      if (setHasResults) setHasResults();
+    }) as EventListener;
+    document.body.addEventListener(
+      "roamjs-query-builder:fire-query",
+      previewQuery
+    );
+
+    return () => {
+      document.body.removeEventListener(
+        "roamjs-query-builder:fire-query",
+        previewQuery
+      );
+    };
+  }, [setHasResults, parentUid]);
   const [conditionLabels, setConditionLabels] = useState(
     () => new Set(getConditionLabels())
   );

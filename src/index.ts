@@ -43,6 +43,8 @@ import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
 import getBlockProps, { json } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
+import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -605,6 +607,83 @@ svg.rs-svg-container {
           onloadArgs,
         })
       ),
+  });
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Create Query Block",
+    callback: async () => {
+      const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+      if (!uid) {
+        renderToast({
+          id: "query-builder-create-block",
+          content: "Must be focused on a block to create a Query Block",
+        });
+        return;
+      }
+
+      // setTimeout is needed because sometimes block is left blank
+      setTimeout(async () => {
+        await updateBlock({
+          uid,
+          text: "{{query block}}",
+          open: false,
+        });
+      }, 200);
+
+      await createBlock({
+        node: {
+          text: "scratch",
+          children: [
+            {
+              text: "custom",
+            },
+            {
+              text: "selections",
+            },
+            {
+              text: "conditions",
+              children: [
+                {
+                  text: "clause",
+                  children: [
+                    {
+                      text: "source",
+                      children: [{ text: "node" }],
+                    },
+                    {
+                      text: "relation",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        parentUid: uid,
+      });
+      document.querySelector("body")?.click();
+      // TODO replace with document.body.dispatchEvent(new CustomEvent)
+      setTimeout(() => {
+        const el = document.querySelector(`.roam-block[id*="${uid}"]`);
+        const conditionEl = el?.querySelector(
+          ".roamjs-query-condition-relation"
+        );
+        const conditionInput = conditionEl?.querySelector(
+          "input"
+        ) as HTMLInputElement;
+        conditionInput?.focus();
+      }, 200);
+    },
+  });
+
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Preview Current Query Builder Results",
+    callback: () => {
+      const target = document.activeElement as HTMLElement;
+      const uid = getBlockUidFromTarget(target);
+      document.body.dispatchEvent(
+        new CustomEvent("roamjs-query-builder:fire-query", { detail: uid })
+      );
+    },
   });
 
   const renderCustomBlockView = ({
