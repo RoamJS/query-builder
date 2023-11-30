@@ -33,7 +33,6 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import parseQuery, { DEFAULT_RETURN_NODE } from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
