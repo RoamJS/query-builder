@@ -19,7 +19,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
-import parseResultSettings from "../utils/parseResultSettings";
+import parseResultSettings, { Sorts } from "../utils/parseResultSettings";
 import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import postProcessResults from "../utils/postProcessResults";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -251,6 +251,7 @@ const ResultsView: ResultsViewComponent = ({
     [parentUid]
   );
   const [activeSort, setActiveSort] = useState(settings.activeSort);
+
   // @deprecated - use columnFilters
   const [filters, setFilters] = useState(settings.filters);
   const randomRef = useRef(settings.random);
@@ -305,6 +306,7 @@ const ResultsView: ResultsViewComponent = ({
   };
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
+  const [isEditColumnSort, setIsEditColumnSort] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const isMenuIconDirty = useMemo(
@@ -343,6 +345,30 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
+
+  const resultViewSetActiveSort = React.useCallback(
+    (as: Sorts) => {
+      setActiveSort(as);
+      if (preventSavingSettings) return;
+      const sortsNode = getSubTree({
+        key: "sorts",
+        parentUid,
+      });
+      sortsNode.children.forEach((c) => deleteBlock(c.uid));
+      as.map((a) => ({
+        text: a.key,
+        children: [{ text: `${a.descending}` }],
+      })).forEach((node, order) =>
+        createBlock({
+          parentUid: sortsNode.uid,
+          node,
+          order,
+        })
+      );
+    },
+    [setActiveSort, preventSavingSettings, parentUid]
+  );
+
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
@@ -543,6 +569,130 @@ const ResultsView: ResultsViewComponent = ({
                     );
                   })}
                 </div>
+              ) : isEditColumnSort ? (
+                <div className="relative w-80 p-2">
+                  <h4 className="font-bold flex justify-between items-center p-2">
+                    Set Sort
+                    <Button
+                      icon={"small-cross"}
+                      onClick={() => setIsEditColumnSort(false)}
+                      minimal
+                      small
+                    />
+                  </h4>
+                  <div className="flex flex-col gap-4 items-start overflow-auto p-2">
+                    {activeSort.map(({ key, descending }) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <MenuItemSelect
+                            className="roamjs-column-filter-key flex-grow"
+                            items={columns
+                              .map((c) => c.key)
+                              .filter(
+                                (c) => !activeSort.some((as) => as.key === c)
+                              )}
+                            transformItem={(k) =>
+                              k.length > 10 ? `${k.slice(0, 7)}...` : k
+                            }
+                            activeItem={key}
+                            onItemSelect={(newKey) => {
+                              // setColumnFilters(
+                              //   columnFilters.map((f) =>
+                              //     f.uid === uid ? { ...f, key: newKey } : f
+                              //   )
+                              // );
+                              // updateBlock({ uid, text: newKey });
+                            }}
+                            disabled={true}
+                          />
+                          <MenuItemSelect
+                            className="roamjs-column-filter-type"
+                            items={["Default", "Ascending", "Descending"]}
+                            activeItem={descending ? "Descending" : "Ascending"}
+                            onItemSelect={(newType) => {
+                              // if (sortIndex >= 0) {
+                              //   if (activeSort[sortIndex].descending) {
+                              //     setActiveSort(
+                              //       activeSort.filter((s) => s.key !== c.key)
+                              //     );
+                              //   } else {
+                              //     setActiveSort(
+                              //       activeSort.map((s) =>
+                              //         s.key === c.key
+                              //           ? { key: c.key, descending: true }
+                              //           : s
+                              //       )
+                              //     );
+                              //   }
+                              // } else {
+                              //   setActiveSort([
+                              //     ...activeSort,
+                              //     { key: c.key, descending: false },
+                              //   ]);
+                              // }
+                              // setColumnFilters(
+                              //   columnFilters.map((f) =>
+                              //     f.uid === uid ? { ...f, type: newType } : f
+                              //   )
+                              // );
+                              // setInputSetting({
+                              //   blockUid: uid,
+                              //   key: "type",
+                              //   value: newType,
+                              // });
+                            }}
+                          />
+                          <Button
+                            icon={"trash"}
+                            minimal
+                            onClick={() => {
+                              // setColumnFilters(
+                              //   columnFilters.filter((f) => f.uid !== uid)
+                              // );
+                              // deleteBlock(uid);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      text={"Add Sort"}
+                      intent="primary"
+                      onClick={() => {
+                        // const newSort = {
+                        //   key: columns[0].key,
+                        //   descending: true,
+                        //   value: "",
+                        //   uid: window.roamAlphaAPI.util.generateUID(),
+                        // };
+                        // resultViewSetActiveSort([...activeSort, newSort]);
+                        // const columnFiltersNode = getSubTree({
+                        //   key: "columnFilters",
+                        //   parentUid: settings.resultNodeUid,
+                        // });
+                        // createBlock({
+                        //   parentUid: columnFiltersNode.uid,
+                        //   order: Number.MAX_VALUE,
+                        //   node: {
+                        //     text: newSort.key,
+                        //     uid: newSort.uid,
+                        //     children: [
+                        //       {
+                        //         text: "type",
+                        //         children: [{ text: newSort.type }],
+                        //       },
+                        //       {
+                        //         text: "value",
+                        //         children: [{ text: newSort.value }],
+                        //       },
+                        //     ],
+                        //   },
+                        // });
+                      }}
+                      rightIcon={"plus"}
+                    />
+                  </div>
+                </div>
               ) : isEditColumnFilter ? (
                 <div className="relative w-80 p-2">
                   <h4 className="font-bold flex justify-between items-center p-2">
@@ -729,6 +879,14 @@ const ResultsView: ResultsViewComponent = ({
                     className={columnFilters.length ? "roamjs-item-dirty" : ""}
                     onClick={() => {
                       setIsEditColumnFilter(true);
+                    }}
+                  />
+                  <MenuItem
+                    icon={"sort"}
+                    text={"Sort"}
+                    className={activeSort.length ? "roamjs-item-dirty" : ""}
+                    onClick={() => {
+                      setIsEditColumnSort(true);
                     }}
                   />
                   <MenuItem
