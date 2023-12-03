@@ -75,6 +75,8 @@ const postProcessResults = (
             const resultValueString =
               typeof resultValue === "string" ? resultValue : `${resultValue}`;
             return resultValueString.includes(columnFilter.value);
+          case "contains exactly":
+            return r[columnFilter.key] === columnFilter.value;
           default:
             return true;
         }
