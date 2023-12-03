@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Icon,
@@ -10,6 +10,7 @@ import {
   Switch,
   Intent,
   Label,
+  Divider,
 } from "@blueprintjs/core";
 import { MultiSelect } from "@blueprintjs/select";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -42,9 +43,10 @@ import setInputSettings from "roamjs-components/util/setInputSettings";
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
   plain: { value: false },
-  embed: { value: false },
+  embed: { value: true },
   alias: { value: true },
 };
+const EMBED_FOLD_VALUES = ["default", "open", "closed"];
 
 type EnglishQueryPart = { text: string; clickId?: string };
 
@@ -232,6 +234,31 @@ type ResultsViewComponent = (props: {
 
 const head = (s: string | string[]) => (Array.isArray(s) ? s[0] || "" : s);
 
+type MenuHeadingProps = {
+  setState: React.Dispatch<React.SetStateAction<boolean>>;
+  text: string;
+  classNames?: string;
+};
+const MenuHeading: FC<MenuHeadingProps> = ({
+  setState,
+  text,
+  classNames = "",
+}) => {
+  return (
+    <h4
+      className={`font-bold flex justify-between items-center mt-0 ${classNames}`}
+    >
+      {text}
+      <Button
+        icon="small-cross"
+        onClick={() => setState(false)}
+        minimal
+        small
+      />
+    </h4>
+  );
+};
+
 const ResultsView: ResultsViewComponent = ({
   parentUid,
   columns,
@@ -278,7 +305,6 @@ const ResultsView: ResultsViewComponent = ({
 
   // @deprecated - use columnFilters
   const [filters, setFilters] = useState(settings.filters);
-  const randomRef = useRef(settings.random);
   const [random, setRandom] = useState({ count: settings.random });
   const [page, setPage] = useState(settings.page);
   const [pageSize, setPageSize] = useState(settings.pageSize);
@@ -334,8 +360,8 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const isMenuIconDirty = useMemo(
-    () => !!searchFilter || !!columnFilters.length,
-    [searchFilter, columnFilters]
+    () => !!searchFilter || !!columnFilters.length || random.count,
+    [searchFilter, columnFilters, random]
   );
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
@@ -374,8 +400,8 @@ const ResultsView: ResultsViewComponent = ({
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
       ref={containerRef}
-      onMouseOver={() => setShowMenuIcons(true)}
-      onMouseOut={() => setShowMenuIcons(false)}
+      onMouseEnter={() => setShowMenuIcons(true)}
+      onMouseLeave={() => setShowMenuIcons(false)}
     >
       {isEditSearchFilter && (
         <div
@@ -387,6 +413,7 @@ const ResultsView: ResultsViewComponent = ({
           <InputGroup
             fill={true}
             placeholder="Search"
+            value={searchFilter}
             onChange={(e) => {
               window.clearTimeout(debounceRef.current);
               setSearchFilter(e.target.value);
@@ -396,6 +423,7 @@ const ResultsView: ResultsViewComponent = ({
                 parentUid: settings.resultNodeUid,
               });
               debounceRef.current = window.setTimeout(() => {
+                // Change to setInputSetting ?
                 const searchFilter = getFirstChildUidByBlockUid(
                   searchFilterNode.uid
                 );
@@ -411,7 +439,29 @@ const ResultsView: ResultsViewComponent = ({
                   });
               }, 1000);
             }}
-            defaultValue={searchFilter}
+            rightElement={
+              <Button
+                hidden={!searchFilter}
+                icon={"remove"}
+                onClick={() => {
+                  setSearchFilter("");
+                  if (preventSavingSettings) return;
+                  // Change to setInputSetting ?
+                  const searchFilterNode = getSubTree({
+                    key: "searchFilter",
+                    parentUid: settings.resultNodeUid,
+                  });
+                  const searchFilter = getFirstChildUidByBlockUid(
+                    searchFilterNode.uid
+                  );
+                  updateBlock({
+                    uid: searchFilter,
+                    text: "",
+                  });
+                }}
+                minimal
+              />
+            }
           />
         </div>
       )}
@@ -422,9 +472,9 @@ const ResultsView: ResultsViewComponent = ({
         results={allProcessedResults}
       />
       <div className="relative">
-        <span
-          className="absolute top-1 right-0 z-10"
+        <div
           style={!showMenuIcons && !showInterface ? { display: "none" } : {}}
+          className="absolute right-0 z-10 p-1"
         >
           {onRefresh && (
             <Tooltip content={"Refresh Results"}>
@@ -432,6 +482,14 @@ const ResultsView: ResultsViewComponent = ({
             </Tooltip>
           )}
           <Popover
+            onOpening={() => {
+              setIsEditRandom(false);
+              setIsEditLayout(false);
+              setIsEditColumnFilter(false);
+              setIsEditViews(false);
+            }}
+            autoFocus={false}
+            enforceFocus={false}
             placement="left-end"
             isOpen={moreMenuOpen}
             target={
@@ -454,58 +512,50 @@ const ResultsView: ResultsViewComponent = ({
             }}
             content={
               isEditRandom ? (
-                <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Get Random
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditRandom(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
+                <div className="relative p-4">
+                  <MenuHeading setState={setIsEditRandom} text="Get Random" />
                   <InputGroup
-                    defaultValue={settings.random.toString()}
-                    onChange={(e) =>
-                      (randomRef.current = Number(e.target.value))
-                    }
-                    rightElement={
-                      <Tooltip content={"Select Random Results"}>
-                        <Button
-                          icon={"random"}
-                          onClick={() => {
-                            setRandom({ count: randomRef.current });
-
-                            if (preventSavingSettings) return;
-                            const resultNode = getSubTree({
-                              key: "results",
-                              parentUid,
-                            });
-                            setInputSetting({
-                              key: "random",
-                              value: randomRef.current.toString(),
-                              blockUid: resultNode.uid,
-                            });
-                          }}
-                          minimal
-                        />
-                      </Tooltip>
-                    }
                     type={"number"}
-                    style={{ width: 80 }}
+                    min={0}
+                    value={random.count.toString()}
+                    className="w-20 inline-block pr-2"
+                    onChange={(e) => {
+                      setRandom({ count: Number(e.target.value) });
+                      if (preventSavingSettings) return;
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      setInputSetting({
+                        key: "random",
+                        value: e.target.value,
+                        blockUid: resultNode.uid,
+                      });
+                    }}
+                  />
+                  <Button
+                    hidden={random.count === 0}
+                    icon={"remove"}
+                    onClick={() => {
+                      setRandom({ count: 0 });
+
+                      if (preventSavingSettings) return;
+                      const resultNode = getSubTree({
+                        key: "results",
+                        parentUid,
+                      });
+                      setInputSetting({
+                        key: "random",
+                        value: "0",
+                        blockUid: resultNode.uid,
+                      });
+                    }}
+                    minimal
                   />
                 </div>
               ) : isEditLayout ? (
                 <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Layout
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditLayout(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
+                  <MenuHeading setState={setIsEditLayout} text="Layout" />
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
@@ -529,8 +579,8 @@ const ResultsView: ResultsViewComponent = ({
                             value: l.id,
                             blockUid: layoutNode.uid,
                           });
-                          setIsEditLayout(false);
-                          setMoreMenuOpen(false);
+                          // setIsEditLayout(false);
+                          // setMoreMenuOpen(false);
                         }}
                       >
                         <Icon icon={l.icon} />
@@ -634,19 +684,14 @@ const ResultsView: ResultsViewComponent = ({
                 </div>
               ) : isEditColumnFilter ? (
                 <div
-                  className="relative p-2 max-w-2xl"
+                  className="relative p-4 max-w-2xl"
                   style={{ minWidth: "320px" }}
                 >
-                  <h4 className="font-bold flex justify-between items-center p-2">
-                    Set Filters
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditColumnFilter(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
-                  <div className="flex flex-col gap-4 items-start overflow-auto p-2">
+                  <MenuHeading
+                    setState={setIsEditColumnFilter}
+                    text="Filters"
+                  />
+                  <div className="flex flex-col gap-4 items-start py-2">
                     {columnFilters.map(({ key, type, value, uid }) => (
                       <div key={uid}>
                         <div className="flex items-center justify-between gap-2 mb-2">
@@ -823,20 +868,14 @@ const ResultsView: ResultsViewComponent = ({
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
-                  <h4 className="font-bold flex justify-between items-center">
-                    Set Column Views
-                    <Button
-                      icon={"small-cross"}
-                      onClick={() => setIsEditViews(false)}
-                      minimal
-                      small
-                    />
-                  </h4>
+                  <MenuHeading setState={setIsEditViews} text="Column Views" />
                   <div className="flex flex-col gap-1">
                     {views.map(({ column, mode, value }, i) => (
                       <React.Fragment key={i}>
                         <div className="flex items-center justify-between gap-2">
-                          <span style={{ flex: 1 }}>{column}</span>
+                          <span style={{ flex: 1 }} className="font-semibold">
+                            {column}
+                          </span>
                           <MenuItemSelect
                             className="roamjs-view-select"
                             items={Object.keys(VIEWS)}
@@ -846,7 +885,7 @@ const ResultsView: ResultsViewComponent = ({
                             }}
                           />
                         </div>
-                        {VIEWS[mode]?.value && (
+                        {VIEWS[mode]?.value && mode === "alias" && (
                           <InputGroup
                             value={value}
                             onChange={(e) => {
@@ -857,6 +896,31 @@ const ResultsView: ResultsViewComponent = ({
                             }}
                           />
                         )}
+                        {VIEWS[mode]?.value && mode === "embed" && (
+                          <div className="flex items-center justify-between gap-2">
+                            <div style={{ flex: 1 }}>
+                              <span>Fold</span>
+                              <Tooltip content={"Initial folded state"}>
+                                <Icon
+                                  icon={"info-sign"}
+                                  iconSize={12}
+                                  className={"opacity-80 ml-2"}
+                                  style={{ verticalAlign: "initial" }}
+                                />
+                              </Tooltip>
+                            </div>
+                            <MenuItemSelect
+                              className="roamjs-view-select"
+                              items={EMBED_FOLD_VALUES}
+                              activeItem={
+                                !!value ? value : EMBED_FOLD_VALUES[0]
+                              }
+                              onItemSelect={(value) => {
+                                onViewChange({ mode, column, value }, i);
+                              }}
+                            />
+                          </div>
+                        )}
                       </React.Fragment>
                     ))}
                   </div>
@@ -865,6 +929,7 @@ const ResultsView: ResultsViewComponent = ({
                 <Menu>
                   {onEdit && (
                     <MenuItem
+                      active={false}
                       icon={"annotation"}
                       text={"Edit Query"}
                       onClick={() => {
@@ -873,45 +938,60 @@ const ResultsView: ResultsViewComponent = ({
                       }}
                     />
                   )}
+                  <Divider />
                   <MenuItem
-                    icon={"layout"}
-                    text={"Layout"}
-                    onClick={() => {
-                      setIsEditLayout(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"filter"}
-                    text={"Filters"}
-                    className={columnFilters.length ? "roamjs-item-dirty" : ""}
-                    onClick={() => {
-                      setIsEditColumnFilter(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"sort"}
-                    text={"Sort"}
-                    className={activeSort.length ? "roamjs-item-dirty" : ""}
-                    onClick={() => {
-                      setIsEditColumnSort(true);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"search"}
-                    text={isEditSearchFilter ? "Hide Search" : "Search"}
-                    className={searchFilter ? "roamjs-item-dirty" : ""}
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      setIsEditSearchFilter((prevState) => !prevState);
-                    }}
-                  />
-                  <MenuItem
-                    icon={"eye-open"}
-                    text={"Column Views"}
-                    onClick={() => {
-                      setIsEditViews(true);
-                    }}
-                  />
+                    icon={"list"}
+                    text={"Results"}
+                    className={isMenuIconDirty ? "roamjs-item-dirty" : ""}
+                  >
+                    <MenuItem
+                      icon={"layout"}
+                      text={"Layout"}
+                      onClick={() => {
+                        setIsEditLayout(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"eye-open"}
+                      text={"Column Views"}
+                      onClick={() => {
+                        setIsEditViews(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"sort"}
+                      text={"Sort"}
+                      className={activeSort.length ? "roamjs-item-dirty" : ""}
+                      onClick={() => {
+                        setIsEditColumnSort(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={isEditSearchFilter ? "zoom-out" : "search"}
+                      text={isEditSearchFilter ? "Hide Search" : "Search"}
+                      className={searchFilter ? "roamjs-item-dirty" : ""}
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        setIsEditSearchFilter((prevState) => !prevState);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"filter"}
+                      text={"Filters"}
+                      className={
+                        columnFilters.length ? "roamjs-item-dirty" : ""
+                      }
+                      onClick={() => {
+                        setIsEditColumnFilter(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"random"}
+                      text={"Get Random"}
+                      className={random.count ? "roamjs-item-dirty" : ""}
+                      onClick={() => setIsEditRandom(true)}
+                    />
+                  </MenuItem>
                   <MenuItem
                     icon={showInterface ? "th-disconnect" : "th"}
                     text={showInterface ? "Hide Interface" : "Show Interface"}
@@ -940,11 +1020,7 @@ const ResultsView: ResultsViewComponent = ({
                       setIsExportOpen(true);
                     }}
                   />
-                  <MenuItem
-                    icon={"random"}
-                    text={"Get Random"}
-                    onClick={() => setIsEditRandom(true)}
-                  />
+                  <Divider />
                   {isEditBlock && (
                     <MenuItem
                       icon={"edit"}
@@ -963,22 +1039,6 @@ const ResultsView: ResultsViewComponent = ({
                         });
                       }}
                     />
-                  )}
-                  {onDeleteQuery && (
-                    <>
-                      <MenuItem
-                        icon={"trash"}
-                        text={"Delete Query"}
-                        onClick={() => {
-                          renderSimpleAlert({
-                            content:
-                              "Are you sure you want to delete this query?",
-                            onConfirm: onDeleteQuery,
-                            onCancel: true,
-                          });
-                        }}
-                      />
-                    </>
                   )}
                   <MenuItem
                     icon={"clipboard"}
@@ -1014,11 +1074,27 @@ const ResultsView: ResultsViewComponent = ({
                       });
                     }}
                   />
+                  {onDeleteQuery && (
+                    <>
+                      <MenuItem
+                        icon={"trash"}
+                        text={"Delete Query"}
+                        onClick={() => {
+                          renderSimpleAlert({
+                            content:
+                              "Are you sure you want to delete this query?",
+                            onConfirm: onDeleteQuery,
+                            onCancel: true,
+                          });
+                        }}
+                      />
+                    </>
+                  )}
                 </Menu>
               )
             }
           />
-        </span>
+        </div>
         {header && (
           <h4
             style={{
