@@ -37,6 +37,8 @@ import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import MultipleSelect from "./MultiSelect";
+import setInputSettings from "roamjs-components/util/setInputSettings";
 
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
@@ -620,6 +622,11 @@ const ResultsView: ResultsViewComponent = ({
                                       : f
                                   )
                                 );
+                                // setInputSettings({
+                                //   blockUid: uid,
+                                //   key: "value",
+                                //   values: newValue,
+                                // });
                                 setInputSetting({
                                   blockUid: uid,
                                   key: "value",
@@ -632,12 +639,38 @@ const ResultsView: ResultsViewComponent = ({
                               )}
                             />
                           ) : (
+                            // <MultipleSelect
+                            //   onItemSelect={(newValue) => {
+                            //     setColumnFilters(
+                            //       columnFilters.map((f) =>
+                            //         f.uid === uid
+                            //           ? { ...f, value: [...value, newValue] }
+                            //           : f
+                            //       )
+                            //     );
+                            //     setInputSettings({
+                            //       blockUid: uid,
+                            //       key: "value",
+                            //       values: [...value, newValue],
+                            //     });
+                            //   }}
+                            //   items={Array.from(
+                            //     new Set(results.map((r) => r[key].toString()))
+                            //   )}
+                            // />
                             <InputGroup
                               className="roamjs-column-filter-value"
                               value={value[0]}
                               placeholder="Type a value..."
                               onChange={(e) => {
                                 const newValue = e.target.value;
+                                // setColumnFilters(
+                                //   columnFilters.map((f) =>
+                                //     f.uid === uid
+                                //       ? { ...f, value: [newValue] }
+                                //       : f
+                                //   )
+                                // );
                                 setColumnFilters(
                                   columnFilters.map((f) =>
                                     f.uid === uid
@@ -663,6 +696,7 @@ const ResultsView: ResultsViewComponent = ({
                         const newFilter = {
                           key: columns[0].key,
                           type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
+                          // value: [""],
                           value: "",
                           uid: window.roamAlphaAPI.util.generateUID(),
                         };
@@ -684,6 +718,7 @@ const ResultsView: ResultsViewComponent = ({
                               },
                               {
                                 text: "value",
+                                // children: [{ text: newFilter.value[0] }],
                                 children: [{ text: newFilter.value }],
                               },
                             ],
