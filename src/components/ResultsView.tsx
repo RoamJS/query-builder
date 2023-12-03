@@ -36,6 +36,7 @@ import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildU
 import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
+import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
@@ -170,7 +171,10 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
-const SUPPORTED_COLUMN_FILTER_TYPES = [{ id: "contains" }];
+const SUPPORTED_COLUMN_FILTER_TYPES = [
+  { id: "contains" },
+  { id: "contains exactly" },
+];
 
 const SUPPORTED_LAYOUTS = [
   {
@@ -631,7 +635,7 @@ const ResultsView: ResultsViewComponent = ({
                   </div>
                 </div>
               ) : isEditColumnFilter ? (
-                <div className="relative w-80 p-2">
+                <div className="relative p-2" style={{ minWidth: "320px" }}>
                   <h4 className="font-bold flex justify-between items-center p-2">
                     Set Filters
                     <Button
@@ -692,24 +696,50 @@ const ResultsView: ResultsViewComponent = ({
                           />
                         </div>
                         <div>
-                          <InputGroup
-                            className="roamjs-column-filter-value"
-                            value={value}
-                            placeholder="Type a value..."
-                            onChange={(e) => {
-                              const newValue = e.target.value;
-                              setColumnFilters(
-                                columnFilters.map((f) =>
-                                  f.uid === uid ? { ...f, value: newValue } : f
-                                )
-                              );
-                              setInputSetting({
-                                blockUid: uid,
-                                key: "value",
-                                value: newValue,
-                              });
-                            }}
-                          />
+                          {type === "contains exactly" ? (
+                            <AutocompleteInput
+                              setValue={(newValue) => {
+                                if (value === newValue) return; // prevent infinite render loop
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid
+                                      ? { ...f, value: newValue }
+                                      : f
+                                  )
+                                );
+                                setInputSetting({
+                                  blockUid: uid,
+                                  key: "value",
+                                  value: newValue,
+                                });
+                              }}
+                              value={value}
+                              options={Array.from(
+                                new Set(results.map((r) => r[key].toString()))
+                              )}
+                            />
+                          ) : (
+                            <InputGroup
+                              className="roamjs-column-filter-value"
+                              value={value[0]}
+                              placeholder="Type a value..."
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid
+                                      ? { ...f, value: newValue }
+                                      : f
+                                  )
+                                );
+                                setInputSetting({
+                                  blockUid: uid,
+                                  key: "value",
+                                  value: newValue,
+                                });
+                              }}
+                            />
+                          )}
                         </div>
                       </div>
                     ))}
