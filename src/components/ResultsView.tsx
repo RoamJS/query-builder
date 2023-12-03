@@ -760,12 +760,38 @@ const ResultsView: ResultsViewComponent = ({
                               }}
                             />
                           ) : (
+                            // <MultipleSelect
+                            //   onItemSelect={(newValue) => {
+                            //     setColumnFilters(
+                            //       columnFilters.map((f) =>
+                            //         f.uid === uid
+                            //           ? { ...f, value: [...value, newValue] }
+                            //           : f
+                            //       )
+                            //     );
+                            //     setInputSettings({
+                            //       blockUid: uid,
+                            //       key: "value",
+                            //       values: [...value, newValue],
+                            //     });
+                            //   }}
+                            //   items={Array.from(
+                            //     new Set(results.map((r) => r[key].toString()))
+                            //   )}
+                            // />
                             <InputGroup
                               className="roamjs-column-filter-value"
                               value={value[0]}
                               placeholder="Type a value..."
                               onChange={(e) => {
                                 const newValue = e.target.value;
+                                // setColumnFilters(
+                                //   columnFilters.map((f) =>
+                                //     f.uid === uid
+                                //       ? { ...f, value: [newValue] }
+                                //       : f
+                                //   )
+                                // );
                                 setColumnFilters(
                                   columnFilters.map((f) =>
                                     f.uid === uid
