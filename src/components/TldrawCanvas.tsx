@@ -470,8 +470,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             label={shape.props.title}
             nodeType={this.type}
             discourseContext={discourseContext}
-            onSuccess={async ({ text, uid, actionState }) => {
-              if (actionState === "editing") {
+            onSuccess={async ({ text, uid, action }) => {
+              if (action === "editing") {
                 if (isPageUid(shape.props.uid))
                   await window.roamAlphaAPI.updatePage({
                     page: {
@@ -482,7 +482,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 else await updateBlock({ uid: shape.props.uid, text });
               }
 
-              if (actionState === "creating" && !getPageUidByPageTitle(text)) {
+              if (action === "creating" && !getPageUidByPageTitle(text)) {
                 createDiscourseNode({
                   configPageUid: shape.type,
                   text,
