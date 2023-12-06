@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Column, Result } from "../utils/types";
-import { Button, Icon, Popover, Tooltip } from "@blueprintjs/core";
+import { Button, HTMLTable, Icon, Popover, Tooltip } from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -28,6 +28,8 @@ const KanbanCard = (card: {
   $priority: number;
   $reprioritize: Reprioritize;
   $displayKey: string;
+  $columnKey: string;
+  $selectionValues: string[];
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
   result: Result;
 }) => {
@@ -74,10 +76,36 @@ const KanbanCard = (card: {
         }}
       >
         <div className={`rounded-xl bg-white p-4 hover:bg-gray-200`}>
-          {toCellValue({
-            value: card.result[card.$displayKey],
-            uid: card.result[`${card.$displayKey}-uid`],
-          })}
+          <div className="card-display-value">
+            {toCellValue({
+              value: card.result[card.$displayKey],
+              uid: card.result[`${card.$displayKey}-uid`],
+            })}
+          </div>
+          <div className="card-selections mt-3">
+            <HTMLTable condensed={true}>
+              <tbody>
+                {card.$selectionValues.map((sv) => {
+                  if (sv === card.$displayKey || sv === card.$columnKey)
+                    return null;
+                  const value = toCellValue({
+                    value:
+                      card.result[`${sv}-display`] || card.result[sv] || "",
+                    uid: (card.result[`${sv}-uid`] as string) || "",
+                  });
+
+                  return (
+                    <tr key={sv}>
+                      <td className="font-semibold text-sm text-gray-700 p-1">
+                        {sv}:
+                      </td>
+                      <td className="text-sm text-gray-700 p-1">{value}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </HTMLTable>
+          </div>
         </div>
       </div>
     </Draggable>
@@ -443,6 +471,8 @@ const Kanban = ({
                     $reprioritize={reprioritizeAndUpdateBlock}
                     $getColumnElement={getColumnElement}
                     $displayKey={displayKey}
+                    $columnKey={columnKey}
+                    $selectionValues={resultKeys.map((rk) => rk.key)}
                   />
                 ))}
               </div>
