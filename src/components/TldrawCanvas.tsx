@@ -1334,7 +1334,7 @@ const TldrawCanvas = ({ title }: Props) => {
           app.on("event", (e) => {
             discourseContext.lastAppEvent = e.name;
 
-            const validModifier = e.shiftKey || e.ctrlKey;
+            const validModifier = e.shiftKey || e.ctrlKey || e.metaKey;
             if (!(e.name === "pointer_up" && e.shape && validModifier)) return;
             if (app.selectedIds.length) return; // User is positioning selected shape
 
@@ -1352,7 +1352,7 @@ const TldrawCanvas = ({ title }: Props) => {
               // TODO - do not openBlockInSidebar if user is using shift to select
               openBlockInSidebar(e.shape.props.uid);
             }
-            if (e.ctrlKey) {
+            if (e.ctrlKey || e.metaKey) {
               const isPage = !!getPageTitleByPageUid(shapeUid);
               if (isPage) {
                 window.roamAlphaAPI.ui.mainWindow.openPage({
