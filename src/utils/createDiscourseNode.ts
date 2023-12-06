@@ -7,6 +7,7 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import getSubTree from "roamjs-components/util/getSubTree";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import { DiscourseNode } from "./getDiscourseNodes";
+import isFlagEnabled from "./isFlagEnabled";
 
 type Props = {
   text: string;
@@ -22,6 +23,7 @@ const createDiscourseNode = async ({
   discourseNodes,
 }: Props) => {
   const handleOpenInSidebar = (uid: string) => {
+    if (isFlagEnabled("disable sidebar open")) return;
     openBlockInSidebar(uid);
     setTimeout(() => {
       const sidebarTitle = document.querySelector(

@@ -10,7 +10,7 @@ These queries are far more powerful than vanilla Roam queries, as it taps into R
 
 The above UI is available as a block component. This allows you to create several on a page, wherever on the page you want.
 
-To create one, simply add `{{query block}}` to any block on the page.
+To create one, simply add `{{query block}}` to any block on the page or use the `Create Query Block` from the Roam Command Palette.
 
 ## Query Pages
 
