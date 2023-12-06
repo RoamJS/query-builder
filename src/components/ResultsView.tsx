@@ -202,7 +202,6 @@ const SUPPORTED_LAYOUTS = [
       { key: "key", label: "Group By", options: "columns" },
       { key: "display", label: "Display", options: "columns" },
       { key: "legend", label: "Show Legend", options: ["No", "Yes"] },
-      { key: "selections", label: "Show Selections", options: ["No", "Yes"] },
     ],
   },
 ] as const;

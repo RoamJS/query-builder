@@ -30,7 +30,6 @@ const KanbanCard = (card: {
   $displayKey: string;
   $columnKey: string;
   $selectionValues: string[];
-  $showSelections: string;
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
   result: Result;
 }) => {
@@ -83,32 +82,30 @@ const KanbanCard = (card: {
               uid: card.result[`${card.$displayKey}-uid`],
             })}
           </div>
-          {card.$showSelections === "Yes" && (
-            <div className="card-selections mt-3">
-              <HTMLTable condensed={true}>
-                <tbody>
-                  {card.$selectionValues.map((sv) => {
-                    if (sv === card.$displayKey || sv === card.$columnKey)
-                      return null;
-                    const value = toCellValue({
-                      value:
-                        card.result[`${sv}-display`] || card.result[sv] || "",
-                      uid: (card.result[`${sv}-uid`] as string) || "",
-                    });
+          <div className="card-selections mt-3">
+            <HTMLTable condensed={true}>
+              <tbody>
+                {card.$selectionValues.map((sv) => {
+                  if (sv === card.$displayKey || sv === card.$columnKey)
+                    return null;
+                  const value = toCellValue({
+                    value:
+                      card.result[`${sv}-display`] || card.result[sv] || "",
+                    uid: (card.result[`${sv}-uid`] as string) || "",
+                  });
 
-                    return (
-                      <tr key={sv}>
-                        <td className="font-semibold text-sm text-gray-700 p-1">
-                          {sv}:
-                        </td>
-                        <td className="text-sm text-gray-700 p-1">{value}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </HTMLTable>
-            </div>
-          )}
+                  return (
+                    <tr key={sv}>
+                      <td className="font-semibold text-sm text-gray-700 p-1">
+                        {sv}:
+                      </td>
+                      <td className="text-sm text-gray-700 p-1">{value}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </HTMLTable>
+          </div>
         </div>
       </div>
     </Draggable>
@@ -347,13 +344,6 @@ const Kanban = ({
     () => (Array.isArray(layout.legend) ? layout.legend[0] : layout.legend),
     [layout.legend]
   );
-  const showSelections = useMemo(
-    () =>
-      Array.isArray(layout.selections)
-        ? layout.selections[0]
-        : layout.selections,
-    [layout.selections]
-  );
   const [openedPopoverIndex, setOpenedPopoverIndex] = useState<number | null>(
     null
   );
@@ -483,7 +473,6 @@ const Kanban = ({
                     $displayKey={displayKey}
                     $columnKey={columnKey}
                     $selectionValues={resultKeys.map((rk) => rk.key)}
-                    $showSelections={showSelections}
                   />
                 ))}
               </div>
