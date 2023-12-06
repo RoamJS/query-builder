@@ -1,6 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   Button,
+  Callout,
   Classes,
   Dialog,
   // Icon,
@@ -10,6 +11,7 @@ import {
   Spinner,
   SpinnerSize,
 } from "@blueprintjs/core";
+import { IconName, IconNames } from "@blueprintjs/icons";
 import fireQuery from "../utils/fireQuery";
 import fuzzy from "fuzzy";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
@@ -17,6 +19,7 @@ import { Result } from "../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
 import { getPlainTitleFromSpecification } from "../discourseGraphsMode";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -25,6 +28,8 @@ const LabelDialogAutocomplete = ({
   initialUid,
   initialValue,
   onSubmit,
+  isCreateCanvasNode,
+  initialLabel,
 }: {
   setLabel: (text: string) => void;
   setUid: (uid: string) => void;
@@ -32,6 +37,8 @@ const LabelDialogAutocomplete = ({
   initialUid: string;
   initialValue: { text: string; uid: string };
   onSubmit: () => void;
+  isCreateCanvasNode: boolean;
+  initialLabel: string;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<Result[]>([]);
@@ -83,20 +90,32 @@ const LabelDialogAutocomplete = ({
   );
 
   return (
-    <AutocompleteInput
-      value={initialValue}
-      setValue={setValue}
-      onConfirm={onSubmit}
-      options={options}
-      multiline
-      autoFocus
-      onNewItem={onNewItem}
-      itemToQuery={itemToQuery}
-      filterOptions={filterOptions}
-      disabled={isLoading}
-      placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
-      maxItemsDisplayed={100}
-    />
+    <>
+      <div>
+        {!isCreateCanvasNode ? (
+          <div className="my-4">
+            <div className="font-semibold mb-1">Current Title</div>
+            <div>{initialLabel}</div>
+          </div>
+        ) : (
+          ""
+        )}
+      </div>
+      <AutocompleteInput
+        value={initialValue}
+        setValue={setValue}
+        onConfirm={onSubmit}
+        options={options}
+        multiline
+        autoFocus
+        onNewItem={onNewItem}
+        itemToQuery={itemToQuery}
+        filterOptions={filterOptions}
+        disabled={isLoading}
+        placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
+        maxItemsDisplayed={100}
+      />
+    </>
   );
 };
 
@@ -133,6 +152,37 @@ const LabelDialog = ({
   const [label, setLabel] = useState(initialValue.text);
   const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
+  const isCreateCanvasNode = !isLiveBlock(initialUid);
+
+  const renderCalloutText = () => {
+    let title = "Please provide a label";
+    let icon = IconNames.INFO_SIGN;
+    let action = "initial";
+
+    if (!label) return { title, icon, action };
+
+    if (!isCreateCanvasNode) {
+      if (uid === initialUid) {
+        title = "Edit title of current discourse node";
+        icon = IconNames.EDIT;
+      } else {
+        title = "Change to existing discourse node";
+        icon = IconNames.EXCHANGE;
+      }
+    } else {
+      if (uid === initialUid) {
+        title = "Create new discourse node";
+        icon = IconNames.NEW_OBJECT;
+      } else {
+        title = "Set to existing discourse node";
+        icon = IconNames.LINK;
+      }
+    }
+
+    return { title, icon, action };
+  };
+  const calloutText = renderCalloutText();
+
   const onSubmit = () => {
     setLoading(true);
     onSuccess({ text: label, uid })
@@ -176,7 +226,7 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={isOpen}
-        title={"Edit Discourse Node Label"}
+        title={!isCreateCanvasNode ? "Edit Canvas Node" : "Create Canvas Node"}
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?
@@ -185,6 +235,12 @@ const LabelDialog = ({
         className={"roamjs-discourse-playground-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
+          <Callout
+            intent="primary"
+            className="mb-4"
+            title={calloutText.title}
+            icon={calloutText.icon as IconName}
+          />
           <LabelDialogAutocomplete
             setLabel={setLabel}
             setUid={setUid}
@@ -192,6 +248,8 @@ const LabelDialog = ({
             initialUid={initialUid}
             initialValue={initialValue}
             onSubmit={onSubmit}
+            isCreateCanvasNode={isCreateCanvasNode}
+            initialLabel={initialLabel}
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>
@@ -199,11 +257,11 @@ const LabelDialog = ({
             className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center flex-row-reverse`}
           >
             <Button
-              text={"Set"}
+              text={"Confirm"}
               intent={Intent.PRIMARY}
               onClick={onSubmit}
               onTouchEnd={onSubmit}
-              disabled={loading}
+              disabled={loading || !label}
               className="flex-shrink-0"
             />
             <Button
