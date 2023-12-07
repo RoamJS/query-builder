@@ -630,7 +630,6 @@ const ResultsView: ResultsViewComponent = ({
                                   onClick={props.handleClick}
                                 />
                               )}
-                              // filter selectedItems
                               items={Array.from(
                                 new Set(
                                   results
