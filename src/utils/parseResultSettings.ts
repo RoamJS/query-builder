@@ -151,8 +151,7 @@ const parseResultSettings = (
       return {
         key: c.text,
         uid: c.uid,
-        // value: getSettingValuesFromTree({ tree: c.children, key: "value" }),
-        value: getSettingValueFromTree({ tree: c.children, key: "value" }),
+        value: getSettingValuesFromTree({ tree: c.children, key: "value" }),
         type: getSettingValueFromTree({ tree: c.children, key: "type" }),
       };
     }),

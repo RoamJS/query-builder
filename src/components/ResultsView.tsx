@@ -11,6 +11,7 @@ import {
   Intent,
   Label,
 } from "@blueprintjs/core";
+import { MultiSelect } from "@blueprintjs/select";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Filters } from "roamjs-components/components/Filter";
 import getSubTree from "roamjs-components/util/getSubTree";
@@ -36,8 +37,6 @@ import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildU
 import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
-import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
-import MultipleSelect from "./MultiSelect";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 
 const VIEWS: Record<string, { value: boolean }> = {
@@ -173,10 +172,7 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
-const SUPPORTED_COLUMN_FILTER_TYPES = [
-  { id: "contains" },
-  { id: "contains exactly" },
-];
+const SUPPORTED_COLUMN_FILTER_TYPES = [{ id: "contains" }, { id: "equals" }];
 
 const SUPPORTED_LAYOUTS = [
   {
@@ -637,7 +633,10 @@ const ResultsView: ResultsViewComponent = ({
                   </div>
                 </div>
               ) : isEditColumnFilter ? (
-                <div className="relative p-2" style={{ minWidth: "320px" }}>
+                <div
+                  className="relative p-2 max-w-2xl"
+                  style={{ minWidth: "320px" }}
+                >
                   <h4 className="font-bold flex justify-between items-center p-2">
                     Set Filters
                     <Button
@@ -652,7 +651,7 @@ const ResultsView: ResultsViewComponent = ({
                       <div key={uid}>
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <MenuItemSelect
-                            className="roamjs-column-filter-key flex-grow"
+                            className="roamjs-column-filter-key"
                             items={columns.map((c) => c.key)}
                             transformItem={(k) =>
                               k.length > 10 ? `${k.slice(0, 7)}...` : k
@@ -668,7 +667,7 @@ const ResultsView: ResultsViewComponent = ({
                             }}
                           />
                           <MenuItemSelect
-                            className="roamjs-column-filter-type"
+                            className="roamjs-column-filter-type flex-grow"
                             items={SUPPORTED_COLUMN_FILTER_TYPES.map(
                               (c) => c.id
                             )}
@@ -698,77 +697,86 @@ const ResultsView: ResultsViewComponent = ({
                           />
                         </div>
                         <div>
-                          {type === "contains exactly" ? (
-                            <AutocompleteInput
-                              setValue={(newValue) => {
-                                if (value === newValue) return; // prevent infinite render loop
+                          {type === "equals" ? (
+                            <MultiSelect
+                              popoverProps={{
+                                minimal: true,
+                                position: "bottom-left",
+                                boundary: "viewport",
+                              }}
+                              selectedItems={value.map((v) => v.toString())}
+                              tagRenderer={(tag) => tag}
+                              tagInputProps={{
+                                tagProps: { className: "max-w-lg" },
+                              }}
+                              itemRenderer={(item, props) => (
+                                <MenuItem
+                                  key={item}
+                                  text={item}
+                                  active={props.modifiers.active}
+                                  onClick={props.handleClick}
+                                />
+                              )}
+                              // filter selectedItems
+                              items={Array.from(
+                                new Set(
+                                  results
+                                    .map((r) => r[key].toString())
+                                    .filter((v) => !value.includes(v))
+                                )
+                              )}
+                              onRemove={(newValue) => {
                                 setColumnFilters(
                                   columnFilters.map((f) =>
                                     f.uid === uid
-                                      ? { ...f, value: newValue }
+                                      ? {
+                                          ...f,
+                                          value: value.filter(
+                                            (v) => v !== newValue
+                                          ),
+                                        }
                                       : f
                                   )
                                 );
-                                // setInputSettings({
-                                //   blockUid: uid,
-                                //   key: "value",
-                                //   values: newValue,
-                                // });
-                                setInputSetting({
+                                setInputSettings({
                                   blockUid: uid,
                                   key: "value",
-                                  value: newValue,
+                                  values: value.filter((v) => v !== newValue),
                                 });
                               }}
-                              value={value}
-                              options={Array.from(
-                                new Set(results.map((r) => r[key].toString()))
-                              )}
+                              onItemSelect={(newValue) => {
+                                setColumnFilters(
+                                  columnFilters.map((f) =>
+                                    f.uid === uid
+                                      ? { ...f, value: [...value, newValue] }
+                                      : f
+                                  )
+                                );
+                                setInputSettings({
+                                  blockUid: uid,
+                                  key: "value",
+                                  values: [...value, newValue],
+                                });
+                              }}
                             />
                           ) : (
-                            // <MultipleSelect
-                            //   onItemSelect={(newValue) => {
-                            //     setColumnFilters(
-                            //       columnFilters.map((f) =>
-                            //         f.uid === uid
-                            //           ? { ...f, value: [...value, newValue] }
-                            //           : f
-                            //       )
-                            //     );
-                            //     setInputSettings({
-                            //       blockUid: uid,
-                            //       key: "value",
-                            //       values: [...value, newValue],
-                            //     });
-                            //   }}
-                            //   items={Array.from(
-                            //     new Set(results.map((r) => r[key].toString()))
-                            //   )}
-                            // />
                             <InputGroup
                               className="roamjs-column-filter-value"
                               value={value[0]}
                               placeholder="Type a value..."
                               onChange={(e) => {
                                 const newValue = e.target.value;
-                                // setColumnFilters(
-                                //   columnFilters.map((f) =>
-                                //     f.uid === uid
-                                //       ? { ...f, value: [newValue] }
-                                //       : f
-                                //   )
-                                // );
                                 setColumnFilters(
                                   columnFilters.map((f) =>
                                     f.uid === uid
-                                      ? { ...f, value: newValue }
+                                      ? { ...f, value: [newValue] }
                                       : f
                                   )
                                 );
-                                setInputSetting({
+                                setInputSettings({
                                   blockUid: uid,
                                   key: "value",
-                                  value: newValue,
+                                  values: [newValue],
                                 });
                               }}
                             />
@@ -783,8 +791,7 @@ const ResultsView: ResultsViewComponent = ({
                         const newFilter = {
                           key: columns[0].key,
                           type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
-                          // value: [""],
-                          value: "",
+                          value: [""],
                           uid: window.roamAlphaAPI.util.generateUID(),
                         };
                         setColumnFilters([...columnFilters, newFilter]);
@@ -805,8 +812,7 @@ const ResultsView: ResultsViewComponent = ({
                               },
                               {
                                 text: "value",
-                                // children: [{ text: newFilter.value[0] }],
-                                children: [{ text: newFilter.value }],
+                                children: [{ text: newFilter.value[0] }],
                               },
                             ],
                           },

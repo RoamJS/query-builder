@@ -74,11 +74,15 @@ const postProcessResults = (
             const resultValue = r[columnFilter.key];
             const resultValueString =
               typeof resultValue === "string" ? resultValue : `${resultValue}`;
-            // return resultValueString.includes(columnFilter.value[0]);
-            return resultValueString.includes(columnFilter.value);
-          case "contains exactly":
-            // return columnFilter.value.some((v) => r[columnFilter.key] === v);
-            return r[columnFilter.key] === columnFilter.value;
+            return resultValueString.includes(columnFilter.value[0]);
+          case "equals":
+            if (
+              columnFilter.value.length === 1 &&
+              columnFilter.value[0] === ""
+            ) {
+              return true;
+            }
+            return columnFilter.value.some((v) => r[columnFilter.key] === v);
           default:
             return true;
         }
