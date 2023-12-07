@@ -554,51 +554,49 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             label={shape.props.title}
             nodeType={this.type}
             discourseContext={discourseContext}
-            onSuccess={async ({ text, uid }) => {
-              // If we get a new uid, all the necessary updates happen below
-              if (shape.props.uid === uid) {
-                if (shape.props.title) {
-                  if (shape.props.title === text) {
-                    setSizeAndImgProps({ context: this, text, uid });
-                    return;
-                  } else {
-                    if (isPageUid(shape.props.uid))
-                      await window.roamAlphaAPI.updatePage({
-                        page: {
-                          uid: shape.props.uid,
-                          title: text,
-                        },
-                      });
-                    else await updateBlock({ uid: shape.props.uid, text });
-                  }
-                } else if (!getPageUidByPageTitle(text)) {
-                  createDiscourseNode({
-                    configPageUid: shape.type,
-                    text,
-                    newPageUid: uid,
-                    discourseNodes: Object.values(discourseContext.nodes),
+            onSuccess={async ({ text, uid, action }) => {
+              if (action === "editing") {
+                if (isPageUid(shape.props.uid))
+                  await window.roamAlphaAPI.updatePage({
+                    page: {
+                      uid: shape.props.uid,
+                      title: text,
+                    },
                   });
-                }
+                else await updateBlock({ uid: shape.props.uid, text });
               }
 
+              if (action === "creating" && !getPageUidByPageTitle(text)) {
+                createDiscourseNode({
+                  configPageUid: shape.type,
+                  text,
+                  newPageUid: uid,
+                  discourseNodes: Object.values(discourseContext.nodes),
+                });
+              }
+
+              // Update Shape Props
+              setSizeAndImgProps({ context: this, text, uid });
+              this.updateProps(shape.id, {
+                title: text,
+                uid,
+              });
+
+              // Update Shape Relations
               const allRecords = this.app.store.allRecords();
               const relationIds = getRelationIds();
               this.deleteRelationsInCanvas(shape, {
                 allRecords,
                 relationIds,
               });
-              setSizeAndImgProps({ context: this, text, uid });
-              this.updateProps(shape.id, {
-                title: text,
-                uid,
-              });
-              setIsEditLabelOpen(false);
-              this.app.setEditingId(null);
               await this.createExistingRelations(shape, {
                 allRecords,
                 relationIds,
                 finalUid: uid,
               });
+
+              setIsEditLabelOpen(false);
+              this.app.setEditingId(null);
             }}
             onCancel={() => {
               this.app.setEditingId(null);
@@ -738,11 +736,56 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   }
 }
 
-//@ts-ignore
+// Helper to add referenced nodes to node titles
+// EG: [[EVD]] - {content} - {Source}
+// {Source} is a referenced node
+type DiscourseReferencedNodeShape = TLBaseShape<string, TLArrowShapeProps>;
+class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeShape> {
+  constructor(app: TldrawApp, type: string) {
+    super(app, type);
+  }
+  override canBind = () => true;
+  override canEdit = () => false;
+  defaultProps() {
+    return {
+      opacity: "1" as const,
+      dash: "draw" as const,
+      size: "s" as const,
+      fill: "none" as const,
+      color: COLOR_ARRAY[0],
+      labelColor: COLOR_ARRAY[1],
+      bend: 0,
+      start: { type: "point" as const, x: 0, y: 0 },
+      end: { type: "point" as const, x: 0, y: 0 },
+      arrowheadStart: "none" as const,
+      arrowheadEnd: "arrow" as const,
+      text: "relationship Helper",
+      font: "mono" as const,
+    };
+  }
+  render(shape: DiscourseRelationShape) {
+    return (
+      <>
+        <style>{`#${shape.id.replace(":", "_")}_clip_0 {
+  display: none;
+}
+[data-shape-type="${this.type}"] .rs-arrow-label {
+  left: 0;
+  top: 0;
+  width: unset;
+  height: unset;
+}
+`}</style>
+        {super.render(shape)}
+      </>
+    );
+  }
+}
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
   }
+
   override canBind = () => true;
   override canEdit = () => false;
   defaultProps() {
@@ -841,6 +884,25 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
+
+  const allFormatsWithReferencedNodes = useMemo(() => {
+    type FormatObject = { [key: string]: { format: string; match?: string } };
+
+    const obj: FormatObject = {};
+
+    allNodes.forEach((n) => {
+      const matches = [...n.format.matchAll(/{([\w\d-]+)}/g)];
+      const nonContentMatches = matches.filter(
+        (match) => match[1] !== "content"
+      );
+      if (nonContentMatches.length > 0) {
+        obj[n.type] = { format: n.format, match: nonContentMatches[0][1] };
+      }
+    });
+
+    return obj;
+  }, [allNodes]);
+
   const customTldrawConfig = useMemo(
     () =>
       new TldrawEditorConfig({
@@ -900,6 +962,48 @@ const TldrawCanvas = ({ title }: Props) => {
                     ];
                   };
                   shapeType = name;
+                  override styles = ["opacity" as const];
+                }
+            )
+          )
+          .concat(
+            Object.keys(allFormatsWithReferencedNodes).map(
+              (name) =>
+                class extends TLArrowTool {
+                  static id = `${name}_referenced` as string;
+                  static initial = "idle";
+                  static children: typeof TLArrowTool.children = () => {
+                    const [Idle, Pointing] = TLArrowTool.children();
+                    return [
+                      class extends Idle {
+                        override onPointerDown: TLPointerEvent = (info) => {
+                          const cancelAndWarn = (content: string) => {
+                            renderToast({
+                              id: "tldraw-warning",
+                              intent: "warning",
+                              content,
+                            });
+                            this.onCancel();
+                          };
+                          if (info.target !== "shape") {
+                            return cancelAndWarn("Must start on a node.");
+                          }
+                          const { format, match } =
+                            allFormatsWithReferencedNodes[name];
+                          if (info.shape.type !== name) {
+                            return cancelAndWarn(
+                              `Starting node must be one of ${name}`
+                            );
+                          } else {
+                            (this.parent as TLArrowTool).shapeType = name;
+                          }
+                          this.parent.transition("pointing", info);
+                        };
+                      },
+                      Pointing,
+                    ];
+                  };
+                  shapeType = `${name}_referenced`;
                   override styles = ["opacity" as const];
                 }
             )
@@ -1076,10 +1180,21 @@ const TldrawCanvas = ({ title }: Props) => {
                 },
             })
           ),
+          ...Object.keys(allFormatsWithReferencedNodes).map((id, i) =>
+            defineShape<DiscourseReferencedNodeShape>({
+              type: id + "_referenced",
+              getShapeUtil: () =>
+                class extends DiscourseReferencedNodeUtil {
+                  constructor(app: TldrawApp) {
+                    super(app, id);
+                  }
+                },
+            })
+          ),
         ],
         allowUnknownShapes: true,
       }),
-    [allNodes, allRelationIds, allRelationsById]
+    [allNodes, allRelationIds, allRelationsById, allFormatsWithReferencedNodes]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -1516,12 +1631,31 @@ const TldrawCanvas = ({ title }: Props) => {
                   },
                 };
               });
+              Object.keys(allFormatsWithReferencedNodes).forEach((name) => {
+                tools[`${name}_referenced`] = {
+                  id: `${name}_referenced`,
+                  icon: "tool-arrow",
+                  label:
+                    `shape.relation.${name}_referenced` as TLTranslationKey,
+                  kbd: "",
+                  readonlyOk: true,
+                  onSelect: () => {
+                    app.setSelectedTool(`${name}_referenced`);
+                  },
+                  style: {
+                    color: `var(--palette-${COLOR_ARRAY[0]})`,
+                  },
+                };
+              });
               return tools;
             },
             toolbar(_app, toolbar, { tools }) {
               toolbar.push(
                 ...allNodes.map((n) => toolbarItem(tools[n.type])),
-                ...allRelationNames.map((name) => toolbarItem(tools[name]))
+                ...allRelationNames.map((name) => toolbarItem(tools[name])),
+                ...Object.keys(allFormatsWithReferencedNodes).map((name) =>
+                  toolbarItem(tools[`${name}_referenced`])
+                )
               );
               return toolbar;
             },
