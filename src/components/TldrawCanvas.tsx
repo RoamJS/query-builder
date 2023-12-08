@@ -786,7 +786,6 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
   }
-
   override canBind = () => true;
   override canEdit = () => false;
   defaultProps() {
@@ -795,8 +794,6 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
     const relationIndex = relations.findIndex((rs) =>
       rs.some((r) => r.id === this.type)
     );
-    console.log("DiscourseRelationUtil", this.type);
-
     const isValid = relationIndex >= 0 && relationIndex < relations.length;
     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
     return {

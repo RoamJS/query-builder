@@ -316,7 +316,6 @@ export const ContextContent = ({ uid, results }: Props) => {
   );
   const [loading, setLoading] = useState(true);
   const onRefresh = useCallback(async () => {
-    const res = await getDiscourseContextResults({ uid });
     getDiscourseContextResults({ uid })
       .then(setRawQueryResults)
       .finally(() => setLoading(false));
