@@ -1091,11 +1091,11 @@ const TldrawCanvas = ({ title }: Props) => {
                           const targetTitle = target.props.title;
                           const sourceTitle = source.props.title;
                           const isTargetTitleCurrent =
-                            getPageTitleByPageUid(target.props.uid) ===
-                            targetTitle;
+                            getPageTitleByPageUid(target.props.uid).trim() ===
+                            targetTitle.trim();
                           const isSourceTitleCurrent =
-                            getPageTitleByPageUid(source.props.uid) ===
-                            sourceTitle;
+                            getPageTitleByPageUid(source.props.uid).trim() ===
+                            sourceTitle.trim();
                           if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
                             return deleteAndWarn(
                               "Either the source or target node has been renamed. Please update the nodes and try again."
