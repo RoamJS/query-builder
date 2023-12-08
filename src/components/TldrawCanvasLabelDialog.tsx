@@ -339,26 +339,27 @@ const LabelDialog = ({
     let title = "Please provide a label";
     let icon = IconNames.INFO_SIGN;
     let action = "initial";
+    const nodeLabel = discourseContext.nodes[nodeType].text;
 
     if (!label) return { title, icon, action };
 
     if (!isCreateCanvasNode) {
       if (uid === initialUid) {
-        title = "Edit title of current discourse node";
+        title = `Edit title of ${nodeLabel} node`;
         icon = IconNames.EDIT;
         action = "editing";
       } else {
-        title = "Change to existing discourse node";
+        title = `Change to existing ${nodeLabel} node`;
         icon = IconNames.EXCHANGE;
         action = "changing";
       }
     } else {
       if (uid === initialUid) {
-        title = "Create new discourse node";
+        title = `Create new ${nodeLabel} node`;
         icon = IconNames.NEW_OBJECT;
         action = "creating";
       } else {
-        title = "Set to existing discourse node";
+        title = `Set to existing ${nodeLabel} node`;
         icon = IconNames.LINK;
         action = "setting";
       }
