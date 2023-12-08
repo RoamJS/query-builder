@@ -251,7 +251,7 @@ const LabelDialogAutocomplete = ({
       )}
       {isAddReferencedNode &&
         (action === "creating" || action === "editing") && (
-          <div>
+          <div className="referenced-node-autocomplete">
             <Label>{referencedNode?.name}</Label>
             <AutocompleteInput
               value={
@@ -417,7 +417,7 @@ const LabelDialog = ({
         // Escape isn't working?
         canEscapeKeyClose
         autoFocus={false}
-        className={"roamjs-discourse-playground-dialog"}
+        className={"roamjs-canvas-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
           <Callout
