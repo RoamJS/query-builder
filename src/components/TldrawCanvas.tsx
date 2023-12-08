@@ -78,6 +78,7 @@ import ExtensionApiContextProvider, {
 } from "roamjs-components/components/ExtensionApiContext";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { formatHexColor } from "./DiscourseNodeCanvasSettings";
 
 declare global {
   interface Window {
@@ -1717,7 +1718,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   },
                   style: {
                     color:
-                      node.canvasSettings.color ||
+                      formatHexColor(node.canvasSettings.color) ||
                       `var(--palette-${COLOR_ARRAY[index]})`,
                   },
                 };
@@ -1738,6 +1739,16 @@ const TldrawCanvas = ({ title }: Props) => {
                 };
               });
               Object.keys(allFormatsWithReferencedNodes).forEach((name) => {
+                const node = allFormatsWithReferencedNodes[name];
+                const nodeColorArray = Object.keys(discourseContext.nodes).map(
+                  (key) => ({
+                    text: discourseContext.nodes[key].text,
+                    color: discourseContext.nodes[key].canvasSettings.color,
+                  })
+                );
+                const color =
+                  nodeColorArray.find((n) => n.text === node.matchName)
+                    ?.color || "";
                 tools[name] = {
                   id: name,
                   icon: "tool-arrow",
@@ -1748,7 +1759,9 @@ const TldrawCanvas = ({ title }: Props) => {
                     app.setSelectedTool(`${name}`);
                   },
                   style: {
-                    color: `var(--palette-${COLOR_ARRAY[0]})`,
+                    color:
+                      formatHexColor(color) ??
+                      `var(--palette-${COLOR_ARRAY[0]})`,
                   },
                 };
               });
