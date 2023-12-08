@@ -759,7 +759,7 @@ class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeSha
       end: { type: "point" as const, x: 0, y: 0 },
       arrowheadStart: "none" as const,
       arrowheadEnd: "arrow" as const,
-      text: "relationship Helper",
+      text: "for",
       font: "mono" as const,
     };
   }
@@ -794,6 +794,8 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
     const relationIndex = relations.findIndex((rs) =>
       rs.some((r) => r.id === this.type)
     );
+    console.log("DiscourseRelationUtil", this.type);
+
     const isValid = relationIndex >= 0 && relationIndex < relations.length;
     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
     return {
@@ -885,9 +887,16 @@ const TldrawCanvas = ({ title }: Props) => {
     return allNodes;
   }, [allRelations]);
 
-  const allFormatsWithReferencedNodes = useMemo(() => {
-    type FormatObject = { [key: string]: { format: string; match?: string } };
+  type FormatObject = {
+    [key: string]: {
+      text: string;
+      format: string;
+      matchName: string;
+      matchType: string;
+    };
+  };
 
+  const allFormatsWithReferencedNodes = useMemo(() => {
     const obj: FormatObject = {};
 
     allNodes.forEach((n) => {
@@ -895,14 +904,24 @@ const TldrawCanvas = ({ title }: Props) => {
       const nonContentMatches = matches.filter(
         (match) => match[1] !== "content"
       );
+
       if (nonContentMatches.length > 0) {
-        obj[n.type] = { format: n.format, match: nonContentMatches[0][1] };
+        const matchName = nonContentMatches[0][1];
+        const matchType = allNodes.find((n) => n.text === matchName)
+          ?.type as string;
+        obj[`${n.type}_referenced`] = {
+          text: `Add ${matchName}`,
+          format: n.format,
+          matchName,
+          matchType,
+        };
       }
     });
 
     return obj;
   }, [allNodes]);
 
+  const extensionAPI = useExtensionAPI();
   const customTldrawConfig = useMemo(
     () =>
       new TldrawEditorConfig({
@@ -970,7 +989,7 @@ const TldrawCanvas = ({ title }: Props) => {
             Object.keys(allFormatsWithReferencedNodes).map(
               (name) =>
                 class extends TLArrowTool {
-                  static id = `${name}_referenced` as string;
+                  static id = `${name}` as string;
                   static initial = "idle";
                   static children: typeof TLArrowTool.children = () => {
                     const [Idle, Pointing] = TLArrowTool.children();
@@ -988,14 +1007,14 @@ const TldrawCanvas = ({ title }: Props) => {
                           if (info.target !== "shape") {
                             return cancelAndWarn("Must start on a node.");
                           }
-                          const { format, match } =
+                          const { matchName, matchType } =
                             allFormatsWithReferencedNodes[name];
-                          if (info.shape.type !== name) {
+                          if (info.shape.type !== matchType) {
                             return cancelAndWarn(
-                              `Starting node must be one of ${name}`
+                              `Starting node must be one of ${matchName}`
                             );
                           } else {
-                            (this.parent as TLArrowTool).shapeType = name;
+                            (this.parent as TLArrowTool).shapeType = `${name}`;
                           }
                           this.parent.transition("pointing", info);
                         };
@@ -1003,7 +1022,7 @@ const TldrawCanvas = ({ title }: Props) => {
                       Pointing,
                     ];
                   };
-                  shapeType = `${name}_referenced`;
+                  shapeType = `${name}`;
                   override styles = ["opacity" as const];
                 }
             )
@@ -1017,19 +1036,15 @@ const TldrawCanvas = ({ title }: Props) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
                     return class extends Handle {
-                      override onPointerUp: TLPointerEvent = () => {
+                      override onPointerUp: TLPointerEvent = async () => {
                         this.onComplete({
                           type: "misc",
                           name: "complete",
                         });
+
                         const arrow = this.app.getShapeById(this.shapeId);
                         if (!arrow) return;
-                        if (!allRelationIdSet.has(arrow.type)) return;
-                        const {
-                          start,
-                          end,
-                          text: arrowText,
-                        } = arrow.props as TLArrowShapeProps;
+
                         const deleteAndWarn = (content: string) => {
                           renderToast({
                             id: "tldraw-warning",
@@ -1038,6 +1053,12 @@ const TldrawCanvas = ({ title }: Props) => {
                           });
                           this.app.deleteShapes([arrow.id]);
                         };
+
+                        const {
+                          start,
+                          end,
+                          text: arrowText,
+                        } = arrow.props as TLArrowShapeProps;
                         if (
                           start.type !== "binding" ||
                           end.type !== "binding"
@@ -1048,107 +1069,186 @@ const TldrawCanvas = ({ title }: Props) => {
                         }
                         const source = this.app.getShapeById(
                           start.boundShapeId
-                        );
+                        ) as DiscourseNodeShape;
                         if (!source) {
                           return deleteAndWarn("Failed to find source node.");
                         }
-                        const target = this.app.getShapeById(end.boundShapeId);
+                        const target = this.app.getShapeById(
+                          end.boundShapeId
+                        ) as DiscourseNodeShape;
                         if (!target) {
                           return deleteAndWarn("Failed to find target node.");
                         }
-                        const relation = allRelationsById[arrow.type];
-                        if (!relation) return;
-                        const sourceLabel =
-                          discourseContext.nodes[relation.source].text;
-                        if (source.type !== relation.source) {
-                          return deleteAndWarn(
-                            `Source node must be of type ${sourceLabel}`
-                          );
-                        }
-                        const possibleTargets = discourseContext.relations[
-                          relation.label
-                        ]
-                          .filter((r) => r.source === relation.source)
-                          .map((r) => r.destination);
-                        if (!possibleTargets.includes(target.type)) {
-                          return deleteAndWarn(
-                            `Target node must be of type ${possibleTargets
-                              .map((t) => discourseContext.nodes[t].text)
-                              .join(", ")}`
-                          );
-                        }
-                        if (arrow.type !== target.type) {
+
+                        // Handle "Add Referenced Node" Arrows
+                        if (arrow.type === "_EVD-node_referenced") {
+                          // source and target are expected to be pages
+                          // TODO: support blocks
+                          const { format, matchName, matchType } =
+                            allFormatsWithReferencedNodes[arrow.type];
+
+                          const targetTitle = target.props.title;
+                          const sourceTitle = source.props.title;
+                          const isTargetTitleCurrent =
+                            getPageTitleByPageUid(target.props.uid) ===
+                            targetTitle;
+                          const isSourceTitleCurrent =
+                            getPageTitleByPageUid(source.props.uid) ===
+                            sourceTitle;
+                          if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
+                            return deleteAndWarn(
+                              "Either the source or target node has been renamed. Please update the nodes and try again."
+                            );
+                          }
+
+                          // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
+                          // replace when migrating from format to specification
+                          let newTitle: string;
+                          if (targetTitle.endsWith(" - ")) {
+                            newTitle = `${targetTitle}[[${sourceTitle}]]`;
+                          } else if (targetTitle.endsWith(" -")) {
+                            newTitle = `${targetTitle} [[${sourceTitle}]]`;
+                          } else {
+                            newTitle = `${targetTitle} - [[${sourceTitle}]]`;
+                          }
+
+                          if (!extensionAPI) {
+                            return deleteAndWarn(
+                              `Failed to update node title.`
+                            );
+                          }
+
+                          await window.roamAlphaAPI.data.page.update({
+                            page: {
+                              uid: target.props.uid,
+                              title: newTitle,
+                            },
+                          });
+                          const { h, w, imageUrl } =
+                            await calcCanvasNodeSizeAndImg({
+                              text: newTitle,
+                              uid: target.props.uid,
+                              nodeType: target.type,
+                              extensionAPI,
+                            });
                           this.app.updateShapes([
                             {
-                              id: arrow.id,
+                              id: target.id,
                               type: target.type,
+                              props: {
+                                h,
+                                w,
+                                imageUrl,
+                                title: newTitle,
+                              },
                             },
                           ]);
-                        }
-                        const {
-                          triples,
-                          label: relationLabel,
-                          // complement,
-                        } = relation;
-                        const isOriginal = arrowText === relationLabel;
-                        const newTriples = triples
-                          .map((t) => {
-                            if (/is a/i.test(t[1])) {
-                              const targetNode =
-                                (t[2] === "source" && isOriginal) ||
-                                (t[2] === "destination" && !isOriginal)
-                                  ? source
-                                  : target;
-                              const { title, uid } =
-                                targetNode.props as DiscourseNodeShape["props"];
-                              return [
-                                t[0],
-                                isPageUid(uid) ? "has title" : "with uid",
-                                isPageUid(uid) ? title : uid,
-                              ];
-                            }
-                            return t.slice(0);
-                          })
-                          .map(([source, relation, target]) => ({
-                            source,
-                            relation,
-                            target,
-                          }));
-                        triplesToBlocks({
-                          defaultPageTitle: `Auto generated from ${title}`,
-                          toPage: async (
-                            title: string,
-                            blocks: InputTextNode[]
-                          ) => {
-                            const parentUid =
-                              getPageUidByPageTitle(title) ||
-                              (await createPage({
-                                title: title,
-                              }));
 
-                            await Promise.all(
-                              blocks.map((node, order) =>
-                                createBlock({ node, order, parentUid }).catch(
-                                  () =>
-                                    console.error(
-                                      `Failed to create block: ${JSON.stringify(
-                                        { node, order, parentUid },
-                                        null,
-                                        4
-                                      )}`
-                                    )
-                                )
-                              )
+                          renderToast({
+                            id: "tldraw-success",
+                            intent: "success",
+                            content: `Updated node title.`,
+                          });
+
+                          return;
+                        }
+
+                        // Handle "Add Relationship Arrows"
+                        if (allRelationIdSet.has(arrow.type)) {
+                          const relation = allRelationsById[arrow.type];
+                          if (!relation) return;
+                          const sourceLabel =
+                            discourseContext.nodes[relation.source].text;
+                          if (source.type !== relation.source) {
+                            return deleteAndWarn(
+                              `Source node must be of type ${sourceLabel}`
                             );
-                            await openBlockInSidebar(parentUid);
-                          },
-                          nodeSpecificationsByLabel: Object.fromEntries(
-                            Object.values(discourseContext.nodes).map((n) => [
-                              n.text,
-                              n.specification,
-                            ])
-                          ),
-                        })(newTriples)();
+                          }
+                          const possibleTargets = discourseContext.relations[
+                            relation.label
+                          ]
+                            .filter((r) => r.source === relation.source)
+                            .map((r) => r.destination);
+                          if (!possibleTargets.includes(target.type)) {
+                            return deleteAndWarn(
+                              `Target node must be of type ${possibleTargets
+                                .map((t) => discourseContext.nodes[t].text)
+                                .join(", ")}`
+                            );
+                          }
+                          if (arrow.type !== target.type) {
+                            this.app.updateShapes([
+                              {
+                                id: arrow.id,
+                                type: target.type,
+                              },
+                            ]);
+                          }
+                          const {
+                            triples,
+                            label: relationLabel,
+                            // complement,
+                          } = relation;
+                          const isOriginal = arrowText === relationLabel;
+                          const newTriples = triples
+                            .map((t) => {
+                              if (/is a/i.test(t[1])) {
+                                const targetNode =
+                                  (t[2] === "source" && isOriginal) ||
+                                  (t[2] === "destination" && !isOriginal)
+                                    ? source
+                                    : target;
+                                const { title, uid } =
+                                  targetNode.props as DiscourseNodeShape["props"];
+                                return [
+                                  t[0],
+                                  isPageUid(uid) ? "has title" : "with uid",
+                                  isPageUid(uid) ? title : uid,
+                                ];
+                              }
+                              return t.slice(0);
+                            })
+                            .map(([source, relation, target]) => ({
+                              source,
+                              relation,
+                              target,
+                            }));
+                          triplesToBlocks({
+                            defaultPageTitle: `Auto generated from ${title}`,
+                            toPage: async (
+                              title: string,
+                              blocks: InputTextNode[]
+                            ) => {
+                              const parentUid =
+                                getPageUidByPageTitle(title) ||
+                                (await createPage({
+                                  title: title,
+                                }));
+
+                              await Promise.all(
+                                blocks.map((node, order) =>
+                                  createBlock({ node, order, parentUid }).catch(
+                                    () =>
+                                      console.error(
+                                        `Failed to create block: ${JSON.stringify(
+                                          { node, order, parentUid },
+                                          null,
+                                          4
+                                        )}`
+                                      )
+                                  )
+                                )
+                              );
+                              await openBlockInSidebar(parentUid);
+                            },
+                            nodeSpecificationsByLabel: Object.fromEntries(
+                              Object.values(discourseContext.nodes).map((n) => [
+                                n.text,
+                                n.specification,
+                              ])
+                            ),
+                          })(newTriples)();
+                        }
                       };
                     };
                   }
@@ -1182,7 +1282,7 @@ const TldrawCanvas = ({ title }: Props) => {
           ),
           ...Object.keys(allFormatsWithReferencedNodes).map((id, i) =>
             defineShape<DiscourseReferencedNodeShape>({
-              type: id + "_referenced",
+              type: id,
               getShapeUtil: () =>
                 class extends DiscourseReferencedNodeUtil {
                   constructor(app: TldrawApp) {
@@ -1516,6 +1616,12 @@ const TldrawCanvas = ({ title }: Props) => {
                     name,
                   ])
                 ),
+                ...Object.fromEntries(
+                  Object.keys(allFormatsWithReferencedNodes).map((name) => [
+                    `shape.relation.${name}`,
+                    name,
+                  ])
+                ),
                 "action.toggle-full-screen": "Toggle Full Screen",
                 "action.convert-to-block": "Convert to Block",
               },
@@ -1632,15 +1738,14 @@ const TldrawCanvas = ({ title }: Props) => {
                 };
               });
               Object.keys(allFormatsWithReferencedNodes).forEach((name) => {
-                tools[`${name}_referenced`] = {
-                  id: `${name}_referenced`,
+                tools[name] = {
+                  id: name,
                   icon: "tool-arrow",
-                  label:
-                    `shape.relation.${name}_referenced` as TLTranslationKey,
+                  label: `shape.relation.${name}` as TLTranslationKey,
                   kbd: "",
                   readonlyOk: true,
                   onSelect: () => {
-                    app.setSelectedTool(`${name}_referenced`);
+                    app.setSelectedTool(`${name}`);
                   },
                   style: {
                     color: `var(--palette-${COLOR_ARRAY[0]})`,
@@ -1653,8 +1758,9 @@ const TldrawCanvas = ({ title }: Props) => {
               toolbar.push(
                 ...allNodes.map((n) => toolbarItem(tools[n.type])),
                 ...allRelationNames.map((name) => toolbarItem(tools[name])),
+                // MG TODO: UPDATE NAME to name.text
                 ...Object.keys(allFormatsWithReferencedNodes).map((name) =>
-                  toolbarItem(tools[`${name}_referenced`])
+                  toolbarItem(tools[name])
                 )
               );
               return toolbar;
