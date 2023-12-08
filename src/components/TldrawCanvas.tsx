@@ -890,7 +890,6 @@ const TldrawCanvas = ({ title }: Props) => {
 
   type FormatObject = {
     [key: string]: {
-      text: string;
       format: string;
       matchName: string;
       matchType: string;
@@ -910,8 +909,7 @@ const TldrawCanvas = ({ title }: Props) => {
         const matchName = nonContentMatches[0][1];
         const matchType = allNodes.find((n) => n.text === matchName)
           ?.type as string;
-        obj[`${n.type}_referenced`] = {
-          text: `Add ${matchName}`,
+        obj[`Add ${matchName}`] = {
           format: n.format,
           matchName,
           matchType,
@@ -1082,12 +1080,13 @@ const TldrawCanvas = ({ title }: Props) => {
                         }
 
                         // Handle "Add Referenced Node" Arrows
-                        if (arrow.type === "_EVD-node_referenced") {
+                        if (
+                          Object.keys(allFormatsWithReferencedNodes).includes(
+                            arrow.type
+                          )
+                        ) {
                           // source and target are expected to be pages
                           // TODO: support blocks
-                          const { format, matchName, matchType } =
-                            allFormatsWithReferencedNodes[arrow.type];
-
                           const targetTitle = target.props.title;
                           const sourceTitle = source.props.title;
                           const isTargetTitleCurrent =
@@ -1771,7 +1770,6 @@ const TldrawCanvas = ({ title }: Props) => {
               toolbar.push(
                 ...allNodes.map((n) => toolbarItem(tools[n.type])),
                 ...allRelationNames.map((name) => toolbarItem(tools[name])),
-                // MG TODO: UPDATE NAME to name.text
                 ...Object.keys(allFormatsWithReferencedNodes).map((name) =>
                   toolbarItem(tools[name])
                 )
