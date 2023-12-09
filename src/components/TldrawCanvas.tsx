@@ -885,37 +885,48 @@ const TldrawCanvas = ({ title }: Props) => {
     return allNodes;
   }, [allRelations]);
 
-  type FormatObject = {
-    [key: string]: {
-      format: string;
-      matchName: string;
-      matchType: string;
-    };
+  type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
+
+  type ReferenceFormatType = {
+    format: string;
+    sourceName: string;
+    sourceType: string;
+    destinationType: string;
+    destinationName: string;
   };
 
-  const allFormatsWithReferencedNodes = useMemo(() => {
-    const obj: FormatObject = {};
+  const allAddReferencedNodeByAction = useMemo(() => {
+    const obj: AddReferencedNodeType = {};
 
+    // TODO: support multiple referenced node
+    // with migration from format to specification
     allNodes.forEach((n) => {
-      const matches = [...n.format.matchAll(/{([\w\d-]+)}/g)];
-      const nonContentMatches = matches.filter(
+      const referencedNodes = [...n.format.matchAll(/{([\w\d-]+)}/g)].filter(
         (match) => match[1] !== "content"
       );
 
-      if (nonContentMatches.length > 0) {
-        const matchName = nonContentMatches[0][1];
-        const matchType = allNodes.find((n) => n.text === matchName)
+      if (referencedNodes.length > 0) {
+        const sourceName = referencedNodes[0][1];
+        const sourceType = allNodes.find((node) => node.text === sourceName)
           ?.type as string;
-        obj[`Add ${matchName}`] = {
+
+        if (!obj[`Add ${sourceName}`]) obj[`Add ${sourceName}`] = [];
+
+        obj[`Add ${sourceName}`].push({
           format: n.format,
-          matchName,
-          matchType,
-        };
+          sourceName,
+          sourceType,
+          destinationType: n.type,
+          destinationName: n.text,
+        });
       }
     });
 
     return obj;
   }, [allNodes]);
+  const allAddReferencedNodeActions = useMemo(() => {
+    return Object.keys(allAddReferencedNodeByAction);
+  }, [allAddReferencedNodeByAction]);
 
   const extensionAPI = useExtensionAPI();
   const customTldrawConfig = useMemo(
@@ -982,10 +993,10 @@ const TldrawCanvas = ({ title }: Props) => {
             )
           )
           .concat(
-            Object.keys(allFormatsWithReferencedNodes).map(
-              (name) =>
+            Object.keys(allAddReferencedNodeByAction).map(
+              (action) =>
                 class extends TLArrowTool {
-                  static id = `${name}` as string;
+                  static id = `${action}` as string;
                   static initial = "idle";
                   static children: typeof TLArrowTool.children = () => {
                     const [Idle, Pointing] = TLArrowTool.children();
@@ -1003,14 +1014,18 @@ const TldrawCanvas = ({ title }: Props) => {
                           if (info.target !== "shape") {
                             return cancelAndWarn("Must start on a node.");
                           }
-                          const { matchName, matchType } =
-                            allFormatsWithReferencedNodes[name];
-                          if (info.shape.type !== matchType) {
+                          const sourceType =
+                            allAddReferencedNodeByAction[action][0].sourceType;
+                          const sourceName =
+                            allAddReferencedNodeByAction[action][0].sourceName;
+                          if (info.shape.type !== sourceType) {
                             return cancelAndWarn(
-                              `Starting node must be one of ${matchName}`
+                              `Starting node must be one of ${sourceName}`
                             );
                           } else {
-                            (this.parent as TLArrowTool).shapeType = `${name}`;
+                            (
+                              this.parent as TLArrowTool
+                            ).shapeType = `${action}`;
                           }
                           this.parent.transition("pointing", info);
                         };
@@ -1018,7 +1033,7 @@ const TldrawCanvas = ({ title }: Props) => {
                       Pointing,
                     ];
                   };
-                  shapeType = `${name}`;
+                  shapeType = `${action}`;
                   override styles = ["opacity" as const];
                 }
             )
@@ -1027,7 +1042,6 @@ const TldrawCanvas = ({ title }: Props) => {
             class extends TLSelectTool {
               // @ts-ignore
               static children: typeof TLSelectTool.children = () => {
-                const allRelationIdSet = new Set(allRelationIds);
                 return TLSelectTool.children().map((c) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
@@ -1078,10 +1092,19 @@ const TldrawCanvas = ({ title }: Props) => {
 
                         // Handle "Add Referenced Node" Arrows
                         if (
-                          Object.keys(allFormatsWithReferencedNodes).includes(
-                            arrow.type
-                          )
+                          new Set(allAddReferencedNodeActions).has(arrow.type)
                         ) {
+                          const possibleTargets = allAddReferencedNodeByAction[
+                            arrow.type
+                          ].map((action) => action.destinationType);
+                          if (!possibleTargets.includes(target.type)) {
+                            return deleteAndWarn(
+                              `Target node must be of type ${possibleTargets
+                                .map((t) => discourseContext.nodes[t].text)
+                                .join(", ")}`
+                            );
+                          }
+
                           // source and target are expected to be pages
                           // TODO: support blocks
                           const targetTitle = target.props.title;
@@ -1151,7 +1174,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         }
 
                         // Handle "Add Relationship Arrows"
-                        if (allRelationIdSet.has(arrow.type)) {
+                        if (new Set(allRelationIds).has(arrow.type)) {
                           const relation = allRelationsById[arrow.type];
                           if (!relation) return;
                           const sourceLabel =
@@ -1277,13 +1300,13 @@ const TldrawCanvas = ({ title }: Props) => {
                 },
             })
           ),
-          ...Object.keys(allFormatsWithReferencedNodes).map((id, i) =>
+          ...allAddReferencedNodeActions.map((action) =>
             defineShape<DiscourseReferencedNodeShape>({
-              type: id,
+              type: action,
               getShapeUtil: () =>
                 class extends DiscourseReferencedNodeUtil {
                   constructor(app: TldrawApp) {
-                    super(app, id);
+                    super(app, action);
                   }
                 },
             })
@@ -1291,7 +1314,7 @@ const TldrawCanvas = ({ title }: Props) => {
         ],
         allowUnknownShapes: true,
       }),
-    [allNodes, allRelationIds, allRelationsById, allFormatsWithReferencedNodes]
+    [allNodes, allRelationIds, allRelationsById, allAddReferencedNodeActions]
   );
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
@@ -1614,7 +1637,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   ])
                 ),
                 ...Object.fromEntries(
-                  Object.keys(allFormatsWithReferencedNodes).map((name) => [
+                  allAddReferencedNodeActions.map((name) => [
                     `shape.relation.${name}`,
                     name,
                   ])
@@ -1734,8 +1757,8 @@ const TldrawCanvas = ({ title }: Props) => {
                   },
                 };
               });
-              Object.keys(allFormatsWithReferencedNodes).forEach((name) => {
-                const node = allFormatsWithReferencedNodes[name];
+              Object.keys(allAddReferencedNodeByAction).forEach((name) => {
+                const action = allAddReferencedNodeByAction[name];
                 const nodeColorArray = Object.keys(discourseContext.nodes).map(
                   (key) => ({
                     text: discourseContext.nodes[key].text,
@@ -1743,7 +1766,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   })
                 );
                 const color =
-                  nodeColorArray.find((n) => n.text === node.matchName)
+                  nodeColorArray.find((n) => n.text === action[0].sourceName)
                     ?.color || "";
                 tools[name] = {
                   id: name,
@@ -1767,8 +1790,8 @@ const TldrawCanvas = ({ title }: Props) => {
               toolbar.push(
                 ...allNodes.map((n) => toolbarItem(tools[n.type])),
                 ...allRelationNames.map((name) => toolbarItem(tools[name])),
-                ...Object.keys(allFormatsWithReferencedNodes).map((name) =>
-                  toolbarItem(tools[name])
+                ...allAddReferencedNodeActions.map((action) =>
+                  toolbarItem(tools[action])
                 )
               );
               return toolbar;
