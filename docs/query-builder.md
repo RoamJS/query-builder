@@ -178,8 +178,9 @@ Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with 
 
 This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in two arguments:
 
-1. The block reference, alias, or page title of the query instance
-1. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
+1. The block reference, alias, or page title of the query instance.
+2. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
+3. (Optional) The number of results returned.
 
 ### Alias
 
