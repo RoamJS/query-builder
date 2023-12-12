@@ -13,18 +13,23 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 
+export const formatHexColor = (color: string) => {
+  if (!color) return "";
+  const COLOR_TEST = /^[0-9a-f]{6}$/i;
+  if (color.startsWith("#")) {
+    // handle legacy color format
+    return color;
+  } else if (COLOR_TEST.test(color)) {
+    return "#" + color;
+  }
+  return "";
+};
+
 const DiscourseNodeCanvasSettings = ({ uid }: { uid: string }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(uid), [uid]);
   const [color, setColor] = useState<string>(() => {
     const color = getSettingValueFromTree({ tree, key: "color" });
-    const COLOR_TEST = /^[0-9a-f]{6}$/i;
-    if (color.startsWith("#")) {
-      return color;
-      // handle legacy color format
-    } else if (COLOR_TEST.test(color)) {
-      return "#" + color;
-    }
-    return "";
+    return formatHexColor(color);
   });
   const [alias, setAlias] = useState<string>(() =>
     getSettingValueFromTree({ tree, key: "alias" })

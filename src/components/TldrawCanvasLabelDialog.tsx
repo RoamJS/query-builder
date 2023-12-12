@@ -10,6 +10,8 @@ import {
   // Position,
   Spinner,
   SpinnerSize,
+  Checkbox,
+  Label,
 } from "@blueprintjs/core";
 import { IconName, IconNames } from "@blueprintjs/icons";
 import fireQuery from "../utils/fireQuery";
@@ -29,7 +31,10 @@ const LabelDialogAutocomplete = ({
   initialValue,
   onSubmit,
   isCreateCanvasNode,
-  initialLabel,
+  referencedNode,
+  action,
+  format,
+  label,
 }: {
   setLabel: (text: string) => void;
   setUid: (uid: string) => void;
@@ -38,39 +43,119 @@ const LabelDialogAutocomplete = ({
   initialValue: { text: string; uid: string };
   onSubmit: () => void;
   isCreateCanvasNode: boolean;
-  initialLabel: string;
+  referencedNode: { name: string; nodeType: string } | null;
+  action: string;
+  format: string;
+  label: string;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<Result[]>([]);
+  const [referencedNodeOptions, setReferencedNodeOptions] = useState<Result[]>(
+    []
+  );
+  const [referencedNodeValue, setReferencedNodeValue] = useState("");
+  const [isAddReferencedNode, setAddReferencedNode] = useState(false);
+  const [isEditExistingLabel, setIsEditExistingLabel] = useState(false);
+  const [content, setContent] = useState(label);
+
   useEffect(() => {
     setIsLoading(true);
     const conditionUid = window.roamAlphaAPI.util.generateUID();
+
     setTimeout(() => {
-      fireQuery({
-        returnNode: "node",
-        selections: [],
-        conditions: [
-          {
-            source: "node",
-            relation: "is a",
-            target: nodeType,
-            uid: conditionUid,
-            type: "clause",
-          },
-        ],
-      }).then((results) => {
-        setOptions(results);
+      if (nodeType) {
+        fireQuery({
+          returnNode: "node",
+          selections: [],
+          conditions: [
+            {
+              source: "node",
+              relation: "is a",
+              target: nodeType,
+              uid: conditionUid,
+              type: "clause",
+            },
+          ],
+        }).then((results) => {
+          setOptions(results);
+        });
+      }
+      if (referencedNode) {
+        fireQuery({
+          returnNode: "node",
+          selections: [],
+          conditions: [
+            {
+              source: "node",
+              relation: "is a",
+              target: referencedNode.nodeType,
+              uid: conditionUid,
+              type: "clause",
+            },
+          ],
+        }).then((results) => {
+          setReferencedNodeOptions(results);
+          setIsLoading(false);
+        });
+      } else {
         setIsLoading(false);
-      });
+      }
     }, 100);
-  }, [nodeType, setOptions]);
+  }, [
+    nodeType,
+    referencedNode?.nodeType,
+    setOptions,
+    setReferencedNodeOptions,
+  ]);
 
   const setValue = React.useCallback(
     (r: Result) => {
-      setLabel(r.text);
+      if (action === "creating" && r.uid === initialUid) {
+        // replace when migrating from format to specification
+        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
+          if (/content/i.test(val)) return r.text;
+          if (
+            referencedNode &&
+            new RegExp(referencedNode.name, "i").test(val) &&
+            isAddReferencedNode
+          )
+            return referencedNodeValue;
+          return "";
+        });
+        setLabel(pageName);
+      } else {
+        setLabel(r.text);
+      }
       setUid(r.uid);
+      setContent(r.text);
     },
-    [setLabel, setUid]
+    [setLabel, setUid, isAddReferencedNode, referencedNode]
+  );
+  const setValueFromReferencedNode = React.useCallback(
+    (r: Result) => {
+      if (!referencedNode) return;
+      if (action === "editing") {
+        // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
+        // replace when migrating from format to specification
+        if (content.endsWith(" - ")) {
+          setLabel(`${content}[[${r.text}]]`);
+        } else if (content.endsWith(" -")) {
+          setLabel(`${content} [[${r.text}]]`);
+        } else {
+          setLabel(`${content} - [[${r.text}]]`);
+        }
+      } else {
+        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
+          if (/content/i.test(val)) return content;
+          if (new RegExp(referencedNode.name, "i").test(val))
+            return `[[${r.text}]]`;
+          return "";
+        });
+        setLabel(pageName);
+      }
+      setReferencedNodeValue(r.text);
+    },
+    [setLabel, referencedNode, content, referencedNodeValue]
   );
   const onNewItem = React.useCallback(
     (text: string) => ({ text, uid: initialUid }),
@@ -91,30 +176,102 @@ const LabelDialogAutocomplete = ({
 
   return (
     <>
-      <div>
-        {!isCreateCanvasNode ? (
-          <div className="my-4">
-            <div className="font-semibold mb-1">Current Title</div>
-            <div>{initialLabel}</div>
+      {!isCreateCanvasNode ? (
+        <div className="m-6">
+          <div className="font-semibold mb-1">Current Title</div>
+          <div>{initialValue.text}</div>
+        </div>
+      ) : (
+        ""
+      )}
+      {(isAddReferencedNode || isEditExistingLabel || isCreateCanvasNode) && (
+        <div className="m-6">
+          <div className="font-semibold mb-1">
+            {!isCreateCanvasNode ? "New Title" : "Preview"}
           </div>
+          <div>{label}</div>
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        {action === "editing" ? (
+          <Checkbox
+            label={`Edit`}
+            checked={isEditExistingLabel}
+            onChange={(e) => {
+              const checked = e.target as HTMLInputElement;
+              setIsEditExistingLabel(checked.checked);
+            }}
+            disabled={isAddReferencedNode}
+            indeterminate={isAddReferencedNode}
+            className={isAddReferencedNode ? "flex-grow" : ""}
+          />
+        ) : isAddReferencedNode ? (
+          <Label className={"flex-grow"}>Title</Label>
         ) : (
-          ""
+          <div className={"flex-grow"}></div>
+        )}
+        {referencedNode && (
+          <Checkbox
+            label={`Set ${referencedNode?.name}`}
+            checked={isAddReferencedNode}
+            onChange={(e) => {
+              const checked = e.target as HTMLInputElement;
+              setAddReferencedNode(checked.checked);
+            }}
+            disabled={action === "setting" || isEditExistingLabel}
+            indeterminate={action === "setting" || isEditExistingLabel}
+          />
         )}
       </div>
-      <AutocompleteInput
-        value={initialValue}
-        setValue={setValue}
-        onConfirm={onSubmit}
-        options={options}
-        multiline
-        autoFocus
-        onNewItem={onNewItem}
-        itemToQuery={itemToQuery}
-        filterOptions={filterOptions}
-        disabled={isLoading}
-        placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
-        maxItemsDisplayed={100}
-      />
+      {(isEditExistingLabel || isCreateCanvasNode) && (
+        <AutocompleteInput
+          value={isCreateCanvasNode ? { text: "", uid: "" } : initialValue}
+          setValue={setValue}
+          onConfirm={onSubmit}
+          options={options}
+          multiline
+          autoFocus
+          onNewItem={onNewItem}
+          itemToQuery={itemToQuery}
+          filterOptions={filterOptions}
+          disabled={
+            isLoading ||
+            (action === "editing" && !!referencedNode && !isEditExistingLabel)
+          }
+          placeholder={isLoading ? "Loading ..." : "Enter a label ..."}
+          maxItemsDisplayed={100}
+        />
+      )}
+      {isAddReferencedNode &&
+        (action === "creating" || action === "editing") && (
+          <div className="referenced-node-autocomplete">
+            <Label>{referencedNode?.name}</Label>
+            <AutocompleteInput
+              value={
+                referencedNodeValue
+                  ? { text: referencedNodeValue, uid: "" }
+                  : { text: "", uid: "" }
+              }
+              setValue={setValueFromReferencedNode}
+              options={referencedNodeOptions}
+              multiline
+              onNewItem={onNewItem}
+              itemToQuery={itemToQuery}
+              filterOptions={filterOptions}
+              placeholder={
+                isLoading ? "..." : `Enter a ${referencedNode?.name} ...`
+              }
+              maxItemsDisplayed={100}
+            />
+          </div>
+        )}
     </>
   );
 };
@@ -153,29 +310,58 @@ const LabelDialog = ({
   const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
   const isCreateCanvasNode = !isLiveBlock(initialUid);
+  const { format } = discourseContext.nodes[nodeType];
+  const getReferencedNodeInFormat = () => {
+    const regex = /{([\w\d-]*)}/g;
+    const matches = [...format.matchAll(regex)];
+
+    for (const match of matches) {
+      const val = match[1];
+      if (val.toLowerCase() === "context") continue;
+
+      const referencedNode = Object.values(discourseContext.nodes).find(
+        ({ text }) => new RegExp(text, "i").test(val)
+      );
+
+      if (referencedNode) {
+        return {
+          name: referencedNode.text,
+          nodeType: referencedNode.type,
+        };
+      }
+    }
+
+    return null;
+  };
+  const referencedNode = getReferencedNodeInFormat();
 
   const renderCalloutText = () => {
     let title = "Please provide a label";
     let icon = IconNames.INFO_SIGN;
     let action = "initial";
+    const nodeLabel = discourseContext.nodes[nodeType].text;
 
     if (!label) return { title, icon, action };
 
     if (!isCreateCanvasNode) {
       if (uid === initialUid) {
-        title = "Edit title of current discourse node";
+        title = `Edit title of ${nodeLabel} node`;
         icon = IconNames.EDIT;
+        action = "editing";
       } else {
-        title = "Change to existing discourse node";
+        title = `Change to existing ${nodeLabel} node`;
         icon = IconNames.EXCHANGE;
+        action = "changing";
       }
     } else {
       if (uid === initialUid) {
-        title = "Create new discourse node";
+        title = `Create new ${nodeLabel} node`;
         icon = IconNames.NEW_OBJECT;
+        action = "creating";
       } else {
-        title = "Set to existing discourse node";
+        title = `Set to existing ${nodeLabel} node`;
         icon = IconNames.LINK;
+        action = "setting";
       }
     }
 
@@ -185,7 +371,7 @@ const LabelDialog = ({
 
   const onSubmit = () => {
     setLoading(true);
-    onSuccess({ text: label, uid })
+    onSuccess({ text: label, uid, action: calloutText.action })
       .then(onClose)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -226,13 +412,12 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={isOpen}
-        title={!isCreateCanvasNode ? "Edit Canvas Node" : "Create Canvas Node"}
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?
         canEscapeKeyClose
         autoFocus={false}
-        className={"roamjs-discourse-playground-dialog"}
+        className={"roamjs-canvas-dialog"}
       >
         <div className={Classes.DIALOG_BODY} ref={containerRef}>
           <Callout
@@ -249,7 +434,10 @@ const LabelDialog = ({
             initialValue={initialValue}
             onSubmit={onSubmit}
             isCreateCanvasNode={isCreateCanvasNode}
-            initialLabel={initialLabel}
+            action={calloutText.action || ""}
+            referencedNode={referencedNode}
+            format={format}
+            label={label}
           />
         </div>
         <div className={Classes.DIALOG_FOOTER}>

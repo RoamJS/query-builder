@@ -435,17 +435,25 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
   .roamjs-discourse-playground-dialog .bp3-popover-wrapper,
   .roamjs-discourse-playground-dialog .roamjs-autocomplete-input-target,
   .roamjs-discourse-playground-dialog textarea,
-  .roamjs-discourse-playground-dialog input {
+  .roamjs-discourse-playground-dialog input,
+  .roamjs-canvas-dialog .bp3-popover-wrapper,
+  .roamjs-canvas-dialog .roamjs-autocomplete-input-target,
+  .roamjs-canvas-dialog textarea,
+  .roamjs-canvas-dialog input {
   display: inline-block;
   width: 100%;
   }
   
-  .roamjs-discourse-playground-dialog textarea {
+  .roamjs-discourse-playground-dialog textarea,
+  .roamjs-canvas-dialog textarea {
   min-height: 96px;
   }
   
   .bp3-tabs.bp3-vertical>.bp3-tab-panel {
   flex-grow: 1;
+  }
+  .bp3-popover-wrapper + .referenced-node-autocomplete {
+    margin-top: 1rem;
   }`);
       unloads.add(function removeStyle() {
         style.remove();
