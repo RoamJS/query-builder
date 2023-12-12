@@ -412,7 +412,6 @@ const LabelDialog = ({
     <>
       <Dialog
         isOpen={isOpen}
-        title={!isCreateCanvasNode ? "Edit Canvas Node" : "Create Canvas Node"}
         onClose={onCancelClick}
         canOutsideClickClose
         // Escape isn't working?

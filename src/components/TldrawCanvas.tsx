@@ -764,7 +764,7 @@ class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeSha
       font: "mono" as const,
     };
   }
-  render(shape: DiscourseRelationShape) {
+  render(shape: DiscourseReferencedNodeShape) {
     return (
       <>
         <style>{`#${shape.id.replace(":", "_")}_clip_0 {
@@ -1638,7 +1638,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 ),
                 ...Object.fromEntries(
                   allAddReferencedNodeActions.map((name) => [
-                    `shape.relation.${name}`,
+                    `shape.referenced.${name}`,
                     name,
                   ])
                 ),
@@ -1771,7 +1771,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 tools[name] = {
                   id: name,
                   icon: "tool-arrow",
-                  label: `shape.relation.${name}` as TLTranslationKey,
+                  label: `shape.referenced.${name}` as TLTranslationKey,
                   kbd: "",
                   readonlyOk: true,
                   onSelect: () => {
