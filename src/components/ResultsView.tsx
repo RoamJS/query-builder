@@ -251,6 +251,28 @@ const ResultsView: ResultsViewComponent = ({
     [parentUid]
   );
   const [activeSort, setActiveSort] = useState(settings.activeSort);
+  const resultViewSetActiveSort = React.useCallback(
+    (as: Sorts) => {
+      setActiveSort(as);
+      if (preventSavingSettings) return;
+      const sortsNode = getSubTree({
+        key: "sorts",
+        parentUid: settings.resultNodeUid,
+      });
+      sortsNode.children.forEach((c) => deleteBlock(c.uid));
+      as.map((a) => ({
+        text: a.key,
+        children: [{ text: `${a.descending}` }],
+      })).forEach((node, order) =>
+        createBlock({
+          parentUid: sortsNode.uid,
+          node,
+          order,
+        })
+      );
+    },
+    [setActiveSort, preventSavingSettings, parentUid]
+  );
 
   // @deprecated - use columnFilters
   const [filters, setFilters] = useState(settings.filters);
@@ -345,29 +367,6 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
-
-  const resultViewSetActiveSort = React.useCallback(
-    (as: Sorts) => {
-      setActiveSort(as);
-      if (preventSavingSettings) return;
-      const sortsNode = getSubTree({
-        key: "sorts",
-        parentUid,
-      });
-      sortsNode.children.forEach((c) => deleteBlock(c.uid));
-      as.map((a) => ({
-        text: a.key,
-        children: [{ text: `${a.descending}` }],
-      })).forEach((node, order) =>
-        createBlock({
-          parentUid: sortsNode.uid,
-          node,
-          order,
-        })
-      );
-    },
-    [setActiveSort, preventSavingSettings, parentUid]
-  );
 
   return (
     <div
@@ -570,7 +569,7 @@ const ResultsView: ResultsViewComponent = ({
                   })}
                 </div>
               ) : isEditColumnSort ? (
-                <div className="relative w-80 p-2">
+                <div className="relative p-4">
                   <h4 className="font-bold flex justify-between items-center p-2">
                     Set Sort
                     <Button
@@ -584,112 +583,49 @@ const ResultsView: ResultsViewComponent = ({
                     {activeSort.map(({ key, descending }) => (
                       <div key={key}>
                         <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="w-24 mr-3 truncate">{key}</div>
                           <MenuItemSelect
-                            className="roamjs-column-filter-key flex-grow"
-                            items={columns
-                              .map((c) => c.key)
-                              .filter(
-                                (c) => !activeSort.some((as) => as.key === c)
-                              )}
-                            transformItem={(k) =>
-                              k.length > 10 ? `${k.slice(0, 7)}...` : k
-                            }
-                            activeItem={key}
-                            onItemSelect={(newKey) => {
-                              // setColumnFilters(
-                              //   columnFilters.map((f) =>
-                              //     f.uid === uid ? { ...f, key: newKey } : f
-                              //   )
-                              // );
-                              // updateBlock({ uid, text: newKey });
-                            }}
-                            disabled={true}
-                          />
-                          <MenuItemSelect
-                            className="roamjs-column-filter-type"
-                            items={["Default", "Ascending", "Descending"]}
+                            items={["Ascending", "Descending"]}
                             activeItem={descending ? "Descending" : "Ascending"}
-                            onItemSelect={(newType) => {
-                              // if (sortIndex >= 0) {
-                              //   if (activeSort[sortIndex].descending) {
-                              //     setActiveSort(
-                              //       activeSort.filter((s) => s.key !== c.key)
-                              //     );
-                              //   } else {
-                              //     setActiveSort(
-                              //       activeSort.map((s) =>
-                              //         s.key === c.key
-                              //           ? { key: c.key, descending: true }
-                              //           : s
-                              //       )
-                              //     );
-                              //   }
-                              // } else {
-                              //   setActiveSort([
-                              //     ...activeSort,
-                              //     { key: c.key, descending: false },
-                              //   ]);
-                              // }
-                              // setColumnFilters(
-                              //   columnFilters.map((f) =>
-                              //     f.uid === uid ? { ...f, type: newType } : f
-                              //   )
-                              // );
-                              // setInputSetting({
-                              //   blockUid: uid,
-                              //   key: "type",
-                              //   value: newType,
-                              // });
+                            onItemSelect={(value) => {
+                              const descending = value === "Descending";
+                              resultViewSetActiveSort(
+                                activeSort.map((s) =>
+                                  s.key === key ? { key, descending } : s
+                                )
+                              );
                             }}
                           />
                           <Button
                             icon={"trash"}
                             minimal
                             onClick={() => {
-                              // setColumnFilters(
-                              //   columnFilters.filter((f) => f.uid !== uid)
-                              // );
-                              // deleteBlock(uid);
+                              resultViewSetActiveSort(
+                                activeSort.filter((s) => s.key !== key)
+                              );
                             }}
                           />
                         </div>
                       </div>
                     ))}
-                    <Button
-                      text={"Add Sort"}
-                      intent="primary"
-                      onClick={() => {
-                        // const newSort = {
-                        //   key: columns[0].key,
-                        //   descending: true,
-                        //   value: "",
-                        //   uid: window.roamAlphaAPI.util.generateUID(),
-                        // };
-                        // resultViewSetActiveSort([...activeSort, newSort]);
-                        // const columnFiltersNode = getSubTree({
-                        //   key: "columnFilters",
-                        //   parentUid: settings.resultNodeUid,
-                        // });
-                        // createBlock({
-                        //   parentUid: columnFiltersNode.uid,
-                        //   order: Number.MAX_VALUE,
-                        //   node: {
-                        //     text: newSort.key,
-                        //     uid: newSort.uid,
-                        //     children: [
-                        //       {
-                        //         text: "type",
-                        //         children: [{ text: newSort.type }],
-                        //       },
-                        //       {
-                        //         text: "value",
-                        //         children: [{ text: newSort.value }],
-                        //       },
-                        //     ],
-                        //   },
-                        // });
+                    <MenuItemSelect
+                      items={columns
+                        .map((c) => c.key)
+                        .filter((c) => !activeSort.some((as) => as.key === c))}
+                      transformItem={(k) =>
+                        k.length > 10 ? `${k.slice(0, 7)}...` : k
+                      }
+                      ButtonProps={{
+                        text: "Choose Column",
+                        intent: "primary",
+                        disabled: columns.length === activeSort.length,
                       }}
-                      rightIcon={"plus"}
+                      onItemSelect={(column) => {
+                        resultViewSetActiveSort([
+                          ...activeSort,
+                          { key: column, descending: false },
+                        ]);
+                      }}
                     />
                   </div>
                 </div>
@@ -1034,7 +970,7 @@ const ResultsView: ResultsViewComponent = ({
                   results={paginatedResults}
                   parentUid={settings.resultNodeUid}
                   activeSort={activeSort}
-                  setActiveSort={setActiveSort}
+                  setActiveSort={resultViewSetActiveSort}
                   filters={filters}
                   setFilters={setFilters}
                   views={views}
