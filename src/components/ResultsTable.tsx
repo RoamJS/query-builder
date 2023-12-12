@@ -445,28 +445,6 @@ const ResultsTable = ({
     },
     [thRefs, parentUid]
   );
-  const resultHeaderSetActiveSort = React.useCallback(
-    (as: Sorts) => {
-      setActiveSort(as);
-      if (preventSavingSettings) return;
-      const sortsNode = getSubTree({
-        key: "sorts",
-        parentUid,
-      });
-      sortsNode.children.forEach((c) => deleteBlock(c.uid));
-      as.map((a) => ({
-        text: a.key,
-        children: [{ text: `${a.descending}` }],
-      })).forEach((node, order) =>
-        createBlock({
-          parentUid: sortsNode.uid,
-          node,
-          order,
-        })
-      );
-    },
-    [setActiveSort, preventSavingSettings, parentUid]
-  );
   const resultHeaderSetFilters = React.useCallback(
     (fs: FilterData) => {
       setFilters(fs);
@@ -571,7 +549,7 @@ const ResultsTable = ({
               ref={thRefs}
               allResults={allResults}
               activeSort={activeSort}
-              setActiveSort={resultHeaderSetActiveSort}
+              setActiveSort={setActiveSort}
               filters={filters}
               setFilters={resultHeaderSetFilters}
               initialFilter={filters[c.key]}
