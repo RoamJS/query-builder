@@ -42,10 +42,9 @@ import setInputSettings from "roamjs-components/util/setInputSettings";
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
   plain: { value: false },
-  embed: { value: true },
+  embed: { value: false },
   alias: { value: true },
 };
-const EMBED_FOLD_VALUES = ["default", "open", "closed"];
 
 type EnglishQueryPart = { text: string; clickId?: string };
 
@@ -865,7 +864,7 @@ const ResultsView: ResultsViewComponent = ({
                             }}
                           />
                         </div>
-                        {VIEWS[mode]?.value && mode === "alias" && (
+                        {VIEWS[mode]?.value && (
                           <InputGroup
                             value={value}
                             onChange={(e) => {
@@ -875,31 +874,6 @@ const ResultsView: ResultsViewComponent = ({
                               );
                             }}
                           />
-                        )}
-                        {VIEWS[mode]?.value && mode === "embed" && (
-                          <div className="flex items-center justify-between gap-2">
-                            <div style={{ flex: 1 }}>
-                              <span>Fold</span>
-                              <Tooltip content={"Initial folded state"}>
-                                <Icon
-                                  icon={"info-sign"}
-                                  iconSize={12}
-                                  className={"opacity-80 ml-2"}
-                                  style={{ verticalAlign: "initial" }}
-                                />
-                              </Tooltip>
-                            </div>
-                            <MenuItemSelect
-                              className="roamjs-view-select"
-                              items={EMBED_FOLD_VALUES}
-                              activeItem={
-                                !!value ? value : EMBED_FOLD_VALUES[0]
-                              }
-                              onItemSelect={(value) => {
-                                onViewChange({ mode, column, value }, i);
-                              }}
-                            />
-                          </div>
                         )}
                       </React.Fragment>
                     ))}
