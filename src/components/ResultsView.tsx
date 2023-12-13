@@ -352,15 +352,19 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditColumnSort, setIsEditColumnSort] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
-  const isMenuIconDirty = useMemo(
-    () =>
-      searchFilter || columnFilters.length || random.count || activeSort.length,
-    [searchFilter, columnFilters, random, activeSort]
-  );
+
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
     () => (Array.isArray(layout.mode) ? layout.mode[0] : layout.mode),
     [layout]
+  );
+  const isMenuIconDirty = useMemo(
+    () =>
+      searchFilter ||
+      columnFilters.length ||
+      random.count ||
+      (activeSort.length && layout.mode !== "table"), // indicator is on ResultHeader
+    [searchFilter, columnFilters, random, activeSort, layout.mode]
   );
   const onViewChange = (view: (typeof views)[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
