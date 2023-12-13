@@ -354,8 +354,9 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const isMenuIconDirty = useMemo(
-    () => !!searchFilter || !!columnFilters.length || random.count,
-    [searchFilter, columnFilters, random]
+    () =>
+      searchFilter || columnFilters.length || random.count || activeSort.length,
+    [searchFilter, columnFilters, random, activeSort]
   );
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
