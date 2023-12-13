@@ -34,7 +34,6 @@ import { RoamBasicNode } from "roamjs-components/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { Column, ExportTypes, Result } from "../utils/types";
 import updateBlock from "roamjs-components/writes/updateBlock";
-import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
@@ -235,12 +234,12 @@ type ResultsViewComponent = (props: {
 const head = (s: string | string[]) => (Array.isArray(s) ? s[0] || "" : s);
 
 type MenuHeadingProps = {
-  setState: React.Dispatch<React.SetStateAction<boolean>>;
+  onClear: () => void;
   text: string;
   classNames?: string;
 };
 const MenuHeading: FC<MenuHeadingProps> = ({
-  setState,
+  onClear,
   text,
   classNames = "",
 }) => {
@@ -249,12 +248,7 @@ const MenuHeading: FC<MenuHeadingProps> = ({
       className={`font-bold flex justify-between items-center mt-0 ${classNames}`}
     >
       {text}
-      <Button
-        icon="small-cross"
-        onClick={() => setState(false)}
-        minimal
-        small
-      />
+      <Button icon="small-cross" onClick={onClear} minimal small />
     </h4>
   );
 };
@@ -418,26 +412,11 @@ const ResultsView: ResultsViewComponent = ({
               window.clearTimeout(debounceRef.current);
               setSearchFilter(e.target.value);
               if (preventSavingSettings) return;
-              const searchFilterNode = getSubTree({
+              setInputSetting({
                 key: "searchFilter",
-                parentUid: settings.resultNodeUid,
+                value: e.target.value,
+                blockUid: settings.resultNodeUid,
               });
-              debounceRef.current = window.setTimeout(() => {
-                // Change to setInputSetting ?
-                const searchFilter = getFirstChildUidByBlockUid(
-                  searchFilterNode.uid
-                );
-                if (searchFilter)
-                  updateBlock({
-                    uid: searchFilter,
-                    text: e.target.value,
-                  });
-                else
-                  createBlock({
-                    parentUid: searchFilterNode.uid,
-                    node: { text: e.target.value },
-                  });
-              }, 1000);
             }}
             rightElement={
               <Button
@@ -446,17 +425,10 @@ const ResultsView: ResultsViewComponent = ({
                 onClick={() => {
                   setSearchFilter("");
                   if (preventSavingSettings) return;
-                  // Change to setInputSetting ?
-                  const searchFilterNode = getSubTree({
+                  setInputSetting({
                     key: "searchFilter",
-                    parentUid: settings.resultNodeUid,
-                  });
-                  const searchFilter = getFirstChildUidByBlockUid(
-                    searchFilterNode.uid
-                  );
-                  updateBlock({
-                    uid: searchFilter,
-                    text: "",
+                    value: "",
+                    blockUid: settings.resultNodeUid,
                   });
                 }}
                 minimal
@@ -513,7 +485,10 @@ const ResultsView: ResultsViewComponent = ({
             content={
               isEditRandom ? (
                 <div className="relative p-4">
-                  <MenuHeading setState={setIsEditRandom} text="Get Random" />
+                  <MenuHeading
+                    onClear={() => setIsEditRandom(false)}
+                    text="Get Random"
+                  />
                   <InputGroup
                     type={"number"}
                     min={0}
@@ -555,7 +530,10 @@ const ResultsView: ResultsViewComponent = ({
                 </div>
               ) : isEditLayout ? (
                 <div className="relative w-72 p-4">
-                  <MenuHeading setState={setIsEditLayout} text="Layout" />
+                  <MenuHeading
+                    onClear={() => setIsEditLayout(false)}
+                    text="Layout"
+                  />
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     {SUPPORTED_LAYOUTS.map((l) => (
                       <div
@@ -579,8 +557,6 @@ const ResultsView: ResultsViewComponent = ({
                             value: l.id,
                             blockUid: layoutNode.uid,
                           });
-                          // setIsEditLayout(false);
-                          // setMoreMenuOpen(false);
                         }}
                       >
                         <Icon icon={l.icon} />
@@ -688,7 +664,7 @@ const ResultsView: ResultsViewComponent = ({
                   style={{ minWidth: "320px" }}
                 >
                   <MenuHeading
-                    setState={setIsEditColumnFilter}
+                    onClear={() => setIsEditColumnFilter(false)}
                     text="Filters"
                   />
                   <div className="flex flex-col gap-4 items-start py-2">
@@ -868,7 +844,10 @@ const ResultsView: ResultsViewComponent = ({
                 </div>
               ) : isEditViews ? (
                 <div className="relative w-72 p-4">
-                  <MenuHeading setState={setIsEditViews} text="Column Views" />
+                  <MenuHeading
+                    onClear={() => setIsEditViews(false)}
+                    text="Column Views"
+                  />
                   <div className="flex flex-col gap-1">
                     {views.map(({ column, mode, value }, i) => (
                       <React.Fragment key={i}>
