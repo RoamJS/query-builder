@@ -783,7 +783,7 @@ const ResultsView: ResultsViewComponent = ({
                             <InputGroup
                               className="roamjs-column-filter-value"
                               value={value[0]}
-                              placeholder="Type a value..."
+                              placeholder="Type a value ..."
                               onChange={(e) => {
                                 const newValue = e.target.value;
                                 setColumnFilters(
