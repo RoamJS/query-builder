@@ -19,7 +19,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import Export from "./Export";
 import parseQuery from "../utils/parseQuery";
 import { getDatalogQuery } from "../utils/fireQuery";
-import parseResultSettings from "../utils/parseResultSettings";
+import parseResultSettings, { Sorts } from "../utils/parseResultSettings";
 import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import postProcessResults from "../utils/postProcessResults";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -251,6 +251,29 @@ const ResultsView: ResultsViewComponent = ({
     [parentUid]
   );
   const [activeSort, setActiveSort] = useState(settings.activeSort);
+  const resultViewSetActiveSort = React.useCallback(
+    (as: Sorts) => {
+      setActiveSort(as);
+      if (preventSavingSettings) return;
+      const sortsNode = getSubTree({
+        key: "sorts",
+        parentUid: settings.resultNodeUid,
+      });
+      sortsNode.children.forEach((c) => deleteBlock(c.uid));
+      as.map((a) => ({
+        text: a.key,
+        children: [{ text: `${a.descending}` }],
+      })).forEach((node, order) =>
+        createBlock({
+          parentUid: sortsNode.uid,
+          node,
+          order,
+        })
+      );
+    },
+    [setActiveSort, preventSavingSettings, parentUid]
+  );
+
   // @deprecated - use columnFilters
   const [filters, setFilters] = useState(settings.filters);
   const randomRef = useRef(settings.random);
@@ -305,6 +328,7 @@ const ResultsView: ResultsViewComponent = ({
   };
   const [isEditRandom, setIsEditRandom] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
+  const [isEditColumnSort, setIsEditColumnSort] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
   const isMenuIconDirty = useMemo(
@@ -343,6 +367,7 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
+
   return (
     <div
       className={`roamjs-query-results-view w-full relative mode-${layout.mode}`}
@@ -543,6 +568,68 @@ const ResultsView: ResultsViewComponent = ({
                     );
                   })}
                 </div>
+              ) : isEditColumnSort ? (
+                <div className="relative p-4">
+                  <h4 className="font-bold flex justify-between items-center p-2">
+                    Set Sort
+                    <Button
+                      icon={"small-cross"}
+                      onClick={() => setIsEditColumnSort(false)}
+                      minimal
+                      small
+                    />
+                  </h4>
+                  <div className="flex flex-col gap-4 items-start overflow-auto p-2">
+                    {activeSort.map(({ key, descending }) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="w-24 mr-3 truncate">{key}</div>
+                          {/* TODO: change to checkbox */}
+                          <MenuItemSelect
+                            items={["Ascending", "Descending"]}
+                            activeItem={descending ? "Descending" : "Ascending"}
+                            onItemSelect={(value) => {
+                              const descending = value === "Descending";
+                              resultViewSetActiveSort(
+                                activeSort.map((s) =>
+                                  s.key === key ? { key, descending } : s
+                                )
+                              );
+                            }}
+                          />
+                          <Button
+                            icon={"trash"}
+                            minimal
+                            onClick={() => {
+                              resultViewSetActiveSort(
+                                activeSort.filter((s) => s.key !== key)
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <MenuItemSelect
+                      items={columns
+                        .map((c) => c.key)
+                        .filter((c) => !activeSort.some((as) => as.key === c))}
+                      transformItem={(k) =>
+                        k.length > 10 ? `${k.slice(0, 7)}...` : k
+                      }
+                      ButtonProps={{
+                        text: "Choose Column",
+                        intent: "primary",
+                        disabled: columns.length === activeSort.length,
+                      }}
+                      onItemSelect={(column) => {
+                        resultViewSetActiveSort([
+                          ...activeSort,
+                          { key: column, descending: false },
+                        ]);
+                      }}
+                    />
+                  </div>
+                </div>
               ) : isEditColumnFilter ? (
                 <div className="relative w-80 p-2">
                   <h4 className="font-bold flex justify-between items-center p-2">
@@ -732,6 +819,14 @@ const ResultsView: ResultsViewComponent = ({
                     }}
                   />
                   <MenuItem
+                    icon={"sort"}
+                    text={"Sort"}
+                    className={activeSort.length ? "roamjs-item-dirty" : ""}
+                    onClick={() => {
+                      setIsEditColumnSort(true);
+                    }}
+                  />
+                  <MenuItem
                     icon={"search"}
                     text={isEditSearchFilter ? "Hide Search" : "Search"}
                     className={searchFilter ? "roamjs-item-dirty" : ""}
@@ -876,7 +971,7 @@ const ResultsView: ResultsViewComponent = ({
                   results={paginatedResults}
                   parentUid={settings.resultNodeUid}
                   activeSort={activeSort}
-                  setActiveSort={setActiveSort}
+                  setActiveSort={resultViewSetActiveSort}
                   filters={filters}
                   setFilters={setFilters}
                   views={views}
