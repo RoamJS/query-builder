@@ -847,9 +847,7 @@ const ResultsView: ResultsViewComponent = ({
                     {views.map(({ column, mode, value }, i) => (
                       <React.Fragment key={i}>
                         <div className="flex items-center justify-between gap-2">
-                          <span style={{ flex: 1 }} className="font-semibold">
-                            {column}
-                          </span>
+                          <span style={{ flex: 1 }}>{column}</span>
                           <MenuItemSelect
                             className="roamjs-view-select"
                             items={Object.keys(VIEWS)}
