@@ -501,14 +501,10 @@ const ResultsView: ResultsViewComponent = ({
                     onChange={(e) => {
                       setRandom({ count: Number(e.target.value) });
                       if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
                       setInputSetting({
                         key: "random",
                         value: e.target.value,
-                        blockUid: resultNode.uid,
+                        blockUid: settings.resultNodeUid,
                       });
                     }}
                   />
@@ -517,16 +513,11 @@ const ResultsView: ResultsViewComponent = ({
                     icon={"remove"}
                     onClick={() => {
                       setRandom({ count: 0 });
-
                       if (preventSavingSettings) return;
-                      const resultNode = getSubTree({
-                        key: "results",
-                        parentUid,
-                      });
                       setInputSetting({
                         key: "random",
                         value: "0",
-                        blockUid: resultNode.uid,
+                        blockUid: settings.resultNodeUid,
                       });
                     }}
                     minimal
