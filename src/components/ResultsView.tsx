@@ -584,6 +584,7 @@ const ResultsView: ResultsViewComponent = ({
                       <div key={key}>
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="w-24 mr-3 truncate">{key}</div>
+                          {/* TODO: change to checkbox */}
                           <MenuItemSelect
                             items={["Ascending", "Descending"]}
                             activeItem={descending ? "Descending" : "Ascending"}
