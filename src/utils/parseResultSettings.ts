@@ -7,6 +7,7 @@ import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
 import { Column } from "./types";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import getSettingValuesFromTree from "roamjs-components/util/getSettingValuesFromTree";
 
 export type Sorts = { key: string; descending: boolean }[];
 export type FilterData = Record<string, Filters>;
@@ -150,7 +151,7 @@ const parseResultSettings = (
       return {
         key: c.text,
         uid: c.uid,
-        value: getSettingValueFromTree({ tree: c.children, key: "value" }),
+        value: getSettingValuesFromTree({ tree: c.children, key: "value" }),
         type: getSettingValueFromTree({ tree: c.children, key: "type" }),
       };
     }),
