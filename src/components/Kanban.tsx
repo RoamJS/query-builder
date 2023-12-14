@@ -25,88 +25,48 @@ const zPriority = z.record(z.number().min(0).max(1));
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
-type KanbanCardProps = {
-  card: {
-    $priority: number;
-    $reprioritize: Reprioritize;
-    $displayKey: string;
-    $getColumnElement: (x: number) => HTMLDivElement | undefined;
-    result: Result;
-    view: string;
-    viewValue: string;
-  };
-  localFoldStates: Map<string, boolean>;
-  setLocalFoldStates: React.Dispatch<
-    React.SetStateAction<Map<string, boolean>>
-  >;
+const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
+  const title = getPageTitleByPageUid(uid);
+  const contentRef = useRef(null);
+  const open =
+    viewValue === "open" ? true : viewValue === "closed" ? false : null;
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el) {
+      window.roamAlphaAPI.ui.components.renderBlock({
+        uid,
+        el,
+        // "open?": open, // waiting for roamAlphaAPI to add a open/close to renderBlock
+      });
+    }
+  }, [contentRef]);
+  return (
+    <div className="roamjs-query-embed rounded-xl bg-white p-4 ">
+      <Icon
+        icon="drag-handle-horizontal"
+        className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
+      />
+      <div
+        ref={contentRef}
+        className={!!title ? "page-embed" : "block-embed"}
+      />
+    </div>
+  );
 };
 
-const KanbanCard = ({
-  card,
-  localFoldStates,
-  setLocalFoldStates,
-}: KanbanCardProps) => {
+const KanbanCard = (card: {
+  $priority: number;
+  $reprioritize: Reprioritize;
+  $displayKey: string;
+  $columnKey: string;
+  $selectionValues: string[];
+  $getColumnElement: (x: number) => HTMLDivElement | undefined;
+  result: Result;
+  view: string;
+  viewValue: string;
+}) => {
   const [isDragging, setIsDragging] = useState(false);
 
-  const CellEmbed = ({
-    uid,
-    viewValue,
-  }: {
-    uid: string;
-    viewValue: string;
-  }) => {
-    const title = getPageTitleByPageUid(uid);
-    const contentRef = useRef(null);
-    const open = localFoldStates.has(uid)
-      ? localFoldStates.get(uid)
-      : viewValue === "open"
-      ? true
-      : viewValue === "closed"
-      ? false
-      : null;
-
-    useEffect(() => {
-      const el = contentRef.current;
-      if (el) {
-        window.roamAlphaAPI.ui.components.renderBlock({
-          uid,
-          el,
-          "open?": open,
-        });
-      }
-    }, [contentRef]);
-    return (
-      <div
-        className="roamjs-query-embed rounded-xl bg-white p-4 "
-        onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (!target.classList.contains("rm-caret")) return;
-
-          const kanbanCard = target.closest(".roamjs-kanban-card");
-          const uid = kanbanCard?.getAttribute("data-uid");
-          if (!uid) return;
-
-          const isOpen = target.classList.contains("rm-caret-open");
-          const storedOpenState = !isOpen;
-
-          setLocalFoldStates((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(uid, storedOpenState);
-            return newMap;
-          });
-        }}
-      >
-        <Icon
-          icon="drag-handle-horizontal"
-          className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
-        />
-        <div
-          ref={contentRef}
-          className={!!title ? "page-embed" : "block-embed"}
-        />
-      </div>
-    );
-  };
   return (
     <Draggable
       handle={card.view === "embed" ? ".embed-handle" : ""}
@@ -187,9 +147,6 @@ const Kanban = ({
   parentUid: string;
   views: { column: string; mode: string; value: string }[];
 }) => {
-  const [localFoldStates, setLocalFoldStates] = useState(
-    new Map<string, boolean>()
-  );
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
@@ -528,17 +485,16 @@ const Kanban = ({
                 {(cards[col] || [])?.map((d) => (
                   <KanbanCard
                     key={d.uid}
-                    card={{
-                      result: d,
-                      view: view,
-                      viewValue: viewValue,
-                      $priority: prioritization[d.uid],
-                      $reprioritize: reprioritizeAndUpdateBlock,
-                      $getColumnElement: getColumnElement,
-                      $displayKey: displayKey,
-                    }}
-                    localFoldStates={localFoldStates}
-                    setLocalFoldStates={setLocalFoldStates}
+                    result={d}
+                    view={view}
+                    viewValue={viewValue}
+                    // we use $ to prefix these props to avoid collisions with the result object
+                    $priority={prioritization[d.uid]}
+                    $reprioritize={reprioritizeAndUpdateBlock}
+                    $getColumnElement={getColumnElement}
+                    $displayKey={displayKey}
+                    $columnKey={columnKey}
+                    $selectionValues={resultKeys.map((rk) => rk.key)}
                   />
                 ))}
               </div>
