@@ -164,15 +164,18 @@ const ResultHeader = React.forwardRef<
   }
 );
 
-const CellEmbed = ({ uid }: { uid: string }) => {
+const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
   const title = getPageTitleByPageUid(uid);
   const contentRef = useRef(null);
   useEffect(() => {
     const el = contentRef.current;
+    const open =
+      viewValue === "open" ? true : viewValue === "closed" ? false : null;
     if (el) {
       window.roamAlphaAPI.ui.components.renderBlock({
         uid,
         el,
+        // "open?": open, // waiting for roamAlphaAPI to add a open/close to renderBlock
       });
     }
   }, [contentRef]);
@@ -335,7 +338,7 @@ const ResultRow = ({
                   {view === "alias" ? viewValue : cell(key)}
                 </a>
               ) : view === "embed" ? (
-                <CellEmbed uid={uid} />
+                <CellEmbed uid={uid} viewValue={viewValue} />
               ) : (
                 cell(key)
               )}

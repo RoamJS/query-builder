@@ -11,6 +11,7 @@ import {
   Intent,
   Label,
   Divider,
+  HTMLTable,
 } from "@blueprintjs/core";
 import { MultiSelect } from "@blueprintjs/select";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -45,6 +46,8 @@ const VIEWS: Record<string, { value: boolean }> = {
   embed: { value: false },
   alias: { value: true },
 };
+
+const EMBED_FOLD_VALUES = ["default", "open", "closed"]; // waiting for roamAlphaAPI to add a open/close to renderBlock
 
 type EnglishQueryPart = { text: string; clickId?: string };
 
@@ -393,6 +396,9 @@ const ResultsView: ResultsViewComponent = ({
       );
   };
   const debounceRef = useRef(0);
+  const showColumnViewOptions = views.some(
+    (view) => VIEWS[view.mode]?.value === true
+  );
 
   return (
     <div
@@ -838,39 +844,88 @@ const ResultsView: ResultsViewComponent = ({
                   </div>
                 </div>
               ) : isEditViews ? (
-                <div className="relative w-72 p-4">
+                <div
+                  style={{ minWidth: "26rem" }}
+                  className="relative max-w-md p-4 roamjs-query-column-views"
+                >
                   <MenuHeading
                     onClear={() => setIsEditViews(false)}
                     text="Column Views"
                   />
-                  <div className="flex flex-col gap-1">
-                    {views.map(({ column, mode, value }, i) => (
-                      <React.Fragment key={i}>
-                        <div className="flex items-center justify-between gap-2">
-                          <span style={{ flex: 1 }}>{column}</span>
-                          <MenuItemSelect
-                            className="roamjs-view-select"
-                            items={Object.keys(VIEWS)}
-                            activeItem={mode}
-                            onItemSelect={(m) => {
-                              onViewChange({ mode: m, column, value }, i);
-                            }}
-                          />
-                        </div>
-                        {VIEWS[mode]?.value && (
-                          <InputGroup
-                            value={value}
-                            onChange={(e) => {
-                              onViewChange(
-                                { mode, column, value: e.target.value },
-                                i
-                              );
-                            }}
-                          />
+                  <HTMLTable className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-xs font-medium !text-gray-500 uppercase tracking-wider">
+                          Column
+                        </th>
+                        <th className="text-xs font-medium !text-gray-500 uppercase tracking-wider">
+                          View
+                        </th>
+                        {showColumnViewOptions && (
+                          <th className="text-xs font-medium !text-gray-500 uppercase tracking-wider">
+                            Options
+                          </th>
                         )}
-                      </React.Fragment>
-                    ))}
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {views.map(({ column, mode, value }, i) => (
+                        <tr key={i}>
+                          <td className="whitespace-nowrap">{column}</td>
+                          <td className="whitespace-nowrap">
+                            <MenuItemSelect
+                              className="roamjs-view-select"
+                              items={Object.keys(VIEWS)}
+                              activeItem={mode}
+                              onItemSelect={(m) =>
+                                onViewChange({ mode: m, column, value }, i)
+                              }
+                            />
+                          </td>
+                          {showColumnViewOptions && (
+                            <td className="whitespace-nowrap">
+                              {mode === "alias" && (
+                                <InputGroup
+                                  value={value}
+                                  onChange={(e) =>
+                                    onViewChange(
+                                      {
+                                        mode,
+                                        column,
+                                        value: e.target.value,
+                                      },
+                                      i
+                                    )
+                                  }
+                                />
+                              )}
+                              {/* {mode === "embed" && (
+                                <div className="flex items-center">
+                                  <MenuItemSelect
+                                    className="roamjs-view-select"
+                                    items={EMBED_FOLD_VALUES}
+                                    activeItem={
+                                      !!value ? value : EMBED_FOLD_VALUES[0]
+                                    }
+                                    onItemSelect={(value) => {
+                                      onViewChange({ mode, column, value }, i);
+                                    }}
+                                  />
+                                  <Tooltip content="Initial folded state">
+                                    <Icon
+                                      icon="info-sign"
+                                      iconSize={12}
+                                      className="opacity-80 ml-2 align-middle"
+                                    />
+                                  </Tooltip>
+                                </div>
+                              )} */}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </HTMLTable>
                 </div>
               ) : (
                 <Menu>
@@ -1099,6 +1154,7 @@ const ResultsView: ResultsViewComponent = ({
                   onQuery={() => onRefresh(true)}
                   resultKeys={columns}
                   parentUid={parentUid}
+                  views={views}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>
