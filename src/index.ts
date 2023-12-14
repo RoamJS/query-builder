@@ -155,7 +155,7 @@ svg.rs-svg-container {
 }
 
 .roamjs-kanban-container div.react-draggable-dragging.roamjs-kanban-card > div {
-  transform: rotate(20deg);
+  transform: rotate(5deg);
   cursor: grabbing;
   z-index: 1000;
 }
@@ -191,6 +191,12 @@ svg.rs-svg-container {
 }
 .roamjs-query-results-view .roamjs-kanban-card .card-selections table.bp3-html-table td {
   padding: 0.50rem;
+}
+.roamjs-query-column-views .bp3-running-text table th,
+.roamjs-query-column-views table.bp3-html-table th, 
+.roamjs-query-column-views .bp3-running-text table td, 
+.roamjs-query-column-views table.bp3-html-table td {
+  vertical-align: initial;
 }
 `);
   const isCanvasPage = (title: string) => {
