@@ -961,14 +961,6 @@ const ResultsView: ResultsViewComponent = ({
                       }}
                     />
                     <MenuItem
-                      icon={"sort"}
-                      text={"Sort"}
-                      className={activeSort.length ? "roamjs-item-dirty" : ""}
-                      onClick={() => {
-                        setIsEditColumnSort(true);
-                      }}
-                    />
-                    <MenuItem
                       icon={isEditSearchFilter ? "zoom-out" : "search"}
                       text={isEditSearchFilter ? "Hide Search" : "Search"}
                       className={searchFilter ? "roamjs-item-dirty" : ""}
@@ -985,6 +977,14 @@ const ResultsView: ResultsViewComponent = ({
                       }
                       onClick={() => {
                         setIsEditColumnFilter(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"sort"}
+                      text={"Sort"}
+                      className={activeSort.length ? "roamjs-item-dirty" : ""}
+                      onClick={() => {
+                        setIsEditColumnSort(true);
                       }}
                     />
                     <MenuItem
