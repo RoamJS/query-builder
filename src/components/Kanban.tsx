@@ -41,7 +41,7 @@ const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
     }
   }, [contentRef]);
   return (
-    <div className="roamjs-query-embed" style={{ marginLeft: "-15px" }}>
+    <div className="roamjs-query-embed -ml-4">
       <Icon
         icon="drag-handle-horizontal"
         className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
@@ -114,18 +114,18 @@ const KanbanCard = (card: {
             card.view !== "embed" ? "hover:bg-gray-200" : ""
           }`}
         >
-          {card.view === "embed" ? (
-            <div className="card-display-value">
+          <div className="card-display-value">
+            {card.view === "embed" ? (
               <CellEmbed uid={card.result.uid} viewValue={card.viewValue} />
-            </div>
-          ) : (
-            <div className="card-display-value ">
-              {toCellValue({
-                value: card.result[card.$displayKey],
-                uid: card.result[`${card.$displayKey}-uid`],
-              })}
-            </div>
-          )}
+            ) : (
+              <div className="p-2">
+                {toCellValue({
+                  value: card.result[card.$displayKey],
+                  uid: card.result[`${card.$displayKey}-uid`],
+                })}
+              </div>
+            )}
+          </div>
           <div className="card-selections mt-3">
             <HTMLTable condensed={true}>
               <tbody>
@@ -140,10 +140,10 @@ const KanbanCard = (card: {
 
                   return (
                     <tr key={sv}>
-                      <td className="font-semibold text-sm text-gray-700 p-1">
+                      <td className="font-semibold text-sm text-gray-700">
                         {sv}:
                       </td>
-                      <td className="text-sm text-gray-700 p-1">{value}</td>
+                      <td className="text-sm text-gray-700">{value}</td>
                     </tr>
                   );
                 })}
