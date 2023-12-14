@@ -455,7 +455,7 @@ const Kanban = ({
             return (
               <div
                 key={col}
-                className="p-4 rounded-2xl flex flex-col gap-2 bg-gray-100 flex-shrink-1 roamjs-kanban-column"
+                className="p-4 rounded-2xl flex flex-col gap-2 bg-gray-100 flex-shrink-1 roamjs-kanban-column max-w-2xl"
                 data-column={col}
                 style={{ minWidth: "24rem" }}
               >
