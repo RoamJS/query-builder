@@ -1712,7 +1712,6 @@ const TldrawCanvas = ({ title }: Props) => {
                       y,
                     },
                   ]);
-                  return id;
                 };
                 const getOnSelectForShape = (
                   shape: TLShape,
@@ -1731,23 +1730,7 @@ const TldrawCanvas = ({ title }: Props) => {
                       const src = await window.roamAlphaAPI.util.uploadFile({
                         file,
                       });
-                      const id = await convertToDiscourseNode(
-                        `![](${src})`,
-                        nodeType
-                      );
-                      if (!id) return;
-                      const { width: w, height: h } = await loadImage(src);
-                      app.updateShapes([
-                        {
-                          id,
-                          type: shape.type,
-                          props: {
-                            ...shape.props,
-                            w,
-                            h,
-                          },
-                        },
-                      ]);
+                      convertToDiscourseNode(`![](${src})`, nodeType);
                     };
                   } else if (shape.type === "text") {
                     return () => {
