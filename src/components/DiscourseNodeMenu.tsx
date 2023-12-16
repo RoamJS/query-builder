@@ -11,11 +11,9 @@ import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import getUids from "roamjs-components/dom/getUids";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import { getCoordsFromTextarea } from "roamjs-components/components/CursorMenu";
-import compileDatalog from "../utils/compileDatalog";
-import { PullBlock } from "roamjs-components/types/native";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
-import discourseNodeFormatToDatalog from "../utils/discourseNodeFormatToDatalog";
 import createDiscourseNode from "../utils/createDiscourseNode";
+import { getNewDiscourseNodeText } from "../utils/formatUtils";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -30,14 +28,11 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
     () => Object.fromEntries(discourseNodes.map((mi, i) => [mi.shortcut, i])),
     [discourseNodes]
   );
-  const indexedByType = useMemo(
-    () => Object.fromEntries(discourseNodes.map((mi, i) => [mi.type, mi])),
-    [discourseNodes]
-  );
   const shortcuts = useMemo(() => new Set(Object.keys(indexBySC)), [indexBySC]);
   const blockUid = useMemo(() => getUids(textarea).blockUid, [textarea]);
   const menuRef = useRef<HTMLUListElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
   const onSelect = useCallback(
     (index) => {
       const menuItem =
@@ -49,34 +44,16 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
         textarea.selectionEnd
       );
       setTimeout(() => {
-        const text = getTextByBlockUid(blockUid);
-        const format = indexedByType[nodeUid]?.format || "";
-        const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
-          if (/content/i.test(val)) return highlighted;
-          const referencedNode = discourseNodes.find(({ text }) =>
-            new RegExp(text, "i").test(val)
-          );
-          if (referencedNode) {
-            const referenced = window.roamAlphaAPI.data.fast.q(
-              `[:find (pull ?r [:node/title :block/string]) :where [?b :block/uid "${blockUid}"] (or-join [?b ?r] (and [?b :block/parents ?p] [?p :block/refs ?r]) (and [?b :block/page ?r])) ${discourseNodeFormatToDatalog(
-                {
-                  freeVar: "r",
-                  ...referencedNode,
-                }
-              )
-                .map((c) => compileDatalog(c, 0))
-                .join(" ")}]`
-            )?.[0]?.[0] as PullBlock;
-            return referenced?.[":node/title"]
-              ? `[[${referenced?.[":node/title"]}]]`
-              : referenced?.[":block/string"] || "";
-          }
-          return "";
+        const pageName = getNewDiscourseNodeText({
+          text: highlighted,
+          nodeType: nodeUid,
+          blockUid,
         });
-        const newText = `${text.substring(
+        const currentBlockText = getTextByBlockUid(blockUid);
+        const newText = `${currentBlockText.substring(
           0,
           textarea.selectionStart
-        )}[[${pageName}]]${text.substring(textarea.selectionEnd)}`;
+        )}[[${pageName}]]${currentBlockText.substring(textarea.selectionEnd)}`;
 
         updateBlock({ text: newText, uid: blockUid });
         createDiscourseNode({
