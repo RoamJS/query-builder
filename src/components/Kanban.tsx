@@ -20,6 +20,7 @@ import extractTag from "roamjs-components/util/extractTag";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { Sorts } from "../utils/parseResultSettings";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -64,6 +65,7 @@ const KanbanCard = (card: {
   viewValue: string;
   $columnKey: string;
   $selectionValues: string[];
+  activeSort: Sorts;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -171,6 +173,7 @@ const Kanban = ({
   resultKeys,
   parentUid,
   views,
+  activeSort,
 }: {
   resultKeys: Column[];
   data: Result[];
@@ -178,6 +181,7 @@ const Kanban = ({
   onQuery: () => void;
   parentUid: string;
   views: { column: string; mode: string; value: string }[];
+  activeSort: Sorts;
 }) => {
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
@@ -292,6 +296,7 @@ const Kanban = ({
       }
       cards[column].push(d);
     });
+    if (activeSort.length) return cards;
     Object.keys(cards).forEach((k) => {
       cards[k] = cards[k].sort(
         (a, b) => prioritization[a.uid] - prioritization[b.uid]
@@ -520,6 +525,7 @@ const Kanban = ({
                     result={d}
                     view={view}
                     viewValue={viewValue}
+                    activeSort={activeSort}
                     // we use $ to prefix these props to avoid collisions with the result object
                     $priority={prioritization[d.uid]}
                     $reprioritize={reprioritizeAndUpdateBlock}
