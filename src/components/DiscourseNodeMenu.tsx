@@ -32,7 +32,6 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
   const blockUid = useMemo(() => getUids(textarea).blockUid, [textarea]);
   const menuRef = useRef<HTMLUListElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-
   const onSelect = useCallback(
     (index) => {
       const menuItem =

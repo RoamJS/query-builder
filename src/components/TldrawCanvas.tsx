@@ -80,10 +80,7 @@ import ExtensionApiContextProvider, {
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { formatHexColor } from "./DiscourseNodeCanvasSettings";
-import { sub } from "date-fns";
-import { node } from "prop-types";
 import { getNewDiscourseNodeText } from "../utils/formatUtils";
-import { render } from "react-dom";
 
 declare global {
   interface Window {
@@ -1696,11 +1693,10 @@ const TldrawCanvas = ({ title }: Props) => {
                     nodeType: type,
                     uid,
                   });
-                  const id = createShapeId();
                   app.createShapes([
                     {
                       type,
-                      id,
+                      id: createShapeId(),
                       props: {
                         uid,
                         title: nodeText,
