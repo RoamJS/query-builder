@@ -39,6 +39,7 @@ import {
   FONT_SIZES,
   FONT_FAMILIES,
   MenuItem,
+  TLShape,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -79,6 +80,7 @@ import ExtensionApiContextProvider, {
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { formatHexColor } from "./DiscourseNodeCanvasSettings";
+import { getNewDiscourseNodeText } from "../utils/formatUtils";
 
 declare global {
   interface Window {
@@ -697,8 +699,8 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       image.setAttribute("width", shape.props.w.toString());
 
       // Calculate height based on aspect ratio like in the HTML
-      const { width: imageWidth, height: imageGeight } = await loadImage(src);
-      const aspectRatio = imageWidth / imageGeight || 1;
+      const { width: imageWidth, height: imageHeight } = await loadImage(src);
+      const aspectRatio = imageWidth / imageHeight || 1;
       const svgImageHeight = shape.props.w / aspectRatio;
 
       // TODO - allow for cropped images (css overflow-hidden)
@@ -1643,72 +1645,145 @@ const TldrawCanvas = ({ title }: Props) => {
                   ])
                 ),
                 "action.toggle-full-screen": "Toggle Full Screen",
-                "action.convert-to-block": "Convert to Block",
+                "action.convert-to": "Convert to",
+                ...Object.fromEntries(
+                  allNodes.map((node) => [
+                    `action.convert-to-${node.type}`,
+                    `${node.text}`,
+                  ])
+                ),
               },
             },
             contextMenu(app, schema, helpers) {
               if (helpers.oneSelected) {
                 const shape = app.getShapeById(app.selectedIds[0]);
                 if (!shape) return schema;
-                const convertToBlock = async (text: string) => {
+                const convertToDiscourseNode = async (
+                  text: string,
+                  type: string
+                ) => {
+                  if (!extensionAPI) {
+                    renderToast({
+                      id: "tldraw-warning",
+                      intent: "danger",
+                      content: `Failed to convert to ${type}.  Please contact support`,
+                    });
+                    return;
+                  }
+                  const defaultNodes = getDiscourseNodes().filter(
+                    (n) => n.backedBy === "default"
+                  );
+                  const isDefault = defaultNodes.find((n) => n.type === type);
+                  const nodeText = isDefault
+                    ? text
+                    : getNewDiscourseNodeText({
+                        text,
+                        nodeType: type,
+                      });
                   const uid = await createDiscourseNode({
-                    configPageUid: "blck-node",
-                    text,
+                    configPageUid: type,
+                    text: nodeText,
                     discourseNodes: Object.values(discourseContext.nodes),
                   });
-                  const { x, y } = shape;
                   app.deleteShapes([shape.id]);
+                  const { x, y } = shape;
+                  const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+                    text: nodeText,
+                    extensionAPI,
+                    nodeType: type,
+                    uid,
+                  });
                   app.createShapes([
                     {
-                      type: "blck-node",
+                      type,
                       id: createShapeId(),
                       props: {
                         uid,
-                        title: text,
+                        title: nodeText,
+                        h,
+                        w,
+                        imageUrl,
                       },
                       x,
                       y,
                     },
                   ]);
                 };
-                const onSelect =
-                  shape?.type === "image"
-                    ? async () => {
-                        const { assetId } = (shape as TLImageShape).props;
-                        if (!assetId) return;
-                        const asset = app.getAssetById(assetId);
-                        if (!asset || !asset.props.src) return;
-                        const file = await fetch(asset.props.src)
-                          .then((r) => r.arrayBuffer())
-                          .then((buf) => new File([buf], shape.id));
-                        // @ts-ignore
-                        const src = await window.roamAlphaAPI.util.uploadFile({
-                          // @ts-ignore
-                          file,
-                        });
-                        console.log(src);
-                        convertToBlock(`![](${src})`);
-                      }
-                    : shape?.type === "text"
-                    ? () => {
-                        const { text } = (shape as TLTextShape).props;
-                        convertToBlock(text);
-                      }
-                    : null;
-                if (onSelect)
-                  schema.push({
-                    id: "convert-to-block",
-                    type: "item",
-                    actionItem: {
-                      label: "action.convert-to-block" as TLTranslationKey,
-                      id: "convert-to-block",
-                      onSelect,
+                const getOnSelectForShape = (
+                  shape: TLShape,
+                  nodeType: string
+                ) => {
+                  if (!shape.type) return null;
+                  if (nodeType === "blck-node" && shape.type === "image") {
+                    return async () => {
+                      const { assetId } = (shape as TLImageShape).props;
+                      if (!assetId) return;
+                      const asset = app.getAssetById(assetId);
+                      if (!asset || !asset.props.src) return;
+                      const file = await fetch(asset.props.src)
+                        .then((r) => r.arrayBuffer())
+                        .then((buf) => new File([buf], shape.id));
+                      const src = await window.roamAlphaAPI.util.uploadFile({
+                        file,
+                      });
+                      convertToDiscourseNode(`![](${src})`, nodeType);
+                    };
+                  } else if (shape.type === "text") {
+                    return () => {
+                      const { text } = (shape as TLTextShape).props;
+                      convertToDiscourseNode(text, nodeType);
+                    };
+                  }
+                };
+
+                if (shape.type === "image" || shape.type === "text") {
+                  const nodeMenuItems = allNodes.map((node) => {
+                    return {
+                      checked: false,
+                      id: `convert-to-${node.type}`,
+                      type: "item",
                       readonlyOk: true,
-                    },
-                    checked: false,
+                      disabled: false,
+                      actionItem: {
+                        label:
+                          `action.convert-to-${node.type}` as TLTranslationKey,
+                        id: `convert-to-${node.type}`,
+                        onSelect: getOnSelectForShape(shape, node.type),
+                        readonlyOk: true,
+                        menuLabel:
+                          `Convert to ${node.text}` as TLTranslationKey,
+                        title: `Convert to ${node.text}`,
+                      },
+                    } as MenuItem;
+                  });
+
+                  const filteredItems =
+                    shape.type === "image"
+                      ? nodeMenuItems.filter(
+                          (item) => item.id === "convert-to-blck-node"
+                        )
+                      : nodeMenuItems;
+
+                  const submenuGroup: MenuGroup = {
+                    id: "convert-to-group",
+                    type: "group",
+                    checkbox: false,
                     disabled: false,
                     readonlyOk: true,
-                  });
+                    children: [
+                      {
+                        id: "convert-to",
+                        type: "submenu",
+                        label: "action.convert-to" as TLTranslationKey,
+                        disabled: false,
+                        readonlyOk: true,
+                        children: [...filteredItems],
+                      },
+                    ],
+                  };
+
+                  schema.push(submenuGroup);
+                }
               }
               return schema;
             },
