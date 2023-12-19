@@ -139,12 +139,12 @@ const KanbanCard = (card: {
               style={{ gridTemplateColumns: "auto 1fr" }}
             >
               {card.$selectionValues.map((sv) => {
-                const uid = card.result[`${sv}-uid`];
                 if (sv === displayKey || sv === card.$columnKey) return null;
 
+                const uid = card.result[`${sv}-uid`] || "";
                 const value = toCellValue({
                   value: card.result[`${sv}-display`] || card.result[sv] || "",
-                  uid: (card.result[`${sv}-uid`] as string) || "",
+                  uid,
                 });
 
                 return (
@@ -157,7 +157,7 @@ const KanbanCard = (card: {
                     {uid && card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm -ml-4">
                         <BlockEmbed
-                          uid={card.result[`${sv}-uid`]}
+                          uid={uid}
                           viewValue={card.viewsByColumn[sv].value}
                         />
                       </div>
