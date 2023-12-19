@@ -160,11 +160,6 @@ svg.rs-svg-container {
   z-index: 1000;
 }
 
-.roamjs-kanban-container .react-draggable.roamjs-kanban-card > div {
-  transform: rotate(0deg);
-  cursor: pointer;
-}
-
 .roamjs-kanban-container {
   grid-template-columns: repeat(auto-fit, minmax(10%, 1fr));
 }
@@ -173,6 +168,9 @@ svg.rs-svg-container {
   width: inherit;
 }
 
+.roamjs-kanban-container .roamjs-kanban-column .rm-block-separator {
+  display:none;
+}
 .roamjs-extra-row td {
   position: relative;
   background-color: #F5F8FA;
