@@ -25,7 +25,7 @@ const zPriority = z.record(z.number().min(0).max(1));
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
-const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
+const BlockEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
   const title = getPageTitleByPageUid(uid);
   const contentRef = useRef(null);
   const open =
@@ -39,37 +39,37 @@ const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
         // "open?": open, // waiting for roamAlphaAPI to add a open/close to renderBlock
       });
     }
-  }, [contentRef]);
+  }, [uid, open, contentRef]);
   return (
-    <div className="roamjs-query-embed -ml-4">
-      <Icon
-        icon="drag-handle-horizontal"
-        className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
-      />
-      <div
-        ref={contentRef}
-        className={!!title ? "page-embed" : "block-embed"}
-      />
-    </div>
+    <div ref={contentRef} className={!!title ? "page-embed" : "block-embed"} />
   );
 };
 
+type ViewsByColumnType = Record<
+  string,
+  { column: string; mode: string; value: string }
+>;
 const KanbanCard = (card: {
   $priority: number;
   $reprioritize: Reprioritize;
   $displayKey: string;
   $getColumnElement: (x: number) => HTMLDivElement | undefined;
   result: Result;
-  view: string;
-  viewValue: string;
   $columnKey: string;
   $selectionValues: string[];
+  viewsByColumn: ViewsByColumnType;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const anyViewIsEmbed = useMemo(
+    () => Object.values(card.viewsByColumn).some((v) => v.mode === "embed"),
+    [card.viewsByColumn]
+  );
+  const displayKey = card.$displayKey;
+  const cardView = card.viewsByColumn[displayKey];
 
   return (
     <Draggable
-      handle={card.view === "embed" ? ".embed-handle" : ""}
+      handle={anyViewIsEmbed ? ".embed-handle" : ""}
       onDrag={(_, data) => {
         const { x, width } = data.node.getBoundingClientRect();
         const el = card.$getColumnElement(x + width / 2);
@@ -94,7 +94,7 @@ const KanbanCard = (card: {
         data-uid={card.result.uid}
         data-priority={card.$priority}
         onClick={(e) => {
-          if (card.view === "embed") return;
+          if (anyViewIsEmbed) return;
           if (isDragging) return;
           if (e.shiftKey) {
             openBlockInSidebar(card.result.uid);
@@ -109,46 +109,68 @@ const KanbanCard = (card: {
           }
         }}
       >
+        <Icon
+          icon="drag-handle-horizontal"
+          className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
+          hidden={!anyViewIsEmbed}
+        />
         <div
           className={`rounded-xl bg-white p-4 ${
-            card.view !== "embed" ? "hover:bg-gray-200" : ""
+            anyViewIsEmbed ? "" : "cursor-pointer hover:bg-gray-200"
           }`}
         >
           <div className="card-display-value">
-            {card.view === "embed" ? (
-              <CellEmbed uid={card.result.uid} viewValue={card.viewValue} />
+            {cardView.mode === "embed" ? (
+              <div className="roamjs-query-embed -ml-4">
+                <BlockEmbed uid={card.result.uid} viewValue={cardView.value} />
+              </div>
             ) : (
               <div className="p-2">
                 {toCellValue({
-                  value: card.result[card.$displayKey],
-                  uid: card.result[`${card.$displayKey}-uid`],
+                  value: card.result[displayKey],
+                  uid: card.result[`${displayKey}-uid`],
                 })}
               </div>
             )}
           </div>
           <div className="card-selections mt-3">
-            <HTMLTable condensed={true}>
-              <tbody>
-                {card.$selectionValues.map((sv) => {
-                  if (sv === card.$displayKey || sv === card.$columnKey)
-                    return null;
-                  const value = toCellValue({
-                    value:
-                      card.result[`${sv}-display`] || card.result[sv] || "",
-                    uid: (card.result[`${sv}-uid`] as string) || "",
-                  });
+            <div
+              className="grid grid-cols-2"
+              style={{ gridTemplateColumns: "auto 1fr" }}
+            >
+              {card.$selectionValues.map((sv) => {
+                if (sv === displayKey || sv === card.$columnKey) return null;
 
-                  return (
-                    <tr key={sv}>
-                      <td className="font-semibold text-sm text-gray-700">
-                        {sv}:
-                      </td>
-                      <td className="text-sm text-gray-700">{value}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </HTMLTable>
+                const uid = card.result[`${sv}-uid`] || "";
+                const value = toCellValue({
+                  value: card.result[`${sv}-display`] || card.result[sv] || "",
+                  uid,
+                });
+
+                return (
+                  <React.Fragment key={sv}>
+                    {!uid && (
+                      <div className="col-span-2 text-sm p-2">
+                        [block is blank]
+                      </div>
+                    )}
+                    {uid && card.viewsByColumn[sv].mode === "embed" ? (
+                      <div className="col-span-2 text-sm -ml-4">
+                        <BlockEmbed
+                          uid={uid}
+                          viewValue={card.viewsByColumn[sv].value}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-semibold text-sm p-2">{sv}:</div>
+                        <div className="text-sm p-2 text-left">{value}</div>
+                      </>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -518,8 +540,7 @@ const Kanban = ({
                   <KanbanCard
                     key={d.uid}
                     result={d}
-                    view={view}
-                    viewValue={viewValue}
+                    viewsByColumn={viewsByColumn}
                     // we use $ to prefix these props to avoid collisions with the result object
                     $priority={prioritization[d.uid]}
                     $reprioritize={reprioritizeAndUpdateBlock}
