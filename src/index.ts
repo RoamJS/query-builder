@@ -165,10 +165,6 @@ svg.rs-svg-container {
   cursor: pointer;
 }
 
-.roamjs-kanban-container {
-  grid-template-columns: repeat(auto-fit, minmax(10%, 1fr));
-}
-
 .roamjs-kanban-container .roamjs-kanban-column {
   width: inherit;
 }
