@@ -25,15 +25,7 @@ const zPriority = z.record(z.number().min(0).max(1));
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
-const BlockEmbed = ({
-  uid,
-  viewValue,
-  type,
-}: {
-  uid: string;
-  viewValue: string;
-  type: `cell` | `selection`;
-}) => {
+const BlockEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
   const title = getPageTitleByPageUid(uid);
   const contentRef = useRef(null);
   const open =
@@ -48,20 +40,9 @@ const BlockEmbed = ({
       });
     }
   }, [uid, open, contentRef]);
-  if (type === "cell") {
-    return (
-      <div className="roamjs-query-embed -ml-4">
-        <div
-          ref={contentRef}
-          className={!!title ? "page-embed" : "block-embed"}
-        />
-      </div>
-    );
-  } else if (type === "selection") {
-    return <div ref={contentRef} />;
-  }
-
-  return null;
+  return (
+    <div ref={contentRef} className={!!title ? "page-embed" : "block-embed"} />
+  );
 };
 
 type ViewsByColumnType = Record<
@@ -140,11 +121,9 @@ const KanbanCard = (card: {
         >
           <div className="card-display-value">
             {cardView.mode === "embed" ? (
-              <BlockEmbed
-                uid={card.result.uid}
-                viewValue={cardView.value}
-                type={"cell"}
-              />
+              <div className="roamjs-query-embed -ml-4">
+                <BlockEmbed uid={card.result.uid} viewValue={cardView.value} />
+              </div>
             ) : (
               <div className="p-2">
                 {toCellValue({
@@ -160,6 +139,7 @@ const KanbanCard = (card: {
               style={{ gridTemplateColumns: "auto 1fr" }}
             >
               {card.$selectionValues.map((sv) => {
+                const uid = card.result[`${sv}-uid`];
                 if (sv === displayKey || sv === card.$columnKey) return null;
 
                 const value = toCellValue({
@@ -169,12 +149,16 @@ const KanbanCard = (card: {
 
                 return (
                   <React.Fragment key={sv}>
-                    {card.viewsByColumn[sv].mode === "embed" ? (
+                    {!uid && (
+                      <div className="col-span-2 text-sm p-2">
+                        [block is blank]
+                      </div>
+                    )}
+                    {uid && card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm -ml-4">
                         <BlockEmbed
                           uid={card.result[`${sv}-uid`]}
                           viewValue={card.viewsByColumn[sv].value}
-                          type={"selection"}
                         />
                       </div>
                     ) : (
