@@ -1552,6 +1552,15 @@ const TldrawCanvas = ({ title }: Props) => {
       }
       #roamjs-tldraw-canvas-container .rs-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
         display: none;
+      }
+      /* arrow label line fix */
+      /* seems like width is being miscalculted cause letters to linebreak */
+      /* TODO: this is a temporary fix */
+      /* also Roam is hijacking the font choice */
+      .rs-arrow-label .rs-arrow-label__inner p {
+        padding: 0;
+        white-space: nowrap;
+        font-family: var(--rs-font-sans);
       }`}
       </style>
       <TldrawEditor
