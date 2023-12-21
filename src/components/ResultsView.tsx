@@ -1156,6 +1156,7 @@ const ResultsView: ResultsViewComponent = ({
                   parentUid={parentUid}
                   views={views}
                   activeSort={activeSort}
+                  setActiveSort={resultViewSetActiveSort}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>
