@@ -200,11 +200,8 @@ type Props = {
 const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
-  const allNodesDefaultRemoved = allNodes.filter(
-    (node) => node.backedBy !== "default"
-  );
   const nodeLabelByType = Object.fromEntries(
-    allNodesDefaultRemoved.map((a) => [a.type, a.text])
+    allNodes.map((a) => [a.type, a.text])
   );
   nodeLabelByType["*"] = "Any";
   const getPageData = async (
@@ -215,7 +212,7 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
         ? await results(isSamePageEnabled)
         : results;
     const matchedTexts = new Set();
-    return allNodesDefaultRemoved.flatMap((n) =>
+    return allNodes.flatMap((n) =>
       (allResults
         ? allResults.flatMap((r) =>
             Object.keys(r)
