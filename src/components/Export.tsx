@@ -305,9 +305,6 @@ const ExportDialog: ExportDialogComponent = ({
               setIncludeDiscourseContext(
                 (e.target as HTMLInputElement).checked
               );
-              console.log(
-                (e.target as HTMLInputElement).checked ? "true" : "false"
-              );
             }}
           />
         </FormGroup>
