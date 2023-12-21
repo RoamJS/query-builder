@@ -151,12 +151,11 @@ const KanbanCard = (card: {
 
                 return (
                   <React.Fragment key={sv}>
-                    {!uid && (
+                    {!uid && card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm p-2">
                         [block is blank]
                       </div>
-                    )}
-                    {uid && card.viewsByColumn[sv].mode === "embed" ? (
+                    ) : card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm -ml-4">
                         <BlockEmbed
                           uid={uid}
