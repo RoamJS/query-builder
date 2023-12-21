@@ -469,6 +469,7 @@ const ResultsView: ResultsViewComponent = ({
               setIsEditLayout(false);
               setIsEditColumnFilter(false);
               setIsEditViews(false);
+              setIsEditColumnSort(false);
             }}
             autoFocus={false}
             enforceFocus={false}
