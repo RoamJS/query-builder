@@ -35,6 +35,7 @@ export type ExportTypes = {
   callback: (args: {
     filename: string;
     isSamePageEnabled: boolean;
+    includeDiscourseContext: boolean;
   }) => Promise<{ title: string; content: string }[]>;
 }[];
 

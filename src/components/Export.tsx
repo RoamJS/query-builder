@@ -14,6 +14,7 @@ import {
   Tabs,
   RadioGroup,
   Radio,
+  FormGroup,
 } from "@blueprintjs/core";
 import React, { useState, useEffect, useMemo } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
@@ -136,7 +137,18 @@ const ExportDialog: ExportDialogComponent = ({
   const isCanvasPage = checkForCanvasPage(selectedPageTitle);
   const [isSendToGraph, setIsSendToGraph] = useState(false);
   const [livePages, setLivePages] = useState<Result[]>([]);
-
+  const getDiscourseGraphSetting = () =>
+    getExtensionAPI().settings.get("discourse-graphs");
+  const [discourseGraphSetting, setDiscourseGraphSetting] = useState(
+    getDiscourseGraphSetting()
+  );
+  const discourseGraphEnabled = useMemo(
+    () => discourseGraphSetting,
+    [discourseGraphSetting]
+  );
+  const [includeDiscourseContext, setIncludeDiscourseContext] = useState(
+    discourseGraphSetting as boolean
+  );
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
     setSelectedPageUid(getPageUidByPageTitle(title));
@@ -282,7 +294,24 @@ const ExportDialog: ExportDialogComponent = ({
             onChange={(e) => setFilename(e.target.value)}
           />
         </Label>
-        <div className="flex justify-between items-center">
+        <FormGroup
+          className={discourseGraphEnabled ? "" : "hidden"}
+          label="Include Discourse Context"
+          inline
+        >
+          <Checkbox
+            checked={includeDiscourseContext}
+            onChange={(e) => {
+              setIncludeDiscourseContext(
+                (e.target as HTMLInputElement).checked
+              );
+              console.log(
+                (e.target as HTMLInputElement).checked ? "true" : "false"
+              );
+            }}
+          />
+        </FormGroup>
+        <div className="text-right">
           <span>
             {typeof results === "function"
               ? "Calculating number of results..."
@@ -347,6 +376,7 @@ const ExportDialog: ExportDialogComponent = ({
                     const files = await exportType.callback({
                       filename,
                       isSamePageEnabled,
+                      includeDiscourseContext,
                     });
                     if (!files.length) {
                       setDialogOpen(true);

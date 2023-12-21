@@ -311,7 +311,10 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   return [
     {
       name: "Markdown",
-      callback: async ({ isSamePageEnabled }) => {
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+      }) => {
         const configTree = getBasicTreeByParentUid(
           getPageUidByPageTitle("roam/js/discourse-graph")
         );
@@ -381,10 +384,12 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
                 type,
               };
               const treeNode = getFullTreeByParentUid(uid);
-              const discourseResults = await getDiscourseContextResults({
-                uid,
-                isSamePageEnabled,
-              });
+              const discourseResults = includeDiscourseContext
+                ? await getDiscourseContextResults({
+                    uid,
+                    isSamePageEnabled,
+                  })
+                : [];
               const referenceResults = isFlagEnabled("render references")
                 ? (
                     window.roamAlphaAPI.data.fast.q(
