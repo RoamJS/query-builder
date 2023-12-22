@@ -143,17 +143,11 @@ const ExportDialog: ExportDialogComponent = ({
   useEffect(() => {
     if (isExportDiscourseGraph) setSelectedTabId("export");
   }, [isExportDiscourseGraph]);
-  const getDiscourseGraphSetting = () =>
-    getExtensionAPI().settings.get("discourse-graphs");
-  const [discourseGraphSetting, setDiscourseGraphSetting] = useState(
-    getDiscourseGraphSetting()
-  );
-  const discourseGraphEnabled = useMemo(
-    () => discourseGraphSetting,
-    [discourseGraphSetting]
-  );
+  const [discourseGraphEnabled, setDiscourseGraphEnabled] = useState(() => {
+    return getExtensionAPI().settings.get("discourse-graphs");
+  });
   const [includeDiscourseContext, setIncludeDiscourseContext] = useState(
-    discourseGraphSetting as boolean
+    discourseGraphEnabled as boolean
   );
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
