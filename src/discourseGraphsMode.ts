@@ -896,6 +896,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           exportRender({
             results,
             title: "Export Discourse Graph",
+            isExportDiscourseGraph: true,
           });
         },
       });
