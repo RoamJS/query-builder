@@ -103,7 +103,7 @@ const ExportDialog: ExportDialogComponent = ({
   }, [isOpen]);
   const [dialogOpen, setDialogOpen] = useState(isOpen);
   const exportTypes = useMemo(
-    () => getExportTypes({ results, exportId }),
+    () => getExportTypes({ results, exportId, isExportDiscourseGraph }),
     [results, exportId]
   );
   const [loading, setLoading] = useState(false);
@@ -391,6 +391,7 @@ const ExportDialog: ExportDialogComponent = ({
                       filename,
                       isSamePageEnabled,
                       includeDiscourseContext,
+                      isExportDiscourseGraph,
                     });
                     if (!files.length) {
                       setDialogOpen(true);

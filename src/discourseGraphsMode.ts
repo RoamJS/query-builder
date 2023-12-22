@@ -54,6 +54,7 @@ import CanvasReferences from "./components/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
+import { DiscourseExportResult } from "./utils/getExportTypes";
 
 export const SETTING = "discourse-graphs";
 
@@ -874,7 +875,11 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           const discourseNodes = getDiscourseNodes().filter(
             (r) => r.backedBy !== "default"
           );
-          const results = (isSamePageEnabled: boolean) =>
+          const results: (
+            isSamePageEnabled: boolean
+          ) => Promise<DiscourseExportResult[]> = (
+            isSamePageEnabled: boolean
+          ) =>
             Promise.all(
               discourseNodes.map((d) =>
                 fireQuery({
@@ -890,7 +895,12 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                   ],
                   selections: [],
                   isSamePageEnabled,
-                })
+                }).then((queryResults) =>
+                  queryResults.map((result) => ({
+                    ...result,
+                    type: d.type,
+                  }))
+                )
               )
             ).then((r) => r.flat());
           exportRender({
