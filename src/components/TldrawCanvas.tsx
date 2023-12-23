@@ -1047,6 +1047,10 @@ const TldrawCanvas = ({ title }: Props) => {
                 return TLSelectTool.children().map((c) => {
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
+                    const allRelationIdSet = new Set(allRelationIds);
+                    const allAddReferencedNodeActionsSet = new Set(
+                      allAddReferencedNodeActions
+                    );
                     return class extends Handle {
                       override onPointerUp: TLPointerEvent = async () => {
                         this.onComplete({
@@ -1054,8 +1058,16 @@ const TldrawCanvas = ({ title }: Props) => {
                           name: "complete",
                         });
 
-                        const arrow = this.app.getShapeById(this.shapeId);
-                        if (!arrow) return;
+                        const shape = this.app.getShapeById(this.shapeId);
+                        if (!shape) return;
+                        // TODO: find a better way to identify custom arrow shapes
+                        // shape.type or shape.name probably?
+                        if (
+                          !allRelationIdSet.has(shape.type) ||
+                          !allAddReferencedNodeActionsSet.has(shape.type)
+                        )
+                          return;
+                        const arrow = shape;
 
                         const deleteAndWarn = (content: string) => {
                           renderToast({
@@ -1093,9 +1105,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         }
 
                         // Handle "Add Referenced Node" Arrows
-                        if (
-                          new Set(allAddReferencedNodeActions).has(arrow.type)
-                        ) {
+                        if (allAddReferencedNodeActionsSet.has(arrow.type)) {
                           const possibleTargets = allAddReferencedNodeByAction[
                             arrow.type
                           ].map((action) => action.destinationType);
@@ -1176,7 +1186,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         }
 
                         // Handle "Add Relationship Arrows"
-                        if (new Set(allRelationIds).has(arrow.type)) {
+                        if (allRelationIdSet.has(arrow.type)) {
                           const relation = allRelationsById[arrow.type];
                           if (!relation) return;
                           const sourceLabel =
