@@ -468,7 +468,7 @@ const Kanban = ({
           </div>
         </div>
       )}
-      <div className="flex w-full p-4 roamjs-kanban-drag-container">
+      <div className="flex w-full p-4">
         <div
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll flex w-full"
           ref={containerRef}
