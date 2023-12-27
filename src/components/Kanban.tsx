@@ -86,7 +86,7 @@ const KanbanCard = (card: {
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
       }}
-      bounds={".roamjs-kanban-container"}
+      // bounds={".roamjs-kanban-container"} // cannot drag past overflow: https://github.com/react-grid-layout/react-draggable/issues/639
       position={{ x: 0, y: 0 }}
     >
       <div
@@ -468,7 +468,7 @@ const Kanban = ({
           </div>
         </div>
       )}
-      <div className="flex w-full p-4">
+      <div className="flex w-full p-4 roamjs-kanban-drag-container">
         <div
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll flex w-full"
           ref={containerRef}
