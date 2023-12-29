@@ -1474,6 +1474,28 @@ const TldrawCanvas = ({ title }: Props) => {
     };
   }, [appRef, allNodes]);
 
+  const triggerContextMenuConvertTo = () => {
+    const shape = appRef.current?.onlySelectedShape;
+    if (!shape) return;
+    const shapeEl = document.getElementById(shape.id);
+    const rect = shapeEl?.getBoundingClientRect();
+    const contextMenu = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect?.left,
+      clientY: rect?.top,
+    });
+    shapeEl?.dispatchEvent(contextMenu);
+    const menuItem = document.querySelector(
+      'button[data-wd="menu-item.convert-to"]'
+    ) as HTMLMenuElement;
+    if (menuItem) {
+      setTimeout(() => {
+        menuItem.click();
+      }, 100);
+    }
+  };
+
   // Menu Overrides
   const addFullScreenToggle = (mainMenu: MenuGroup) => {
     const viewSubMenu = mainMenu.children.find(
@@ -1797,7 +1819,7 @@ const TldrawCanvas = ({ title }: Props) => {
               return schema;
             },
             actions(_app, actions) {
-              actions["toggle-full-screen"] = {
+              (actions["toggle-full-screen"] = {
                 id: "toggle-full-screen",
                 label: "action.toggle-full-screen" as TLTranslationKey,
                 kbd: "!3",
@@ -1805,7 +1827,14 @@ const TldrawCanvas = ({ title }: Props) => {
                   setMaximized(!maximized);
                 },
                 readonlyOk: true,
-              };
+              }),
+                (actions["convert-to"] = {
+                  id: "convert-to",
+                  label: "action.convert-to" as TLTranslationKey,
+                  kbd: "?C",
+                  onSelect: () => triggerContextMenuConvertTo(),
+                  readonlyOk: true,
+                });
               return actions;
             },
             tools(app, tools) {
@@ -1880,13 +1909,27 @@ const TldrawCanvas = ({ title }: Props) => {
               );
               return toolbar;
             },
-            keyboardShortcutsMenu(_app, keyboardShortcutsMenu, { tools }) {
+            keyboardShortcutsMenu(
+              _app,
+              keyboardShortcutsMenu,
+              { tools, actions }
+            ) {
               const toolsGroup = keyboardShortcutsMenu.find(
                 (group) => group.id === "shortcuts-dialog.tools"
               ) as MenuGroup;
+              const viewGroup = keyboardShortcutsMenu.find(
+                (group) => group.id === "shortcuts-dialog.view"
+              ) as MenuGroup;
+              const transformGroup = keyboardShortcutsMenu.find(
+                (group) => group.id === "shortcuts-dialog.transform"
+              ) as MenuGroup;
+
               toolsGroup.children.push(
                 ...allNodes.map((n) => menuItem(tools[n.type]))
               );
+              viewGroup.children.push(menuItem(actions["toggle-full-screen"]));
+              transformGroup.children.push(menuItem(actions["convert-to"]));
+
               return keyboardShortcutsMenu;
             },
             menu(_app, menu) {
