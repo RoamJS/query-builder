@@ -523,10 +523,6 @@ const predefinedSelections: PredefinedSelection[] = [
     },
     update: async ({ uid, value, result, selection, previousValue }) => {
       const blockText = getTextByBlockUid(uid);
-      const oldValue = toCellValue({
-        value: result[selection],
-        uid: result[`${selection}-uid`],
-      });
       if (!uid) {
         createBlock({
           parentUid: result.uid,
@@ -540,7 +536,7 @@ const predefinedSelections: PredefinedSelection[] = [
         uid,
         text: !previousValue
           ? `${selection}:: ${value}`
-          : blockText.replace(oldValue, value),
+          : blockText.replace(previousValue, value),
       });
     },
     suggestions: [], // ATTR_SUGGESTIONS,
