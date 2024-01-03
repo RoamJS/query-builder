@@ -15,6 +15,7 @@ import gatherDatalogVariablesFromClause from "./gatherDatalogVariablesFromClause
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageTitlesStartingWithPrefix from "roamjs-components/queries/getPageTitlesStartingWithPrefix";
+import extractRef from "roamjs-components/util/extractRef";
 
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
@@ -834,6 +835,36 @@ const translator: Record<string, Translator> = {
       // TODO - use roam depot setting
       getPageTitlesStartingWithPrefix("Canvas/").concat(["{current}"]),
     placeholder: "Enter a page name",
+  },
+  "has block reference": {
+    callback: ({ source, target }) => {
+      if (INPUT_REGEX.test(target)) {
+        return [
+          {
+            type: "data-pattern",
+            arguments: [
+              { type: "variable", value: source },
+              { type: "constant", value: ":block/uid" },
+              { type: "variable", value: target.replace(INPUT_REGEX, "") },
+            ],
+          },
+        ];
+      }
+      return [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":block/uid" },
+            {
+              type: "constant",
+              value: `"${extractRef(target)}"`,
+            },
+          ],
+        },
+      ];
+    },
+    placeholder: "Enter a block reference (with or without brackets)",
   },
 };
 
