@@ -836,7 +836,7 @@ const translator: Record<string, Translator> = {
       getPageTitlesStartingWithPrefix("Canvas/").concat(["{current}"]),
     placeholder: "Enter a page name",
   },
-  "has uid": {
+  "has block reference": {
     callback: ({ source, target }) => {
       if (INPUT_REGEX.test(target)) {
         return [
@@ -864,7 +864,7 @@ const translator: Record<string, Translator> = {
         },
       ];
     },
-    placeholder: "Enter a uid (with or without brackets)",
+    placeholder: "Enter a block reference (with or without brackets)",
   },
 };
 
