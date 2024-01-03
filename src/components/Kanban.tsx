@@ -21,6 +21,7 @@ import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { Sorts } from "../utils/parseResultSettings";
+import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -62,8 +63,11 @@ const KanbanCard = (card: {
   activeSort: Sorts;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const anyViewIsEmbed = useMemo(
-    () => Object.values(card.viewsByColumn).some((v) => v.mode === "embed"),
+  const isDragHandle = useMemo(
+    () =>
+      Object.values(card.viewsByColumn).some(
+        (v) => v.mode === "embed" || v.mode === "link"
+      ),
     [card.viewsByColumn]
   );
   const displayKey = card.$displayKey;
@@ -71,7 +75,7 @@ const KanbanCard = (card: {
 
   return (
     <Draggable
-      handle={anyViewIsEmbed ? ".embed-handle" : ""}
+      handle={isDragHandle ? ".embed-handle" : ""}
       onDrag={(_, data) => {
         const { x, width } = data.node.getBoundingClientRect();
         const el = card.$getColumnElement(x + width / 2);
@@ -96,7 +100,7 @@ const KanbanCard = (card: {
         data-uid={card.result.uid}
         data-priority={card.$priority}
         onClick={(e) => {
-          if (anyViewIsEmbed) return;
+          if (isDragHandle) return;
           if (isDragging) return;
           if (e.shiftKey) {
             openBlockInSidebar(card.result.uid);
@@ -114,11 +118,11 @@ const KanbanCard = (card: {
         <Icon
           icon="drag-handle-horizontal"
           className="absolute right-2 top-2 text-gray-400 embed-handle cursor-move z-30"
-          hidden={!anyViewIsEmbed}
+          hidden={!isDragHandle}
         />
         <div
           className={`rounded-xl bg-white p-4 ${
-            anyViewIsEmbed ? "" : "cursor-pointer hover:bg-gray-200"
+            isDragHandle ? "" : "cursor-pointer hover:bg-gray-200"
           }`}
         >
           <div className="card-display-value">
@@ -162,6 +166,26 @@ const KanbanCard = (card: {
                           viewValue={card.viewsByColumn[sv].value}
                         />
                       </div>
+                    ) : uid && card.viewsByColumn[sv].mode === "link" ? (
+                      <>
+                        <div className="font-semibold text-sm p-2">{sv}:</div>
+                        <div className="text-sm p-2 text-left">
+                          <a
+                            className={"rm-page-ref"}
+                            data-link-title={getPageTitleByPageUid(uid) || ""}
+                            href={getRoamUrl(uid)}
+                            onClick={(e) => {
+                              if (e.shiftKey) {
+                                openBlockInSidebar(uid);
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }
+                            }}
+                          >
+                            {value}
+                          </a>
+                        </div>
+                      </>
                     ) : (
                       <>
                         <div className="font-semibold text-sm p-2">{sv}:</div>
@@ -533,6 +557,7 @@ const Kanban = ({
                           icon="arrow-left"
                           disabled={columnIndex === 0}
                           onClick={() => moveColumn("left", columnIndex)}
+                          title="Move column left" // <Tooltip> was giving some weird interactions with the Popover
                         />
                         <Button
                           className="p-4"
@@ -540,6 +565,7 @@ const Kanban = ({
                           icon="arrow-right"
                           disabled={columnIndex === columns.length - 1}
                           onClick={() => moveColumn("right", columnIndex)}
+                          title="Move column right"
                         />
                         <Button
                           className="p-4"
@@ -556,6 +582,7 @@ const Kanban = ({
                             setColumns(values);
                             setOpenedPopoverIndex(null);
                           }}
+                          title="Delete column"
                         />
                       </>
                     }
