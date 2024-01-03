@@ -92,7 +92,6 @@ const KanbanCard = (card: {
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
       }}
-      bounds={".roamjs-kanban-container"}
       position={{ x: 0, y: 0 }}
     >
       <div
