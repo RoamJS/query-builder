@@ -569,6 +569,33 @@ const getExportTypes = ({
         });
       },
     },
+    {
+      name: "CSV",
+      callback: async ({ filename, isSamePageEnabled }) => {
+        const resolvedResults =
+          typeof results === "function"
+            ? await results(isSamePageEnabled)
+            : results;
+        if (!resolvedResults) return [];
+        const keys = Object.keys(resolvedResults[0]).filter(
+          (u) => !/uid/i.test(u)
+        );
+        const header = `${keys.join(",")}\n`;
+        const data = resolvedResults
+          .map((r) =>
+            keys
+              .map((k) => r[k].toString())
+              .map((v) => (v.includes(",") ? `"${v}"` : v))
+          )
+          .join("\n");
+        return [
+          {
+            title: `${filename.replace(/\.csv/, "")}.csv`,
+            content: `${header}${data}`,
+          },
+        ];
+      },
+    },
   ];
 };
 
