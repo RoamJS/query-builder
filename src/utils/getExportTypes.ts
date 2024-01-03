@@ -195,9 +195,16 @@ const toMarkdown = ({
 type Props = {
   results?: ExportDialogProps["results"];
   exportId: string;
+  isExportDiscourseGraph: boolean;
 };
 
-const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
+export type DiscourseExportResult = Result & { type: string };
+
+const getExportTypes = ({
+  results,
+  exportId,
+  isExportDiscourseGraph,
+}: Props): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -205,12 +212,17 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   );
   nodeLabelByType["*"] = "Any";
   const getPageData = async (
-    isSamePageEnabled: boolean
+    isSamePageEnabled: boolean,
+    isExportDiscourseGraph?: boolean
   ): Promise<(Result & { type: string })[]> => {
     const allResults =
       typeof results === "function"
         ? await results(isSamePageEnabled)
-        : results;
+        : results || [];
+
+    if (isExportDiscourseGraph) return allResults as DiscourseExportResult[];
+
+    const matchedTexts = new Set();
     return allNodes.flatMap((n) =>
       (allResults
         ? allResults.flatMap((r) =>
@@ -235,7 +247,13 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
             uid,
           }))
       )
-        .filter(({ text }) => matchDiscourseNode({ title: text, ...n }))
+        .filter(({ text }) => {
+          if (matchedTexts.has(text)) return false;
+          const isMatch = matchDiscourseNode({ title: text, ...n });
+          if (isMatch) matchedTexts.add(text);
+
+          return isMatch;
+        })
         .map((node) => ({ ...node, type: n.text }))
     );
   };
@@ -311,7 +329,10 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
   return [
     {
       name: "Markdown",
-      callback: async ({ isSamePageEnabled }) => {
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+      }) => {
         const configTree = getBasicTreeByParentUid(
           getPageUidByPageTitle("roam/js/discourse-graph")
         );
@@ -357,7 +378,10 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
               `author: {author}`,
               "date: {date}",
             ];
-        const allPages = await getPageData(isSamePageEnabled);
+        const allPages = await getPageData(
+          isSamePageEnabled,
+          isExportDiscourseGraph
+        );
         const gatherings = allPages.map(
           ({ text, uid, context: _, type, ...rest }, i, all) =>
             async function getMarkdownData() {
@@ -381,10 +405,12 @@ const getExportTypes = ({ results, exportId }: Props): ExportTypes => {
                 type,
               };
               const treeNode = getFullTreeByParentUid(uid);
-              const discourseResults = await getDiscourseContextResults({
-                uid,
-                isSamePageEnabled,
-              });
+              const discourseResults = includeDiscourseContext
+                ? await getDiscourseContextResults({
+                    uid,
+                    isSamePageEnabled,
+                  })
+                : [];
               const referenceResults = isFlagEnabled("render references")
                 ? (
                     window.roamAlphaAPI.data.fast.q(

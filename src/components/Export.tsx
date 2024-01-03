@@ -14,6 +14,7 @@ import {
   Tabs,
   RadioGroup,
   Radio,
+  FormGroup,
 } from "@blueprintjs/core";
 import React, { useState, useEffect, useMemo } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
@@ -73,6 +74,7 @@ const ExportProgress = ({ id }: { id: string }) => {
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
   title?: string;
+  isExportDiscourseGraph?: boolean;
 };
 
 type ExportDialogComponent = (
@@ -93,6 +95,7 @@ const ExportDialog: ExportDialogComponent = ({
   isOpen,
   results = [],
   title = "Share Data",
+  isExportDiscourseGraph = false,
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -100,7 +103,7 @@ const ExportDialog: ExportDialogComponent = ({
   }, [isOpen]);
   const [dialogOpen, setDialogOpen] = useState(isOpen);
   const exportTypes = useMemo(
-    () => getExportTypes({ results, exportId }),
+    () => getExportTypes({ results, exportId, isExportDiscourseGraph }),
     [results, exportId]
   );
   const [loading, setLoading] = useState(false);
@@ -136,7 +139,16 @@ const ExportDialog: ExportDialogComponent = ({
   const isCanvasPage = checkForCanvasPage(selectedPageTitle);
   const [isSendToGraph, setIsSendToGraph] = useState(false);
   const [livePages, setLivePages] = useState<Result[]>([]);
-
+  const [selectedTabId, setSelectedTabId] = useState("sendto");
+  useEffect(() => {
+    if (isExportDiscourseGraph) setSelectedTabId("export");
+  }, [isExportDiscourseGraph]);
+  const [discourseGraphEnabled, setDiscourseGraphEnabled] = useState(() => {
+    return getExtensionAPI().settings.get("discourse-graphs");
+  });
+  const [includeDiscourseContext, setIncludeDiscourseContext] = useState(
+    discourseGraphEnabled as boolean
+  );
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
     setSelectedPageUid(getPageUidByPageTitle(title));
@@ -282,34 +294,65 @@ const ExportDialog: ExportDialogComponent = ({
             onChange={(e) => setFilename(e.target.value)}
           />
         </Label>
-        <div className="flex justify-between items-center">
+
+        <div className="flex justify-between items-end">
           <span>
             {typeof results === "function"
               ? "Calculating number of results..."
               : `Exporting ${results.length} results`}
           </span>
-          {window.samepage && (
-            <Checkbox
-              checked={isSamePageEnabled}
-              onChange={(e) =>
-                setIsSamePageEnabled((e.target as HTMLInputElement).checked)
-              }
-              style={{ marginBottom: 0 }}
-              labelElement={
-                <Tooltip
-                  content={
-                    "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+          <div className="flex flex-col items-end">
+            <FormGroup
+              className={`m-0 ${discourseGraphEnabled ? "" : "hidden"}`}
+              inline
+            >
+              <Checkbox
+                alignIndicator={"right"}
+                checked={includeDiscourseContext}
+                onChange={(e) => {
+                  setIncludeDiscourseContext(
+                    (e.target as HTMLInputElement).checked
+                  );
+                }}
+                labelElement={
+                  <Tooltip
+                    className="m-0"
+                    content={
+                      "Include the Discourse Context of each result in the export."
+                    }
+                  >
+                    <span>Discourse Context</span>
+                  </Tooltip>
+                }
+              />
+            </FormGroup>
+            {window.samepage && (
+              <FormGroup className="m-0 " inline>
+                <Checkbox
+                  alignIndicator={"right"}
+                  checked={isSamePageEnabled}
+                  onChange={(e) =>
+                    setIsSamePageEnabled((e.target as HTMLInputElement).checked)
                   }
-                >
-                  <img
-                    src="https://samepage.network/images/logo.png"
-                    height={24}
-                    width={24}
-                  />
-                </Tooltip>
-              }
-            />
-          )}
+                  style={{ marginBottom: 0 }}
+                  labelElement={
+                    <Tooltip
+                      className="m-0"
+                      content={
+                        "Use SamePage's backend to gather this export [EXPERIMENTAL]."
+                      }
+                    >
+                      <img
+                        src="https://samepage.network/images/logo.png"
+                        height={24}
+                        width={24}
+                      />
+                    </Tooltip>
+                  }
+                />
+              </FormGroup>
+            )}
+          </div>
         </div>
       </div>
       <div className={Classes.DIALOG_FOOTER}>
@@ -347,6 +390,8 @@ const ExportDialog: ExportDialogComponent = ({
                     const files = await exportType.callback({
                       filename,
                       isSamePageEnabled,
+                      includeDiscourseContext,
+                      isExportDiscourseGraph,
                     });
                     if (!files.length) {
                       setDialogOpen(true);
@@ -452,7 +497,12 @@ const ExportDialog: ExportDialogComponent = ({
         enforceFocus={false}
         portalClassName={"roamjs-export-dialog-body"}
       >
-        <Tabs id="export-tabs" large={true}>
+        <Tabs
+          id="export-tabs"
+          large={true}
+          selectedTabId={selectedTabId}
+          onChange={(newTabId: string) => setSelectedTabId(newTabId)}
+        >
           <Tab id="sendto" title="Send To" panel={SendToPanel} />
           <Tab id="export" title="Export" panel={ExportPanel} />
         </Tabs>
