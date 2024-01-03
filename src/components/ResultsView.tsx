@@ -469,6 +469,7 @@ const ResultsView: ResultsViewComponent = ({
               setIsEditLayout(false);
               setIsEditColumnFilter(false);
               setIsEditViews(false);
+              setIsEditColumnSort(false);
             }}
             autoFocus={false}
             enforceFocus={false}
@@ -1155,6 +1156,8 @@ const ResultsView: ResultsViewComponent = ({
                   resultKeys={columns}
                   parentUid={parentUid}
                   views={views}
+                  activeSort={activeSort}
+                  setActiveSort={resultViewSetActiveSort}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>

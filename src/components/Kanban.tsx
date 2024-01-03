@@ -20,6 +20,7 @@ import extractTag from "roamjs-components/util/extractTag";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import getSubTree from "roamjs-components/util/getSubTree";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { Sorts } from "../utils/parseResultSettings";
 
 const zPriority = z.record(z.number().min(0).max(1));
 
@@ -58,6 +59,7 @@ const KanbanCard = (card: {
   $columnKey: string;
   $selectionValues: string[];
   viewsByColumn: ViewsByColumnType;
+  activeSort: Sorts;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const anyViewIsEmbed = useMemo(
@@ -149,12 +151,11 @@ const KanbanCard = (card: {
 
                 return (
                   <React.Fragment key={sv}>
-                    {!uid && (
+                    {!uid && card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm p-2">
                         [block is blank]
                       </div>
-                    )}
-                    {uid && card.viewsByColumn[sv].mode === "embed" ? (
+                    ) : card.viewsByColumn[sv].mode === "embed" ? (
                       <div className="col-span-2 text-sm -ml-4">
                         <BlockEmbed
                           uid={uid}
@@ -193,6 +194,8 @@ const Kanban = ({
   resultKeys,
   parentUid,
   views,
+  activeSort,
+  setActiveSort,
 }: {
   resultKeys: Column[];
   data: Result[];
@@ -200,6 +203,8 @@ const Kanban = ({
   onQuery: () => void;
   parentUid: string;
   views: { column: string; mode: string; value: string }[];
+  activeSort: Sorts;
+  setActiveSort: (s: Sorts) => void;
 }) => {
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
@@ -314,6 +319,7 @@ const Kanban = ({
       }
       cards[column].push(d);
     });
+    if (activeSort.length) return cards;
     Object.keys(cards).forEach((k) => {
       cards[k] = cards[k].sort(
         (a, b) => prioritization[a.uid] - prioritization[b.uid]
@@ -351,14 +357,22 @@ const Kanban = ({
   const reprioritizeAndUpdateBlock = useCallback<Reprioritize>(
     ({ uid, x, y }) => {
       if (!containerRef.current) return;
-      const newColumn = getColumnElement(x);
-      if (!newColumn) return;
+      const targetColumnEl = getColumnElement(x);
+      const column = targetColumnEl?.getAttribute("data-column");
+      if (!column || !targetColumnEl) return;
 
-      const column = newColumn.getAttribute("data-column");
-      if (!column) return;
+      const result = byUid[uid];
+      const { [`${columnKey}-uid`]: columnUid } = result;
+      if (!result) return;
+      const previousValue = toCellValue({
+        value: result[columnKey],
+        uid: columnUid?.toString(),
+      });
+      const draggedToSameColumn = column === previousValue;
 
+      // Get card priority
       const _cardIndex = Array.from(
-        newColumn.querySelectorAll(
+        targetColumnEl.querySelectorAll(
           ".roamjs-kanban-card:not(.react-draggable-dragging)"
         )
       )
@@ -374,37 +388,51 @@ const Kanban = ({
       const topPriority = prioritization[topCard?.uid] || 0;
       const bottomPriority = prioritization[bottomCard?.uid] || 1;
       const priority = (topPriority + bottomPriority) / 2;
-      setPrioritization((p) => ({ ...p, [uid]: priority }));
+
+      // Update prioritization
+      if (activeSort.length && draggedToSameColumn) {
+        const sortedUids = Object.values(cards)
+          .flat()
+          .map((card) => card.uid);
+        const newPrioritization = sortedUids.reduce(
+          (prioritization, uid, index) => {
+            prioritization[uid] = index;
+            return prioritization;
+          },
+          {} as Record<string, number>
+        );
+        newPrioritization[uid] = priority;
+        setPrioritization(newPrioritization);
+        setActiveSort([]);
+      } else {
+        setPrioritization((p) => ({ ...p, [uid]: priority }));
+      }
 
       // Update block
-      const result = byUid[uid];
-      if (!result) return;
-      const columnKeySelection = resultKeys.find(
-        (rk) => rk.key === columnKey
-      )?.selection;
-      if (!columnKeySelection) return;
-      const predefinedSelection = predefinedSelections.find((ps) =>
-        ps.test.test(columnKeySelection)
-      );
-      if (!predefinedSelection?.update) return;
-      const { [`${columnKey}-uid`]: columnUid } = result;
-      const previousValue = toCellValue({
-        value: result[columnKey],
-        uid: columnUid?.toString(),
-      });
-      const isRemoveValue = column === DEFAULT_FORMAT;
-      if (isRemoveValue && !previousValue) return;
-      if (typeof columnUid !== "string") return;
-      predefinedSelection
-        .update({
-          uid: columnUid,
-          value: isRemoveValue ? "" : column,
-          selection: columnKeySelection,
-          parentUid,
-          result,
-          previousValue,
-        })
-        .then(onQuery);
+      if (!draggedToSameColumn) {
+        const columnKeySelection = resultKeys.find(
+          (rk) => rk.key === columnKey
+        )?.selection;
+        if (!columnKeySelection) return;
+        const predefinedSelection = predefinedSelections.find((ps) =>
+          ps.test.test(columnKeySelection)
+        );
+        if (!predefinedSelection?.update) return;
+
+        const isRemoveValue = column === DEFAULT_FORMAT;
+        if (isRemoveValue && !previousValue) return;
+        if (typeof columnUid !== "string") return;
+        predefinedSelection
+          .update({
+            uid: columnUid,
+            value: isRemoveValue ? "" : column,
+            selection: columnKeySelection,
+            parentUid,
+            result,
+            previousValue,
+          })
+          .then(onQuery);
+      }
     },
     [setPrioritization, cards, containerRef, byUid, columnKey, parentUid]
   );
@@ -541,6 +569,7 @@ const Kanban = ({
                     key={d.uid}
                     result={d}
                     viewsByColumn={viewsByColumn}
+                    activeSort={activeSort}
                     // we use $ to prefix these props to avoid collisions with the result object
                     $priority={prioritization[d.uid]}
                     $reprioritize={reprioritizeAndUpdateBlock}
