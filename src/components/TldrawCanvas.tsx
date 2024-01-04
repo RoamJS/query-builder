@@ -345,9 +345,16 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
         })
         .map((r) => [r.props.uid, r] as const)
     );
-    const relations = allRecords
+    const currentShapeRelations = allRecords
       .filter(isShape)
-      .filter(isDiscourseRelationShape);
+      .filter(isDiscourseRelationShape)
+      .filter((r) => {
+        const { start, end } = r.props;
+        return (
+          (start.type === "binding" && start.boundShapeId === shape.id) ||
+          (end.type === "binding" && end.boundShapeId === shape.id)
+        );
+      });
 
     const results = await getDiscourseContextResults({
       uid: finalUid,
@@ -355,11 +362,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       relations: Object.values(discourseContext.relations).flat(),
     });
 
-    //
-    //
-    // TODO MICHAELG - understand what is going on here, then filter if relation already exists
-    //
-    //
     const toCreate = results
       .flatMap((r) =>
         Object.entries(r.results)
@@ -370,6 +372,19 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             nodeId: k,
           }))
       )
+      .filter(({ relationId, complement, nodeId }) => {
+        const startId = complement ? nodesInCanvas[nodeId].id : shape.id;
+        const endId = complement ? shape.id : nodesInCanvas[nodeId].id;
+        const relationAlreadyExists = currentShapeRelations.some(
+          (r) =>
+            r.type === relationId &&
+            r.props.start.type === "binding" &&
+            r.props.end.type === "binding" &&
+            r.props.start.boundShapeId === startId &&
+            r.props.end.boundShapeId === endId
+        );
+        return !relationAlreadyExists;
+      })
       .map(({ relationId, complement, nodeId }) => {
         return {
           id: createShapeId(),
