@@ -95,6 +95,40 @@ index f87764a..cdeb8c0 100644
      static id: string;
      static initial: string;
      static children: () => (typeof Resizing | typeof Translating | typeof Brushing | typeof DraggingHandle | typeof EditingShape | typeof Idle_9 | typeof PointingCanvas | typeof PointingHandle | typeof PointingResizeHandle | typeof PointingRotateHandle | typeof PointingSelection | typeof PointingShape | typeof Rotating | typeof ScribbleBrushing)[];
+diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs
+index 41f58f9..51a4f78 100644
+--- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs
++++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs
+@@ -2827,7 +2827,28 @@ const _App = class extends EventEmitter {
+         newShape.index = index;
+         index = getIndexAbove(index);
+       }
+-      if (TLArrowShapeDef.is(newShape)) {
++
++      // for copy and pasting custom arrows to a new canvas
++      // after migrating to newest tldraw, use isShapeOfType
++      // https://github.com/tldraw/tldraw/blob/ed37bcf54126201f4e1915f25845a623ad6c5174/packages/editor/src/lib/editor/Editor.ts#L7633-L7701
++      // or new API for bindings if available
++      // https://discord.com/channels/859816885297741824/926464446694580275/1190596833349742622
++      const initialStartBindingId =
++        shape?.props?.start?.type === "binding"
++          ? shape.props.start.boundShapeId
++          : undefined;
++      const initialEndBindingId =
++        shape?.props?.end?.type === "binding"
++          ? shape.props.end.boundShapeId
++          : undefined;
++
++      const startBindingShape = shapes.find((s) => s.id === initialStartBindingId);
++      const endBindingShape = shapes.find((s) => s.id === initialEndBindingId);
++
++      const hasCopiedBindingShape =
++        startBindingShape !== undefined || endBindingShape !== undefined;
++
++      if (TLArrowShapeDef.is(newShape) || hasCopiedBindingShape) {
+         if (newShape.props.start.type === "binding") {
+           const mappedId = idMap.get(newShape.props.start.boundShapeId);
+           newShape.props.start = mappedId ? { ...newShape.props.start, boundShapeId: mappedId } : (
 diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/statechart/TLSelectTool/TLSelectTool.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/statechart/TLSelectTool/TLSelectTool.mjs
 index 185d39d..f19078a 100644
 --- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/statechart/TLSelectTool/TLSelectTool.mjs
