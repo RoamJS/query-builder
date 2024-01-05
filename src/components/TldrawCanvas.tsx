@@ -253,12 +253,6 @@ export const DEFAULT_STYLE_PROPS = {
   padding: "40px",
 };
 
-export const defaultDiscourseNodeShapeProps = {
-  opacity: "1" as DiscourseNodeShape["props"]["opacity"],
-  w: 160,
-  h: 64,
-};
-
 export const loadImage = (
   url: string
 ): Promise<{ width: number; height: number }> => {
@@ -292,7 +286,9 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 
   override defaultProps(): DiscourseNodeShape["props"] {
     return {
-      ...defaultDiscourseNodeShapeProps,
+      opacity: "1" as DiscourseNodeShape["props"]["opacity"],
+      w: 160,
+      h: 64,
       uid: window.roamAlphaAPI.util.generateUID(),
       title: "",
     };

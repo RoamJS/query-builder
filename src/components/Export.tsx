@@ -37,7 +37,7 @@ import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import { createShapeId } from "@tldraw/tlschema";
-import { defaultDiscourseNodeShapeProps } from "./TldrawCanvas";
+import { MAX_WIDTH } from "./TldrawCanvas";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 
 const ExportProgress = ({ id }: { id: string }) => {
@@ -155,6 +155,12 @@ const ExportDialog: ExportDialogComponent = ({
   };
 
   const addToSelectedCanvas = async () => {
+    if (typeof results !== "object") return;
+
+    const PADDING_BETWEEN_SHAPES = 20;
+    const COMMON_BOUNDS_XOFFSET = 250;
+    const MAX_COLUMNS = 5;
+    const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
     const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
     const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
@@ -170,10 +176,65 @@ const ExportDialog: ExportDialogComponent = ({
         }
       }
     };
-
     const pageKey = getPageKey(tldraw);
 
-    if (typeof results !== "object") return;
+    type TLdrawProps = {
+      [key: string]: any;
+    };
+    type ShapeBounds = {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+    };
+    const extractShapesBounds = (tldraw: TLdrawProps): ShapeBounds[] => {
+      return Object.keys(tldraw)
+        .filter((key) => tldraw[key].typeName === "shape")
+        .map((key) => {
+          const shape = tldraw[key];
+          return {
+            x: shape.x,
+            y: shape.y,
+            w: shape.props.w,
+            h: shape.props.h,
+          };
+        });
+    };
+    const shapeBounds = extractShapesBounds(tldraw);
+
+    type CommonBounds = {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
+    };
+    const findCommonBounds = (shapes: ShapeBounds[]): CommonBounds => {
+      if (!shapes.length) return { top: 0, right: 0, bottom: 0, left: 0 };
+
+      let maxX = Number.MIN_SAFE_INTEGER;
+      let maxY = Number.MIN_SAFE_INTEGER;
+      let minX = Number.MAX_SAFE_INTEGER;
+      let minY = Number.MAX_SAFE_INTEGER;
+
+      shapes.forEach((shape) => {
+        let rightX = shape.x + shape.w;
+        let leftX = shape.x;
+        let topY = shape.y;
+        let bottomY = shape.y - shape.h;
+
+        if (rightX > maxX) maxX = rightX;
+        if (leftX < minX) minX = leftX;
+        if (topY < minY) minY = topY;
+        if (bottomY > maxY) maxY = bottomY;
+      });
+
+      return { top: minY, right: maxX, bottom: maxY, left: minX };
+    };
+    const commonBounds = findCommonBounds(shapeBounds);
+
+    let currentRowHeight = 0;
+    let nextShapeX = COMMON_BOUNDS_XOFFSET;
+    let shapeY = commonBounds.top;
     for (const [i, r] of results.entries()) {
       const discourseNode = findDiscourseNode(r.uid);
       const nodeType = discourseNode ? discourseNode.type : "page-node";
@@ -190,7 +251,6 @@ const ExportDialog: ExportDialogComponent = ({
         isLocked: false,
         type: nodeType,
         props: {
-          opacity: defaultDiscourseNodeShapeProps.opacity,
           w,
           h,
           uid: r.uid,
@@ -198,11 +258,19 @@ const ExportDialog: ExportDialogComponent = ({
           imageUrl,
         },
         parentId: pageKey,
-        y: 50 + i * 100,
+        y: shapeY,
         id: newShapeId,
         typeName: "shape",
-        x: 50 * i,
+        x: commonBounds.right + nextShapeX,
       };
+
+      nextShapeX += COLUMN_WIDTH + PADDING_BETWEEN_SHAPES;
+      if (h > currentRowHeight) currentRowHeight = h;
+      if ((i + 1) % MAX_COLUMNS === 0) {
+        shapeY += currentRowHeight + PADDING_BETWEEN_SHAPES;
+        currentRowHeight = 0;
+        nextShapeX = COMMON_BOUNDS_XOFFSET;
+      }
 
       tldraw[newShapeId] = newShape;
     }
