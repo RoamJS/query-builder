@@ -48,7 +48,7 @@ import getSubTree from "roamjs-components/util/getSubTree";
 import { render as cyRender } from "./components/CytoscapePlayground";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
-import DEFAULT_NODE_VALUES from "./data/defaultDiscourseNodes";
+import INITIAL_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
 import CanvasReferences from "./components/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
@@ -623,9 +623,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
       });
 
       refreshConfigTree();
-      if (getDiscourseNodes().length === 0) {
+      const nodes = getDiscourseNodes().filter((n) => n.backedBy !== "default");
+      if (nodes.length === 0) {
         await Promise.all(
-          DEFAULT_NODE_VALUES.map(
+          INITIAL_NODE_VALUES.map(
             (n) =>
               getPageUidByPageTitle(`discourse-graph/nodes/${n.text}`) ||
               createPage({

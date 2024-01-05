@@ -1,4 +1,4 @@
-const DEFAULT_NODE_VALUES = [
+const INITIAL_NODE_VALUES = [
   {
     type: "_CLM-node",
     format: "[[CLM]] - {content}",
@@ -25,4 +25,4 @@ const DEFAULT_NODE_VALUES = [
   },
 ];
 
-export default DEFAULT_NODE_VALUES;
+export default INITIAL_NODE_VALUES;
