@@ -40,6 +40,7 @@ import {
   FONT_FAMILIES,
   MenuItem,
   TLShape,
+  isShape,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -330,30 +331,60 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       finalUid?: string;
     } = {}
   ) {
+    const isDiscourseRelationShape = (
+      shape: TLShape
+    ): shape is DiscourseRelationShape => {
+      return relationIds.has(shape.type);
+    };
     const nodes = Object.values(discourseContext.nodes);
     const nodeIds = new Set(nodes.map((n) => n.type));
-    const nodesInView = Object.fromEntries(
+    const nodesInCanvas = Object.fromEntries(
       allRecords
         .filter((r): r is DiscourseNodeShape => {
           return r.typeName === "shape" && nodeIds.has(r.type);
         })
         .map((r) => [r.props.uid, r] as const)
     );
+    const currentShapeRelations = allRecords
+      .filter(isShape)
+      .filter(isDiscourseRelationShape)
+      .filter((r) => {
+        const { start, end } = r.props;
+        return (
+          (start.type === "binding" && start.boundShapeId === shape.id) ||
+          (end.type === "binding" && end.boundShapeId === shape.id)
+        );
+      });
+
     const results = await getDiscourseContextResults({
       uid: finalUid,
       nodes: Object.values(discourseContext.nodes),
       relations: Object.values(discourseContext.relations).flat(),
     });
+
     const toCreate = results
       .flatMap((r) =>
         Object.entries(r.results)
-          .filter(([k, v]) => nodesInView[k] && v.id && relationIds.has(v.id))
+          .filter(([k, v]) => nodesInCanvas[k] && v.id && relationIds.has(v.id))
           .map(([k, v]) => ({
             relationId: v.id!,
             complement: v.complement,
             nodeId: k,
           }))
       )
+      .filter(({ relationId, complement, nodeId }) => {
+        const startId = complement ? nodesInCanvas[nodeId].id : shape.id;
+        const endId = complement ? shape.id : nodesInCanvas[nodeId].id;
+        const relationAlreadyExists = currentShapeRelations.some(
+          (r) =>
+            r.type === relationId &&
+            r.props.start.type === "binding" &&
+            r.props.end.type === "binding" &&
+            r.props.start.boundShapeId === startId &&
+            r.props.end.boundShapeId === endId
+        );
+        return !relationAlreadyExists;
+      })
       .map(({ relationId, complement, nodeId }) => {
         return {
           id: createShapeId(),
@@ -362,7 +393,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             ? {
                 start: {
                   type: "binding",
-                  boundShapeId: nodesInView[nodeId].id,
+                  boundShapeId: nodesInCanvas[nodeId].id,
                   normalizedAnchor: { x: 0.5, y: 0.5 },
                   isExact: false,
                 },
@@ -382,7 +413,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                 },
                 end: {
                   type: "binding",
-                  boundShapeId: nodesInView[nodeId].id,
+                  boundShapeId: nodesInCanvas[nodeId].id,
                   normalizedAnchor: { x: 0.5, y: 0.5 },
                   isExact: false,
                 },
