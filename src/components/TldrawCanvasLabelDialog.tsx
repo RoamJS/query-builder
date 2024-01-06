@@ -107,6 +107,14 @@ const LabelDialogAutocomplete = ({
     setOptions,
     setReferencedNodeOptions,
   ]);
+  useEffect(() => {
+    if (isAddReferencedNode) {
+      const inputElement = document.getElementById(
+        "referenced-node-autocomplete-input"
+      );
+      if (inputElement) inputElement.focus();
+    }
+  }, [isAddReferencedNode]);
 
   const setValue = React.useCallback(
     (r: Result) => {
@@ -254,6 +262,7 @@ const LabelDialogAutocomplete = ({
           <div className="referenced-node-autocomplete">
             <Label>{referencedNode?.name}</Label>
             <AutocompleteInput
+              id="referenced-node-autocomplete-input"
               value={
                 referencedNodeValue
                   ? { text: referencedNodeValue, uid: "" }
