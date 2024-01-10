@@ -107,6 +107,14 @@ const LabelDialogAutocomplete = ({
     setOptions,
     setReferencedNodeOptions,
   ]);
+  const inputDivRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isAddReferencedNode && inputDivRef.current) {
+      const inputElement =
+        inputDivRef.current.getElementsByTagName("textarea")[0];
+      if (inputElement) inputElement.focus();
+    }
+  }, [isAddReferencedNode, inputDivRef]);
 
   const setValue = React.useCallback(
     (r: Result) => {
@@ -251,7 +259,7 @@ const LabelDialogAutocomplete = ({
       )}
       {isAddReferencedNode &&
         (action === "creating" || action === "editing") && (
-          <div className="referenced-node-autocomplete">
+          <div className="referenced-node-autocomplete" ref={inputDivRef}>
             <Label>{referencedNode?.name}</Label>
             <AutocompleteInput
               value={
