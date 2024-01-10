@@ -72,6 +72,7 @@ const KanbanCard = (card: {
   );
   const displayKey = card.$displayKey;
   const cardView = card.viewsByColumn[displayKey];
+  const displayUid = card.result[`${displayKey}-uid`];
 
   return (
     <Draggable
@@ -102,12 +103,12 @@ const KanbanCard = (card: {
           if (isDragHandle) return;
           if (isDragging) return;
           if (e.shiftKey) {
-            openBlockInSidebar(card.result.uid);
+            openBlockInSidebar(displayUid);
             e.preventDefault();
             e.stopPropagation();
           } else {
             window.roamAlphaAPI.ui.mainWindow.openBlock({
-              block: { uid: card.result.uid },
+              block: { uid: displayUid },
             });
             e.preventDefault();
             e.stopPropagation();
@@ -125,15 +126,35 @@ const KanbanCard = (card: {
           }`}
         >
           <div className="card-display-value">
-            {cardView.mode === "embed" ? (
+            {!displayUid ? (
+              <div className="p-2">[block is blank]</div>
+            ) : cardView.mode === "embed" ? (
               <div className="roamjs-query-embed -ml-4">
-                <BlockEmbed uid={card.result.uid} viewValue={cardView.value} />
+                <BlockEmbed uid={displayUid} viewValue={cardView.value} />
+              </div>
+            ) : cardView.mode === "link" ? (
+              <div className="p-2">
+                <a
+                  href={getRoamUrl(displayUid)}
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      openBlockInSidebar(displayUid);
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
+                >
+                  {toCellValue({
+                    value: card.result[displayKey],
+                    uid: displayUid,
+                  })}
+                </a>
               </div>
             ) : (
               <div className="p-2">
                 {toCellValue({
                   value: card.result[displayKey],
-                  uid: card.result[`${displayKey}-uid`],
+                  uid: displayUid,
                 })}
               </div>
             )}
@@ -283,7 +304,10 @@ const Kanban = ({
       : undefined;
     if (configuredCols) return configuredCols;
     const valueCounts = data.reduce((prev, d) => {
-      const key = d[columnKey]?.toString() || DEFAULT_FORMAT;
+      const key =
+        d[`${columnKey}-display`]?.toString() ||
+        d[columnKey]?.toString() ||
+        DEFAULT_FORMAT;
       if (!prev[key]) {
         prev[key] = 0;
       }
