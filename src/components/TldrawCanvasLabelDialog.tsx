@@ -114,7 +114,7 @@ const LabelDialogAutocomplete = ({
         inputDivRef.current.getElementsByTagName("textarea")[0];
       if (inputElement) inputElement.focus();
     }
-  }, [isAddReferencedNode]);
+  }, [isAddReferencedNode, inputDivRef]);
 
   const setValue = React.useCallback(
     (r: Result) => {
