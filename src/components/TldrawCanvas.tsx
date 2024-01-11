@@ -1148,9 +1148,6 @@ const TldrawCanvas = ({ title }: Props) => {
                         ) {
                           return cancelAndWarn("Cannot move relation.");
                         }
-
-                        console.log(this);
-                        console.log(shape);
                       };
                     };
                   }
