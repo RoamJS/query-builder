@@ -916,6 +916,17 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
+  const isCustomArrowShape = (shape: TLShape) => {
+    // TODO: find a better way to identify custom arrow shapes
+    // shape.type or shape.name probably?
+    const allRelationIdSet = new Set(allRelationIds);
+    const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
+
+    return (
+      allRelationIdSet.has(shape.type) ||
+      allAddReferencedNodeActionsSet.has(shape.type)
+    );
+  };
 
   type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
 
@@ -977,6 +988,27 @@ const TldrawCanvas = ({ title }: Props) => {
       return a.boundShapeId === b.boundShapeId;
     }
     return false;
+  };
+  type CancelAndWarnType = {
+    content: string;
+    shape: TLShape;
+    context: Translating | DraggingHandle;
+  };
+  const cancelAndWarn = ({ content, shape, context }: CancelAndWarnType) => {
+    renderToast({
+      id: "tldraw-warning",
+      intent: "warning",
+      content,
+    });
+    context.app.updateShapes([
+      {
+        id: shape.id,
+        type: shape.type,
+        props: {
+          ...context.info.shape.props,
+        },
+      },
+    ]);
   };
 
   const customTldrawConfig = useMemo(
@@ -1107,31 +1139,9 @@ const TldrawCanvas = ({ title }: Props) => {
                         });
                         const shape = this.app.getShapeById(this.info.shape.id);
                         if (!shape) return;
-                        // TODO: find a better way to identify custom arrow shapes
-                        // shape.type or shape.name probably?
-                        if (
-                          !allRelationIdSet.has(shape.type) &&
-                          !allAddReferencedNodeActionsSet.has(shape.type)
-                        )
-                          return;
+                        if (!isCustomArrowShape(shape)) return;
 
                         // Stop accidental arrow reposition
-                        const cancelAndWarn = (content: string) => {
-                          renderToast({
-                            id: "tldraw-warning",
-                            intent: "warning",
-                            content,
-                          });
-                          this.app.updateShapes([
-                            {
-                              id: shape.id,
-                              type: shape.type,
-                              props: {
-                                ...this.info.shape.props,
-                              },
-                            },
-                          ]);
-                        };
                         const { start, end } = shape.props as TLArrowShapeProps;
                         const { end: thisEnd, start: thisStart } = this.info
                           .shape.props as TLArrowShapeProps;
@@ -1143,7 +1153,11 @@ const TldrawCanvas = ({ title }: Props) => {
                           compareBindings(thisEnd, end) &&
                           compareBindings(thisStart, start);
                         if (hasPreviousBinding && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn("Cannot move relation.");
+                          return cancelAndWarn({
+                            content: "Cannot move relation.",
+                            shape,
+                            context: this,
+                          });
                         }
                       };
                     };
@@ -1164,13 +1178,7 @@ const TldrawCanvas = ({ title }: Props) => {
 
                         const shape = this.app.getShapeById(this.shapeId);
                         if (!shape) return;
-                        // TODO: find a better way to identify custom arrow shapes
-                        // shape.type or shape.name probably?
-                        if (
-                          !allRelationIdSet.has(shape.type) &&
-                          !allAddReferencedNodeActionsSet.has(shape.type)
-                        )
-                          return;
+                        if (!isCustomArrowShape(shape)) return;
                         const arrow = shape;
                         const {
                           start,
@@ -1178,22 +1186,6 @@ const TldrawCanvas = ({ title }: Props) => {
                           text: arrowText,
                         } = arrow.props as TLArrowShapeProps;
 
-                        const cancelAndWarn = (content: string) => {
-                          renderToast({
-                            id: "tldraw-warning",
-                            intent: "warning",
-                            content,
-                          });
-                          this.app.updateShapes([
-                            {
-                              id: arrow.id,
-                              type: arrow.type,
-                              props: {
-                                ...this.info.shape.props,
-                              },
-                            },
-                          ]);
-                        };
                         const deleteAndWarn = (content: string) => {
                           renderToast({
                             id: "tldraw-warning",
@@ -1217,7 +1209,11 @@ const TldrawCanvas = ({ title }: Props) => {
                           compareBindings(thisEnd, end) &&
                           compareBindings(thisStart, start);
                         if (hasPreviousBindings && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn("Cannot remove handle.");
+                          return cancelAndWarn({
+                            content: "Cannot remove handle.",
+                            shape,
+                            context: this,
+                          });
                         }
 
                         // Allow handles to be repositioned in same shape
