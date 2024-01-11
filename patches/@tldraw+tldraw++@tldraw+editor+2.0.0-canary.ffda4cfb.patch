@@ -1,5 +1,5 @@
 diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
-index f87764a..cdeb8c0 100644
+index f87764a..20716f0 100644
 --- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
 +++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/cjs/index.d.ts
 @@ -2478,7 +2478,7 @@ declare class Dragging extends StateNode {
@@ -95,6 +95,15 @@ index f87764a..cdeb8c0 100644
      static id: string;
      static initial: string;
      static children: () => (typeof Resizing | typeof Translating | typeof Brushing | typeof DraggingHandle | typeof EditingShape | typeof Idle_9 | typeof PointingCanvas | typeof PointingHandle | typeof PointingResizeHandle | typeof PointingRotateHandle | typeof PointingSelection | typeof PointingShape | typeof Rotating | typeof ScribbleBrushing)[];
+@@ -5291,7 +5291,7 @@ export declare type TLWheelEventInfo = TLBaseEventInfo & {
+     delta: Vec2dModel;
+ };
+ 
+-declare class Translating extends StateNode {
++export declare class Translating extends StateNode {
+     static id: string;
+     info: TLBaseEventInfo & {
+         type: "pointer";
 diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs
 index 41f58f9..51a4f78 100644
 --- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/editor/dist/esm/lib/app/App.mjs

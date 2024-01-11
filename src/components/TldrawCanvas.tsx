@@ -41,6 +41,9 @@ import {
   MenuItem,
   TLShape,
   isShape,
+  TLArrowTerminal,
+  TLShapeId,
+  Translating,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -913,6 +916,17 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
+  const isCustomArrowShape = (shape: TLShape) => {
+    // TODO: find a better way to identify custom arrow shapes
+    // shape.type or shape.name probably?
+    const allRelationIdSet = new Set(allRelationIds);
+    const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
+
+    return (
+      allRelationIdSet.has(shape.type) ||
+      allAddReferencedNodeActionsSet.has(shape.type)
+    );
+  };
 
   type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
 
@@ -958,6 +972,45 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [allAddReferencedNodeByAction]);
 
   const extensionAPI = useExtensionAPI();
+
+  const isBindingType = (
+    binding: TLArrowTerminal
+  ): binding is TLArrowTerminal & {
+    boundShapeId: TLShapeId;
+  } => {
+    return binding.type === "binding" && !!binding.boundShapeId;
+  };
+  const hasValidBindings = (bindings: TLArrowTerminal[]) => {
+    return bindings.every(isBindingType);
+  };
+  const compareBindings = (a: TLArrowTerminal, b: TLArrowTerminal) => {
+    if (isBindingType(a) && isBindingType(b)) {
+      return a.boundShapeId === b.boundShapeId;
+    }
+    return false;
+  };
+  type CancelAndWarnType = {
+    content: string;
+    shape: TLShape;
+    context: Translating | DraggingHandle;
+  };
+  const cancelAndWarn = ({ content, shape, context }: CancelAndWarnType) => {
+    renderToast({
+      id: "tldraw-warning",
+      intent: "warning",
+      content,
+    });
+    context.app.updateShapes([
+      {
+        id: shape.id,
+        type: shape.type,
+        props: {
+          ...context.info.shape.props,
+        },
+      },
+    ]);
+  };
+
   const customTldrawConfig = useMemo(
     () =>
       new TldrawEditorConfig({
@@ -1072,6 +1125,44 @@ const TldrawCanvas = ({ title }: Props) => {
               // @ts-ignore
               static children: typeof TLSelectTool.children = () => {
                 return TLSelectTool.children().map((c) => {
+                  if (c.id === "translating") {
+                    const Translate = c as unknown as typeof Translating;
+                    const allRelationIdSet = new Set(allRelationIds);
+                    const allAddReferencedNodeActionsSet = new Set(
+                      allAddReferencedNodeActions
+                    );
+                    return class extends Translate {
+                      override onPointerUp: TLPointerEvent = () => {
+                        this.onComplete({
+                          type: "misc",
+                          name: "complete",
+                        });
+                        const shape = this.app.getShapeById(this.info.shape.id);
+                        if (!shape) return;
+                        if (!isCustomArrowShape(shape)) return;
+
+                        // Stop accidental arrow reposition
+                        const { start, end } = shape.props as TLArrowShapeProps;
+                        const { end: thisEnd, start: thisStart } = this.info
+                          .shape.props as TLArrowShapeProps;
+                        const hasPreviousBinding = hasValidBindings([
+                          thisEnd,
+                          thisStart,
+                        ]);
+                        const bindingsMatchPrevBindings =
+                          compareBindings(thisEnd, end) &&
+                          compareBindings(thisStart, start);
+                        if (hasPreviousBinding && !bindingsMatchPrevBindings) {
+                          return cancelAndWarn({
+                            content: "Cannot move relation.",
+                            shape,
+                            context: this,
+                          });
+                        }
+                      };
+                    };
+                  }
+
                   if (c.id === "dragging_handle") {
                     const Handle = c as unknown as typeof DraggingHandle;
                     const allRelationIdSet = new Set(allRelationIds);
@@ -1087,14 +1178,13 @@ const TldrawCanvas = ({ title }: Props) => {
 
                         const shape = this.app.getShapeById(this.shapeId);
                         if (!shape) return;
-                        // TODO: find a better way to identify custom arrow shapes
-                        // shape.type or shape.name probably?
-                        if (
-                          !allRelationIdSet.has(shape.type) ||
-                          !allAddReferencedNodeActionsSet.has(shape.type)
-                        )
-                          return;
+                        if (!isCustomArrowShape(shape)) return;
                         const arrow = shape;
+                        const {
+                          start,
+                          end,
+                          text: arrowText,
+                        } = arrow.props as TLArrowShapeProps;
 
                         const deleteAndWarn = (content: string) => {
                           renderToast({
@@ -1105,11 +1195,32 @@ const TldrawCanvas = ({ title }: Props) => {
                           this.app.deleteShapes([arrow.id]);
                         };
 
-                        const {
-                          start,
-                          end,
-                          text: arrowText,
-                        } = arrow.props as TLArrowShapeProps;
+                        // Allow arrow bend
+                        if (this.info.handle.id === "middle") return;
+
+                        // Stop accidental handle removal
+                        const { end: thisEnd, start: thisStart } =
+                          this.info.shape.props;
+                        const hasPreviousBindings = hasValidBindings([
+                          thisEnd,
+                          thisStart,
+                        ]);
+                        const bindingsMatchPrevBindings =
+                          compareBindings(thisEnd, end) &&
+                          compareBindings(thisStart, start);
+                        if (hasPreviousBindings && !bindingsMatchPrevBindings) {
+                          return cancelAndWarn({
+                            content: "Cannot remove handle.",
+                            shape,
+                            context: this,
+                          });
+                        }
+
+                        // Allow handles to be repositioned in same shape
+                        if (hasPreviousBindings && bindingsMatchPrevBindings) {
+                          return;
+                        }
+
                         if (
                           start.type !== "binding" ||
                           end.type !== "binding"
