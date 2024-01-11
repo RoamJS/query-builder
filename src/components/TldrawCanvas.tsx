@@ -1139,13 +1139,10 @@ const TldrawCanvas = ({ title }: Props) => {
                           thisEnd,
                           thisStart,
                         ]);
-                        const currentBindingsArePreviousBindings =
+                        const bindingsMatchPrevBindings =
                           compareBindings(thisEnd, end) &&
                           compareBindings(thisStart, start);
-                        if (
-                          hasPreviousBinding &&
-                          !currentBindingsArePreviousBindings
-                        ) {
+                        if (hasPreviousBinding && !bindingsMatchPrevBindings) {
                           return cancelAndWarn("Cannot move relation.");
                         }
                       };
@@ -1212,19 +1209,19 @@ const TldrawCanvas = ({ title }: Props) => {
                         // Stop accidental handle removal
                         const { end: thisEnd, start: thisStart } =
                           this.info.shape.props;
-                        const hasPreviousBinding = hasValidBindings([
+                        const hasPreviousBindings = hasValidBindings([
                           thisEnd,
                           thisStart,
                         ]);
-                        const bindingMatchPrevBindings =
+                        const bindingsMatchPrevBindings =
                           compareBindings(thisEnd, end) &&
                           compareBindings(thisStart, start);
-                        if (hasPreviousBinding && !bindingMatchPrevBindings) {
+                        if (hasPreviousBindings && !bindingsMatchPrevBindings) {
                           return cancelAndWarn("Cannot remove handle.");
                         }
 
                         // Allow handles to be repositioned in same shape
-                        if (hasPreviousBinding && bindingMatchPrevBindings) {
+                        if (hasPreviousBindings && bindingsMatchPrevBindings) {
                           return;
                         }
 
