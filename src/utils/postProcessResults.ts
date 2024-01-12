@@ -83,13 +83,13 @@ const postProcessResults = (
             }
             return columnFilter.value.some((v) => r[columnFilter.key] === v);
           case "greater than":
+            const gtFilter = transform(columnFilter.value[0]);
+            const gtResult = transform(r[columnFilter.key]);
+            return gtResult > gtFilter;
           case "less than":
-            const transformedFilter = transform(columnFilter.value[0]);
-            const transformedResult = transform(r[columnFilter.key]);
-
-            return columnFilter.type === "greater than"
-              ? transformedResult > transformedFilter
-              : transformedResult < transformedFilter;
+            const ltFilter = transform(columnFilter.value[0]);
+            const ltResult = transform(r[columnFilter.key]);
+            return ltResult < ltFilter;
           default:
             return true;
         }
