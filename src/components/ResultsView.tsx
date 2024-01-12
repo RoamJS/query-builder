@@ -175,7 +175,12 @@ const QueryUsed = ({ parentUid }: { parentUid: string }) => {
   );
 };
 
-const SUPPORTED_COLUMN_FILTER_TYPES = [{ id: "contains" }, { id: "equals" }];
+const SUPPORTED_COLUMN_FILTER_TYPES = [
+  { id: "contains" },
+  { id: "equals" },
+  { id: "greater than" },
+  { id: "less than" },
+];
 
 const SUPPORTED_LAYOUTS = [
   {

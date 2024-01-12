@@ -3,19 +3,18 @@ import { Result } from "roamjs-components/types/query-builder";
 import extractTag from "roamjs-components/util/extractTag";
 import parseResultSettings from "./parseResultSettings";
 
+const transform = (_val: Result[string]) =>
+  typeof _val === "string"
+    ? DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_val))
+      ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val)) || new Date()
+      : /^(-)?\d+(\.\d*)?$/.test(_val)
+      ? Number(_val)
+      : _val
+    : _val;
 const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
     const _aVal = a[key];
     const _bVal = b[key];
-    const transform = (_val: Result[string]) =>
-      typeof _val === "string"
-        ? DAILY_NOTE_PAGE_TITLE_REGEX.test(extractTag(_val))
-          ? window.roamAlphaAPI.util.pageTitleToDate(extractTag(_val)) ||
-            new Date()
-          : /^(-)?\d+(\.\d*)?$/.test(_val)
-          ? Number(_val)
-          : _val
-        : _val;
     const aVal = transform(_aVal);
     const bVal = transform(_bVal);
     if (aVal instanceof Date && bVal instanceof Date) {
@@ -83,6 +82,14 @@ const postProcessResults = (
               return true;
             }
             return columnFilter.value.some((v) => r[columnFilter.key] === v);
+          case "greater than":
+            const gtFilter = transform(columnFilter.value[0]);
+            const gtResult = transform(r[columnFilter.key]);
+            return gtResult > gtFilter;
+          case "less than":
+            const ltFilter = transform(columnFilter.value[0]);
+            const ltResult = transform(r[columnFilter.key]);
+            return ltResult < ltFilter;
           default:
             return true;
         }
