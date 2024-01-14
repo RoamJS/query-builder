@@ -24,9 +24,7 @@ export const getNewDiscourseNodeText = async ({
   nodeType: string;
   blockUid?: string;
 }) => {
-  const discourseNodes = getDiscourseNodes().filter(
-    (n) => n.backedBy === "user"
-  );
+  const discourseNodes = getDiscourseNodes();
   let newText = text;
   if (!text) {
     newText = await new Promise<string>((resolve) => {

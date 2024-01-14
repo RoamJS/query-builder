@@ -1849,16 +1849,13 @@ const TldrawCanvas = ({ title }: Props) => {
                     });
                     return;
                   }
-                  const defaultNodes = getDiscourseNodes().filter(
-                    (n) => n.backedBy === "default"
-                  );
-                  const isDefault = defaultNodes.find((n) => n.type === type);
-                  const nodeText = isDefault
-                    ? text
-                    : await getNewDiscourseNodeText({
-                        text,
-                        nodeType: type,
-                      });
+                  const nodeText =
+                    type === "blck-node"
+                      ? text
+                      : await getNewDiscourseNodeText({
+                          text,
+                          nodeType: type,
+                        });
                   const uid = await createDiscourseNode({
                     configPageUid: type,
                     text: nodeText,
@@ -1939,6 +1936,15 @@ const TldrawCanvas = ({ title }: Props) => {
                     } as MenuItem;
                   });
 
+                  // Page not yet supported
+                  // requires page-node to have image flag option
+                  const filteredItems =
+                    shape.type === "image"
+                      ? nodeMenuItems.filter(
+                          (item) => item.id !== "convert-to-page-node"
+                        )
+                      : nodeMenuItems;
+
                   const submenuGroup: MenuGroup = {
                     id: "convert-to-group",
                     type: "group",
@@ -1952,7 +1958,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         label: "action.convert-to" as TLTranslationKey,
                         disabled: false,
                         readonlyOk: true,
-                        children: [...nodeMenuItems],
+                        children: [...filteredItems],
                       },
                     ],
                   };
