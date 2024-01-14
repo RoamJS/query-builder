@@ -42,8 +42,8 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
         textarea.selectionStart,
         textarea.selectionEnd
       );
-      setTimeout(() => {
-        const pageName = getNewDiscourseNodeText({
+      setTimeout(async () => {
+        const pageName = await getNewDiscourseNodeText({
           text: highlighted,
           nodeType: nodeUid,
           blockUid,
@@ -58,7 +58,6 @@ const NodeMenu = ({ onClose, textarea }: { onClose: () => void } & Props) => {
         createDiscourseNode({
           text: pageName,
           configPageUid: nodeUid,
-          discourseNodes,
         });
       });
       onClose();
