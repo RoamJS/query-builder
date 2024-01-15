@@ -39,6 +39,8 @@ import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
 import { createShapeId } from "@tldraw/tlschema";
 import { MAX_WIDTH } from "./TldrawCanvas";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
+import { Column } from "../utils/types";
+import { render as renderToast } from "roamjs-components/components/Toast";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -74,6 +76,7 @@ const ExportProgress = ({ id }: { id: string }) => {
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
   title?: string;
+  columns?: Column[];
   isExportDiscourseGraph?: boolean;
 };
 
@@ -94,6 +97,7 @@ const ExportDialog: ExportDialogComponent = ({
   onClose,
   isOpen,
   results = [],
+  columns,
   title = "Share Data",
   isExportDiscourseGraph = false,
 }) => {
@@ -132,6 +136,7 @@ const ExportDialog: ExportDialogComponent = ({
       DEFAULT_CANVAS_PAGE_FORMAT;
     return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
   };
+  const firstColumnKey = columns?.[0]?.key || "text";
   const currentPageUid = getCurrentPageUid();
   const currentPageTitle = getPageTitleByPageUid(currentPageUid);
   const [selectedPageTitle, setSelectedPageTitle] = useState(currentPageTitle);
@@ -240,7 +245,7 @@ const ExportDialog: ExportDialogComponent = ({
       const nodeType = discourseNode ? discourseNode.type : "page-node";
       const extensionAPI = getExtensionAPI();
       const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-        text: r.text,
+        text: r[firstColumnKey],
         uid: r.uid,
         nodeType,
         extensionAPI,
@@ -254,7 +259,7 @@ const ExportDialog: ExportDialogComponent = ({
           w,
           h,
           uid: r.uid,
-          title: r.text,
+          title: r[firstColumnKey],
           imageUrl,
         },
         parentId: pageKey,
@@ -297,7 +302,7 @@ const ExportDialog: ExportDialogComponent = ({
         window.roamAlphaAPI.data.block.create({
           location: { "parent-uid": selectedPageUid, order: "last" },
           block: {
-            string: isPage ? `[[${r.text}]]` : `((${r.uid}))`,
+            string: isPage ? `[[${r[firstColumnKey]}]]` : `((${r.uid}))`,
           },
         });
       });
@@ -316,21 +321,48 @@ const ExportDialog: ExportDialogComponent = ({
     if (typeof results === "object") {
       window.roamAlphaAPI.ui.graphView.wholeGraph.setMode("Explore");
       window.roamAlphaAPI.ui.graphView.wholeGraph.setExplorePages(
-        livePages.map((r) => r.text)
+        livePages.map((r) => String(r[firstColumnKey]))
       );
       window.location.href = `${getRoamUrl()}/graph`;
     }
   };
 
-  const handleSendTo = () => {
-    if (isSendToGraph) {
-      addToGraphOverView();
-    } else if (isCanvasPage) {
-      addToSelectedCanvas();
-    } else {
-      addToSelectedPage();
+  const handleSendTo = async () => {
+    try {
+      if (isSendToGraph) addToGraphOverView();
+      else if (isCanvasPage) await addToSelectedCanvas();
+      else addToSelectedPage();
+      renderToast({
+        content: "Results sent!",
+        intent: "success",
+        id: "query-builder-export-success",
+      });
+    } catch (e) {
+      const error = e as Error;
+      renderToast({
+        content: "Looks like there was an error.  The team has been notified.",
+        intent: "danger",
+        id: "query-builder-error",
+      });
+      apiPost({
+        domain: "https://api.samepage.network",
+        path: "errors",
+        data: {
+          method: "extension-error",
+          type: "Query Builder Export Dialog Failed",
+          message: error.message,
+          stack: error.stack,
+          version: process.env.VERSION,
+          notebookUuid: JSON.stringify({
+            owner: "RoamJS",
+            app: "query-builder",
+            workspace: window.roamAlphaAPI.graph.name,
+          }),
+        },
+      }).catch(() => {});
+    } finally {
+      onClose();
     }
-    onClose();
   };
 
   const ExportPanel = (
@@ -483,7 +515,7 @@ const ExportDialog: ExportDialogComponent = ({
                     path: "errors",
                     data: {
                       method: "extension-error",
-                      type: "RoamJS Export Dialog Failed",
+                      type: "Query Builder Export Dialog Failed",
                       data: {
                         activeExportType,
                         filename,
@@ -493,6 +525,11 @@ const ExportDialog: ExportDialogComponent = ({
                       message: error.message,
                       stack: error.stack,
                       version: process.env.VERSION,
+                      notebookUuid: JSON.stringify({
+                        owner: "RoamJS",
+                        app: "query-builder",
+                        workspace: window.roamAlphaAPI.graph.name,
+                      }),
                     },
                   }).catch(() => {});
                   setDialogOpen(true);

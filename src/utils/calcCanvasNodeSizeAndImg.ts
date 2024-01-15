@@ -44,7 +44,7 @@ const calcCanvasNodeSizeAndImg = async ({
   nodeType,
   extensionAPI,
 }: {
-  text: string;
+  text: string | number | Date;
   uid: string;
   nodeType: string;
   extensionAPI: OnloadArgs["extensionAPI"];
@@ -62,7 +62,7 @@ const calcCanvasNodeSizeAndImg = async ({
   const { w, h } = measureCanvasNodeText({
     ...DEFAULT_STYLE_PROPS,
     maxWidth: MAX_WIDTH,
-    text,
+    text: String(text),
   });
 
   if (!isKeyImage) return { w, h, imageUrl: "" };
@@ -76,7 +76,7 @@ const calcCanvasNodeSizeAndImg = async ({
     const results = await runQuery({
       extensionAPI,
       parentUid,
-      inputs: { NODETEXT: text, NODEUID: uid },
+      inputs: { NODETEXT: String(text), NODEUID: uid },
     });
     const result = results.allProcessedResults[0]?.text || "";
     imageUrl = extractFirstImageUrl(result);
