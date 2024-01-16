@@ -41,7 +41,9 @@ export const getNewDiscourseNodeText = async ({
         onSubmit: (data: Record<string, unknown>) => {
           resolve(data.textField as string);
         },
-        onClose: () => {},
+        onClose: () => {
+          resolve("");
+        },
         isOpen: true,
       });
     });
