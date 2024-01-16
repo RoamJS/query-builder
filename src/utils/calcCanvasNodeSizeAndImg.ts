@@ -39,12 +39,12 @@ const getFirstImageByUid = (uid: string): string | null => {
 };
 
 const calcCanvasNodeSizeAndImg = async ({
-  text,
+  nodeText,
   uid,
   nodeType,
   extensionAPI,
 }: {
-  text: string | number | Date;
+  nodeText: string;
   uid: string;
   nodeType: string;
   extensionAPI: OnloadArgs["extensionAPI"];
@@ -62,7 +62,7 @@ const calcCanvasNodeSizeAndImg = async ({
   const { w, h } = measureCanvasNodeText({
     ...DEFAULT_STYLE_PROPS,
     maxWidth: MAX_WIDTH,
-    text: String(text),
+    text: nodeText,
   });
 
   if (!isKeyImage) return { w, h, imageUrl: "" };
@@ -76,7 +76,7 @@ const calcCanvasNodeSizeAndImg = async ({
     const results = await runQuery({
       extensionAPI,
       parentUid,
-      inputs: { NODETEXT: String(text), NODEUID: uid },
+      inputs: { NODETEXT: nodeText, NODEUID: uid },
     });
     const result = results.allProcessedResults[0]?.text || "";
     imageUrl = extractFirstImageUrl(result);

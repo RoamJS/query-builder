@@ -245,7 +245,7 @@ const ExportDialog: ExportDialogComponent = ({
       const nodeType = discourseNode ? discourseNode.type : "page-node";
       const extensionAPI = getExtensionAPI();
       const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-        text: r[firstColumnKey],
+        nodeText: String(r[firstColumnKey]),
         uid: r.uid,
         nodeType,
         extensionAPI,
@@ -340,7 +340,7 @@ const ExportDialog: ExportDialogComponent = ({
     } catch (e) {
       const error = e as Error;
       renderToast({
-        content: "Looks like there was an error.  The team has been notified.",
+        content: "Looks like there was an error. The team has been notified.",
         intent: "danger",
         id: "query-builder-error",
       });
