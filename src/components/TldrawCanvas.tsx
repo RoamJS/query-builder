@@ -604,7 +604,6 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
                   configPageUid: shape.type,
                   text,
                   newPageUid: uid,
-                  discourseNodes: Object.values(discourseContext.nodes),
                 });
               }
 
@@ -1839,7 +1838,8 @@ const TldrawCanvas = ({ title }: Props) => {
                 if (!shape) return schema;
                 const convertToDiscourseNode = async (
                   text: string,
-                  type: string
+                  type: string,
+                  imageShapeUrl?: string
                 ) => {
                   if (!extensionAPI) {
                     renderToast({
@@ -1849,20 +1849,18 @@ const TldrawCanvas = ({ title }: Props) => {
                     });
                     return;
                   }
-                  const defaultNodes = getDiscourseNodes().filter(
-                    (n) => n.backedBy === "default"
-                  );
-                  const isDefault = defaultNodes.find((n) => n.type === type);
-                  const nodeText = isDefault
-                    ? text
-                    : getNewDiscourseNodeText({
-                        text,
-                        nodeType: type,
-                      });
+                  const nodeText =
+                    type === "blck-node"
+                      ? text
+                      : await getNewDiscourseNodeText({
+                          text,
+                          nodeType: type,
+                        });
                   const uid = await createDiscourseNode({
                     configPageUid: type,
                     text: nodeText,
-                    discourseNodes: Object.values(discourseContext.nodes),
+                    imageUrl: imageShapeUrl,
+                    extensionAPI,
                   });
                   app.deleteShapes([shape.id]);
                   const { x, y } = shape;
@@ -1893,7 +1891,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   nodeType: string
                 ) => {
                   if (!shape.type) return null;
-                  if (nodeType === "blck-node" && shape.type === "image") {
+                  if (shape.type === "image") {
                     return async () => {
                       const { assetId } = (shape as TLImageShape).props;
                       if (!assetId) return;
@@ -1905,7 +1903,9 @@ const TldrawCanvas = ({ title }: Props) => {
                       const src = await window.roamAlphaAPI.util.uploadFile({
                         file,
                       });
-                      convertToDiscourseNode(`![](${src})`, nodeType);
+                      const text =
+                        nodeType === "blck-node" ? `![](${src})` : "";
+                      convertToDiscourseNode(text, nodeType, src);
                     };
                   } else if (shape.type === "text") {
                     return () => {
@@ -1936,10 +1936,12 @@ const TldrawCanvas = ({ title }: Props) => {
                     } as MenuItem;
                   });
 
+                  // Page not yet supported
+                  // requires page-node to have image flag option
                   const filteredItems =
                     shape.type === "image"
                       ? nodeMenuItems.filter(
-                          (item) => item.id === "convert-to-blck-node"
+                          (item) => item.id !== "convert-to-page-node"
                         )
                       : nodeMenuItems;
 

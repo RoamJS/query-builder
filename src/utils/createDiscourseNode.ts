@@ -6,21 +6,27 @@ import createPage from "roamjs-components/writes/createPage";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
-import { DiscourseNode } from "./getDiscourseNodes";
+import getDiscourseNodes from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
+import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
+import { OnloadArgs } from "roamjs-components/types";
+import runQuery from "./runQuery";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
 type Props = {
   text: string;
   configPageUid: string;
   newPageUid?: string;
-  discourseNodes: DiscourseNode[];
+  imageUrl?: string;
+  extensionAPI?: OnloadArgs["extensionAPI"];
 };
 
 const createDiscourseNode = async ({
   text,
   configPageUid,
   newPageUid,
-  discourseNodes,
+  imageUrl,
+  extensionAPI,
 }: Props) => {
   const handleOpenInSidebar = (uid: string) => {
     if (isFlagEnabled("disable sidebar open")) return;
@@ -42,6 +48,7 @@ const createDiscourseNode = async ({
     }, 100);
   };
 
+  const discourseNodes = getDiscourseNodes();
   const specification = discourseNodes?.find(
     (n) => n.type === configPageUid
   )?.specification;
@@ -86,6 +93,51 @@ const createDiscourseNode = async ({
         })
       )
     );
+
+    // Add image to page if imageUrl is provided
+    const createOrUpdateImageBlock = async (imagePlaceholderUid?: string) => {
+      const imageMarkdown = `![](${imageUrl})`;
+      if (imagePlaceholderUid) {
+        await updateBlock({
+          uid: imagePlaceholderUid,
+          text: imageMarkdown,
+        });
+      } else {
+        await createBlock({
+          node: { text: imageMarkdown },
+          order: 0,
+          parentUid: pageUid,
+        });
+      }
+    };
+    const canvasSettings = Object.fromEntries(
+      discourseNodes.map((n) => [n.type, { ...n.canvasSettings }])
+    );
+    const {
+      "query-builder-alias": qbAlias = "",
+      "key-image": isKeyImage = "",
+      "key-image-option": keyImageOption = "",
+    } = canvasSettings[configPageUid] || {};
+
+    if (isKeyImage && imageUrl) {
+      if (keyImageOption === "query-builder") {
+        if (!extensionAPI) return;
+
+        const parentUid = resolveQueryBuilderRef({
+          queryRef: qbAlias,
+          extensionAPI,
+        });
+        const results = await runQuery({
+          extensionAPI,
+          parentUid,
+          inputs: { NODETEXT: text, NODEUID: pageUid },
+        });
+        const imagePlaceholderUid = results.allProcessedResults[0]?.uid;
+        await createOrUpdateImageBlock(imagePlaceholderUid);
+      } else if (imageUrl) {
+        await createOrUpdateImageBlock();
+      }
+    }
   };
 
   const useSmartBlocks =
