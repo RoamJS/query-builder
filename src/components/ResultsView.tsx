@@ -457,6 +457,7 @@ const ResultsView: ResultsViewComponent = ({
         isOpen={isExportOpen}
         onClose={handleCloseExport}
         results={allProcessedResults}
+        columns={columns}
       />
       <div className="relative">
         <div

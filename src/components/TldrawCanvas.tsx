@@ -537,7 +537,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     }) => {
       if (!extensionAPI) return;
       const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-        text,
+        nodeText: text,
         uid,
         nodeType: this.type,
         extensionAPI,
@@ -1295,7 +1295,7 @@ const TldrawCanvas = ({ title }: Props) => {
                           });
                           const { h, w, imageUrl } =
                             await calcCanvasNodeSizeAndImg({
-                              text: newTitle,
+                              nodeText: newTitle,
                               uid: target.props.uid,
                               nodeType: target.type,
                               extensionAPI,
@@ -1865,7 +1865,7 @@ const TldrawCanvas = ({ title }: Props) => {
                   app.deleteShapes([shape.id]);
                   const { x, y } = shape;
                   const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-                    text: nodeText,
+                    nodeText: nodeText,
                     extensionAPI,
                     nodeType: type,
                     uid,
