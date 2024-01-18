@@ -1126,17 +1126,15 @@ const TldrawCanvas = ({ title }: Props) => {
                 return TLSelectTool.children().map((c) => {
                   if (c.id === "translating") {
                     const Translate = c as unknown as typeof Translating;
-                    const allRelationIdSet = new Set(allRelationIds);
-                    const allAddReferencedNodeActionsSet = new Set(
-                      allAddReferencedNodeActions
-                    );
                     return class extends Translate {
                       override onPointerUp: TLPointerEvent = () => {
                         this.onComplete({
                           type: "misc",
                           name: "complete",
                         });
-                        const shape = this.app.getShapeById(this.info.shape.id);
+                        const shape = this.app.getShapeById(
+                          this.info.shape?.id // sometimes undefined?
+                        );
                         if (!shape) return;
                         if (!isCustomArrowShape(shape)) return;
 
