@@ -1136,7 +1136,9 @@ const TldrawCanvas = ({ title }: Props) => {
                           type: "misc",
                           name: "complete",
                         });
-                        const shape = this.app.getShapeById(this.info.shape.id);
+                        const shape = this.app.getShapeById(
+                          this.info.shape?.id // sometimes undefined?
+                        );
                         if (!shape) return;
                         if (!isCustomArrowShape(shape)) return;
 
