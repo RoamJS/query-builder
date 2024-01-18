@@ -295,14 +295,17 @@ const Kanban = ({
       blockUid: layout.uid as string,
     });
     return defaultDisplayKey;
-  }, [layout.key]);
-  const [columns, setColumns] = useState(() => {
+  }, [layout.display]);
+  const [columns, setColumns] = useState<string[]>([]);
+
+  useEffect(() => {
     const configuredCols = Array.isArray(layout.columns)
       ? layout.columns
       : typeof layout.columns === "string"
       ? [layout.columns]
       : undefined;
-    if (configuredCols) return configuredCols;
+    if (configuredCols) return setColumns(configuredCols);
+
     const valueCounts = data.reduce((prev, d) => {
       const key =
         d[`${columnKey}-display`]?.toString() ||
@@ -320,11 +323,13 @@ const Kanban = ({
         value,
       ])
     );
-    return Object.entries(cleanedValueCounts)
+    const columns = Object.entries(cleanedValueCounts)
       .sort((a, b) => b[1] - a[1])
       .map((c) => c[0])
-      .slice(0, 3);
-  });
+      .slice(0, 25);
+
+    setColumns(columns);
+  }, [columnKey]);
 
   const [prioritization, setPrioritization] = useState(() => {
     const base64 = Array.isArray(layout.prioritization)
@@ -522,7 +527,6 @@ const Kanban = ({
     () => Object.fromEntries(views.map((v) => [v.column, v])),
     [views]
   );
-  const { mode: view, value: viewValue } = viewsByColumn[displayKey] || {};
 
   return (
     <div className="relative">

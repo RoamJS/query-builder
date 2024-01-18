@@ -597,6 +597,13 @@ const ResultsView: ResultsViewComponent = ({
                               value,
                               blockUid: layoutNode.uid,
                             });
+                            if (s.options === "columns") {
+                              setInputSettings({
+                                key: "columns",
+                                blockUid: layoutNode.uid,
+                                values: [],
+                              });
+                            }
                           }}
                           items={options}
                         />
