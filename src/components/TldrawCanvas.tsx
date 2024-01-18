@@ -1126,10 +1126,6 @@ const TldrawCanvas = ({ title }: Props) => {
                 return TLSelectTool.children().map((c) => {
                   if (c.id === "translating") {
                     const Translate = c as unknown as typeof Translating;
-                    const allRelationIdSet = new Set(allRelationIds);
-                    const allAddReferencedNodeActionsSet = new Set(
-                      allAddReferencedNodeActions
-                    );
                     return class extends Translate {
                       override onPointerUp: TLPointerEvent = () => {
                         this.onComplete({
