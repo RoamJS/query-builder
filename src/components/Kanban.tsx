@@ -7,7 +7,14 @@ import React, {
   useState,
 } from "react";
 import { Column, Result } from "../utils/types";
-import { Button, HTMLTable, Icon, Popover, Tooltip } from "@blueprintjs/core";
+import {
+  Button,
+  HTMLTable,
+  Icon,
+  InputGroup,
+  Popover,
+  Tooltip,
+} from "@blueprintjs/core";
 import Draggable from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
@@ -240,6 +247,12 @@ const Kanban = ({
   views,
   activeSort,
   setActiveSort,
+  setPage,
+  pageSize,
+  showInterface,
+  pageSizeTimeoutRef,
+  setPageSize,
+  page,
 }: {
   resultKeys: Column[];
   data: Result[];
@@ -249,7 +262,14 @@ const Kanban = ({
   views: { column: string; mode: string; value: string }[];
   activeSort: Sorts;
   setActiveSort: (s: Sorts) => void;
+  setPage: (p: number) => void;
+  pageSize: number;
+  showInterface: boolean;
+  pageSizeTimeoutRef: React.MutableRefObject<number>;
+  setPageSize: (p: number) => void;
+  page: number;
 }) => {
+  // const paginatedData = data.slice(0, page * pageSize);
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
@@ -331,6 +351,8 @@ const Kanban = ({
     setColumns(columns);
   }, [columnKey]);
 
+  //  this is going to suck
+  // for paginatedData
   const [prioritization, setPrioritization] = useState(() => {
     const base64 = Array.isArray(layout.prioritization)
       ? layout.prioritization[0]
@@ -550,6 +572,7 @@ const Kanban = ({
       <div className="flex w-full p-4">
         <div
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll flex w-full"
+          style={{ minHeight: "500px" }}
           ref={containerRef}
         >
           {columns.map((col, columnIndex) => {
@@ -618,74 +641,126 @@ const Kanban = ({
                     <Button icon="more" minimal />
                   </Popover>
                 </div>
-                {(cards[col] || [])?.map((d) => (
-                  <KanbanCard
-                    key={d.uid}
-                    result={d}
-                    viewsByColumn={viewsByColumn}
-                    activeSort={activeSort}
-                    // we use $ to prefix these props to avoid collisions with the result object
-                    $priority={prioritization[d.uid]}
-                    $reprioritize={reprioritizeAndUpdateBlock}
-                    $getColumnElement={getColumnElement}
-                    $displayKey={displayKey}
-                    $columnKey={columnKey}
-                    $selectionValues={resultKeys.map((rk) => rk.key)}
+                <div
+                  className="overscroll-y-contain overflow-y-scroll"
+                  style={{ maxHeight: "75vh" }}
+                >
+                  {(cards[col] || [])?.map((d, i) => {
+                    if (i > page * pageSize) return null;
+                    return (
+                      <>
+                        {i}
+                        <KanbanCard
+                          key={d.uid}
+                          result={d}
+                          viewsByColumn={viewsByColumn}
+                          activeSort={activeSort}
+                          // we use $ to prefix these props to avoid collisions with the result object
+                          $priority={prioritization[d.uid]}
+                          $reprioritize={reprioritizeAndUpdateBlock}
+                          $getColumnElement={getColumnElement}
+                          $displayKey={displayKey}
+                          $columnKey={columnKey}
+                          $selectionValues={resultKeys.map((rk) => rk.key)}
+                        />
+                      </>
+                    );
+                  })}
+                  <Button
+                    text="Show More"
+                    minimal
+                    fill={true}
+                    onClick={() => setPage(page + 1)}
+                    disabled={
+                      page === Math.ceil(data.length / pageSize) ||
+                      data.length === 0
+                    }
                   />
-                ))}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div className="ml-2 absolute bottom-8 right-8">
-        {isAdding ? (
-          <div className="rounded-2xl p-4 bg-gray-100 w-48 border border-gray-200 ">
-            <AutocompleteInput
-              placeholder="Enter column title..."
-              value={newColumn}
-              setValue={setNewColumn}
-              options={potentialColumns}
-            />
-            <div
-              className="justify-between items-center mt-2"
-              style={{ display: "flex" }}
-            >
+      <div
+        className={`p-0 ${!showInterface ? "hidden" : ""}`}
+        style={{ background: "#eeeeee80" }}
+      >
+        <div
+          className="flex items-center gap-4"
+          style={{ padding: 4, paddingLeft: 8 }}
+        >
+          <span>Cards per column</span>
+          <InputGroup
+            defaultValue={pageSize.toString()}
+            onChange={(e) => {
+              clearTimeout(pageSizeTimeoutRef.current);
+              pageSizeTimeoutRef.current = window.setTimeout(() => {
+                setPageSize(Number(e.target.value));
+
+                setInputSetting({
+                  key: "size",
+                  value: e.target.value,
+                  blockUid: parentUid,
+                });
+              }, 1000);
+            }}
+            type="number"
+            style={{
+              width: 60,
+              maxWidth: 60,
+              marginRight: 32,
+              marginLeft: 16,
+            }}
+          />
+          <div className="ml-auto p-2">
+            {isAdding ? (
+              <>
+                <AutocompleteInput
+                  placeholder="Enter column title..."
+                  value={newColumn}
+                  setValue={setNewColumn}
+                  options={potentialColumns}
+                />
+                <div
+                  className="justify-between items-center mt-2"
+                  style={{ display: "flex" }}
+                >
+                  <Button
+                    intent="primary"
+                    text="Add column"
+                    className="text-xs"
+                    disabled={!newColumn}
+                    onClick={() => {
+                      const values = [...columns, newColumn];
+                      setInputSettings({
+                        blockUid: layoutUid,
+                        key: "columns",
+                        values,
+                      });
+                      setColumns(values);
+                      setIsAdding(false);
+                      setNewColumn("");
+                    }}
+                  />
+                  <Button
+                    icon={"cross"}
+                    minimal
+                    onClick={() => setIsAdding(false)}
+                  />
+                </div>
+              </>
+            ) : (
               <Button
-                intent="primary"
-                text="Add column"
-                className="text-xs"
-                disabled={!newColumn}
-                onClick={() => {
-                  const values = [...columns, newColumn];
-                  setInputSettings({
-                    blockUid: layoutUid,
-                    key: "columns",
-                    values,
-                  });
-                  setColumns(values);
-                  setIsAdding(false);
-                  setNewColumn("");
-                }}
-              />
-              <Button
-                icon={"cross"}
                 minimal
-                onClick={() => setIsAdding(false)}
-              />
-            </div>
-          </div>
-        ) : (
-          <Tooltip content="Add another column">
-            <div>
-              <Icon
-                className="rounded-2xl p-4 cursor-pointer border border-gray-200 bg-gray-100 hover:bg-opacity-25"
-                icon={"plus"}
+                text="Add column"
+                className="p-2 cursor-pointer ml-auto"
+                rightIcon={"plus"}
                 onClick={() => setIsAdding(true)}
               />
-            </div>
-          </Tooltip>
-        )}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
