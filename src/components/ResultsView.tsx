@@ -597,6 +597,7 @@ const ResultsView: ResultsViewComponent = ({
                               value,
                               blockUid: layoutNode.uid,
                             });
+                            // TODO: replace this with an `onSettingChange` in SUPPORTED_LAYOUTS
                             if (s.options === "columns") {
                               setInputSettings({
                                 key: "columns",
