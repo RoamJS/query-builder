@@ -496,15 +496,59 @@ const ExportDialog: ExportDialogComponent = ({
                     if (!files.length) {
                       setDialogOpen(true);
                       setError("Failed to find any results to export.");
-                    } else {
-                      files.forEach(({ title, content }) =>
-                        zip.file(title, content)
-                      );
-                      zip.generateAsync({ type: "blob" }).then((content) => {
-                        saveAs(content, `${filename}.zip`);
-                        onClose();
-                      });
+                      return;
                     }
+
+                    if (activeExportType === "PDF") {
+                      const response = await apiPost({
+                        domain: "http://localhost:3003",
+                        path: "pdf",
+                        data: {
+                          files,
+                          method: "michael-error",
+                          type: "michael",
+                          version: process.env.VERSION,
+                          notebookUuid: JSON.stringify({
+                            owner: "RoamJS",
+                            app: "query-builder",
+                            workspace: window.roamAlphaAPI.graph.name,
+                          }),
+                        },
+                      }).catch((error) => {
+                        console.error("Error fetching ZIP from backend", error);
+                        setError("Failed to export files.");
+                      });
+
+                      if (response) {
+                        const parsedResponse = JSON.parse(response.data);
+                        const base64ToBlob = (
+                          base64: string,
+                          type = "application/octet-stream"
+                        ) => {
+                          const binaryString = window.atob(base64);
+                          const len = binaryString.length;
+                          const bytes = new Uint8Array(len);
+                          for (let i = 0; i < len; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                          }
+                          return new Blob([bytes], { type: type });
+                        };
+                        const blob = base64ToBlob(
+                          parsedResponse.body,
+                          "application/zip"
+                        );
+                        saveAs(blob, `${filename}.zip`);
+                        onClose();
+                        return;
+                      }
+                    }
+                    files.forEach(({ title, content }) =>
+                      zip.file(title, content)
+                    );
+                    zip.generateAsync({ type: "blob" }).then((content) => {
+                      saveAs(content, `${filename}.zip`);
+                      onClose();
+                    });
                   } else {
                     setError(`Unsupported export type: ${exportType}`);
                   }

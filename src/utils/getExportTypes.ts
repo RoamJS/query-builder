@@ -74,12 +74,14 @@ const getFilename = ({
   simplifiedFilename,
   allNodes,
   removeSpecialCharacters,
+  extension = ".md",
 }: {
   title?: string;
   maxFilenameLength: number;
   simplifiedFilename: boolean;
   allNodes: ReturnType<typeof getDiscourseNodes>;
   removeSpecialCharacters: boolean;
+  extension?: string;
 }) => {
   const baseName = simplifiedFilename
     ? getContentFromNodes({ title, allNodes })
@@ -88,7 +90,7 @@ const getFilename = ({
     removeSpecialCharacters
       ? baseName.replace(/[<>:"/\\|\?*[\]]/g, "")
       : baseName
-  }.md`;
+  }.${extension}`;
 
   return name.length > maxFilenameLength
     ? `${name.substring(
@@ -192,7 +194,7 @@ const toMarkdown = ({
     .join("")}`;
 };
 
-type Props = {
+type getExportTypesProps = {
   results?: ExportDialogProps["results"];
   exportId: string;
   isExportDiscourseGraph: boolean;
@@ -204,7 +206,7 @@ const getExportTypes = ({
   results,
   exportId,
   isExportDiscourseGraph,
-}: Props): ExportTypes => {
+}: getExportTypesProps): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -325,6 +327,62 @@ const getExportTypes = ({
       return { grammar, nodes, relations };
     });
   };
+  const getExportSettings = () => {
+    const configTree = getBasicTreeByParentUid(
+      getPageUidByPageTitle("roam/js/discourse-graph")
+    );
+    const exportTree = getSubTree({
+      tree: configTree,
+      key: "export",
+    });
+    const maxFilenameLength = getSettingIntFromTree({
+      tree: exportTree.children,
+      key: "max filename length",
+      defaultValue: 64,
+    });
+    const linkType = getSettingValueFromTree({
+      tree: exportTree.children,
+      key: "link type",
+      defaultValue: "alias",
+    });
+    const removeSpecialCharacters = !!getSubTree({
+      tree: exportTree.children,
+      key: "remove special characters",
+    }).uid;
+    const simplifiedFilename = !!getSubTree({
+      tree: exportTree.children,
+      key: "simplified filename",
+    }).uid;
+    const frontmatter = getSubTree({
+      tree: exportTree.children,
+      key: "frontmatter",
+    }).children.map((t) => t.text);
+    const optsRefs = !!getSubTree({
+      tree: exportTree.children,
+      key: "resolve block references",
+    }).uid;
+    const optsEmbeds = !!getSubTree({
+      tree: exportTree.children,
+      key: "resolve block embeds",
+    }).uid;
+    const yaml = frontmatter.length
+      ? frontmatter
+      : [
+          "title: {text}",
+          `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
+          `author: {author}`,
+          "date: {date}",
+        ];
+    return {
+      yaml,
+      optsRefs,
+      optsEmbeds,
+      simplifiedFilename,
+      maxFilenameLength,
+      removeSpecialCharacters,
+      linkType,
+    };
+  };
 
   return [
     {
@@ -333,51 +391,15 @@ const getExportTypes = ({
         isSamePageEnabled,
         includeDiscourseContext = false,
       }) => {
-        const configTree = getBasicTreeByParentUid(
-          getPageUidByPageTitle("roam/js/discourse-graph")
-        );
-        const exportTree = getSubTree({
-          tree: configTree,
-          key: "export",
-        });
-        const maxFilenameLength = getSettingIntFromTree({
-          tree: exportTree.children,
-          key: "max filename length",
-          defaultValue: 64,
-        });
-        const linkType = getSettingValueFromTree({
-          tree: exportTree.children,
-          key: "link type",
-          defaultValue: "alias",
-        });
-        const removeSpecialCharacters = !!getSubTree({
-          tree: exportTree.children,
-          key: "remove special characters",
-        }).uid;
-        const simplifiedFilename = !!getSubTree({
-          tree: exportTree.children,
-          key: "simplified filename",
-        }).uid;
-        const frontmatter = getSubTree({
-          tree: exportTree.children,
-          key: "frontmatter",
-        }).children.map((t) => t.text);
-        const optsRefs = !!getSubTree({
-          tree: exportTree.children,
-          key: "resolve block references",
-        }).uid;
-        const optsEmbeds = !!getSubTree({
-          tree: exportTree.children,
-          key: "resolve block embeds",
-        }).uid;
-        const yaml = frontmatter.length
-          ? frontmatter
-          : [
-              "title: {text}",
-              `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
-              `author: {author}`,
-              "date: {date}",
-            ];
+        const {
+          yaml,
+          optsRefs,
+          optsEmbeds,
+          simplifiedFilename,
+          maxFilenameLength,
+          removeSpecialCharacters,
+          linkType,
+        } = getExportSettings();
         const allPages = await getPageData(
           isSamePageEnabled,
           isExportDiscourseGraph
@@ -594,6 +616,148 @@ const getExportTypes = ({
             content: `${header}${data}`,
           },
         ];
+      },
+    },
+    {
+      name: "PDF",
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+      }) => {
+        const {
+          yaml,
+          optsRefs,
+          optsEmbeds,
+          simplifiedFilename,
+          maxFilenameLength,
+          removeSpecialCharacters,
+          linkType,
+        } = getExportSettings();
+        const allPages = await getPageData(
+          isSamePageEnabled,
+          isExportDiscourseGraph
+        );
+        const gatherings = allPages.map(
+          ({ text, uid, context: _, type, ...rest }, i, all) =>
+            async function getMarkdownData() {
+              updateExportProgress({ progress: i / all.length, id: exportId });
+              // skip a beat to let progress render
+              await new Promise((resolve) => setTimeout(resolve));
+              const viewType = getPageViewType(text) || "bullet";
+              const treeNode = getFullTreeByParentUid(uid);
+              const discourseResults = includeDiscourseContext
+                ? await getDiscourseContextResults({
+                    uid,
+                    isSamePageEnabled,
+                  })
+                : [];
+              const referenceResults = isFlagEnabled("render references")
+                ? (
+                    window.roamAlphaAPI.data.fast.q(
+                      `[:find (pull ?pr [:node/title]) (pull ?r [:block/heading [:block/string :as "text"] [:children/view-type :as "viewType"] {:block/children ...}]) :where [?p :node/title "${normalizePageTitle(
+                        text
+                      )}"] [?r :block/refs ?p] [?r :block/page ?pr]]`
+                    ) as [PullBlock, PullBlock][]
+                  ).filter(
+                    ([, { [":block/children"]: children }]) =>
+                      Array.isArray(children) && children.length
+                  )
+                : [];
+              const content = `${treeNode.children
+                .map((c) =>
+                  toMarkdown({
+                    c,
+                    v: viewType,
+                    i: 0,
+                    opts: {
+                      refs: optsRefs,
+                      embeds: optsEmbeds,
+                      simplifiedFilename,
+                      allNodes,
+                      maxFilenameLength,
+                      removeSpecialCharacters,
+                      linkType,
+                    },
+                  })
+                )
+                .join("\n")}\n${
+                discourseResults.length
+                  ? `\n###### Discourse Context\n\n${discourseResults
+                      .flatMap((r) =>
+                        Object.values(r.results).map(
+                          (t) =>
+                            `- **${r.label}::** ${toLink(
+                              getFilename({
+                                title: t.text,
+                                maxFilenameLength,
+                                simplifiedFilename,
+                                allNodes,
+                                removeSpecialCharacters,
+                              }),
+                              linkType
+                            )}`
+                        )
+                      )
+                      .join("\n")}\n`
+                  : ""
+              }${
+                referenceResults.length
+                  ? `\n###### References\n\n${referenceResults
+                      .map(
+                        (r_1) =>
+                          `${toLink(
+                            getFilename({
+                              title: r_1[0][":node/title"],
+                              maxFilenameLength,
+                              simplifiedFilename,
+                              allNodes,
+                              removeSpecialCharacters,
+                            }),
+                            linkType
+                          )}\n\n${toMarkdown({
+                            c: pullBlockToTreeNode(r_1[1], ":bullet"),
+                            opts: {
+                              refs: optsRefs,
+                              embeds: optsEmbeds,
+                              simplifiedFilename,
+                              allNodes,
+                              maxFilenameLength,
+                              removeSpecialCharacters,
+                              linkType,
+                            },
+                          })}`
+                      )
+                      .join("\n")}\n`
+                  : ""
+              }`;
+              const uids = new Set(collectUids(treeNode));
+              return { title: text, content, uids };
+            }
+        );
+        const pages = await gatherings.reduce(
+          (p, c) =>
+            p.then((arr) =>
+              c().then((item) => {
+                arr.push(item);
+                return arr;
+              })
+            ),
+          Promise.resolve(
+            [] as Awaited<ReturnType<(typeof gatherings)[number]>>[]
+          )
+        );
+
+        return pages.map(({ title, content }) => ({
+          title: getFilename({
+            title,
+            maxFilenameLength,
+            simplifiedFilename,
+            allNodes,
+            removeSpecialCharacters,
+            extension: "pdf",
+          }),
+          content,
+        }));
       },
     },
   ];
