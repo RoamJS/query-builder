@@ -128,7 +128,7 @@ const KanbanCard = (card: {
           hidden={!isDragHandle}
         />
         <div
-          className={`rounded-xl bg-white p-4 ${
+          className={`rounded-xl bg-white p-4 mb-3 ${
             isDragHandle ? "" : "cursor-pointer hover:bg-gray-200"
           }`}
         >
