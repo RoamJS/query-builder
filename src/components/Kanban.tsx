@@ -576,6 +576,8 @@ const Kanban = ({
           ref={containerRef}
         >
           {columns.map((col, columnIndex) => {
+            const totalCardsInColumn = (cards[col] || []).length;
+            const cardsShown = page * pageSize;
             return (
               <div
                 key={col}
@@ -643,13 +645,12 @@ const Kanban = ({
                 </div>
                 <div
                   className="overscroll-y-contain overflow-y-scroll"
-                  style={{ maxHeight: "75vh" }}
+                  style={{ maxHeight: "70vh" }}
                 >
                   {(cards[col] || [])?.map((d, i) => {
-                    if (i > page * pageSize) return null;
+                    if (i > cardsShown) return null;
                     return (
                       <>
-                        {i}
                         <KanbanCard
                           key={d.uid}
                           result={d}
@@ -671,10 +672,7 @@ const Kanban = ({
                     minimal
                     fill={true}
                     onClick={() => setPage(page + 1)}
-                    disabled={
-                      page === Math.ceil(data.length / pageSize) ||
-                      data.length === 0
-                    }
+                    disabled={totalCardsInColumn <= cardsShown}
                   />
                 </div>
               </div>
@@ -697,11 +695,14 @@ const Kanban = ({
               clearTimeout(pageSizeTimeoutRef.current);
               pageSizeTimeoutRef.current = window.setTimeout(() => {
                 setPageSize(Number(e.target.value));
-
+                const resultUid = getSubTree({
+                  key: "results",
+                  parentUid,
+                }).uid;
                 setInputSetting({
                   key: "size",
                   value: e.target.value,
-                  blockUid: parentUid,
+                  blockUid: resultUid,
                 });
               }, 1000);
             }}
