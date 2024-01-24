@@ -648,7 +648,7 @@ const Kanban = ({
                   style={{ maxHeight: "70vh" }}
                 >
                   {(cards[col] || [])?.map((d, i) => {
-                    if (i > cardsShown) return null;
+                    if (i + 1 > cardsShown) return null;
                     return (
                       <>
                         <KanbanCard
