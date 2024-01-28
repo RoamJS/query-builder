@@ -644,7 +644,7 @@ const Kanban = ({
                   </Popover>
                 </div>
                 <div
-                  className="overscroll-y-contain overflow-y-scroll"
+                  className="overscroll-y-contain overflow-y-scroll relative"
                   style={{ maxHeight: "70vh" }}
                 >
                   {(cards[col] || [])?.map((d, i) => {
