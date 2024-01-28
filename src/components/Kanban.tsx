@@ -351,8 +351,6 @@ const Kanban = ({
     setColumns(columns);
   }, [columnKey]);
 
-  //  this is going to suck
-  // for paginatedData
   const [prioritization, setPrioritization] = useState(() => {
     const base64 = Array.isArray(layout.prioritization)
       ? layout.prioritization[0]
