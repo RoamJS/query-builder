@@ -87,7 +87,12 @@ const KanbanCard = (card: {
       onDrag={(_, data) => {
         const { x, width } = data.node.getBoundingClientRect();
         const el = card.$getColumnElement(x + width / 2);
-        if (el) el.style.background = "rgb(226, 232, 240)";
+        const header = el?.querySelector(".column-header");
+        if (el && header) {
+          el.style.background = "rgb(226, 232, 240)";
+          const header = el?.querySelector(".column-header") as HTMLElement;
+          header.style.background = "rgb(226, 232, 240)";
+        }
         setIsDragging(true);
       }}
       onStop={(_, data) => {
@@ -418,7 +423,12 @@ const Kanban = ({
       const columnEls = Array.from<HTMLDivElement>(
         containerRef.current.querySelectorAll(".roamjs-kanban-column")
       ).reverse();
-      columnEls.forEach((el) => (el.style.background = ""));
+      columnEls.forEach((el) => {
+        el.style.background = "";
+        const header = el.querySelector(".column-header") as HTMLElement;
+        if (header) header.style.background = "";
+      });
+
       return columnEls.find((el) => {
         const { left } = el.getBoundingClientRect();
         return x >= left;
@@ -569,8 +579,8 @@ const Kanban = ({
       )}
       <div className="flex w-full p-4">
         <div
-          className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll flex w-full"
-          style={{ minHeight: "500px" }}
+          className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll overscroll-y-contain overflow-y-scroll flex w-full"
+          style={{ minHeight: "500px", maxHeight: "70vh" }}
           ref={containerRef}
         >
           {columns.map((col, columnIndex) => {
@@ -584,7 +594,7 @@ const Kanban = ({
                 style={{ minWidth: "24rem" }}
               >
                 <div
-                  className="justify-between items-center mb-4"
+                  className="column-header justify-between items-center sticky top-0 z-10 bg-gray-100 p-2"
                   style={{ display: "flex" }}
                 >
                   <span className="font-bold">{col}</span>
@@ -641,10 +651,7 @@ const Kanban = ({
                     <Button icon="more" minimal />
                   </Popover>
                 </div>
-                <div
-                  className="overscroll-y-contain overflow-y-scroll relative"
-                  style={{ maxHeight: "70vh", overflowX: "clip" }}
-                >
+                <div>
                   {(cards[col] || [])?.map((d, i) => {
                     if (i + 1 > cardsShown) return null;
                     return (

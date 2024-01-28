@@ -192,7 +192,10 @@ svg.rs-svg-container {
 .roamjs-query-column-views table.bp3-html-table td {
   vertical-align: initial;
 }
-`);
+.react-draggable-dragging {
+    z-index: 999;
+    position: relative;
+}`);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
       (extensionAPI.settings.get("canvas-page-format") as string) ||
