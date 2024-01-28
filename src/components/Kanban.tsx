@@ -645,7 +645,7 @@ const Kanban = ({
                 </div>
                 <div
                   className="overscroll-y-contain overflow-y-scroll relative"
-                  style={{ maxHeight: "70vh" }}
+                  style={{ maxHeight: "70vh", overflowX: "clip" }}
                 >
                   {(cards[col] || [])?.map((d, i) => {
                     if (i + 1 > cardsShown) return null;
