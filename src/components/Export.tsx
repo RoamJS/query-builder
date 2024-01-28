@@ -41,6 +41,7 @@ import { MAX_WIDTH } from "./TldrawCanvas";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import { Column } from "../utils/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { getNodeEnv } from "roamjs-components/util/env";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -365,6 +366,49 @@ const ExportDialog: ExportDialogComponent = ({
     }
   };
 
+  const handlePdfExport = async (
+    files: {
+      title: string;
+      content: string;
+    }[]
+  ) => {
+    const preparedFiles = files.map((f) => ({
+      title: JSON.stringify(f.title),
+      content: JSON.stringify(f.content),
+    }));
+    const domain =
+      getNodeEnv() === "development"
+        ? "http://localhost:3003"
+        : "https://api.samepage.network";
+    const response = await apiPost({
+      domain,
+      path: "apps/query-builder/pdf",
+      data: {
+        files: preparedFiles,
+      },
+    }).catch(() => {
+      setError("Failed to export files.");
+    });
+
+    if (response) {
+      const parsedResponse = JSON.parse(response.data);
+      const base64ToBlob = (
+        base64: string,
+        type = "application/octet-stream"
+      ) => {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: type });
+      };
+      const blob = base64ToBlob(parsedResponse.body, "application/zip");
+      saveAs(blob, `${filename}.zip`);
+      onClose();
+    }
+  };
   const ExportPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
@@ -500,48 +544,10 @@ const ExportDialog: ExportDialogComponent = ({
                     }
 
                     if (activeExportType === "PDF") {
-                      const response = await apiPost({
-                        domain: "http://localhost:3003",
-                        path: "pdf",
-                        data: {
-                          files,
-                          method: "michael-error",
-                          type: "michael",
-                          version: process.env.VERSION,
-                          notebookUuid: JSON.stringify({
-                            owner: "RoamJS",
-                            app: "query-builder",
-                            workspace: window.roamAlphaAPI.graph.name,
-                          }),
-                        },
-                      }).catch((error) => {
-                        console.error("Error fetching ZIP from backend", error);
-                        setError("Failed to export files.");
-                      });
-
-                      if (response) {
-                        const parsedResponse = JSON.parse(response.data);
-                        const base64ToBlob = (
-                          base64: string,
-                          type = "application/octet-stream"
-                        ) => {
-                          const binaryString = window.atob(base64);
-                          const len = binaryString.length;
-                          const bytes = new Uint8Array(len);
-                          for (let i = 0; i < len; i++) {
-                            bytes[i] = binaryString.charCodeAt(i);
-                          }
-                          return new Blob([bytes], { type: type });
-                        };
-                        const blob = base64ToBlob(
-                          parsedResponse.body,
-                          "application/zip"
-                        );
-                        saveAs(blob, `${filename}.zip`);
-                        onClose();
-                        return;
-                      }
+                      handlePdfExport(files);
+                      return;
                     }
+
                     files.forEach(({ title, content }) =>
                       zip.file(title, content)
                     );

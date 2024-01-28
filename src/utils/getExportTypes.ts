@@ -147,20 +147,34 @@ const toMarkdown = ({
     allNodes: ReturnType<typeof getDiscourseNodes>;
     removeSpecialCharacters: boolean;
     linkType: string;
+    flatten?: boolean;
   };
 }): string => {
+  const {
+    refs,
+    embeds,
+    simplifiedFilename,
+    maxFilenameLength,
+    allNodes,
+    removeSpecialCharacters,
+    linkType,
+    flatten = false,
+  } = opts;
   const processedText = c.text
-    .replace(opts.refs ? BLOCK_REF_REGEX : MATCHES_NONE, (_, blockUid) => {
+    .replace(refs ? BLOCK_REF_REGEX : MATCHES_NONE, (_, blockUid) => {
       const reference = getTextByBlockUid(blockUid);
       return reference || blockUid;
     })
-    .replace(opts.embeds ? EMBED_REGEX : MATCHES_NONE, (_, blockUid) => {
+    .replace(embeds ? EMBED_REGEX : MATCHES_NONE, (_, blockUid) => {
       const reference = getFullTreeByParentUid(blockUid);
       return toMarkdown({ c: reference, i, v, opts });
     })
+    .replace(/{{\[\[TODO\]\]}}/g, v === "bullet" ? "[ ]" : "- [ ]")
+    .replace(/{{\[\[DONE\]\]}}/g, v === "bullet" ? "[x]" : "- [x]")
+    .replace(/\_\_(.+?)\_\_/g, "_$1_") // convert Roam italics __ to markdown italics _
     .trim();
   const finalProcessedText =
-    opts.simplifiedFilename || opts.removeSpecialCharacters
+    simplifiedFilename || removeSpecialCharacters
       ? XRegExp.matchRecursive(processedText, "#?\\[\\[", "\\]\\]", "i", {
           valueNames: ["between", "left", "match", "right"],
           unbalanced: "skip",
@@ -169,12 +183,12 @@ const toMarkdown = ({
             if (s.name === "match") {
               const name = getFilename({
                 title: s.value,
-                allNodes: opts.allNodes,
-                maxFilenameLength: opts.maxFilenameLength,
-                simplifiedFilename: opts.simplifiedFilename,
-                removeSpecialCharacters: opts.removeSpecialCharacters,
+                allNodes,
+                maxFilenameLength,
+                simplifiedFilename,
+                removeSpecialCharacters,
               });
-              return toLink(name, opts.linkType);
+              return toLink(name, linkType);
             } else if (s.name === "left" || s.name === "right") {
               return "";
             } else {
@@ -183,15 +197,25 @@ const toMarkdown = ({
           })
           .join("") || processedText
       : processedText;
-  return `${"".padStart(i * 4, " ")}${viewTypeToPrefix[v]}${
-    c.heading ? `${"".padStart(c.heading, "#")} ` : ""
-  }${finalProcessedText}${(c.children || [])
+  const indentation = flatten ? "" : "".padStart(i * 4, " ");
+  const viewTypePrefix = viewTypeToPrefix[v];
+  const headingPrefix = c.heading ? `${"".padStart(c.heading, "#")} ` : "";
+  const childrenMarkdown = (c.children || [])
     .filter((nested) => !!nested.text || !!nested.children?.length)
-    .map(
-      (nested) =>
-        `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v, opts })}`
-    )
-    .join("")}`;
+    .map((nested) => {
+      const childViewType = v !== "bullet" ? v : nested.viewType || "bullet";
+      const childMarkdown = toMarkdown({
+        c: nested,
+        i: i + 1,
+        v: childViewType,
+        opts,
+      });
+      return `\n${childMarkdown}`;
+    })
+    .join("");
+  const lineBreak = v === "document" ? "\n" : "";
+
+  return `${indentation}${viewTypePrefix}${headingPrefix}${finalProcessedText}${lineBreak}${childrenMarkdown}`;
 };
 
 type getExportTypesProps = {
@@ -625,7 +649,6 @@ const getExportTypes = ({
         includeDiscourseContext = false,
       }) => {
         const {
-          yaml,
           optsRefs,
           optsEmbeds,
           simplifiedFilename,
@@ -638,99 +661,114 @@ const getExportTypes = ({
           isExportDiscourseGraph
         );
         const gatherings = allPages.map(
-          ({ text, uid, context: _, type, ...rest }, i, all) =>
-            async function getMarkdownData() {
+          ({ text, uid }, i, all) =>
+            async function getMarkdownDataForPdf() {
               updateExportProgress({ progress: i / all.length, id: exportId });
               // skip a beat to let progress render
               await new Promise((resolve) => setTimeout(resolve));
-              const viewType = getPageViewType(text) || "bullet";
+
+              const treeNodeToMarkdown = (c: TreeNode) => {
+                return toMarkdown({
+                  c,
+                  v: "document",
+                  i: 0,
+                  opts: {
+                    refs: optsRefs,
+                    embeds: optsEmbeds,
+                    simplifiedFilename,
+                    allNodes,
+                    maxFilenameLength,
+                    removeSpecialCharacters,
+                    linkType,
+                    flatten: true,
+                  },
+                });
+              };
               const treeNode = getFullTreeByParentUid(uid);
-              const discourseResults = includeDiscourseContext
-                ? await getDiscourseContextResults({
-                    uid,
-                    isSamePageEnabled,
-                  })
-                : [];
-              const referenceResults = isFlagEnabled("render references")
-                ? (
-                    window.roamAlphaAPI.data.fast.q(
-                      `[:find (pull ?pr [:node/title]) (pull ?r [:block/heading [:block/string :as "text"] [:children/view-type :as "viewType"] {:block/children ...}]) :where [?p :node/title "${normalizePageTitle(
-                        text
-                      )}"] [?r :block/refs ?p] [?r :block/page ?pr]]`
-                    ) as [PullBlock, PullBlock][]
-                  ).filter(
-                    ([, { [":block/children"]: children }]) =>
-                      Array.isArray(children) && children.length
+              const getMarkdownContent = () => {
+                return treeNode.children.map(treeNodeToMarkdown).join("\n");
+              };
+              const getDiscourseResultsContent = async () => {
+                const discourseResults = includeDiscourseContext
+                  ? await getDiscourseContextResults({
+                      uid,
+                      isSamePageEnabled,
+                    })
+                  : [];
+                if (discourseResults.length === 0) return "";
+
+                const formattedResults = discourseResults
+                  .flatMap((r) =>
+                    Object.values(r.results).map((t) => {
+                      const filename = getFilename({
+                        title: t.text,
+                        maxFilenameLength,
+                        simplifiedFilename,
+                        allNodes,
+                        removeSpecialCharacters,
+                      });
+                      const link = toLink(filename, linkType);
+                      return `**${r.label}::** ${link}`;
+                    })
                   )
-                : [];
-              const content = `${treeNode.children
-                .map((c) =>
-                  toMarkdown({
-                    c,
-                    v: viewType,
-                    i: 0,
-                    opts: {
-                      refs: optsRefs,
-                      embeds: optsEmbeds,
+                  .join("\n");
+
+                return `### Discourse Context\n\n${formattedResults}`;
+              };
+              const getReferenceResultsContent = async () => {
+                const normalizedTitle = normalizePageTitle(text);
+                const flag = isFlagEnabled("render references");
+                const referenceResults = flag
+                  ? (
+                      window.roamAlphaAPI.data.fast.q(
+                        `[:find (pull ?pr [:node/title]) 
+                        (pull ?r 
+                          [:block/heading [:block/string :as "text"] 
+                          [:children/view-type :as "viewType"] 
+                          {:block/children ...}]) 
+                        :where 
+                          [?p :node/title "${normalizedTitle}"] 
+                          [?r :block/refs ?p] 
+                          [?r :block/page ?pr]]`
+                      ) as [PullBlock, PullBlock][]
+                    ).filter(
+                      ([, { [":block/children"]: children }]) =>
+                        Array.isArray(children) && children.length
+                    )
+                  : [];
+                if (referenceResults.length === 0) return "";
+
+                const refResultsMarkdown = referenceResults
+                  .map((r) => {
+                    const filename = getFilename({
+                      title: r[0][":node/title"],
+                      maxFilenameLength,
                       simplifiedFilename,
                       allNodes,
-                      maxFilenameLength,
                       removeSpecialCharacters,
-                      linkType,
-                    },
+                    });
+                    const link = toLink(filename, linkType);
+                    const node = treeNodeToMarkdown(
+                      pullBlockToTreeNode(r[1], ":bullet")
+                    );
+                    return `${link}${node}`;
                   })
-                )
-                .join("\n")}\n${
-                discourseResults.length
-                  ? `\n###### Discourse Context\n\n${discourseResults
-                      .flatMap((r) =>
-                        Object.values(r.results).map(
-                          (t) =>
-                            `- **${r.label}::** ${toLink(
-                              getFilename({
-                                title: t.text,
-                                maxFilenameLength,
-                                simplifiedFilename,
-                                allNodes,
-                                removeSpecialCharacters,
-                              }),
-                              linkType
-                            )}`
-                        )
-                      )
-                      .join("\n")}\n`
-                  : ""
-              }${
-                referenceResults.length
-                  ? `\n###### References\n\n${referenceResults
-                      .map(
-                        (r_1) =>
-                          `${toLink(
-                            getFilename({
-                              title: r_1[0][":node/title"],
-                              maxFilenameLength,
-                              simplifiedFilename,
-                              allNodes,
-                              removeSpecialCharacters,
-                            }),
-                            linkType
-                          )}\n\n${toMarkdown({
-                            c: pullBlockToTreeNode(r_1[1], ":bullet"),
-                            opts: {
-                              refs: optsRefs,
-                              embeds: optsEmbeds,
-                              simplifiedFilename,
-                              allNodes,
-                              maxFilenameLength,
-                              removeSpecialCharacters,
-                              linkType,
-                            },
-                          })}`
-                      )
-                      .join("\n")}\n`
-                  : ""
-              }`;
+                  .join("\n");
+
+                return `### References\n\n${refResultsMarkdown}`;
+              };
+
+              const markdownContent = getMarkdownContent();
+              const discourseResults = await getDiscourseResultsContent();
+              const referenceResults = await getReferenceResultsContent();
+              const contentParts = [
+                markdownContent,
+                discourseResults,
+                referenceResults,
+              ];
+              const content = contentParts.filter((part) => part).join("\n\n");
               const uids = new Set(collectUids(treeNode));
+
               return { title: text, content, uids };
             }
         );
