@@ -15,7 +15,7 @@ import {
   Popover,
   Tooltip,
 } from "@blueprintjs/core";
-import Draggable from "react-draggable";
+import Draggable, { DraggableData, DraggableEvent } from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -68,6 +68,8 @@ const KanbanCard = (card: {
   $selectionValues: string[];
   viewsByColumn: ViewsByColumnType;
   activeSort: Sorts;
+  handleDragStop: () => void;
+  handleDragStart: (e: DraggableEvent, data: DraggableData) => void;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const isDragHandle = useMemo(
@@ -90,6 +92,11 @@ const KanbanCard = (card: {
         if (el) el.style.background = "rgb(226, 232, 240)";
         setIsDragging(true);
       }}
+      onStart={(e, data) => {
+        card.handleDragStart(e, data);
+        const target = data.node as HTMLElement;
+        target.style.opacity = "0";
+      }}
       onStop={(_, data) => {
         const { x, y, width, height } = data.node.getBoundingClientRect();
         card.$reprioritize({
@@ -99,6 +106,12 @@ const KanbanCard = (card: {
         });
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
+        card.handleDragStop();
+        // TODO
+        // when card is moved to new column, it shows up in the old column for a split second
+        // only noticable if all cards are in view
+        const target = data.node as HTMLElement;
+        target.style.opacity = "1";
       }}
       position={{ x: 0, y: 0 }}
     >
@@ -269,7 +282,42 @@ const Kanban = ({
   setPageSize: (p: number) => void;
   page: number;
 }) => {
-  // const paginatedData = data.slice(0, page * pageSize);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (event: DraggableEvent, data: DraggableData) => {
+    const e = event as MouseEvent;
+    setIsDragging(true);
+    window.addEventListener("mousemove", handleMouseMove);
+    if (parentRef.current) {
+      const rect = parentRef.current.getBoundingClientRect();
+      const offsetX = rect.left + window.scrollX;
+      const offsetY = rect.top + window.scrollY;
+      setCursorPosition({ x: e.clientX - offsetX, y: e.clientY - offsetY });
+    }
+  };
+
+  const handleMouseMove = (event: MouseEvent) => {
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (parentRef.current) {
+      const rect = parentRef.current.getBoundingClientRect();
+      offsetX = rect.left + window.scrollX;
+      offsetY = rect.top + window.scrollY;
+    }
+
+    setCursorPosition({
+      x: event.clientX - offsetX,
+      y: event.clientY - offsetY,
+    });
+  };
+
+  const handleDragStop = () => {
+    setIsDragging(false);
+    window.removeEventListener("mousemove", handleMouseMove);
+  };
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
@@ -548,8 +596,24 @@ const Kanban = ({
     [views]
   );
 
+  const PSEUDO_CARD_WIDTH = 250;
   return (
-    <div className="relative">
+    <div className="relative" ref={parentRef}>
+      <div
+        aria-label="pseudo-dragging-card"
+        className={`absolute cursor-move z-30 ${
+          isDragging ? "block" : "hidden"
+        }`}
+        style={{
+          left: cursorPosition.x - PSEUDO_CARD_WIDTH + 20,
+          top: cursorPosition.y - 20,
+          width: PSEUDO_CARD_WIDTH,
+        }}
+      >
+        <div className="rounded-xl bg-white p-4 mb-3 shadow-lg cursor-move">
+          <div className="text-gray-800 font-semibold">Card</div>
+        </div>
+      </div>
       {showLegend === "Yes" && (
         <div
           className="p-4 w-full"
@@ -654,6 +718,8 @@ const Kanban = ({
                           result={d}
                           viewsByColumn={viewsByColumn}
                           activeSort={activeSort}
+                          handleDragStart={handleDragStart}
+                          handleDragStop={handleDragStop}
                           // we use $ to prefix these props to avoid collisions with the result object
                           $priority={prioritization[d.uid]}
                           $reprioritize={reprioritizeAndUpdateBlock}

@@ -154,11 +154,6 @@ svg.rs-svg-container {
   display: none;
 }
 
-.roamjs-kanban-container div.react-draggable-dragging.roamjs-kanban-card > div {
-  transform: rotate(5deg);
-  cursor: grabbing;
-  z-index: 1000;
-}
 
 .roamjs-kanban-container .roamjs-kanban-column {
   width: inherit;
