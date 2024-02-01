@@ -7,8 +7,15 @@ import React, {
   useState,
 } from "react";
 import { Column, Result } from "../utils/types";
-import { Button, HTMLTable, Icon, Popover, Tooltip } from "@blueprintjs/core";
-import Draggable from "react-draggable";
+import {
+  Button,
+  HTMLTable,
+  Icon,
+  InputGroup,
+  Popover,
+  Tooltip,
+} from "@blueprintjs/core";
+import Draggable, { DraggableData, DraggableEvent } from "react-draggable";
 import setInputSettings from "roamjs-components/util/setInputSettings";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import setInputSetting from "roamjs-components/util/setInputSetting";
@@ -61,6 +68,8 @@ const KanbanCard = (card: {
   $selectionValues: string[];
   viewsByColumn: ViewsByColumnType;
   activeSort: Sorts;
+  handleDragStop: () => void;
+  handleDragStart: (e: DraggableEvent, data: DraggableData) => void;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const isDragHandle = useMemo(
@@ -83,6 +92,11 @@ const KanbanCard = (card: {
         if (el) el.style.background = "rgb(226, 232, 240)";
         setIsDragging(true);
       }}
+      onStart={(e, data) => {
+        card.handleDragStart(e, data);
+        const target = data.node as HTMLElement;
+        target.style.opacity = "0";
+      }}
       onStop={(_, data) => {
         const { x, y, width, height } = data.node.getBoundingClientRect();
         card.$reprioritize({
@@ -92,6 +106,12 @@ const KanbanCard = (card: {
         });
         // set timeout to prevent click handler
         setTimeout(() => setIsDragging(false));
+        card.handleDragStop();
+        // TODO
+        // when card is moved to new column, it shows up in the old column for a split second
+        // only noticable if all cards are in view
+        const target = data.node as HTMLElement;
+        target.style.opacity = "1";
       }}
       position={{ x: 0, y: 0 }}
     >
@@ -121,7 +141,7 @@ const KanbanCard = (card: {
           hidden={!isDragHandle}
         />
         <div
-          className={`rounded-xl bg-white p-4 ${
+          className={`rounded-xl bg-white p-4 mb-3 ${
             isDragHandle ? "" : "cursor-pointer hover:bg-gray-200"
           }`}
         >
@@ -240,6 +260,12 @@ const Kanban = ({
   views,
   activeSort,
   setActiveSort,
+  setPage,
+  pageSize,
+  showInterface,
+  pageSizeTimeoutRef,
+  setPageSize,
+  page,
 }: {
   resultKeys: Column[];
   data: Result[];
@@ -249,7 +275,49 @@ const Kanban = ({
   views: { column: string; mode: string; value: string }[];
   activeSort: Sorts;
   setActiveSort: (s: Sorts) => void;
+  setPage: (p: number) => void;
+  pageSize: number;
+  showInterface: boolean;
+  pageSizeTimeoutRef: React.MutableRefObject<number>;
+  setPageSize: (p: number) => void;
+  page: number;
 }) => {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (event: DraggableEvent, data: DraggableData) => {
+    const e = event as MouseEvent;
+    setIsDragging(true);
+    window.addEventListener("mousemove", handleMouseMove);
+    if (parentRef.current) {
+      const rect = parentRef.current.getBoundingClientRect();
+      const offsetX = rect.left + window.scrollX;
+      const offsetY = rect.top + window.scrollY;
+      setCursorPosition({ x: e.clientX - offsetX, y: e.clientY - offsetY });
+    }
+  };
+
+  const handleMouseMove = (event: MouseEvent) => {
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (parentRef.current) {
+      const rect = parentRef.current.getBoundingClientRect();
+      offsetX = rect.left + window.scrollX;
+      offsetY = rect.top + window.scrollY;
+    }
+
+    setCursorPosition({
+      x: event.clientX - offsetX,
+      y: event.clientY - offsetY,
+    });
+  };
+
+  const handleDragStop = () => {
+    setIsDragging(false);
+    window.removeEventListener("mousemove", handleMouseMove);
+  };
   const byUid = useMemo(
     () => Object.fromEntries(data.map((d) => [d.uid, d] as const)),
     [data]
@@ -528,8 +596,24 @@ const Kanban = ({
     [views]
   );
 
+  const PSEUDO_CARD_WIDTH = 250;
   return (
-    <div className="relative">
+    <div className="relative" ref={parentRef}>
+      <div
+        aria-label="pseudo-dragging-card"
+        className={`absolute cursor-move z-30 ${
+          isDragging ? "block" : "hidden"
+        }`}
+        style={{
+          left: cursorPosition.x - PSEUDO_CARD_WIDTH + 20,
+          top: cursorPosition.y - 20,
+          width: PSEUDO_CARD_WIDTH,
+        }}
+      >
+        <div className="rounded-xl bg-white p-4 mb-3 shadow-lg cursor-move">
+          <div className="text-gray-800 font-semibold">Card</div>
+        </div>
+      </div>
       {showLegend === "Yes" && (
         <div
           className="p-4 w-full"
@@ -550,9 +634,12 @@ const Kanban = ({
       <div className="flex w-full p-4">
         <div
           className="gap-2 items-start relative roamjs-kanban-container overflow-x-scroll flex w-full"
+          style={{ minHeight: "500px" }}
           ref={containerRef}
         >
           {columns.map((col, columnIndex) => {
+            const totalCardsInColumn = (cards[col] || []).length;
+            const cardsShown = page * pageSize;
             return (
               <div
                 key={col}
@@ -618,74 +705,127 @@ const Kanban = ({
                     <Button icon="more" minimal />
                   </Popover>
                 </div>
-                {(cards[col] || [])?.map((d) => (
-                  <KanbanCard
-                    key={d.uid}
-                    result={d}
-                    viewsByColumn={viewsByColumn}
-                    activeSort={activeSort}
-                    // we use $ to prefix these props to avoid collisions with the result object
-                    $priority={prioritization[d.uid]}
-                    $reprioritize={reprioritizeAndUpdateBlock}
-                    $getColumnElement={getColumnElement}
-                    $displayKey={displayKey}
-                    $columnKey={columnKey}
-                    $selectionValues={resultKeys.map((rk) => rk.key)}
+                <div
+                  className="overscroll-y-contain overflow-y-scroll relative"
+                  style={{ maxHeight: "70vh", overflowX: "clip" }}
+                >
+                  {(cards[col] || [])?.map((d, i) => {
+                    if (i + 1 > cardsShown) return null;
+                    return (
+                      <>
+                        <KanbanCard
+                          key={d.uid}
+                          result={d}
+                          viewsByColumn={viewsByColumn}
+                          activeSort={activeSort}
+                          handleDragStart={handleDragStart}
+                          handleDragStop={handleDragStop}
+                          // we use $ to prefix these props to avoid collisions with the result object
+                          $priority={prioritization[d.uid]}
+                          $reprioritize={reprioritizeAndUpdateBlock}
+                          $getColumnElement={getColumnElement}
+                          $displayKey={displayKey}
+                          $columnKey={columnKey}
+                          $selectionValues={resultKeys.map((rk) => rk.key)}
+                        />
+                      </>
+                    );
+                  })}
+                  <Button
+                    text="Show More"
+                    minimal
+                    fill={true}
+                    onClick={() => setPage(page + 1)}
+                    disabled={totalCardsInColumn <= cardsShown}
                   />
-                ))}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div className="ml-2 absolute bottom-8 right-8">
-        {isAdding ? (
-          <div className="rounded-2xl p-4 bg-gray-100 w-48 border border-gray-200 ">
-            <AutocompleteInput
-              placeholder="Enter column title..."
-              value={newColumn}
-              setValue={setNewColumn}
-              options={potentialColumns}
-            />
-            <div
-              className="justify-between items-center mt-2"
-              style={{ display: "flex" }}
-            >
+      <div
+        className={`p-0 ${!showInterface ? "hidden" : ""}`}
+        style={{ background: "#eeeeee80" }}
+      >
+        <div
+          className="flex items-center gap-4"
+          style={{ padding: 4, paddingLeft: 8 }}
+        >
+          <span>Cards per column</span>
+          <InputGroup
+            defaultValue={pageSize.toString()}
+            onChange={(e) => {
+              clearTimeout(pageSizeTimeoutRef.current);
+              pageSizeTimeoutRef.current = window.setTimeout(() => {
+                setPageSize(Number(e.target.value));
+                const resultUid = getSubTree({
+                  key: "results",
+                  parentUid,
+                }).uid;
+                setInputSetting({
+                  key: "size",
+                  value: e.target.value,
+                  blockUid: resultUid,
+                });
+              }, 1000);
+            }}
+            type="number"
+            style={{
+              width: 60,
+              maxWidth: 60,
+              marginRight: 32,
+              marginLeft: 16,
+            }}
+          />
+          <div className="ml-auto p-2">
+            {isAdding ? (
+              <>
+                <AutocompleteInput
+                  placeholder="Enter column title..."
+                  value={newColumn}
+                  setValue={setNewColumn}
+                  options={potentialColumns}
+                />
+                <div
+                  className="justify-between items-center mt-2"
+                  style={{ display: "flex" }}
+                >
+                  <Button
+                    intent="primary"
+                    text="Add column"
+                    className="text-xs"
+                    disabled={!newColumn}
+                    onClick={() => {
+                      const values = [...columns, newColumn];
+                      setInputSettings({
+                        blockUid: layoutUid,
+                        key: "columns",
+                        values,
+                      });
+                      setColumns(values);
+                      setIsAdding(false);
+                      setNewColumn("");
+                    }}
+                  />
+                  <Button
+                    icon={"cross"}
+                    minimal
+                    onClick={() => setIsAdding(false)}
+                  />
+                </div>
+              </>
+            ) : (
               <Button
-                intent="primary"
-                text="Add column"
-                className="text-xs"
-                disabled={!newColumn}
-                onClick={() => {
-                  const values = [...columns, newColumn];
-                  setInputSettings({
-                    blockUid: layoutUid,
-                    key: "columns",
-                    values,
-                  });
-                  setColumns(values);
-                  setIsAdding(false);
-                  setNewColumn("");
-                }}
-              />
-              <Button
-                icon={"cross"}
                 minimal
-                onClick={() => setIsAdding(false)}
-              />
-            </div>
-          </div>
-        ) : (
-          <Tooltip content="Add another column">
-            <div>
-              <Icon
-                className="rounded-2xl p-4 cursor-pointer border border-gray-200 bg-gray-100 hover:bg-opacity-25"
-                icon={"plus"}
+                text="Add column"
+                className="p-2 cursor-pointer ml-auto"
+                rightIcon={"plus"}
                 onClick={() => setIsAdding(true)}
               />
-            </div>
-          </Tooltip>
-        )}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

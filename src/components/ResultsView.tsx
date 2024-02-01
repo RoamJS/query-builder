@@ -1172,6 +1172,12 @@ const ResultsView: ResultsViewComponent = ({
                   views={views}
                   activeSort={activeSort}
                   setActiveSort={resultViewSetActiveSort}
+                  pageSize={pageSize}
+                  setPage={setPage}
+                  showInterface={showInterface}
+                  page={page}
+                  pageSizeTimeoutRef={pageSizeTimeoutRef}
+                  setPageSize={setPageSize}
                 />
               ) : (
                 <div style={{ padding: "16px 8px" }}>
