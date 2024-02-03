@@ -90,7 +90,7 @@ const getFilename = ({
     removeSpecialCharacters
       ? baseName.replace(/[<>:"/\\|\?*[\]]/g, "")
       : baseName
-  }.${extension}`;
+  }${extension}`;
 
   return name.length > maxFilenameLength
     ? `${name.substring(
