@@ -172,6 +172,7 @@ const toMarkdown = ({
     .replace(/{{\[\[TODO\]\]}}/g, v === "bullet" ? "[ ]" : "- [ ]")
     .replace(/{{\[\[DONE\]\]}}/g, v === "bullet" ? "[x]" : "- [x]")
     .replace(/\_\_(.+?)\_\_/g, "_$1_") // convert Roam italics __ to markdown italics _
+    .replace(/(?<!\n)```/g, "\n```") // Add line break before last code blocks
     .trim();
   const finalProcessedText =
     simplifiedFilename || removeSpecialCharacters
