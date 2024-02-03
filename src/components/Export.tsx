@@ -385,7 +385,7 @@ const ExportDialog: ExportDialogComponent = ({
     try {
       const response = await apiPost({
         domain,
-        path: "apps/pdf",
+        path: "pdf",
         data: {
           files: preparedFiles,
           filename,

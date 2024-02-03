@@ -794,7 +794,7 @@ const getExportTypes = ({
             simplifiedFilename,
             allNodes,
             removeSpecialCharacters,
-            extension: "pdf",
+            extension: ".pdf",
           }),
           content,
         }));
