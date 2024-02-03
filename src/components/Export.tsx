@@ -380,15 +380,16 @@ const ExportDialog: ExportDialogComponent = ({
       getNodeEnv() === "development"
         ? "http://localhost:3003"
         : "https://api.samepage.network";
-    const response = await apiPost({
-      domain,
-      path: "apps/query-builder/pdf",
-      data: {
-        files: preparedFiles,
-      },
-    }).catch(() => {
-      setError("Failed to export files.");
-    });
+
+    try {
+      const response = await apiPost({
+        domain,
+        path: "apps/pdf",
+        data: {
+          files: preparedFiles,
+          filename,
+        },
+      });
 
     if (response) {
       const parsedResponse = JSON.parse(response.data);
@@ -407,6 +408,8 @@ const ExportDialog: ExportDialogComponent = ({
       const blob = base64ToBlob(parsedResponse.body, "application/zip");
       saveAs(blob, `${filename}.zip`);
       onClose();
+    } catch (e) {
+      setError("Failed to export files.");
     }
   };
   const ExportPanel = (
