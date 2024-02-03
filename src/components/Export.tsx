@@ -370,7 +370,8 @@ const ExportDialog: ExportDialogComponent = ({
     files: {
       title: string;
       content: string;
-    }[]
+    }[],
+    filename: string
   ) => {
     const preparedFiles = files.map((f) => ({
       title: JSON.stringify(f.title),
@@ -390,23 +391,46 @@ const ExportDialog: ExportDialogComponent = ({
           filename,
         },
       });
+      // const responseData = JSON.parse(response.data);
+      // const path = JSON.parse(responseData.body);
+      // const downloadLink = `https://api.samepage.network/${path}`;
 
-    if (response) {
-      const parsedResponse = JSON.parse(response.data);
-      const base64ToBlob = (
-        base64: string,
-        type = "application/octet-stream"
-      ) => {
-        const binaryString = window.atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        return new Blob([bytes], { type: type });
-      };
-      const blob = base64ToBlob(parsedResponse.body, "application/zip");
-      saveAs(blob, `${filename}.zip`);
+      // function downloadFile(url: string) {
+      //   fetch(url)
+      //     .then((response) => response.blob())
+      //     .then((blob) => {
+      //       let url = window.URL.createObjectURL(blob);
+      //       let link = document.createElement("a");
+      //       link.href = url;
+      //       link.download = filename;
+      //       document.body.appendChild(link);
+      //       link.click();
+      //       document.body.removeChild(link);
+      //       window.URL.revokeObjectURL(url);
+      //     })
+      //     .catch(console.error);
+      // }
+
+      // downloadFile(downloadLink);
+
+      if (response) {
+        const parsedResponse = JSON.parse(response.data);
+        const base64ToBlob = (
+          base64: string,
+          type = "application/octet-stream"
+        ) => {
+          const binaryString = window.atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return new Blob([bytes], { type: type });
+        };
+        const blob = base64ToBlob(parsedResponse.body, "application/zip");
+        saveAs(blob, `${filename}.zip`);
+      }
+
       onClose();
     } catch (e) {
       setError("Failed to export files.");
@@ -547,7 +571,7 @@ const ExportDialog: ExportDialogComponent = ({
                     }
 
                     if (activeExportType === "PDF") {
-                      handlePdfExport(files);
+                      handlePdfExport(files, filename);
                       return;
                     }
 
