@@ -668,6 +668,7 @@ const getExportTypes = ({
               // skip a beat to let progress render
               await new Promise((resolve) => setTimeout(resolve));
 
+              // TODO - resuse these with the markdown export
               const treeNodeToMarkdown = (c: TreeNode) => {
                 return toMarkdown({
                   c,
