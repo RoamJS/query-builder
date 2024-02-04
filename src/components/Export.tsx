@@ -42,6 +42,7 @@ import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import { Column } from "../utils/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { getNodeEnv } from "roamjs-components/util/env";
+import apiGet from "roamjs-components/util/apiGet";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -391,46 +392,18 @@ const ExportDialog: ExportDialogComponent = ({
           filename,
         },
       });
-      // const responseData = JSON.parse(response.data);
-      // const path = JSON.parse(responseData.body);
-      // const downloadLink = `https://api.samepage.network/${path}`;
+      const responseData = JSON.parse(response.data);
+      const path = JSON.parse(responseData.body);
+      const download = await apiGet<ArrayBuffer>({
+        domain: "https://samepage.network",
+        path,
+        buffer: true,
+      });
 
-      // function downloadFile(url: string) {
-      //   fetch(url)
-      //     .then((response) => response.blob())
-      //     .then((blob) => {
-      //       let url = window.URL.createObjectURL(blob);
-      //       let link = document.createElement("a");
-      //       link.href = url;
-      //       link.download = filename;
-      //       document.body.appendChild(link);
-      //       link.click();
-      //       document.body.removeChild(link);
-      //       window.URL.revokeObjectURL(url);
-      //     })
-      //     .catch(console.error);
-      // }
-
-      // downloadFile(downloadLink);
-
-      if (response) {
-        const parsedResponse = JSON.parse(response.data);
-        const base64ToBlob = (
-          base64: string,
-          type = "application/octet-stream"
-        ) => {
-          const binaryString = window.atob(base64);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          return new Blob([bytes], { type: type });
-        };
-        const blob = base64ToBlob(parsedResponse.body, "application/zip");
+      if (download) {
+        const blob = new Blob([download], { type: "application/zip" }); // Set the MIME type for a .zip file
         saveAs(blob, `${filename}.zip`);
       }
-
       onClose();
     } catch (e) {
       setError("Failed to export files.");
