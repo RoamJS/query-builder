@@ -29,10 +29,14 @@ import initializeDiscourseGraphsMode, {
 } from "./discourseGraphsMode";
 import getPageMetadata from "./utils/getPageMetadata";
 import { render as queryRender } from "./components/QueryDrawer";
+import { render as canvasDrawerRender } from "./components/CanvasDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
-import { renderTldrawCanvas } from "./components/TldrawCanvas";
+import {
+  DiscourseNodeShape,
+  renderTldrawCanvas,
+} from "./components/TldrawCanvas";
 import { QBGlobalRefs } from "./utils/types";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
@@ -45,6 +49,9 @@ import getBlockProps, { json } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import { TLBaseShape, TLStore } from "@tldraw/tldraw";
+import { GroupedShapes } from "./components/CanvasDrawer";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -596,6 +603,35 @@ svg.rs-svg-container {
   };
 
   extensionAPI.ui.commandPalette.addCommand({
+    label: "Show All Canvas Nodes",
+    callback: () => {
+      const pageUid = getCurrentPageUid();
+      const props = getBlockProps(pageUid) as Record<string, unknown>;
+      const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+      const tldraw = (rjsqb?.tldraw as Record<string, unknown>) || {};
+      const shapes = Object.values(tldraw).filter((s) => {
+        const shape = s as TLBaseShape<string, { uid: string }>;
+        const uid = shape.props?.uid;
+        return !!uid;
+      }) as DiscourseNodeShape[];
+
+      const groupShapesByUid = (shapes: DiscourseNodeShape[]) => {
+        const groupedShapes = shapes.reduce((acc: GroupedShapes, shape) => {
+          const uid = shape.props.uid;
+          if (!acc[uid]) acc[uid] = [];
+          acc[uid].push(shape);
+          return acc;
+        }, {});
+
+        return groupedShapes;
+      };
+
+      const groupedShapes = groupShapesByUid(shapes);
+      canvasDrawerRender({ groupedShapes, pageUid });
+    },
+  });
+
+  extensionAPI.ui.commandPalette.addCommand({
     label: "Open Query Drawer",
     callback: () =>
       Promise.resolve(
@@ -606,6 +642,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          // @ts-ignore
           clearOnClick,
           onloadArgs,
         })
