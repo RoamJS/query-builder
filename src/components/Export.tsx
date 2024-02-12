@@ -386,7 +386,7 @@ const ExportDialog: ExportDialogComponent = ({
     try {
       const response = await apiPost({
         domain,
-        path: "pdf/query-builder",
+        path: "pdf",
         data: {
           files: preparedFiles,
           filename,
