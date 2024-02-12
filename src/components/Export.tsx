@@ -41,6 +41,8 @@ import { MAX_WIDTH } from "./TldrawCanvas";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import { Column } from "../utils/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { getNodeEnv } from "roamjs-components/util/env";
+import apiGet from "roamjs-components/util/apiGet";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -365,6 +367,48 @@ const ExportDialog: ExportDialogComponent = ({
     }
   };
 
+  const handlePdfExport = async (
+    files: {
+      title: string;
+      content: string;
+    }[],
+    filename: string
+  ) => {
+    const preparedFiles = files.map((f) => ({
+      title: JSON.stringify(f.title),
+      content: JSON.stringify(f.content),
+    }));
+    const domain =
+      getNodeEnv() === "development"
+        ? "http://localhost:3003"
+        : "https://api.samepage.network";
+
+    try {
+      const response = await apiPost({
+        domain,
+        path: "pdf",
+        data: {
+          files: preparedFiles,
+          filename,
+        },
+      });
+      const responseData = JSON.parse(response.data);
+      const path = JSON.parse(responseData.body);
+      const download = await apiGet<ArrayBuffer>({
+        domain: "https://samepage.network",
+        path,
+        buffer: true,
+      });
+
+      if (download) {
+        const blob = new Blob([download], { type: "application/zip" });
+        saveAs(blob, `${filename}.zip`);
+      }
+      onClose();
+    } catch (e) {
+      setError("Failed to export files.");
+    }
+  };
   const ExportPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
@@ -496,15 +540,21 @@ const ExportDialog: ExportDialogComponent = ({
                     if (!files.length) {
                       setDialogOpen(true);
                       setError("Failed to find any results to export.");
-                    } else {
-                      files.forEach(({ title, content }) =>
-                        zip.file(title, content)
-                      );
-                      zip.generateAsync({ type: "blob" }).then((content) => {
-                        saveAs(content, `${filename}.zip`);
-                        onClose();
-                      });
+                      return;
                     }
+
+                    if (activeExportType === "PDF") {
+                      handlePdfExport(files, filename);
+                      return;
+                    }
+
+                    files.forEach(({ title, content }) =>
+                      zip.file(title, content)
+                    );
+                    zip.generateAsync({ type: "blob" }).then((content) => {
+                      saveAs(content, `${filename}.zip`);
+                      onClose();
+                    });
                   } else {
                     setError(`Unsupported export type: ${exportType}`);
                   }

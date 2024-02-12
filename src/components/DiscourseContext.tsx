@@ -21,7 +21,7 @@ import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import ResultsView from "./ResultsView";
 
-type DiscourseContextResults = Awaited<
+export type DiscourseContextResults = Awaited<
   ReturnType<typeof getDiscourseContextResults>
 >;
 

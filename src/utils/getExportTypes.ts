@@ -74,12 +74,14 @@ const getFilename = ({
   simplifiedFilename,
   allNodes,
   removeSpecialCharacters,
+  extension = ".md",
 }: {
   title?: string;
   maxFilenameLength: number;
   simplifiedFilename: boolean;
   allNodes: ReturnType<typeof getDiscourseNodes>;
   removeSpecialCharacters: boolean;
+  extension?: string;
 }) => {
   const baseName = simplifiedFilename
     ? getContentFromNodes({ title, allNodes })
@@ -88,7 +90,7 @@ const getFilename = ({
     removeSpecialCharacters
       ? baseName.replace(/[<>:"/\\|\?*[\]]/g, "")
       : baseName
-  }.md`;
+  }${extension}`;
 
   return name.length > maxFilenameLength
     ? `${name.substring(
@@ -145,20 +147,35 @@ const toMarkdown = ({
     allNodes: ReturnType<typeof getDiscourseNodes>;
     removeSpecialCharacters: boolean;
     linkType: string;
+    flatten?: boolean;
   };
 }): string => {
+  const {
+    refs,
+    embeds,
+    simplifiedFilename,
+    maxFilenameLength,
+    allNodes,
+    removeSpecialCharacters,
+    linkType,
+    flatten = false,
+  } = opts;
   const processedText = c.text
-    .replace(opts.refs ? BLOCK_REF_REGEX : MATCHES_NONE, (_, blockUid) => {
+    .replace(refs ? BLOCK_REF_REGEX : MATCHES_NONE, (_, blockUid) => {
       const reference = getTextByBlockUid(blockUid);
       return reference || blockUid;
     })
-    .replace(opts.embeds ? EMBED_REGEX : MATCHES_NONE, (_, blockUid) => {
+    .replace(embeds ? EMBED_REGEX : MATCHES_NONE, (_, blockUid) => {
       const reference = getFullTreeByParentUid(blockUid);
       return toMarkdown({ c: reference, i, v, opts });
     })
+    .replace(/{{\[\[TODO\]\]}}/g, v === "bullet" ? "[ ]" : "- [ ]")
+    .replace(/{{\[\[DONE\]\]}}/g, v === "bullet" ? "[x]" : "- [x]")
+    .replace(/\_\_(.+?)\_\_/g, "_$1_") // convert Roam italics __ to markdown italics _
+    .replace(/(?<!\n)```/g, "\n```") // Add line break before last code blocks
     .trim();
   const finalProcessedText =
-    opts.simplifiedFilename || opts.removeSpecialCharacters
+    simplifiedFilename || removeSpecialCharacters
       ? XRegExp.matchRecursive(processedText, "#?\\[\\[", "\\]\\]", "i", {
           valueNames: ["between", "left", "match", "right"],
           unbalanced: "skip",
@@ -167,12 +184,12 @@ const toMarkdown = ({
             if (s.name === "match") {
               const name = getFilename({
                 title: s.value,
-                allNodes: opts.allNodes,
-                maxFilenameLength: opts.maxFilenameLength,
-                simplifiedFilename: opts.simplifiedFilename,
-                removeSpecialCharacters: opts.removeSpecialCharacters,
+                allNodes,
+                maxFilenameLength,
+                simplifiedFilename,
+                removeSpecialCharacters,
               });
-              return toLink(name, opts.linkType);
+              return toLink(name, linkType);
             } else if (s.name === "left" || s.name === "right") {
               return "";
             } else {
@@ -181,18 +198,28 @@ const toMarkdown = ({
           })
           .join("") || processedText
       : processedText;
-  return `${"".padStart(i * 4, " ")}${viewTypeToPrefix[v]}${
-    c.heading ? `${"".padStart(c.heading, "#")} ` : ""
-  }${finalProcessedText}${(c.children || [])
+  const indentation = flatten ? "" : "".padStart(i * 4, " ");
+  const viewTypePrefix = viewTypeToPrefix[v];
+  const headingPrefix = c.heading ? `${"".padStart(c.heading, "#")} ` : "";
+  const childrenMarkdown = (c.children || [])
     .filter((nested) => !!nested.text || !!nested.children?.length)
-    .map(
-      (nested) =>
-        `\n\n${toMarkdown({ c: nested, i: i + 1, v: c.viewType || v, opts })}`
-    )
-    .join("")}`;
+    .map((nested) => {
+      const childViewType = v !== "bullet" ? v : nested.viewType || "bullet";
+      const childMarkdown = toMarkdown({
+        c: nested,
+        i: i + 1,
+        v: childViewType,
+        opts,
+      });
+      return `\n${childMarkdown}`;
+    })
+    .join("");
+  const lineBreak = v === "document" ? "\n" : "";
+
+  return `${indentation}${viewTypePrefix}${headingPrefix}${finalProcessedText}${lineBreak}${childrenMarkdown}`;
 };
 
-type Props = {
+type getExportTypesProps = {
   results?: ExportDialogProps["results"];
   exportId: string;
   isExportDiscourseGraph: boolean;
@@ -204,7 +231,7 @@ const getExportTypes = ({
   results,
   exportId,
   isExportDiscourseGraph,
-}: Props): ExportTypes => {
+}: getExportTypesProps): ExportTypes => {
   const allRelations = getDiscourseRelations();
   const allNodes = getDiscourseNodes(allRelations);
   const nodeLabelByType = Object.fromEntries(
@@ -325,6 +352,62 @@ const getExportTypes = ({
       return { grammar, nodes, relations };
     });
   };
+  const getExportSettings = () => {
+    const configTree = getBasicTreeByParentUid(
+      getPageUidByPageTitle("roam/js/discourse-graph")
+    );
+    const exportTree = getSubTree({
+      tree: configTree,
+      key: "export",
+    });
+    const maxFilenameLength = getSettingIntFromTree({
+      tree: exportTree.children,
+      key: "max filename length",
+      defaultValue: 64,
+    });
+    const linkType = getSettingValueFromTree({
+      tree: exportTree.children,
+      key: "link type",
+      defaultValue: "alias",
+    });
+    const removeSpecialCharacters = !!getSubTree({
+      tree: exportTree.children,
+      key: "remove special characters",
+    }).uid;
+    const simplifiedFilename = !!getSubTree({
+      tree: exportTree.children,
+      key: "simplified filename",
+    }).uid;
+    const frontmatter = getSubTree({
+      tree: exportTree.children,
+      key: "frontmatter",
+    }).children.map((t) => t.text);
+    const optsRefs = !!getSubTree({
+      tree: exportTree.children,
+      key: "resolve block references",
+    }).uid;
+    const optsEmbeds = !!getSubTree({
+      tree: exportTree.children,
+      key: "resolve block embeds",
+    }).uid;
+    const yaml = frontmatter.length
+      ? frontmatter
+      : [
+          "title: {text}",
+          `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
+          `author: {author}`,
+          "date: {date}",
+        ];
+    return {
+      yaml,
+      optsRefs,
+      optsEmbeds,
+      simplifiedFilename,
+      maxFilenameLength,
+      removeSpecialCharacters,
+      linkType,
+    };
+  };
 
   return [
     {
@@ -333,51 +416,15 @@ const getExportTypes = ({
         isSamePageEnabled,
         includeDiscourseContext = false,
       }) => {
-        const configTree = getBasicTreeByParentUid(
-          getPageUidByPageTitle("roam/js/discourse-graph")
-        );
-        const exportTree = getSubTree({
-          tree: configTree,
-          key: "export",
-        });
-        const maxFilenameLength = getSettingIntFromTree({
-          tree: exportTree.children,
-          key: "max filename length",
-          defaultValue: 64,
-        });
-        const linkType = getSettingValueFromTree({
-          tree: exportTree.children,
-          key: "link type",
-          defaultValue: "alias",
-        });
-        const removeSpecialCharacters = !!getSubTree({
-          tree: exportTree.children,
-          key: "remove special characters",
-        }).uid;
-        const simplifiedFilename = !!getSubTree({
-          tree: exportTree.children,
-          key: "simplified filename",
-        }).uid;
-        const frontmatter = getSubTree({
-          tree: exportTree.children,
-          key: "frontmatter",
-        }).children.map((t) => t.text);
-        const optsRefs = !!getSubTree({
-          tree: exportTree.children,
-          key: "resolve block references",
-        }).uid;
-        const optsEmbeds = !!getSubTree({
-          tree: exportTree.children,
-          key: "resolve block embeds",
-        }).uid;
-        const yaml = frontmatter.length
-          ? frontmatter
-          : [
-              "title: {text}",
-              `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
-              `author: {author}`,
-              "date: {date}",
-            ];
+        const {
+          yaml,
+          optsRefs,
+          optsEmbeds,
+          simplifiedFilename,
+          maxFilenameLength,
+          removeSpecialCharacters,
+          linkType,
+        } = getExportSettings();
         const allPages = await getPageData(
           isSamePageEnabled,
           isExportDiscourseGraph
@@ -594,6 +641,163 @@ const getExportTypes = ({
             content: `${header}${data}`,
           },
         ];
+      },
+    },
+    {
+      name: "PDF",
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+      }) => {
+        const {
+          optsRefs,
+          optsEmbeds,
+          simplifiedFilename,
+          maxFilenameLength,
+          removeSpecialCharacters,
+          linkType,
+        } = getExportSettings();
+        const allPages = await getPageData(
+          isSamePageEnabled,
+          isExportDiscourseGraph
+        );
+        const gatherings = allPages.map(
+          ({ text, uid }, i, all) =>
+            async function getMarkdownDataForPdf() {
+              updateExportProgress({ progress: i / all.length, id: exportId });
+              // skip a beat to let progress render
+              await new Promise((resolve) => setTimeout(resolve));
+
+              // TODO - resuse these with the markdown export
+              const treeNodeToMarkdown = (c: TreeNode) => {
+                return toMarkdown({
+                  c,
+                  v: "document",
+                  i: 0,
+                  opts: {
+                    refs: optsRefs,
+                    embeds: optsEmbeds,
+                    simplifiedFilename,
+                    allNodes,
+                    maxFilenameLength,
+                    removeSpecialCharacters,
+                    linkType,
+                    flatten: true,
+                  },
+                });
+              };
+              const treeNode = getFullTreeByParentUid(uid);
+              const getMarkdownContent = () => {
+                return treeNode.children.map(treeNodeToMarkdown).join("\n");
+              };
+              const getDiscourseResultsContent = async () => {
+                const discourseResults = includeDiscourseContext
+                  ? await getDiscourseContextResults({
+                      uid,
+                      isSamePageEnabled,
+                    })
+                  : [];
+                if (discourseResults.length === 0) return "";
+
+                const formattedResults = discourseResults
+                  .flatMap((r) =>
+                    Object.values(r.results).map((t) => {
+                      const filename = getFilename({
+                        title: t.text,
+                        maxFilenameLength,
+                        simplifiedFilename,
+                        allNodes,
+                        removeSpecialCharacters,
+                      });
+                      const link = toLink(filename, linkType);
+                      return `**${r.label}::** ${link}`;
+                    })
+                  )
+                  .join("\n");
+
+                return `### Discourse Context\n\n${formattedResults}`;
+              };
+              const getReferenceResultsContent = async () => {
+                const normalizedTitle = normalizePageTitle(text);
+                const flag = isFlagEnabled("render references");
+                const referenceResults = flag
+                  ? (
+                      window.roamAlphaAPI.data.fast.q(
+                        `[:find (pull ?pr [:node/title]) 
+                        (pull ?r 
+                          [:block/heading [:block/string :as "text"] 
+                          [:children/view-type :as "viewType"] 
+                          {:block/children ...}]) 
+                        :where 
+                          [?p :node/title "${normalizedTitle}"] 
+                          [?r :block/refs ?p] 
+                          [?r :block/page ?pr]]`
+                      ) as [PullBlock, PullBlock][]
+                    ).filter(
+                      ([, { [":block/children"]: children }]) =>
+                        Array.isArray(children) && children.length
+                    )
+                  : [];
+                if (referenceResults.length === 0) return "";
+
+                const refResultsMarkdown = referenceResults
+                  .map((r) => {
+                    const filename = getFilename({
+                      title: r[0][":node/title"],
+                      maxFilenameLength,
+                      simplifiedFilename,
+                      allNodes,
+                      removeSpecialCharacters,
+                    });
+                    const link = toLink(filename, linkType);
+                    const node = treeNodeToMarkdown(
+                      pullBlockToTreeNode(r[1], ":bullet")
+                    );
+                    return `${link}${node}`;
+                  })
+                  .join("\n");
+
+                return `### References\n\n${refResultsMarkdown}`;
+              };
+
+              const markdownContent = getMarkdownContent();
+              const discourseResults = await getDiscourseResultsContent();
+              const referenceResults = await getReferenceResultsContent();
+              const contentParts = [
+                markdownContent,
+                discourseResults,
+                referenceResults,
+              ];
+              const content = contentParts.filter((part) => part).join("\n\n");
+              const uids = new Set(collectUids(treeNode));
+
+              return { title: text, content, uids };
+            }
+        );
+        const pages = await gatherings.reduce(
+          (p, c) =>
+            p.then((arr) =>
+              c().then((item) => {
+                arr.push(item);
+                return arr;
+              })
+            ),
+          Promise.resolve(
+            [] as Awaited<ReturnType<(typeof gatherings)[number]>>[]
+          )
+        );
+
+        return pages.map(({ title, content }) => ({
+          title: getFilename({
+            title,
+            maxFilenameLength,
+            simplifiedFilename,
+            allNodes,
+            removeSpecialCharacters,
+            extension: ".pdf",
+          }),
+          content,
+        }));
       },
     },
   ];
