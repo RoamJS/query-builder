@@ -603,7 +603,7 @@ svg.rs-svg-container {
   };
 
   extensionAPI.ui.commandPalette.addCommand({
-    label: "Show All Canvas Nodes",
+    label: "Open Canvas Drawer",
     callback: () => {
       const pageUid = getCurrentPageUid();
       const props = getBlockProps(pageUid) as Record<string, unknown>;
@@ -642,7 +642,6 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
-          // @ts-ignore
           clearOnClick,
           onloadArgs,
         })

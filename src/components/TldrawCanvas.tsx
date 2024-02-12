@@ -1572,16 +1572,18 @@ const TldrawCanvas = ({ title }: Props) => {
       window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
     };
   }, [initialState, store]);
+
+  // Handle actions (roamjs:query-builder:action)
   useEffect(() => {
-    const actionListener = ((
-      e: CustomEvent<{
-        action: string;
-        uid: string;
-        val: string;
-        onRefresh: () => void;
-      }>
-    ) => {
-      if (!/canvas/i.test(e.detail.action)) return;
+    const handleCreateShapeAction = ({
+      uid,
+      val,
+      onRefresh,
+    }: {
+      uid: string;
+      val: string;
+      onRefresh: () => void;
+    }) => {
       const app = appRef.current;
       if (!app) return;
       const { x, y } = app.pageCenter;
@@ -1593,21 +1595,63 @@ const TldrawCanvas = ({ title }: Props) => {
             y: lastTime.y + h * 0.05,
           }
         : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
-      const nodeType = findDiscourseNode(e.detail.uid, allNodes);
+      const nodeType = findDiscourseNode(uid, allNodes);
       if (nodeType) {
         app.createShapes([
           {
             type: nodeType.type,
             id: createShapeId(),
             props: {
-              uid: e.detail.uid,
-              title: e.detail.val,
+              uid,
+              title: val,
             },
             ...position,
           },
         ]);
         lastInsertRef.current = position;
-        e.detail.onRefresh();
+        onRefresh();
+      }
+    };
+    const handleMoveCameraToShapeAction = ({
+      shapeId,
+    }: {
+      shapeId: TLShapeId;
+    }) => {
+      const app = appRef.current;
+      if (!app) return;
+      const shape = app.getShapeById(shapeId);
+      if (!shape) {
+        return renderToast({
+          id: "tldraw-warning",
+          intent: "warning",
+          content: `Shape not found.`,
+        });
+      }
+      const x = shape?.x || 0;
+      const y = shape?.y || 0;
+      app.centerOnPoint(x, y, { duration: 500, easing: (t) => t * t });
+      app.select(shapeId);
+    };
+    const actionListener = ((
+      e: CustomEvent<{
+        action: string;
+        uid?: string;
+        val?: string;
+        shapeId?: TLShapeId;
+        onRefresh?: () => void;
+      }>
+    ) => {
+      if (e.detail.action === "move-camera-to-shape") {
+        if (!e.detail.shapeId) return;
+        handleMoveCameraToShapeAction({ shapeId: e.detail.shapeId });
+      }
+      if (/canvas/i.test(e.detail.action)) {
+        if (!e.detail.uid || !e.detail.val || !e.detail.onRefresh) return;
+        handleCreateShapeAction({
+          uid: e.detail.uid,
+          val: e.detail.val,
+          onRefresh: e.detail.onRefresh,
+        });
       }
     }) as EventListener;
     document.addEventListener("roamjs:query-builder:action", actionListener);

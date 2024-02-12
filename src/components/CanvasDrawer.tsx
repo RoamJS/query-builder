@@ -5,6 +5,7 @@ import { DiscourseNodeShape } from "./TldrawCanvas";
 import { Button, Collapse, Checkbox } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import getDiscourseNodes from "../utils/getDiscourseNodes";
 
 export type GroupedShapes = Record<string, DiscourseNodeShape[]>;
 
@@ -14,43 +15,69 @@ type Props = {
 };
 
 const CanvasDrawerContent = ({ groupedShapes, pageUid }: Props) => {
-  const pageTitle = useMemo(() => getPageTitleByPageUid(pageUid), []);
-  const noResults = Object.keys(groupedShapes).length === 0;
-
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [filterType, setFilterType] = useState("All");
   const [filteredShapes, setFilteredShapes] = useState<GroupedShapes>({});
 
+  const pageTitle = useMemo(() => getPageTitleByPageUid(pageUid), []);
+  const noResults = Object.keys(groupedShapes).length === 0;
+  const typeToTitleMap = useMemo(() => {
+    const nodes = getDiscourseNodes();
+    const map: { [key: string]: string } = {};
+    nodes.forEach((node) => {
+      map[node.type] = node.text;
+    });
+    return map;
+  }, []);
+  const shapeTypes = useMemo(() => {
+    const allTypes = new Set(["All"]);
+    Object.values(groupedShapes).forEach((shapes) =>
+      shapes.forEach((shape) =>
+        allTypes.add(typeToTitleMap[shape.type] || shape.type)
+      )
+    );
+    return Array.from(allTypes);
+  }, [groupedShapes, typeToTitleMap]);
+  const hasDuplicates = useMemo(() => {
+    return Object.values(groupedShapes).some((shapes) => shapes.length > 1);
+  }, [groupedShapes]);
+
   useEffect(() => {
     const filtered = Object.entries(groupedShapes).reduce<GroupedShapes>(
       (acc, [uid, shapes]) => {
-        const filteredShapes = shapes.filter((shape) => {
-          if (filterType === "All") return true;
-          const matchesType = filterType ? shape.type === filterType : true;
-          return matchesType;
-        });
-
+        const filteredShapes = shapes.filter(
+          (shape) =>
+            filterType === "All" || typeToTitleMap[shape.type] === filterType
+        );
         if (
           filteredShapes.length > 0 &&
           (!showDuplicates || filteredShapes.length > 1)
         ) {
           acc[uid] = filteredShapes;
         }
-
         return acc;
       },
       {}
     );
-
     setFilteredShapes(filtered);
-  }, [groupedShapes, showDuplicates, filterType]);
+  }, [groupedShapes, showDuplicates, filterType, typeToTitleMap]);
 
   const toggleCollapse = (uid: string) => {
     setOpenSections((prevState) => ({
       ...prevState,
       [uid]: !prevState[uid],
     }));
+  };
+  const moveCameraToShape = (shapeId: string) => {
+    document.dispatchEvent(
+      new CustomEvent("roamjs:query-builder:action", {
+        detail: {
+          action: "move-camera-to-shape",
+          shapeId,
+        },
+      })
+    );
   };
 
   return (
@@ -59,13 +86,15 @@ const CanvasDrawerContent = ({ groupedShapes, pageUid }: Props) => {
         <MenuItemSelect
           onItemSelect={(type) => setFilterType(type)}
           activeItem={filterType}
-          items={["All", "type1", "type2", "type3"]}
+          items={shapeTypes}
         />
-        <Checkbox
-          label="Duplicates"
-          checked={showDuplicates}
-          onChange={() => setShowDuplicates(!showDuplicates)}
-        />
+        {hasDuplicates && (
+          <Checkbox
+            label="Duplicates"
+            checked={showDuplicates}
+            onChange={() => setShowDuplicates(!showDuplicates)}
+          />
+        )}
       </div>
       {noResults ? (
         <div>No nodes found for {pageTitle}</div>
@@ -74,9 +103,12 @@ const CanvasDrawerContent = ({ groupedShapes, pageUid }: Props) => {
           const title = shapes[0].props.title;
           const isExpandable = shapes.length > 1;
           return (
-            <div key={uid} style={{ marginBottom: "10px" }}>
+            <div key={uid} className="mb-2">
               <Button
-                onClick={() => isExpandable && toggleCollapse(uid)}
+                onClick={() => {
+                  if (isExpandable) toggleCollapse(uid);
+                  else moveCameraToShape(shapes[0].id);
+                }}
                 icon={
                   isExpandable
                     ? openSections[uid]
@@ -96,7 +128,7 @@ const CanvasDrawerContent = ({ groupedShapes, pageUid }: Props) => {
                     <Button
                       key={shape.id}
                       icon={"dot"}
-                      onClick={() => console.log("clicked")}
+                      onClick={() => moveCameraToShape(shape.id)}
                       alignText="left"
                       fill
                       minimal
@@ -119,7 +151,7 @@ const CanvasDrawer = ({
   onClose,
   ...props
 }: { onClose: () => void } & Props) => (
-  <ResizableDrawer onClose={onClose} title={"Nodes"}>
+  <ResizableDrawer onClose={onClose} title={"Canvas Drawer"}>
     <CanvasDrawerContent {...props} />
   </ResizableDrawer>
 );
