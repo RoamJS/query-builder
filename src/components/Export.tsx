@@ -386,7 +386,7 @@ const ExportDialog: ExportDialogComponent = ({
     try {
       const response = await apiPost({
         domain,
-        path: "pdf",
+        path: "pdf/query-builder",
         data: {
           files: preparedFiles,
           filename,
@@ -401,7 +401,7 @@ const ExportDialog: ExportDialogComponent = ({
       });
 
       if (download) {
-        const blob = new Blob([download], { type: "application/zip" }); // Set the MIME type for a .zip file
+        const blob = new Blob([download], { type: "application/zip" });
         saveAs(blob, `${filename}.zip`);
       }
       onClose();
