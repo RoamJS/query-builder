@@ -24,13 +24,13 @@ import getDiscourseNodes, {
   DiscourseNode,
 } from "../../utils/getDiscourseNodes";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
-import { loadImage } from "./TldrawCanvas";
+import { loadImage } from "./Tldraw";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";
 import ContrastColor from "contrast-color";
-import { discourseContext } from "./TldrawCanvas";
+import { discourseContext } from "./Tldraw";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
 // https://github.com/tldraw/tldraw/pull/1580/files

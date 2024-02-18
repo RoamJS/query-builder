@@ -32,7 +32,7 @@ import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
-import { renderTldrawCanvas } from "./components/tldraw/TldrawCanvas";
+import { renderTldrawCanvas } from "./components/tldraw/Tldraw";
 import { QBGlobalRefs } from "./utils/types";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";

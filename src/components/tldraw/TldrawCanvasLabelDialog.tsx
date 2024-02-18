@@ -19,7 +19,7 @@ import fuzzy from "fuzzy";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
 import { Result } from "../../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
-import { DiscourseContextType } from "./TldrawCanvas";
+import { DiscourseContextType } from "./Tldraw";
 import { getPlainTitleFromSpecification } from "../../discourseGraphsMode";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
