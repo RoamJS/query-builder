@@ -1,16 +1,13 @@
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import { OnloadArgs, TreeNode } from "roamjs-components/types";
-import {
-  DEFAULT_STYLE_PROPS,
-  MAX_WIDTH,
-  loadImage,
-} from "../components/tldraw/TldrawCanvas";
+import { MAX_WIDTH, loadImage } from "../components/tldraw/TldrawCanvas";
 import { measureCanvasNodeText } from "./measureCanvasNodeText";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";
 import getDiscourseNodes from "./getDiscourseNodes";
 import resolveRefs from "roamjs-components/dom/resolveRefs";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { DEFAULT_STYLE_PROPS } from "../components/tldraw/DiscourseNodeUtil";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
@@ -63,8 +60,8 @@ const calcCanvasNodeSizeAndImg = async ({
     ...DEFAULT_STYLE_PROPS,
     maxWidth: MAX_WIDTH,
     text: nodeText,
+    fontSize: 12, // DEFAULT_STYLE_PROPS.fontSize: FIX THIS, font size is now "m", but needs to be number for measureCanvasNodeText
   });
-
   if (!isKeyImage) return { w, h, imageUrl: "" };
 
   let imageUrl;

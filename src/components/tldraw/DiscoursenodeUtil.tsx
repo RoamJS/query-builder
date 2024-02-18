@@ -8,6 +8,7 @@ import {
   Editor,
   TLRecord,
   TLArrowShapeProps,
+  DefaultFontFamilies,
 } from "@tldraw/tldraw";
 import { useValue } from "signia-react";
 
@@ -22,7 +23,7 @@ import getDiscourseNodes, {
   DiscourseNode,
 } from "../../utils/getDiscourseNodes";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
-import { DEFAULT_STYLE_PROPS, loadImage } from "./TldrawCanvas";
+import { loadImage } from "./TldrawCanvas";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import getDiscourseRelations, {
   DiscourseRelation,
@@ -30,6 +31,24 @@ import getDiscourseRelations, {
 import ContrastColor from "contrast-color";
 import { discourseContext } from "./TldrawCanvas";
 
+// TODO REPLACE WITH TLDRAW DEFAULTS
+// https://github.com/tldraw/tldraw/pull/1580/files
+const TEXT_PROPS = {
+  lineHeight: 1.35,
+  fontWeight: "normal",
+  fontVariant: "normal",
+  fontStyle: "normal",
+  padding: "0px",
+  maxWidth: "auto",
+};
+
+export const DEFAULT_STYLE_PROPS = {
+  ...TEXT_PROPS,
+  fontSize: "m",
+  fontFamily: DefaultFontFamilies.sans,
+  width: "fit-content",
+  padding: "40px",
+};
 export type DiscourseContextType = {
   nodes: Record<string, DiscourseNode & { index: number }>;
   relations: Record<string, DiscourseRelation[]>;
@@ -155,6 +174,11 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       });
     this.editor.deleteShapes(toDelete.map((r) => r.id));
   }
+
+  // // FONT_FAMILIES.sans or tldraw_sans not working in toSvg()
+  // // maybe check getSvg()
+  // // in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
+  // const SVG_FONT_FAMILY = "sans-serif";
 
   // async createExistingRelations(
   //   shape: DiscourseNodeShape,
