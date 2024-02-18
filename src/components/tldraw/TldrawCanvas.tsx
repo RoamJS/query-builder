@@ -123,6 +123,7 @@ import {
   BaseDiscourseNodeUtil,
   generateShapeUtilsForNodes,
 } from "./DiscourseNodeUtil";
+import { useRoamStore } from "./useRoamStore";
 
 declare global {
   interface Window {
@@ -403,92 +404,12 @@ const TldrawCanvas = ({ title }: Props) => {
   // };
 
   const customShapeUtils = generateShapeUtilsForNodes(allNodes);
-
-  //////////////////////////////////////////////////////////////
-  ////////////////////// ALL THINGS STORE //////////////////////
-  //////////////////////////////////////////////////////////////
-  // const [newStore] = useState(() => {
-  //   const store = createTLStore({
-  //     shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-  //   });
-  //   // store.loadSnapshot(DEFAULT_STORE);
-  //   return store;
-  // });
-
-  const localStateIds: string[] = [];
-  const serializeRef = useRef(0);
-  const deserializeRef = useRef(0);
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
-  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
-  const initialData = useMemo(() => {
-    const persisted = getSubTree({
-      parentUid: pageUid,
-      tree,
-      key: "State",
-    });
-    if (!persisted.uid) {
-      // we create a block so that the page is not garbage collected
-      createBlock({
-        node: {
-          text: "State",
-        },
-        parentUid: pageUid,
-      });
-    }
-    const props = getBlockProps(pageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const data = rjsqb?.tldraw as SerializedStore<TLRecord>;
-    return data;
-  }, [tree, pageUid]);
 
-  const store = useMemo(() => {
-    const _store = createTLStore({
-      initialData,
-      shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-    });
-    _store.listen((rec) => {
-      if (rec.source !== "user") return;
-      const validChanges = Object.keys(rec.changes.added)
-        .concat(Object.keys(rec.changes.removed))
-        .concat(Object.keys(rec.changes.updated))
-        .filter(
-          (k) =>
-            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
-        );
-      if (!validChanges.length) return;
-      clearTimeout(serializeRef.current);
-      serializeRef.current = window.setTimeout(async () => {
-        const state = _store.serialize();
-        const props = getBlockProps(pageUid) as Record<string, unknown>;
-        const rjsqb =
-          typeof props["roamjs-query-builder"] === "object"
-            ? props["roamjs-query-builder"]
-            : {};
-        await setInputSetting({
-          blockUid: pageUid,
-          key: "timestamp",
-          value: new Date().valueOf().toString(),
-        });
-        const newstateId = nanoid();
-        localStateIds.push(newstateId);
-        localStateIds.splice(0, localStateIds.length - 25);
-        window.roamAlphaAPI.updateBlock({
-          block: {
-            uid: pageUid,
-            props: {
-              ...props,
-              ["roamjs-query-builder"]: {
-                ...rjsqb,
-                stateId: newstateId,
-                tldraw: state,
-              },
-            },
-          },
-        });
-      }, THROTTLE);
-    });
-    return _store;
-  }, [initialData, serializeRef]);
+  const { store, deserializeRef, localStateIds } = useRoamStore({
+    customShapeUtils,
+    pageUid,
+  });
 
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
@@ -500,7 +421,7 @@ const TldrawCanvas = ({ title }: Props) => {
         ) as Record<string, json>;
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
         const propsStateId = rjsqb?.stateId as string;
-        if (localStateIds.some((s) => s === propsStateId)) return;
+        if (localStateIds.current.some((s) => s === propsStateId)) return;
         const newState = rjsqb?.tldraw as StoreSnapshot<TLRecord>;
         if (!newState) return;
         clearTimeout(deserializeRef.current);
