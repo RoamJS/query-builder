@@ -69,7 +69,7 @@ import {
   TLPointerEventInfo,
   VecModel,
 } from "@tldraw/tldraw";
-import { StoreSnapshot } from "@tldraw/store";
+import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
 import "@tldraw/tldraw/tldraw.css";
 
@@ -122,7 +122,7 @@ import { generateUiOverrides } from "./uiOverrides";
 import {
   BaseDiscourseNodeUtil,
   generateShapeUtilsForNodes,
-} from "./DiscoursenodeUtil";
+} from "./DiscourseNodeUtil";
 
 declare global {
   interface Window {
@@ -202,7 +202,7 @@ const personalRecordTypes = new Set([
   "instance",
   "instance_page_state",
 ]);
-const pruneState = (state: StoreSnapshot<TLRecord>) =>
+const pruneState = (state: SerializedStore<TLRecord>) =>
   Object.fromEntries(
     Object.entries(state).filter(
       ([_, record]) => !personalRecordTypes.has(record.typeName)
@@ -245,51 +245,9 @@ const calculateDiff = (
     ),
   };
 };
-
-// from @tldraw/editor/editor.css
-const COLOR_PALETTE: Record<string, string> = {
-  black: "#1d1d1d",
-  blue: "#4263eb",
-  green: "#099268",
-  grey: "#adb5bd",
-  "light-blue": "#4dabf7",
-  "light-green": "#40c057",
-  "light-red": "#ff8787",
-  "light-violet": "#e599f7",
-  orange: "#f76707",
-  red: "#e03131",
-  violet: "#ae3ec9",
-  white: "#ffffff",
-  yellow: "#ffc078",
-};
-const COLOR_ARRAY = Array.from(DefaultColorStyle.values).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 export const MAX_WIDTH = "400px";
-
-// FONT_FAMILIES.sans or tldraw_sans not working in toSvg()
-// maybe check getSvg()
-// in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
-const SVG_FONT_FAMILY = "sans-serif";
-
-// TODO REPLACE WITH TLDRAW DEFAULTS
-// https://github.com/tldraw/tldraw/pull/1580/files
-const TEXT_PROPS = {
-  lineHeight: 1.35,
-  fontWeight: "normal",
-  fontVariant: "normal",
-  fontStyle: "normal",
-  padding: "0px",
-  maxWidth: "auto",
-};
-
-export const DEFAULT_STYLE_PROPS = {
-  ...TEXT_PROPS,
-  fontSize: "m",
-  fontFamily: DefaultFontFamilies.sans,
-  width: "fit-content",
-  padding: "40px",
-};
 
 export const loadImage = (
   url: string
@@ -313,122 +271,13 @@ export const loadImage = (
   });
 };
 
-// Helper to add referenced nodes to node titles
-// EG: [[EVD]] - {content} - {Source}
-// {Source} is a referenced node
-type DiscourseReferencedNodeShape = TLBaseShape<string, TLArrowShapeProps>;
-// class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeShape> {
-//   constructor(app: TldrawApp, type: string) {
-//     super(app, type);
-//   }
-//   override canBind = () => true;
-//   override canEdit = () => false;
-//   defaultProps() {
-//     return {
-//       opacity: "1" as const,
-//       dash: "draw" as const,
-//       size: "s" as const,
-//       fill: "none" as const,
-//       color: COLOR_ARRAY[0],
-//       labelColor: COLOR_ARRAY[1],
-//       bend: 0,
-//       start: { type: "point" as const, x: 0, y: 0 },
-//       end: { type: "point" as const, x: 0, y: 0 },
-//       arrowheadStart: "none" as const,
-//       arrowheadEnd: "arrow" as const,
-//       text: "for",
-//       font: "mono" as const,
-//     };
-//   }
-//   render(shape: DiscourseReferencedNodeShape) {
-//     return (
-//       <>
-//         <style>{`#${shape.id.replace(":", "_")}_clip_0 {
-//   display: none;
-// }
-// [data-shape-type="${this.type}"] .rs-arrow-label {
-//   left: 0;
-//   top: 0;
-//   width: unset;
-//   height: unset;
-// }
-// `}</style>
-//         {super.render(shape)}
-//       </>
-//     );
-//   }
-// }
-// class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
-//   constructor(app: TldrawApp, type: string) {
-//     super(app, type);
-//   }
-//   override canBind = () => true;
-//   override canEdit = () => false;
-//   defaultProps() {
-//     const relations = Object.values(discourseContext.relations);
-//     // TODO - add canvas settings to relations config
-//     const relationIndex = relations.findIndex((rs) =>
-//       rs.some((r) => r.id === this.type)
-//     );
-//     const isValid = relationIndex >= 0 && relationIndex < relations.length;
-//     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
-//     return {
-//       opacity: "1" as const,
-//       dash: "draw" as const,
-//       size: "s" as const,
-//       fill: "none" as const,
-//       color,
-//       labelColor: color,
-//       bend: 0,
-//       start: { type: "point" as const, x: 0, y: 0 },
-//       end: { type: "point" as const, x: 0, y: 0 },
-//       arrowheadStart: "none" as const,
-//       arrowheadEnd: "arrow" as const,
-//       text: isValid
-//         ? Object.keys(discourseContext.relations)[relationIndex]
-//         : "",
-//       font: "mono" as const,
-//     };
-//   }
-//   override onBeforeCreate = (shape: DiscourseRelationShape) => {
-//     // TODO - propsForNextShape is clobbering our choice of color
-//     const relations = Object.values(discourseContext.relations);
-//     const relationIndex = relations.findIndex((rs) =>
-//       rs.some((r) => r.id === this.type)
-//     );
-//     const isValid = relationIndex >= 0 && relationIndex < relations.length;
-//     const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
-//     return {
-//       ...shape,
-//       props: {
-//         ...shape.props,
-//         color,
-//         labelColor: color,
-//       },
-//     };
-//   };
-//   render(shape: DiscourseRelationShape) {
-//     return (
-//       <>
-//         <style>{`#${shape.id.replace(":", "_")}_clip_0 {
-//   display: none;
-// }
-// [data-shape-type="${this.type}"] .rs-arrow-label {
-//   left: 0;
-//   top: 0;
-//   width: unset;
-//   height: unset;
-// }
-// `}</style>
-//         {super.render(shape)}
-//       </>
-//     );
-//   }
-// }
-
 const TldrawCanvas = ({ title }: Props) => {
-  const serializeRef = useRef(0);
-  const deserializeRef = useRef(0);
+  const appRef = useRef<TldrawApp>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastInsertRef = useRef<VecModel>();
+
+  const [maximized, setMaximized] = useState(false);
+
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
     discourseContext.relations = relations.reduce((acc, r) => {
@@ -460,6 +309,7 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
+
   const isCustomArrowShape = (shape: TLShape) => {
     // TODO: find a better way to identify custom arrow shapes
     // shape.type or shape.name probably?
@@ -471,9 +321,7 @@ const TldrawCanvas = ({ title }: Props) => {
       allAddReferencedNodeActionsSet.has(shape.type)
     );
   };
-
   type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
-
   type ReferenceFormatType = {
     format: string;
     sourceName: string;
@@ -481,7 +329,6 @@ const TldrawCanvas = ({ title }: Props) => {
     destinationType: string;
     destinationName: string;
   };
-
   const allAddReferencedNodeByAction = useMemo(() => {
     const obj: AddReferencedNodeType = {};
 
@@ -517,13 +364,13 @@ const TldrawCanvas = ({ title }: Props) => {
 
   const extensionAPI = useExtensionAPI();
 
-  const isBindingType = (
-    binding: TLArrowTerminal
-  ): binding is TLArrowTerminal & {
-    boundShapeId: TLShapeId;
-  } => {
-    return binding.type === "binding" && !!binding.boundShapeId;
-  };
+  // const isBindingType = (
+  //   binding: TLArrowTerminal
+  // ): binding is TLArrowTerminal & {
+  //   boundShapeId: TLShapeId;
+  // } => {
+  //   return binding.type === "binding" && !!binding.boundShapeId;
+  // };
   // const hasValidBindings = (bindings: TLArrowTerminal[]) => {
   //   return bindings.every(isBindingType);
   // };
@@ -555,124 +402,122 @@ const TldrawCanvas = ({ title }: Props) => {
   //   ]);
   // };
 
+  const customShapeUtils = generateShapeUtilsForNodes(allNodes);
+
+  //////////////////////////////////////////////////////////////
+  ////////////////////// ALL THINGS STORE //////////////////////
+  //////////////////////////////////////////////////////////////
+  // const [newStore] = useState(() => {
+  //   const store = createTLStore({
+  //     shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+  //   });
+  //   // store.loadSnapshot(DEFAULT_STORE);
+  //   return store;
+  // });
+
+  const localStateIds: string[] = [];
+  const serializeRef = useRef(0);
+  const deserializeRef = useRef(0);
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
-  const appRef = useRef<TldrawApp>();
-  const lastInsertRef = useRef<VecModel>();
-  // const initialState = useMemo(() => {
-  //   const persisted = getSubTree({
-  //     parentUid: pageUid,
-  //     tree,
-  //     key: "State",
-  //   });
-  //   if (!persisted.uid) {
-  //     // we create a block so that the page is not garbage collected
-  //     createBlock({
-  //       node: {
-  //         text: "State",
-  //       },
-  //       parentUid: pageUid,
-  //     });
-  //   }
-  //   const instanceId = TLInstance.createCustomId(pageUid);
-  //   const userId = TLUser.createCustomId(getCurrentUserUid());
-  //   const props = getBlockProps(pageUid) as Record<string, unknown>;
-  //   const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-  //   const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
-  //   return { instanceId, userId, data };
-  // }, [tree, pageUid]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [maximized, setMaximized] = useState(false);
+  const initialData = useMemo(() => {
+    const persisted = getSubTree({
+      parentUid: pageUid,
+      tree,
+      key: "State",
+    });
+    if (!persisted.uid) {
+      // we create a block so that the page is not garbage collected
+      createBlock({
+        node: {
+          text: "State",
+        },
+        parentUid: pageUid,
+      });
+    }
+    const props = getBlockProps(pageUid) as Record<string, unknown>;
+    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+    const data = rjsqb?.tldraw as SerializedStore<TLRecord>;
+    return data;
+  }, [tree, pageUid]);
 
-  // const store = useMemo(() => {
-  //   const _store = customTldrawConfig.createStore({
-  //     initialData: initialState.data,
-  //     instanceId: initialState.instanceId,
-  //     userId: initialState.userId,
-  //   });
-  //   _store.listen((rec) => {
-  //     if (rec.source !== "user") return;
-  //     const validChanges = Object.keys(rec.changes.added)
-  //       .concat(Object.keys(rec.changes.removed))
-  //       .concat(Object.keys(rec.changes.updated))
-  //       .filter(
-  //         (k) =>
-  //           !/^(user_presence|camera|instance|instance_page_state):/.test(k)
-  //       );
-  //     if (!validChanges.length) return;
-  //     clearTimeout(serializeRef.current);
-  //     serializeRef.current = window.setTimeout(async () => {
-  //       const state = _store.serialize();
-  //       const props = getBlockProps(pageUid) as Record<string, unknown>;
-  //       const rjsqb =
-  //         typeof props["roamjs-query-builder"] === "object"
-  //           ? props["roamjs-query-builder"]
-  //           : {};
-  //       await setInputSetting({
-  //         blockUid: pageUid,
-  //         key: "timestamp",
-  //         value: new Date().valueOf().toString(),
-  //       });
-  //       const newstateId = nanoid();
-  //       localStateIds.push(newstateId);
-  //       localStateIds.splice(0, localStateIds.length - 25);
-  //       window.roamAlphaAPI.updateBlock({
-  //         block: {
-  //           uid: pageUid,
-  //           props: {
-  //             ...props,
-  //             ["roamjs-query-builder"]: {
-  //               ...rjsqb,
-  //               stateId: newstateId,
-  //               tldraw: state,
-  //             },
-  //           },
-  //         },
-  //       });
-  //     }, THROTTLE);
-  //   });
-  //   return _store;
-  // }, [initialState, serializeRef]);
+  const store = useMemo(() => {
+    const _store = createTLStore({
+      initialData,
+      shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+    });
+    _store.listen((rec) => {
+      if (rec.source !== "user") return;
+      const validChanges = Object.keys(rec.changes.added)
+        .concat(Object.keys(rec.changes.removed))
+        .concat(Object.keys(rec.changes.updated))
+        .filter(
+          (k) =>
+            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
+        );
+      if (!validChanges.length) return;
+      clearTimeout(serializeRef.current);
+      serializeRef.current = window.setTimeout(async () => {
+        const state = _store.serialize();
+        const props = getBlockProps(pageUid) as Record<string, unknown>;
+        const rjsqb =
+          typeof props["roamjs-query-builder"] === "object"
+            ? props["roamjs-query-builder"]
+            : {};
+        await setInputSetting({
+          blockUid: pageUid,
+          key: "timestamp",
+          value: new Date().valueOf().toString(),
+        });
+        const newstateId = nanoid();
+        localStateIds.push(newstateId);
+        localStateIds.splice(0, localStateIds.length - 25);
+        window.roamAlphaAPI.updateBlock({
+          block: {
+            uid: pageUid,
+            props: {
+              ...props,
+              ["roamjs-query-builder"]: {
+                ...rjsqb,
+                stateId: newstateId,
+                tldraw: state,
+              },
+            },
+          },
+        });
+      }, THROTTLE);
+    });
+    return _store;
+  }, [initialData, serializeRef]);
 
-  // useEffect(
-  //   () => {
-  //     const pullWatchProps: Parameters<AddPullWatch> = [
-  //       "[:edit/user :block/props :block/string {:block/children ...}]",
-  //       `[:block/uid "${pageUid}"]`,
-  //       (_, after) => {
-  //         const props = normalizeProps(
-  //           (after?.[":block/props"] || {}) as json
-  //         ) as Record<string, json>;
-  //         const rjsqb = props["roamjs-query-builder"] as Record<
-  //           string,
-  //           unknown
-  //         >;
-  //         const propsStateId = rjsqb?.stateId as string;
-  //         if (localStateIds.some((s) => s === propsStateId)) return;
-  //         const newState = rjsqb?.tldraw as Parameters<
-  //           typeof store.deserialize
-  //         >[0];
-  //         if (!newState) return;
-  //         clearTimeout(deserializeRef.current);
-  //         deserializeRef.current = window.setTimeout(() => {
-  //           store.mergeRemoteChanges(() => {
-  //             const currentState = store.serialize();
-  //             const diff = calculateDiff(newState, currentState);
-  //             store.applyDiff(diff);
-  //           });
-  //         }, THROTTLE);
-  //       },
-  //     ];
-  //     window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
-  //     return () => {
-  //       window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
-  //     };
-  //   },
-  //   [
-  //     // initialState,
-  //     // store
-  //   ]
-  // );
+  useEffect(() => {
+    const pullWatchProps: Parameters<AddPullWatch> = [
+      "[:edit/user :block/props :block/string {:block/children ...}]",
+      `[:block/uid "${pageUid}"]`,
+      (_, after) => {
+        const props = normalizeProps(
+          (after?.[":block/props"] || {}) as json
+        ) as Record<string, json>;
+        const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+        const propsStateId = rjsqb?.stateId as string;
+        if (localStateIds.some((s) => s === propsStateId)) return;
+        const newState = rjsqb?.tldraw as StoreSnapshot<TLRecord>;
+        if (!newState) return;
+        clearTimeout(deserializeRef.current);
+        deserializeRef.current = window.setTimeout(() => {
+          store.mergeRemoteChanges(() => {
+            const currentState = store.getSnapshot();
+            const diff = calculateDiff(newState, currentState);
+            store.applyDiff(diff);
+          });
+        }, THROTTLE);
+      },
+    ];
+    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
+    return () => {
+      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
+    };
+  }, [pageUid, store]);
   useEffect(() => {
     const actionListener = ((
       e: CustomEvent<{
@@ -1192,9 +1037,6 @@ const TldrawCanvas = ({ title }: Props) => {
       // , ...selectTool
     ];
   }, [allNodes, allRelationNames, allAddReferencedNodeByAction]);
-  const editor = useEditor();
-
-  const customShapeUtils = generateShapeUtilsForNodes(allNodes);
 
   // const relationShapes = allRelationIds.map((id) =>
   //   defineShape<DiscourseRelationShape>({
@@ -1224,14 +1066,6 @@ const TldrawCanvas = ({ title }: Props) => {
   // , ...referencedNodeShapes
   // ];
   // }, [allNodes, allRelationIds, allAddReferencedNodeActions]);
-
-  const [store] = useState(() => {
-    const store = createTLStore({
-      shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-    });
-    // store.loadSnapshot(DEFAULT_STORE);
-    return store;
-  });
 
   const defaultComponents = {
     Scribble: TldrawScribble,
