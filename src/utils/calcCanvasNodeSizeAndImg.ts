@@ -7,7 +7,7 @@ import runQuery from "./runQuery";
 import getDiscourseNodes from "./getDiscourseNodes";
 import resolveRefs from "roamjs-components/dom/resolveRefs";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { DEFAULT_STYLE_PROPS } from "../components/tldraw/DiscourseNodeUtil";
+import { DEFAULT_STYLE_PROPS } from "../components/tldraw/DiscourseNode";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;

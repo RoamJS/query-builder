@@ -12,7 +12,7 @@ import getBlockProps from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
 import { SerializedStore } from "@tldraw/store";
 import { defaultShapeUtils } from "@tldraw/tldraw";
-import { BaseDiscourseNodeUtil } from "./DiscourseNodeUtil";
+import { BaseDiscourseNodeUtil } from "./DiscourseNode";
 
 const THROTTLE = 350;
 

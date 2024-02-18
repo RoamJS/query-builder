@@ -9,6 +9,7 @@ import {
   TLRecord,
   TLArrowShapeProps,
   DefaultFontFamilies,
+  BaseBoxShapeTool,
 } from "@tldraw/tldraw";
 import { useValue } from "signia-react";
 
@@ -41,7 +42,6 @@ const TEXT_PROPS = {
   padding: "0px",
   maxWidth: "auto",
 };
-
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: "m",
@@ -49,12 +49,6 @@ export const DEFAULT_STYLE_PROPS = {
   width: "fit-content",
   padding: "40px",
 };
-export type DiscourseContextType = {
-  nodes: Record<string, DiscourseNode & { index: number }>;
-  relations: Record<string, DiscourseRelation[]>;
-  lastAppEvent: string;
-};
-
 const COLOR_ARRAY = Array.from(DefaultColorStyle.values).reverse();
 // from @tldraw/editor/editor.css
 const COLOR_PALETTE: Record<string, string> = {
@@ -73,33 +67,22 @@ const COLOR_PALETTE: Record<string, string> = {
   yellow: "#ffc078",
 };
 
-const allRelations = getDiscourseRelations();
-const allNodes = getDiscourseNodes();
-
-// discourseContext.nodes = Object.fromEntries(
-//   allNodes.map((node, index) => [node.type, { ...node, index }])
-// );
-// discourseContext.relations = allRelations.reduce((acc, r) => {
-//   if (acc[r.label]) {
-//     acc[r.label].push(r);
-//   } else {
-//     acc[r.label] = [r];
-//   }
-//   return acc;
-// }, {} as Record<string, DiscourseRelation[]>);
-
-const isPageUid = (uid: string) =>
-  !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
-    ":node/title"
-  ];
-
 const getRelationIds = () =>
   new Set(
     Object.values(discourseContext.relations).flatMap((rs) =>
       rs.map((r) => r.id)
     )
   );
-export const generateShapeUtilsForNodes = (nodes: DiscourseNode[]) => {
+
+export const createNodeShapeTools = (n: DiscourseNode) => {
+  return class DiscourseNodeTool extends BaseBoxShapeTool {
+    static id = n.type;
+    static initial = "idle";
+    shapeType = n.type;
+  };
+};
+
+export const createNodeShapeUtils = (nodes: DiscourseNode[]) => {
   return nodes.map((node) => {
     // Create a subclass of CardShapeUtil for each type
     class DiscourseNodeUtil extends BaseDiscourseNodeUtil {
@@ -154,6 +137,7 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   }
 
   // Custom
+
   deleteRelationsInCanvas(
     shape: DiscourseNodeShape,
     {
@@ -335,6 +319,11 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     const {
       canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
     } = discourseContext.nodes[shape.type] || {};
+
+    const isPageUid = (uid: string) =>
+      !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
+        ":node/title"
+      ];
 
     // Handle LabelDialog
     const isEditing = useValue(

@@ -121,8 +121,9 @@ import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { generateUiOverrides } from "./uiOverrides";
 import {
   BaseDiscourseNodeUtil,
-  generateShapeUtilsForNodes,
-} from "./DiscourseNodeUtil";
+  createNodeShapeTools,
+  createNodeShapeUtils,
+} from "./DiscourseNode";
 import { useRoamStore } from "./useRoamStore";
 
 declare global {
@@ -137,10 +138,6 @@ type Props = {
 };
 
 const THROTTLE = 350;
-const isPageUid = (uid: string) =>
-  !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
-    ":node/title"
-  ];
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -403,7 +400,7 @@ const TldrawCanvas = ({ title }: Props) => {
   //   ]);
   // };
 
-  const customShapeUtils = generateShapeUtilsForNodes(allNodes);
+  const customShapeUtils = createNodeShapeUtils(allNodes);
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
 
   const { store, deserializeRef, localStateIds } = useRoamStore({
@@ -486,38 +483,8 @@ const TldrawCanvas = ({ title }: Props) => {
     };
   }, [appRef, allNodes]);
 
-  const triggerContextMenuConvertTo = () => {
-    const shape = appRef.current?.getOnlySelectedShape();
-    if (!shape) return;
-    const shapeEl = document.getElementById(shape.id);
-    const rect = shapeEl?.getBoundingClientRect();
-    const contextMenu = new MouseEvent("contextmenu", {
-      bubbles: true,
-      cancelable: true,
-      clientX: rect?.left,
-      clientY: rect?.top,
-    });
-    shapeEl?.dispatchEvent(contextMenu);
-    const menuItem = document.querySelector(
-      'button[data-wd="menu-item.convert-to"]'
-    ) as HTMLMenuElement;
-    if (menuItem) {
-      setTimeout(() => {
-        menuItem.click();
-      }, 100);
-    }
-  };
-
-  const createShapeToolClass = (n: DiscourseNode) => {
-    return class DiscourseNodeUtil extends BaseBoxShapeTool {
-      static id = n.type;
-      static initial = "idle";
-      shapeType = n.type;
-    };
-  };
-
   const customTools = useMemo(() => {
-    const nodes = allNodes.map(createShapeToolClass);
+    const nodes = allNodes.map(createNodeShapeTools);
     // const relations = allRelationNames.map(
     //   (name) =>
     //     class extends TLArrowTool {
@@ -951,6 +918,9 @@ const TldrawCanvas = ({ title }: Props) => {
     allAddReferencedNodeActions,
     allRelationNames,
     extensionAPI,
+    maximized,
+    setMaximized,
+    appRef,
   });
 
   return (

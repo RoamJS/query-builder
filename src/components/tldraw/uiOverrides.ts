@@ -8,7 +8,9 @@ import {
   TLUiTranslationKey,
   createShapeId,
   toolbarItem,
-  useToasts,
+  Editor,
+  menuItem,
+  TLUiSubMenu,
 } from "@tldraw/tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
@@ -16,66 +18,99 @@ import createDiscourseNode from "../../utils/createDiscourseNode";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import type { OnloadArgs } from "roamjs-components/types";
 
-// Menu Overrides
-// const addFullScreenToggle = (mainMenu: TLUiMenuGroup) => {
-//   const viewSubMenu = mainMenu.children.find(
-//     (m): m is SubMenu => m.type === "submenu" && m.id === "view"
-//   );
-//   const viewActionsGroup = viewSubMenu?.children.find(
-//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "view-actions"
-//   );
-//   if (!viewActionsGroup) return;
-//   viewActionsGroup.children.push({
-//     type: "item",
-//     readonlyOk: true,
-//     id: "toggle-full-screen",
-//     disabled: false,
-//     checked: maximized,
-//     actionItem: {
-//       id: "toggle-full-screen",
-//       label: "action.toggle-full-screen" as TLUiTranslationKey,
-//       kbd: "!3",
-//       onSelect: () => {
-//         setMaximized(!maximized);
-//       },
-//       readonlyOk: true,
-//     },
-//   });
-// };
-// const editCopyAsShortcuts = (mainMenu: TLUiMenuGroup) => {
-//   const editSubMenu = mainMenu.children.find(
-//     (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
-//   );
-//   const conversionsGroup = editSubMenu?.children.find(
-//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "conversions"
-//   );
-//   const copyAsSubMenu = conversionsGroup?.children.find(
-//     (m): m is SubMenu => m.type === "submenu" && m.id === "copy-as"
-//   );
-//   const copyAsGroup = copyAsSubMenu?.children.find(
-//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "copy-as-group"
-//   );
-//   const copyAsPngItem = copyAsGroup?.children.find(
-//     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
-//   );
-//   const copyAsSvgItem = copyAsGroup?.children.find(
-//     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-svg"
-//   );
-//   if (!copyAsPngItem || !copyAsSvgItem) return;
-//   copyAsPngItem.actionItem.kbd = "$!C";
-//   copyAsSvgItem.actionItem.kbd = "$!X";
-// };
+const addFullScreenToggle = (
+  mainMenu: TLUiMenuGroup,
+  maximized: boolean,
+  setMaximized: (maximized: boolean) => void
+) => {
+  const viewSubMenu = mainMenu.children.find(
+    (m): m is TLUiSubMenu => m?.type === "submenu" && m.id === "view"
+  );
+  const viewActionsGroup = viewSubMenu?.children.find(
+    (m): m is TLUiMenuGroup => m?.type === "group" && m.id === "view-actions"
+  );
+  if (!viewActionsGroup) return;
+  viewActionsGroup.children.push({
+    type: "item",
+    readonlyOk: true,
+    id: "toggle-full-screen",
+    disabled: false,
+    checked: maximized,
+    actionItem: {
+      id: "toggle-full-screen",
+      label: "action.toggle-full-screen" as TLUiTranslationKey,
+      kbd: "!3",
+      onSelect: () => {
+        setMaximized(!maximized);
+      },
+      readonlyOk: true,
+    },
+  });
+};
+const editCopyAsShortcuts = (mainMenu: TLUiMenuGroup) => {
+  const editSubMenu = mainMenu.children.find(
+    (m): m is TLUiSubMenu => m?.type === "submenu" && m.id === "edit"
+  );
+  const conversionsGroup = editSubMenu?.children.find(
+    (m): m is TLUiMenuGroup => m?.type === "group" && m.id === "conversions"
+  );
+  const copyAsSubMenu = conversionsGroup?.children.find(
+    (m): m is TLUiSubMenu => m?.type === "submenu" && m.id === "copy-as"
+  );
+  const copyAsGroup = copyAsSubMenu?.children.find(
+    (m): m is TLUiMenuGroup => m?.type === "group" && m.id === "copy-as-group"
+  );
+  const copyAsPngItem = copyAsGroup?.children.find(
+    (m): m is TLUiMenuItem => m?.type === "item" && m.id === "copy-as-png"
+  );
+  const copyAsSvgItem = copyAsGroup?.children.find(
+    (m): m is TLUiMenuItem => m?.type === "item" && m.id === "copy-as-svg"
+  );
+  if (!copyAsPngItem || !copyAsSvgItem) return;
+  copyAsPngItem.actionItem.kbd = "$!C";
+  copyAsSvgItem.actionItem.kbd = "$!X";
+};
+
+const triggerContextMenuConvertTo = (
+  appRef: React.MutableRefObject<Editor | undefined>
+) => {
+  const shape = appRef.current?.getOnlySelectedShape();
+  if (!shape) return;
+  const shapeEl = document.getElementById(shape.id);
+  const rect = shapeEl?.getBoundingClientRect();
+  const contextMenu = new MouseEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    clientX: rect?.left,
+    clientY: rect?.top,
+  });
+  shapeEl?.dispatchEvent(contextMenu);
+  const menuItem = document.querySelector(
+    'button[data-wd="menu-item.convert-to"]'
+  ) as HTMLMenuElement;
+  if (menuItem) {
+    setTimeout(() => {
+      menuItem.click();
+    }, 100);
+  }
+};
 
 export const generateUiOverrides = ({
   allNodes,
   allRelationNames,
   allAddReferencedNodeActions,
   extensionAPI,
+  maximized,
+  setMaximized,
+  appRef,
 }: {
   allNodes: DiscourseNode[];
   allRelationNames: string[];
   allAddReferencedNodeActions: string[];
   extensionAPI?: OnloadArgs["extensionAPI"];
+  maximized: boolean;
+  setMaximized: (maximized: boolean) => void;
+  appRef: React.MutableRefObject<Editor | undefined>;
 }): TLUiOverrides => ({
   tools(editor, tools) {
     allNodes.forEach((node) => {
@@ -91,13 +126,54 @@ export const generateUiOverrides = ({
         readonlyOk: true,
       };
     });
+    // allRelationNames.forEach((relation, index) => {
+    //   tools[relation] = {
+    //     id: relation,
+    //     icon: "tool-arrow",
+    //     label: `shape.relation.${relation}` as TLUiTranslationKey,
+    //     kbd: "",
+    //     readonlyOk: true,
+    //     onSelect: () => {
+    //       app.setSelectedTool(relation);
+    //     },
+    //     style: {
+    //       color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
+    //     },
+    //   };
+    // });
+    // Object.keys(allAddReferencedNodeByAction).forEach((name) => {
+    //   const action = allAddReferencedNodeByAction[name];
+    //   const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
+    //     text: discourseContext.nodes[key].text,
+    //     color: discourseContext.nodes[key].canvasSettings.color,
+    //   }));
+    //   const color =
+    //     nodeColorArray.find((n) => n.text === action[0].sourceName)?.color ||
+    //     "";
+    //   tools[name] = {
+    //     id: name,
+    //     icon: "tool-arrow",
+    //     label: `shape.referenced.${name}` as TLUiTranslationKey,
+    //     kbd: "",
+    //     readonlyOk: true,
+    //     onSelect: () => {
+    //       app.setSelectedTool(`${name}`);
+    //     },
+    //     style: {
+    //       color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
+    //     },
+    //   };
+    // });
     return tools;
   },
   toolbar(_app, toolbar, { tools }) {
-    allNodes.forEach((node, index) => {
-      const nodeId = node.type;
-      toolbar.splice(4 + index, 0, toolbarItem(tools[nodeId]));
-    });
+    toolbar.push(
+      ...allNodes.map((n) => toolbarItem(tools[n.type]))
+      // ...allRelationNames.map((name) => toolbarItem(tools[name])),
+      // ...allAddReferencedNodeActions.map((action) =>
+      //   toolbarItem(tools[action])
+      // )
+    );
     return toolbar;
   },
   contextMenu(app, schema, helpers) {
@@ -226,6 +302,50 @@ export const generateUiOverrides = ({
     }
     return schema;
   },
+  actions(_app, actions) {
+    (actions["toggle-full-screen"] = {
+      id: "toggle-full-screen",
+      label: "action.toggle-full-screen" as TLUiTranslationKey,
+      kbd: "!3",
+      onSelect: () => setMaximized(!maximized),
+      readonlyOk: true,
+    }),
+      (actions["convert-to"] = {
+        id: "convert-to",
+        label: "action.convert-to" as TLUiTranslationKey,
+        kbd: "?C",
+        onSelect: () => triggerContextMenuConvertTo(appRef),
+        readonlyOk: true,
+      });
+    return actions;
+  },
+  keyboardShortcutsMenu(_app, keyboardShortcutsMenu, { tools, actions }) {
+    const toolsGroup = keyboardShortcutsMenu.find(
+      (group) => group.id === "shortcuts-dialog.tools"
+    ) as TLUiMenuGroup;
+    const viewGroup = keyboardShortcutsMenu.find(
+      (group) => group.id === "shortcuts-dialog.view"
+    ) as TLUiMenuGroup;
+    const transformGroup = keyboardShortcutsMenu.find(
+      (group) => group.id === "shortcuts-dialog.transform"
+    ) as TLUiMenuGroup;
+
+    toolsGroup.children.push(...allNodes.map((n) => menuItem(tools[n.type])));
+    viewGroup.children.push(menuItem(actions["toggle-full-screen"]));
+    transformGroup.children.push(menuItem(actions["convert-to"]));
+
+    return keyboardShortcutsMenu;
+  },
+  menu(_app, menu) {
+    const mainMenu = menu.find(
+      (m): m is TLUiMenuGroup => m.type === "group" && m.id === "menu"
+    );
+    if (mainMenu) {
+      addFullScreenToggle(mainMenu, maximized, setMaximized);
+      editCopyAsShortcuts(mainMenu);
+    }
+    return menu;
+  },
   translations: {
     en: {
       ...Object.fromEntries(
@@ -251,131 +371,3 @@ export const generateUiOverrides = ({
     },
   },
 });
-
-//   overrides={{
-
-//     actions(_app, actions) {
-//       (actions["toggle-full-screen"] = {
-//         id: "toggle-full-screen",
-//         label: "action.toggle-full-screen" as TLUiTranslationKey,
-//         kbd: "!3",
-//         onSelect: () => {
-//           setMaximized(!maximized);
-//         },
-//         readonlyOk: true,
-//       }),
-//         (actions["convert-to"] = {
-//           id: "convert-to",
-//           label: "action.convert-to" as TLUiTranslationKey,
-//           kbd: "?C",
-//           onSelect: () => triggerContextMenuConvertTo(),
-//           readonlyOk: true,
-//         });
-//       return actions;
-//     },
-//     tools(app, tools) {
-//       allNodes.forEach((node, index) => {
-//         tools[node.type] = {
-//           id: node.type,
-//           icon: "color",
-//           label: `shape.node.${node.type}` as TLUiTranslationKey,
-//           kbd: node.shortcut,
-//           readonlyOk: true,
-//           onSelect: () => {
-//             app.setCurrentTool(node.type);
-//           },
-//           style: {
-//             color:
-//               formatHexColor(node.canvasSettings.color) ||
-//               `var(--palette-${COLOR_ARRAY[index]})`,
-//           },
-//         };
-//       });
-//       allRelationNames.forEach((relation, index) => {
-//         tools[relation] = {
-//           id: relation,
-//           icon: "tool-arrow",
-//           label: `shape.relation.${relation}` as TLUiTranslationKey,
-//           kbd: "",
-//           readonlyOk: true,
-//           onSelect: () => {
-//             app.setSelectedTool(relation);
-//           },
-//           style: {
-//             color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
-//           },
-//         };
-//       });
-//       Object.keys(allAddReferencedNodeByAction).forEach((name) => {
-//         const action = allAddReferencedNodeByAction[name];
-//         const nodeColorArray = Object.keys(discourseContext.nodes).map(
-//           (key) => ({
-//             text: discourseContext.nodes[key].text,
-//             color: discourseContext.nodes[key].canvasSettings.color,
-//           })
-//         );
-//         const color =
-//           nodeColorArray.find((n) => n.text === action[0].sourceName)
-//             ?.color || "";
-//         tools[name] = {
-//           id: name,
-//           icon: "tool-arrow",
-//           label: `shape.referenced.${name}` as TLUiTranslationKey,
-//           kbd: "",
-//           readonlyOk: true,
-//           onSelect: () => {
-//             app.setSelectedTool(`${name}`);
-//           },
-//           style: {
-//             color:
-//               formatHexColor(color) ??
-//               `var(--palette-${COLOR_ARRAY[0]})`,
-//           },
-//         };
-//       });
-//       return tools;
-//     },
-//     toolbar(_app, toolbar, { tools }) {
-//       toolbar.push(
-//         ...allNodes.map((n) => toolbarItem(tools[n.type])),
-//         ...allRelationNames.map((name) => toolbarItem(tools[name])),
-//         ...allAddReferencedNodeActions.map((action) =>
-//           toolbarItem(tools[action])
-//         )
-//       );
-//       return toolbar;
-//     },
-//     keyboardShortcutsMenu(
-//       _app,
-//       keyboardShortcutsMenu,
-//       { tools, actions }
-//     ) {
-//       const toolsGroup = keyboardShortcutsMenu.find(
-//         (group) => group.id === "shortcuts-dialog.tools"
-//       ) as TLUiMenuGroup;
-//       const viewGroup = keyboardShortcutsMenu.find(
-//         (group) => group.id === "shortcuts-dialog.view"
-//       ) as TLUiMenuGroup;
-//       const transformGroup = keyboardShortcutsMenu.find(
-//         (group) => group.id === "shortcuts-dialog.transform"
-//       ) as TLUiMenuGroup;
-
-//       toolsGroup.children.push(
-//         ...allNodes.map((n) => menuItem(tools[n.type]))
-//       );
-//       viewGroup.children.push(menuItem(actions["toggle-full-screen"]));
-//       transformGroup.children.push(menuItem(actions["convert-to"]));
-
-//       return keyboardShortcutsMenu;
-//     },
-//     menu(_app, menu) {
-//       const mainMenu = menu.find(
-//         (m): m is TLUiMenuGroup => m.type === "group" && m.id === "menu"
-//       );
-//       if (mainMenu) {
-//         addFullScreenToggle(mainMenu);
-//         editCopyAsShortcuts(mainMenu);
-//       }
-//       return menu;
-//     },
-//   }}
