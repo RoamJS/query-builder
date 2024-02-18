@@ -118,7 +118,7 @@ import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
-import { generateUiOverrides } from "./uiOverrides";
+import { createUiOverrides } from "./uiOverrides";
 import {
   BaseDiscourseNodeUtil,
   createNodeShapeTools,
@@ -131,11 +131,6 @@ declare global {
     tldrawApps: Record<string, TldrawApp>;
   }
 }
-
-type Props = {
-  title: string;
-  previewEnabled: boolean;
-};
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -150,13 +145,6 @@ export const discourseContext: DiscourseContextType = {
   relations: {},
   lastAppEvent: "",
 };
-
-const getRelationIds = () =>
-  new Set(
-    Object.values(discourseContext.relations).flatMap((rs) =>
-      rs.map((r) => r.id)
-    )
-  );
 
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
@@ -184,6 +172,10 @@ export const loadImage = (
   });
 };
 
+type Props = {
+  title: string;
+  previewEnabled: boolean;
+};
 const TldrawCanvas = ({ title }: Props) => {
   const appRef = useRef<TldrawApp>();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -800,7 +792,7 @@ const TldrawCanvas = ({ title }: Props) => {
     Handles: TldrawHandles,
     HoveredShapeIndicator: TldrawHoveredShapeIndicator,
   };
-  const uiOverrides = generateUiOverrides({
+  const uiOverrides = createUiOverrides({
     allNodes,
     allAddReferencedNodeActions,
     allRelationNames,

@@ -95,7 +95,7 @@ const triggerContextMenuConvertTo = (
   }
 };
 
-export const generateUiOverrides = ({
+export const createUiOverrides = ({
   allNodes,
   allRelationNames,
   allAddReferencedNodeActions,
