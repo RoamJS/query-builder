@@ -27,7 +27,7 @@
   ],
   "dependencies": {
     "@samepage/external": "^0.71.10",
-    "@tldraw/tldraw": "^2.0.0-alpha.12",
+    "@tldraw/tldraw": "v2.0.0-beta.2",
     "contrast-color": "^1.0.1",
     "cytoscape-navigator": "^2.0.1",
     "nanoid": "2.0.4",

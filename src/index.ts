@@ -32,7 +32,7 @@ import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
-import { renderTldrawCanvas } from "./components/TldrawCanvas";
+import { renderTldrawCanvas } from "./components/tldraw/TldrawCanvas";
 import { QBGlobalRefs } from "./utils/types";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
@@ -45,6 +45,7 @@ import getBlockProps, { json } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { renderTldrawUpgrade } from "./components/tldrawUIpgradeTest/TldrawUpgrade";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -150,7 +151,7 @@ svg.rs-svg-container {
 }
 
 .roamjs-tldraw-node .rm-api-render--block .rm-block__controls,
-.rs-shape .rm-api-render--block .rm-block__ref-count {
+.tl-shape .rm-api-render--block .rm-block__ref-count {
   display: none;
 }
 
@@ -253,6 +254,8 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else if (title.startsWith("upgrade") && !!h1.closest(".roam-article")) {
+      renderTldrawUpgrade(title, onloadArgs);
     }
   };
   extensionAPI.settings.panel.create({

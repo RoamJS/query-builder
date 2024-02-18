@@ -14,13 +14,13 @@ import {
   Label,
 } from "@blueprintjs/core";
 import { IconName, IconNames } from "@blueprintjs/icons";
-import fireQuery from "../utils/fireQuery";
+import fireQuery from "../../utils/fireQuery";
 import fuzzy from "fuzzy";
 import { RoamOverlayProps } from "roamjs-components/util/renderOverlay";
-import { Result } from "../utils/types";
+import { Result } from "../../utils/types";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
-import { getPlainTitleFromSpecification } from "../discourseGraphsMode";
+import { getPlainTitleFromSpecification } from "../../discourseGraphsMode";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 
 const LabelDialogAutocomplete = ({

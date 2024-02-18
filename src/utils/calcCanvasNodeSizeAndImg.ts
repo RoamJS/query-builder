@@ -4,7 +4,7 @@ import {
   DEFAULT_STYLE_PROPS,
   MAX_WIDTH,
   loadImage,
-} from "../components/TldrawCanvas";
+} from "../components/tldraw/TldrawCanvas";
 import { measureCanvasNodeText } from "./measureCanvasNodeText";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";
