@@ -1,18 +1,19 @@
 import { TLRecord, TLStore } from "@tldraw/tlschema";
 import nanoid from "nanoid";
 import { title } from "process";
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getSubTree from "roamjs-components/util/getSubTree";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import createBlock from "roamjs-components/writes/createBlock";
-import getBlockProps from "../../utils/getBlockProps";
+import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
-import { SerializedStore } from "@tldraw/store";
+import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { defaultShapeUtils } from "@tldraw/tldraw";
 import { BaseDiscourseNodeUtil } from "./DiscourseNode";
+import { AddPullWatch } from "roamjs-components/types";
 
 const THROTTLE = 350;
 
@@ -97,5 +98,118 @@ export const useRoamStore = ({
     return _store;
   }, [initialData, serializeRef]);
 
-  return { store, localStateIds, deserializeRef };
+  const personalRecordTypes = new Set([
+    "camera",
+    "instance",
+    "instance_page_state",
+  ]);
+
+  const pruneState = (state: SerializedStore<TLRecord>) =>
+    Object.fromEntries(
+      Object.entries(state).filter(
+        ([_, record]) => !personalRecordTypes.has(record.typeName)
+      )
+    );
+
+  const diffObjects = (
+    oldRecord: Record<string, any>,
+    newRecord: Record<string, any>
+  ): Record<string, any> => {
+    const allKeys = Array.from(
+      new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
+    );
+    return Object.fromEntries(
+      allKeys
+        .map((key) => {
+          const oldValue = oldRecord[key];
+          const newValue = newRecord[key];
+          if (typeof oldValue !== typeof newValue) {
+            return [key, newValue];
+          }
+          if (
+            typeof oldValue === "object" &&
+            oldValue !== null &&
+            newValue !== null
+          ) {
+            const diffed = diffObjects(oldValue, newValue);
+            if (Object.keys(diffed).length) {
+              return [key, diffed];
+            }
+            return null;
+          }
+          if (oldValue !== newValue) {
+            return [key, newValue];
+          }
+          return null;
+        })
+        .filter((e): e is [string, any] => !!e)
+    );
+  };
+  const calculateDiff = (
+    _newState: StoreSnapshot<TLRecord>,
+    _oldState: StoreSnapshot<TLRecord>
+  ) => {
+    const newState = pruneState(_newState);
+    const oldState = pruneState(_oldState);
+    return {
+      added: Object.fromEntries(
+        Object.keys(newState)
+          .filter((id) => !oldState[id])
+          .map((id) => [id, newState[id]])
+      ),
+      removed: Object.fromEntries(
+        Object.keys(oldState)
+          .filter((id) => !newState[id])
+          .map((key) => [key, oldState[key]])
+      ),
+      updated: Object.fromEntries(
+        Object.keys(newState)
+          .map((id) => {
+            const oldRecord = oldState[id];
+            const newRecord = newState[id];
+            if (!oldRecord || !newRecord) {
+              return null;
+            }
+
+            const diffed = diffObjects(oldRecord, newRecord);
+            if (Object.keys(diffed).length) {
+              return [id, [oldRecord, newRecord]];
+            }
+            return null;
+          })
+          .filter((e): e is [string, any] => !!e)
+      ),
+    };
+  };
+
+  useEffect(() => {
+    const pullWatchProps: Parameters<AddPullWatch> = [
+      "[:edit/user :block/props :block/string {:block/children ...}]",
+      `[:block/uid "${pageUid}"]`,
+      (_, after) => {
+        const props = normalizeProps(
+          (after?.[":block/props"] || {}) as json
+        ) as Record<string, json>;
+        const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+        const propsStateId = rjsqb?.stateId as string;
+        if (localStateIds.current.some((s) => s === propsStateId)) return;
+        const newState = rjsqb?.tldraw as StoreSnapshot<TLRecord>;
+        if (!newState) return;
+        clearTimeout(deserializeRef.current);
+        deserializeRef.current = window.setTimeout(() => {
+          store.mergeRemoteChanges(() => {
+            const currentState = store.getSnapshot();
+            const diff = calculateDiff(newState, currentState);
+            store.applyDiff(diff);
+          });
+        }, THROTTLE);
+      },
+    ];
+    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
+    return () => {
+      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
+    };
+  }, [pageUid, store]);
+
+  return store;
 };
