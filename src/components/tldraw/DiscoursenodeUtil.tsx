@@ -367,7 +367,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
     useEffect(() => {
-      console.log("listener added");
       const listener = (e: CustomEvent) => {
         console.log(
           "roamjs:query-builder:created-canvas-node",
