@@ -844,11 +844,8 @@ const TldrawCanvas = ({ title }: Props) => {
       <TldrawEditor
         // baseUrl="https://samepage.network/assets/tldraw/"
         // instanceId={initialState.instanceId}
-        // userId={initialState.userId}
         shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
-        // shapeUtils={[...defaultShapeUtils]}
-        // tools={[...defaultTools, ...defaultShapeTools]}
         initialState="select"
         components={defaultComponents}
         store={store}
