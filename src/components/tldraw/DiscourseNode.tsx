@@ -25,7 +25,7 @@ import getDiscourseNodes, {
 } from "../../utils/getDiscourseNodes";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
 import { loadImage } from "./Tldraw";
-import LabelDialog from "./TldrawCanvasLabelDialog";
+import LabelDialog from "./TldrawLabelDialog";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";

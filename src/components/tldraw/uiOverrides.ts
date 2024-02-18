@@ -70,7 +70,6 @@ const editCopyAsShortcuts = (mainMenu: TLUiMenuGroup) => {
   copyAsPngItem.actionItem.kbd = "$!C";
   copyAsSvgItem.actionItem.kbd = "$!X";
 };
-
 const triggerContextMenuConvertTo = (
   appRef: React.MutableRefObject<Editor | undefined>
 ) => {

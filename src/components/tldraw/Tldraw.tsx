@@ -116,7 +116,7 @@ import isFlagEnabled from "../../utils/isFlagEnabled";
 // other
 import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
-import LabelDialog from "./TldrawCanvasLabelDialog";
+import LabelDialog from "./TldrawLabelDialog";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { createUiOverrides } from "./uiOverrides";
 import {
