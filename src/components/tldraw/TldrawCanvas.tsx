@@ -508,56 +508,6 @@ const TldrawCanvas = ({ title }: Props) => {
     }
   };
 
-  // Menu Overrides
-  // const addFullScreenToggle = (mainMenu: MenuGroup) => {
-  //   const viewSubMenu = mainMenu.children.find(
-  //     (m): m is SubMenu => m.type === "submenu" && m.id === "view"
-  //   );
-  //   const viewActionsGroup = viewSubMenu?.children.find(
-  //     (m): m is MenuGroup => m.type === "group" && m.id === "view-actions"
-  //   );
-  //   if (!viewActionsGroup) return;
-  //   viewActionsGroup.children.push({
-  //     type: "item",
-  //     readonlyOk: true,
-  //     id: "toggle-full-screen",
-  //     disabled: false,
-  //     checked: maximized,
-  //     actionItem: {
-  //       id: "toggle-full-screen",
-  //       label: "action.toggle-full-screen" as TLTranslationKey,
-  //       kbd: "!3",
-  //       onSelect: () => {
-  //         setMaximized(!maximized);
-  //       },
-  //       readonlyOk: true,
-  //     },
-  //   });
-  // };
-  // const editCopyAsShortcuts = (mainMenu: MenuGroup) => {
-  //   const editSubMenu = mainMenu.children.find(
-  //     (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
-  //   );
-  //   const conversionsGroup = editSubMenu?.children.find(
-  //     (m): m is MenuGroup => m.type === "group" && m.id === "conversions"
-  //   );
-  //   const copyAsSubMenu = conversionsGroup?.children.find(
-  //     (m): m is SubMenu => m.type === "submenu" && m.id === "copy-as"
-  //   );
-  //   const copyAsGroup = copyAsSubMenu?.children.find(
-  //     (m): m is MenuGroup => m.type === "group" && m.id === "copy-as-group"
-  //   );
-  //   const copyAsPngItem = copyAsGroup?.children.find(
-  //     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
-  //   );
-  //   const copyAsSvgItem = copyAsGroup?.children.find(
-  //     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-svg"
-  //   );
-  //   if (!copyAsPngItem || !copyAsSvgItem) return;
-  //   copyAsPngItem.actionItem.kbd = "$!C";
-  //   copyAsSvgItem.actionItem.kbd = "$!X";
-  // };
-
   const createShapeToolClass = (n: DiscourseNode) => {
     return class DiscourseNodeUtil extends BaseBoxShapeTool {
       static id = n.type;
@@ -996,7 +946,12 @@ const TldrawCanvas = ({ title }: Props) => {
     Handles: TldrawHandles,
     HoveredShapeIndicator: TldrawHoveredShapeIndicator,
   };
-  const uiOverrides = generateUiOverrides(allNodes);
+  const uiOverrides = generateUiOverrides({
+    allNodes,
+    allAddReferencedNodeActions,
+    allRelationNames,
+    extensionAPI,
+  });
 
   return (
     <div

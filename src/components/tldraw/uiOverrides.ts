@@ -1,9 +1,82 @@
-import { TLUiOverrides, toolbarItem } from "@tldraw/tldraw";
+import {
+  TLImageShape,
+  TLShape,
+  TLTextShape,
+  TLUiMenuGroup,
+  TLUiMenuItem,
+  TLUiOverrides,
+  TLUiTranslationKey,
+  createShapeId,
+  toolbarItem,
+  useToasts,
+} from "@tldraw/tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
+import { getNewDiscourseNodeText } from "../../utils/formatUtils";
+import createDiscourseNode from "../../utils/createDiscourseNode";
+import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
+import type { OnloadArgs } from "roamjs-components/types";
 
-export const generateUiOverrides = (
-  allNodes: DiscourseNode[]
-): TLUiOverrides => ({
+// Menu Overrides
+// const addFullScreenToggle = (mainMenu: TLUiMenuGroup) => {
+//   const viewSubMenu = mainMenu.children.find(
+//     (m): m is SubMenu => m.type === "submenu" && m.id === "view"
+//   );
+//   const viewActionsGroup = viewSubMenu?.children.find(
+//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "view-actions"
+//   );
+//   if (!viewActionsGroup) return;
+//   viewActionsGroup.children.push({
+//     type: "item",
+//     readonlyOk: true,
+//     id: "toggle-full-screen",
+//     disabled: false,
+//     checked: maximized,
+//     actionItem: {
+//       id: "toggle-full-screen",
+//       label: "action.toggle-full-screen" as TLUiTranslationKey,
+//       kbd: "!3",
+//       onSelect: () => {
+//         setMaximized(!maximized);
+//       },
+//       readonlyOk: true,
+//     },
+//   });
+// };
+// const editCopyAsShortcuts = (mainMenu: TLUiMenuGroup) => {
+//   const editSubMenu = mainMenu.children.find(
+//     (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
+//   );
+//   const conversionsGroup = editSubMenu?.children.find(
+//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "conversions"
+//   );
+//   const copyAsSubMenu = conversionsGroup?.children.find(
+//     (m): m is SubMenu => m.type === "submenu" && m.id === "copy-as"
+//   );
+//   const copyAsGroup = copyAsSubMenu?.children.find(
+//     (m): m is TLUiMenuGroup => m.type === "group" && m.id === "copy-as-group"
+//   );
+//   const copyAsPngItem = copyAsGroup?.children.find(
+//     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
+//   );
+//   const copyAsSvgItem = copyAsGroup?.children.find(
+//     (m): m is MenuItem => m.type === "item" && m.id === "copy-as-svg"
+//   );
+//   if (!copyAsPngItem || !copyAsSvgItem) return;
+//   copyAsPngItem.actionItem.kbd = "$!C";
+//   copyAsSvgItem.actionItem.kbd = "$!X";
+// };
+
+export const generateUiOverrides = ({
+  allNodes,
+  allRelationNames,
+  allAddReferencedNodeActions,
+  extensionAPI,
+}: {
+  allNodes: DiscourseNode[];
+  allRelationNames: string[];
+  allAddReferencedNodeActions: string[];
+  extensionAPI?: OnloadArgs["extensionAPI"];
+}): TLUiOverrides => ({
   tools(editor, tools) {
     allNodes.forEach((node) => {
       const nodeId = node.type;
@@ -27,179 +100,164 @@ export const generateUiOverrides = (
     });
     return toolbar;
   },
+  contextMenu(app, schema, helpers) {
+    const shape = app.getOnlySelectedShape();
+    if (!shape) return schema;
+    const convertToDiscourseNode = async (
+      text: string,
+      type: string,
+      imageShapeUrl?: string
+    ) => {
+      if (!extensionAPI) {
+        // renderToast({
+        //   id: "tldraw-warning",
+        //   intent: "danger",
+        //   content: `Failed to convert to ${type}.  Please contact support`,
+        // });
+        return;
+      }
+      const nodeText =
+        type === "blck-node"
+          ? text
+          : await getNewDiscourseNodeText({
+              text,
+              nodeType: type,
+            });
+      const uid = await createDiscourseNode({
+        configPageUid: type,
+        text: nodeText,
+        imageUrl: imageShapeUrl,
+        extensionAPI,
+      });
+      app.deleteShapes([shape.id]);
+      const { x, y } = shape;
+      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+        nodeText: nodeText,
+        extensionAPI,
+        nodeType: type,
+        uid,
+      });
+      app.createShapes([
+        {
+          type,
+          id: createShapeId(),
+          props: {
+            uid,
+            title: nodeText,
+            h,
+            w,
+            imageUrl,
+          },
+          x,
+          y,
+        },
+      ]);
+    };
+    const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
+      if (!shape.type) return null;
+      if (shape.type === "image") {
+        return async () => {
+          const { assetId } = (shape as TLImageShape).props;
+          if (!assetId) return;
+          const asset = app.getAsset(assetId);
+          if (!asset || !asset.props.src) return;
+          const file = await fetch(asset.props.src)
+            .then((r) => r.arrayBuffer())
+            .then((buf) => new File([buf], shape.id));
+          const src = await window.roamAlphaAPI.util.uploadFile({
+            file,
+          });
+          const text = nodeType === "blck-node" ? `![](${src})` : "";
+          convertToDiscourseNode(text, nodeType, src);
+        };
+      } else if (shape.type === "text") {
+        return () => {
+          const { text } = (shape as TLTextShape).props;
+          convertToDiscourseNode(text, nodeType);
+        };
+      }
+    };
+
+    if (shape.type === "image" || shape.type === "text") {
+      const nodeMenuItems = allNodes.map((node) => {
+        return {
+          checked: false,
+          id: `convert-to-${node.type}`,
+          type: "item",
+          readonlyOk: true,
+          disabled: false,
+          actionItem: {
+            label: `action.convert-to-${node.type}` as TLUiTranslationKey,
+            id: `convert-to-${node.type}`,
+            onSelect: getOnSelectForShape(shape, node.type),
+            readonlyOk: true,
+            menuLabel: `Convert to ${node.text}` as TLUiTranslationKey,
+            title: `Convert to ${node.text}`,
+          },
+        } as TLUiMenuItem;
+      });
+
+      // Page not yet supported
+      // requires page-node to have image flag option
+      const filteredItems =
+        shape.type === "image"
+          ? nodeMenuItems.filter((item) => item.id !== "convert-to-page-node")
+          : nodeMenuItems;
+
+      const subTLUiMenuGroup: TLUiMenuGroup = {
+        id: "convert-to-group",
+        type: "group",
+        checkbox: false,
+        disabled: false,
+        readonlyOk: true,
+        children: [
+          {
+            id: "convert-to",
+            type: "submenu",
+            label: "action.convert-to" as TLUiTranslationKey,
+            disabled: false,
+            readonlyOk: true,
+            children: [...filteredItems],
+          },
+        ],
+      };
+
+      schema.push(subTLUiMenuGroup);
+    }
+    return schema;
+  },
+  translations: {
+    en: {
+      ...Object.fromEntries(
+        allNodes.map((node) => [`shape.node.${node.type}`, node.text])
+      ),
+      ...Object.fromEntries(
+        allRelationNames.map((name) => [`shape.relation.${name}`, name])
+      ),
+      ...Object.fromEntries(
+        allAddReferencedNodeActions.map((name) => [
+          `shape.referenced.${name}`,
+          name,
+        ])
+      ),
+      "action.toggle-full-screen": "Toggle Full Screen",
+      "action.convert-to": "Convert to",
+      ...Object.fromEntries(
+        allNodes.map((node) => [
+          `action.convert-to-${node.type}`,
+          `${node.text}`,
+        ])
+      ),
+    },
+  },
 });
 
-// Usage
-// const uiOverrides = generateUiOverrides(allNodes);
-
 //   overrides={{
-//     translations: {
-//       en: {
-//         ...Object.fromEntries(
-//           allNodes.map((node) => [`shape.node.${node.type}`, node.text])
-//         ),
-//         ...Object.fromEntries(
-//           allRelationNames.map((name) => [
-//             `shape.relation.${name}`,
-//             name,
-//           ])
-//         ),
-//         ...Object.fromEntries(
-//           allAddReferencedNodeActions.map((name) => [
-//             `shape.referenced.${name}`,
-//             name,
-//           ])
-//         ),
-//         "action.toggle-full-screen": "Toggle Full Screen",
-//         "action.convert-to": "Convert to",
-//         ...Object.fromEntries(
-//           allNodes.map((node) => [
-//             `action.convert-to-${node.type}`,
-//             `${node.text}`,
-//           ])
-//         ),
-//       },
-//     },
-//     contextMenu(app, schema, helpers) {
-//       if (helpers.oneSelected) {
-//         const shape = app.getShapeById(app.selectedIds[0]);
-//         if (!shape) return schema;
-//         const convertToDiscourseNode = async (
-//           text: string,
-//           type: string,
-//           imageShapeUrl?: string
-//         ) => {
-//           if (!extensionAPI) {
-//             renderToast({
-//               id: "tldraw-warning",
-//               intent: "danger",
-//               content: `Failed to convert to ${type}.  Please contact support`,
-//             });
-//             return;
-//           }
-//           const nodeText =
-//             type === "blck-node"
-//               ? text
-//               : await getNewDiscourseNodeText({
-//                   text,
-//                   nodeType: type,
-//                 });
-//           const uid = await createDiscourseNode({
-//             configPageUid: type,
-//             text: nodeText,
-//             imageUrl: imageShapeUrl,
-//             extensionAPI,
-//           });
-//           app.deleteShapes([shape.id]);
-//           const { x, y } = shape;
-//           const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-//             nodeText: nodeText,
-//             extensionAPI,
-//             nodeType: type,
-//             uid,
-//           });
-//           app.createShapes([
-//             {
-//               type,
-//               id: createShapeId(),
-//               props: {
-//                 uid,
-//                 title: nodeText,
-//                 h,
-//                 w,
-//                 imageUrl,
-//               },
-//               x,
-//               y,
-//             },
-//           ]);
-//         };
-//         const getOnSelectForShape = (
-//           shape: TLShape,
-//           nodeType: string
-//         ) => {
-//           if (!shape.type) return null;
-//           if (shape.type === "image") {
-//             return async () => {
-//               const { assetId } = (shape as TLImageShape).props;
-//               if (!assetId) return;
-//               const asset = app.getAssetById(assetId);
-//               if (!asset || !asset.props.src) return;
-//               const file = await fetch(asset.props.src)
-//                 .then((r) => r.arrayBuffer())
-//                 .then((buf) => new File([buf], shape.id));
-//               const src = await window.roamAlphaAPI.util.uploadFile({
-//                 file,
-//               });
-//               const text =
-//                 nodeType === "blck-node" ? `![](${src})` : "";
-//               convertToDiscourseNode(text, nodeType, src);
-//             };
-//           } else if (shape.type === "text") {
-//             return () => {
-//               const { text } = (shape as TLTextShape).props;
-//               convertToDiscourseNode(text, nodeType);
-//             };
-//           }
-//         };
 
-//         if (shape.type === "image" || shape.type === "text") {
-//           const nodeMenuItems = allNodes.map((node) => {
-//             return {
-//               checked: false,
-//               id: `convert-to-${node.type}`,
-//               type: "item",
-//               readonlyOk: true,
-//               disabled: false,
-//               actionItem: {
-//                 label:
-//                   `action.convert-to-${node.type}` as TLTranslationKey,
-//                 id: `convert-to-${node.type}`,
-//                 onSelect: getOnSelectForShape(shape, node.type),
-//                 readonlyOk: true,
-//                 menuLabel:
-//                   `Convert to ${node.text}` as TLTranslationKey,
-//                 title: `Convert to ${node.text}`,
-//               },
-//             } as MenuItem;
-//           });
-
-//           // Page not yet supported
-//           // requires page-node to have image flag option
-//           const filteredItems =
-//             shape.type === "image"
-//               ? nodeMenuItems.filter(
-//                   (item) => item.id !== "convert-to-page-node"
-//                 )
-//               : nodeMenuItems;
-
-//           const submenuGroup: MenuGroup = {
-//             id: "convert-to-group",
-//             type: "group",
-//             checkbox: false,
-//             disabled: false,
-//             readonlyOk: true,
-//             children: [
-//               {
-//                 id: "convert-to",
-//                 type: "submenu",
-//                 label: "action.convert-to" as TLTranslationKey,
-//                 disabled: false,
-//                 readonlyOk: true,
-//                 children: [...filteredItems],
-//               },
-//             ],
-//           };
-
-//           schema.push(submenuGroup);
-//         }
-//       }
-//       return schema;
-//     },
 //     actions(_app, actions) {
 //       (actions["toggle-full-screen"] = {
 //         id: "toggle-full-screen",
-//         label: "action.toggle-full-screen" as TLTranslationKey,
+//         label: "action.toggle-full-screen" as TLUiTranslationKey,
 //         kbd: "!3",
 //         onSelect: () => {
 //           setMaximized(!maximized);
@@ -208,7 +266,7 @@ export const generateUiOverrides = (
 //       }),
 //         (actions["convert-to"] = {
 //           id: "convert-to",
-//           label: "action.convert-to" as TLTranslationKey,
+//           label: "action.convert-to" as TLUiTranslationKey,
 //           kbd: "?C",
 //           onSelect: () => triggerContextMenuConvertTo(),
 //           readonlyOk: true,
@@ -220,7 +278,7 @@ export const generateUiOverrides = (
 //         tools[node.type] = {
 //           id: node.type,
 //           icon: "color",
-//           label: `shape.node.${node.type}` as TLTranslationKey,
+//           label: `shape.node.${node.type}` as TLUiTranslationKey,
 //           kbd: node.shortcut,
 //           readonlyOk: true,
 //           onSelect: () => {
@@ -237,7 +295,7 @@ export const generateUiOverrides = (
 //         tools[relation] = {
 //           id: relation,
 //           icon: "tool-arrow",
-//           label: `shape.relation.${relation}` as TLTranslationKey,
+//           label: `shape.relation.${relation}` as TLUiTranslationKey,
 //           kbd: "",
 //           readonlyOk: true,
 //           onSelect: () => {
@@ -262,7 +320,7 @@ export const generateUiOverrides = (
 //         tools[name] = {
 //           id: name,
 //           icon: "tool-arrow",
-//           label: `shape.referenced.${name}` as TLTranslationKey,
+//           label: `shape.referenced.${name}` as TLUiTranslationKey,
 //           kbd: "",
 //           readonlyOk: true,
 //           onSelect: () => {
@@ -294,13 +352,13 @@ export const generateUiOverrides = (
 //     ) {
 //       const toolsGroup = keyboardShortcutsMenu.find(
 //         (group) => group.id === "shortcuts-dialog.tools"
-//       ) as MenuGroup;
+//       ) as TLUiMenuGroup;
 //       const viewGroup = keyboardShortcutsMenu.find(
 //         (group) => group.id === "shortcuts-dialog.view"
-//       ) as MenuGroup;
+//       ) as TLUiMenuGroup;
 //       const transformGroup = keyboardShortcutsMenu.find(
 //         (group) => group.id === "shortcuts-dialog.transform"
-//       ) as MenuGroup;
+//       ) as TLUiMenuGroup;
 
 //       toolsGroup.children.push(
 //         ...allNodes.map((n) => menuItem(tools[n.type]))
@@ -312,7 +370,7 @@ export const generateUiOverrides = (
 //     },
 //     menu(_app, menu) {
 //       const mainMenu = menu.find(
-//         (m): m is MenuGroup => m.type === "group" && m.id === "menu"
+//         (m): m is TLUiMenuGroup => m.type === "group" && m.id === "menu"
 //       );
 //       if (mainMenu) {
 //         addFullScreenToggle(mainMenu);
