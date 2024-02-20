@@ -126,7 +126,6 @@ import {
 } from "./DiscourseNode";
 import { useRoamStore } from "./useRoamStore";
 import {
-  DiscourseBaseRelationUtil,
   createRelationShapeTools,
   createRelationShapeUtils,
 } from "./DiscourseReferencedNode";
@@ -333,7 +332,6 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
   ];
 
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
-
   const store = useRoamStore({
     customShapeUtils,
     pageUid,
@@ -731,35 +729,6 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
   //     // , ...selectTool
   //   ];
   // }, [allNodes, allRelationNames, allAddReferencedNodeByAction]);
-
-  // const relationShapes = allRelationIds.map((id) =>
-  //   defineShape<DiscourseRelationShape>({
-  //     type: id,
-  //     getShapeUtil: () =>
-  //       class extends DiscourseRelationUtil {
-  //         constructor(app: TldrawApp) {
-  //           super(app, id);
-  //         }
-  //       },
-  //   })
-  // );
-  // const referencedNodeShapes = allAddReferencedNodeActions.map((action) =>
-  //   defineShape<DiscourseReferencedNodeShape>({
-  //     type: action,
-  //     getShapeUtil: () =>
-  //       class extends DiscourseReferencedNodeUtil {
-  //         constructor(app: TldrawApp) {
-  //           super(app, action);
-  //         }
-  //       },
-  //   })
-  // );
-  // return [
-  // ...nodeShapes,
-  // , ...relationShapes
-  // , ...referencedNodeShapes
-  // ];
-  // }, [allNodes, allRelationIds, allAddReferencedNodeActions]);
 
   const defaultComponents = {
     Scribble: TldrawScribble,
