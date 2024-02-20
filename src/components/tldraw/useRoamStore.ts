@@ -14,6 +14,10 @@ import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { defaultShapeUtils } from "@tldraw/tldraw";
 import { BaseDiscourseNodeUtil } from "./DiscourseNode";
 import { AddPullWatch } from "roamjs-components/types";
+import {
+  DiscourseBaseRelationUtil,
+  createRelationShapeUtils,
+} from "./DiscourseReferencedNode";
 
 const THROTTLE = 350;
 
@@ -21,7 +25,7 @@ export const useRoamStore = ({
   customShapeUtils,
   pageUid,
 }: {
-  customShapeUtils: (typeof BaseDiscourseNodeUtil)[];
+  customShapeUtils: any[];
   pageUid: string;
 }) => {
   const localStateIds = useRef<string[]>([]);
@@ -49,6 +53,9 @@ export const useRoamStore = ({
     return data;
   }, [tree, pageUid]);
 
+  const arrowUtilId = ["newArrow", "newArrowUtil2"];
+
+  const discourseRelationUtils = createRelationShapeUtils(arrowUtilId);
   const store = useMemo(() => {
     const _store = createTLStore({
       initialData,

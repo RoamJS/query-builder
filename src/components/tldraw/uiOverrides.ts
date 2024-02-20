@@ -17,23 +17,30 @@ import { getNewDiscourseNodeText } from "../../utils/formatUtils";
 import createDiscourseNode from "../../utils/createDiscourseNode";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import type { OnloadArgs } from "roamjs-components/types";
+import { AddReferencedNodeType, DiscourseContextType } from "./Tldraw";
+import { formatHexColor } from "../DiscourseNodeCanvasSettings";
+import { COLOR_ARRAY } from "./DiscourseNode";
 
 export const createUiOverrides = ({
   allNodes,
   allRelationNames,
-  allAddReferencedNodeActions,
+  allAddRefNodeActions,
+  allAddRefNodeByAction,
   extensionAPI,
   maximized,
   setMaximized,
   appRef,
+  discourseContext,
 }: {
   allNodes: DiscourseNode[];
   allRelationNames: string[];
-  allAddReferencedNodeActions: string[];
+  allAddRefNodeActions: string[];
+  allAddRefNodeByAction: AddReferencedNodeType;
   extensionAPI?: OnloadArgs["extensionAPI"];
   maximized: boolean;
   setMaximized: (maximized: boolean) => void;
   appRef: React.MutableRefObject<Editor | undefined>;
+  discourseContext: DiscourseContextType;
 }): TLUiOverrides => ({
   tools(editor, tools) {
     allNodes.forEach((node) => {
@@ -49,53 +56,52 @@ export const createUiOverrides = ({
         readonlyOk: true,
       };
     });
-    // allRelationNames.forEach((relation, index) => {
-    //   tools[relation] = {
-    //     id: relation,
-    //     icon: "tool-arrow",
-    //     label: `shape.relation.${relation}` as TLUiTranslationKey,
-    //     kbd: "",
-    //     readonlyOk: true,
-    //     onSelect: () => {
-    //       app.setSelectedTool(relation);
-    //     },
-    //     style: {
-    //       color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
-    //     },
-    //   };
-    // });
-    // Object.keys(allAddReferencedNodeByAction).forEach((name) => {
-    //   const action = allAddReferencedNodeByAction[name];
-    //   const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
-    //     text: discourseContext.nodes[key].text,
-    //     color: discourseContext.nodes[key].canvasSettings.color,
-    //   }));
-    //   const color =
-    //     nodeColorArray.find((n) => n.text === action[0].sourceName)?.color ||
-    //     "";
-    //   tools[name] = {
-    //     id: name,
-    //     icon: "tool-arrow",
-    //     label: `shape.referenced.${name}` as TLUiTranslationKey,
-    //     kbd: "",
-    //     readonlyOk: true,
-    //     onSelect: () => {
-    //       app.setSelectedTool(`${name}`);
-    //     },
-    //     style: {
-    //       color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
-    //     },
-    //   };
-    // });
+    allRelationNames.forEach((relation, index) => {
+      tools[relation] = {
+        id: relation,
+        icon: "tool-arrow",
+        label: `shape.relation.${relation}` as TLUiTranslationKey,
+        kbd: "",
+        readonlyOk: true,
+        onSelect: () => {
+          editor.setCurrentTool(relation);
+        },
+        // style: {
+        //   color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
+        // },
+      };
+    });
+    Object.keys(allAddRefNodeByAction).forEach((name) => {
+      const action = allAddRefNodeByAction[name];
+      const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
+        text: discourseContext.nodes[key].text,
+        color: discourseContext.nodes[key].canvasSettings.color,
+      }));
+      const color =
+        nodeColorArray.find((n) => n.text === action[0].sourceName)?.color ||
+        "";
+      tools[name] = {
+        id: name,
+        icon: "tool-arrow",
+        label: `shape.referenced.${name}` as TLUiTranslationKey,
+        kbd: "",
+        readonlyOk: true,
+        onSelect: () => {
+          editor.setCurrentTool(`${name}`);
+        },
+        // style: {
+        //   color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
+        // },
+      };
+    });
+
     return tools;
   },
   toolbar(_app, toolbar, { tools }) {
     toolbar.push(
-      ...allNodes.map((n) => toolbarItem(tools[n.type]))
-      // ...allRelationNames.map((name) => toolbarItem(tools[name])),
-      // ...allAddReferencedNodeActions.map((action) =>
-      //   toolbarItem(tools[action])
-      // )
+      ...allNodes.map((n) => toolbarItem(tools[n.type])),
+      ...allRelationNames.map((name) => toolbarItem(tools[name])),
+      ...allAddRefNodeActions.map((action) => toolbarItem(tools[action]))
     );
     return toolbar;
   },
@@ -355,10 +361,7 @@ export const createUiOverrides = ({
         allRelationNames.map((name) => [`shape.relation.${name}`, name])
       ),
       ...Object.fromEntries(
-        allAddReferencedNodeActions.map((name) => [
-          `shape.referenced.${name}`,
-          name,
-        ])
+        allAddRefNodeActions.map((name) => [`shape.referenced.${name}`, name])
       ),
       "action.toggle-full-screen": "Toggle Full Screen",
       "action.convert-to": "Convert to",
