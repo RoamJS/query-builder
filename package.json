@@ -42,6 +42,10 @@
     "@tldraw/tldraw": {
       "react": "^17.0.2",
       "react-dom": "^17.0.2"
+    },
+    "signia-react": {
+      "react": "^17.0.2",
+      "react-dom": "^17.0.2"
     }
   },
   "samepage": {
