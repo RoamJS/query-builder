@@ -49,7 +49,7 @@ export const DEFAULT_STYLE_PROPS = {
   width: "fit-content",
   padding: "40px",
 };
-const COLOR_ARRAY = Array.from(DefaultColorStyle.values).reverse();
+export const COLOR_ARRAY = Array.from(DefaultColorStyle.values).reverse();
 // from @tldraw/editor/editor.css
 const COLOR_PALETTE: Record<string, string> = {
   black: "#1d1d1d",
@@ -74,12 +74,14 @@ const getRelationIds = () =>
     )
   );
 
-export const createNodeShapeTools = (n: DiscourseNode) => {
-  return class DiscourseNodeTool extends BaseBoxShapeTool {
-    static id = n.type;
-    static initial = "idle";
-    shapeType = n.type;
-  };
+export const createNodeShapeTools = (nodes: DiscourseNode[]) => {
+  return nodes.map((n) => {
+    return class DiscourseNodeTool extends BaseBoxShapeTool {
+      static id = n.type;
+      static initial = "idle";
+      shapeType = n.type;
+    };
+  });
 };
 
 export const createNodeShapeUtils = (nodes: DiscourseNode[]) => {
@@ -113,7 +115,7 @@ export type DiscourseNodeShape = TLBaseShape<
 >;
 export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   // Required
-  type = "discourse-node";
+  type = "placeholder";
   override isAspectRatioLocked = () => false;
   override canResize = () => true;
   override canBind = () => true;
