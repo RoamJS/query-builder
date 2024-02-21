@@ -18,7 +18,6 @@ import { AddReferencedNodeType, discourseContext, isPageUid } from "./Tldraw";
 import React from "react";
 import { COLOR_ARRAY, DiscourseNodeShape } from "./DiscourseNode";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { title } from "process";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import { InputTextNode, OnloadArgs } from "roamjs-components/types";
@@ -30,6 +29,7 @@ import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";
 import triplesToBlocks from "../../utils/triplesToBlocks";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 
 export const createRelationShapeTools = (allRelationNames: string[]) => {
   return allRelationNames.map(
@@ -90,15 +90,15 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
             Pointing,
           ];
         };
-        shapeType = name;
+        // shapeType = name; // error on tool select
         // override styles = ["opacity" as const];
       }
   );
 };
 export const createReferenceShapeTools = (
-  allAddReferencedNodeByAction: AddReferencedNodeType
+  allAddRefNodeByAction: AddReferencedNodeType
 ) => {
-  return Object.keys(allAddReferencedNodeByAction).map(
+  return Object.keys(allAddRefNodeByAction).map(
     (action) =>
       class extends ArrowShapeTool {
         static id = `${action}` as string;
@@ -136,9 +136,9 @@ export const createReferenceShapeTools = (
                 if (target.typeName !== "shape") {
                   return cancelAndWarn("Must start on a node.");
                 }
-                const possibleTargets = allAddReferencedNodeByAction[
-                  action
-                ].map((action) => action.destinationType);
+                const possibleTargets = allAddRefNodeByAction[action].map(
+                  (action) => action.destinationType
+                );
                 if (!possibleTargets.includes(target.type)) {
                   return cancelAndWarn(
                     `Target node must be of type ${possibleTargets
@@ -472,6 +472,8 @@ export const createSelectTool = ({
                     relation,
                     target,
                   }));
+                const uid = getCurrentPageUid();
+                const title = getPageTitleByPageUid(uid);
                 triplesToBlocks({
                   defaultPageTitle: `Auto generated from ${title}`,
                   toPage: async (title: string, blocks: InputTextNode[]) => {

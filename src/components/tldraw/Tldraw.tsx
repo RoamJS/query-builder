@@ -130,6 +130,7 @@ import {
   createSelectTool,
   createRelationShapeTools,
   createAllRelationShapeUtils,
+  createReferenceShapeTools,
 } from "./DiscourseReferencedNode";
 
 declare global {
@@ -271,7 +272,8 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
 
   const discourseNodeTools = createNodeShapeTools(allNodes);
   const discourseRelationTools = createRelationShapeTools(allRelationNames);
-  const referencedNodeTools = createSelectTool({
+  const referencedNodeTools = createReferenceShapeTools(allAddRefNodeByAction);
+  const selectTool = createSelectTool({
     isCustomArrowShape,
     allRelationIds,
     allAddRefNodeActions,
@@ -283,8 +285,8 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
   const customTools = [
     ...discourseNodeTools,
     ...discourseRelationTools,
-    referencedNodeTools,
-    MySelectTool,
+    ...referencedNodeTools,
+    // selectTool,
   ];
 
   const uiOverrides = createUiOverrides({
