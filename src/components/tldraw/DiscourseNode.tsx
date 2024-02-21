@@ -24,7 +24,7 @@ import getDiscourseNodes, {
   DiscourseNode,
 } from "../../utils/getDiscourseNodes";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
-import { loadImage } from "./Tldraw";
+import { isPageUid } from "./Tldraw";
 import LabelDialog from "./TldrawLabelDialog";
 import getDiscourseRelations, {
   DiscourseRelation,
@@ -65,6 +65,26 @@ const COLOR_PALETTE: Record<string, string> = {
   violet: "#ae3ec9",
   white: "#ffffff",
   yellow: "#ffc078",
+};
+
+const loadImage = (url: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height });
+    };
+
+    img.onerror = () => {
+      reject(new Error("Failed to load image"));
+    };
+
+    setTimeout(() => {
+      reject(new Error("Image load timeout"));
+    }, 3000);
+
+    img.src = url;
+  });
 };
 
 const getRelationIds = () =>
@@ -321,11 +341,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     const {
       canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
     } = discourseContext.nodes[shape.type] || {};
-
-    const isPageUid = (uid: string) =>
-      !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
-        ":node/title"
-      ];
 
     // Handle LabelDialog
     const isEditing = useValue(

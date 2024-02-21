@@ -384,7 +384,11 @@ const LabelDialog = ({
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
-  const onCancelClick = () => {
+  const onCancelClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("onCancelClick");
+
     onCancel();
     onClose();
   };
@@ -405,7 +409,7 @@ const LabelDialog = ({
         e.target !== null &&
         !current.contains(e.target as HTMLElement)
       ) {
-        onCancelClick();
+        onCancelClick(e);
       }
     };
     document.body.addEventListener("touchstart", touchStartListener);

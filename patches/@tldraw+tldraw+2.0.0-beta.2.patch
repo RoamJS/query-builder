@@ -1,0 +1,51 @@
+diff --git a/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts b/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
+index 47de67c..f801b19 100644
+--- a/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
++++ b/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
+@@ -157,13 +157,13 @@ declare interface ArrowShape extends TDBaseShape {
+ export declare class ArrowShapeTool extends StateNode {
+     static id: string;
+     static initial: string;
+-    static children: () => (typeof Idle | typeof Pointing)[];
++    static children: () => [typeof Idle, typeof Pointing];
+     shapeType: string;
+ }
+ 
+ /** @public */
+ export declare class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
+-    static type: "arrow";
++    type: "arrow";
+     static props: {
+         labelColor: EnumStyleProp<"black" | "blue" | "green" | "grey" | "light-blue" | "light-green" | "light-red" | "light-violet" | "orange" | "red" | "violet" | "yellow">;
+         color: EnumStyleProp<"black" | "blue" | "green" | "grey" | "light-blue" | "light-green" | "light-red" | "light-violet" | "orange" | "red" | "violet" | "yellow">;
+@@ -470,7 +470,7 @@ declare class Dragging extends StateNode {
+     private complete;
+ }
+ 
+-declare class DraggingHandle extends StateNode {
++export declare class DraggingHandle extends StateNode {
+     static id: string;
+     shapeId: TLShapeId;
+     initialHandle: TLHandle;
+@@ -2674,7 +2674,7 @@ declare interface TLV1Shape {
+ /** @public */
+ export declare function toolbarItem(toolItem: TLUiToolItem): TLUiToolbarItem;
+ 
+-declare class Translating extends StateNode {
++export declare class Translating extends StateNode {
+     static id: string;
+     info: TLBaseEventInfo & {
+         type: "pointer";
+diff --git a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
+index 8334720..11758b4 100644
+--- a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
++++ b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
+@@ -60,7 +60,7 @@ export const ARROW_END_OFFSET = 0.1
+ 
+ /** @public */
+ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
+-	static override type = 'arrow' as const
++	static override type = 'arrows' as const
+ 	static override props = arrowShapeProps
+ 	static override migrations = arrowShapeMigrations
+ 
