@@ -227,8 +227,8 @@ export const createSelectTool = ({
   allRelationsById: Record<string, DiscourseRelation>;
 }) =>
   class extends SelectTool {
-    // @ts-ignore
-    static children: typeof TLSelectTool.children = () => {
+    static id = "new-select-tool";
+    static children: typeof SelectTool.children = () => {
       return SelectTool.children().map((c) => {
         if (c.id === "translating") {
           const Translate = c as unknown as typeof Translating;
