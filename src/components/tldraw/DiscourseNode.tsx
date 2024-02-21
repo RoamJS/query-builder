@@ -67,7 +67,9 @@ const COLOR_PALETTE: Record<string, string> = {
   yellow: "#ffc078",
 };
 
-const loadImage = (url: string): Promise<{ width: number; height: number }> => {
+export const loadImage = (
+  url: string
+): Promise<{ width: number; height: number }> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
 

@@ -1,13 +1,16 @@
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import { OnloadArgs, TreeNode } from "roamjs-components/types";
-import { MAX_WIDTH, loadImage } from "../components/tldraw/Tldraw";
+import { MAX_WIDTH } from "../components/tldraw/Tldraw";
 import { measureCanvasNodeText } from "./measureCanvasNodeText";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";
 import getDiscourseNodes from "./getDiscourseNodes";
 import resolveRefs from "roamjs-components/dom/resolveRefs";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { DEFAULT_STYLE_PROPS } from "../components/tldraw/DiscourseNode";
+import {
+  DEFAULT_STYLE_PROPS,
+  loadImage,
+} from "../components/tldraw/DiscourseNode";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
