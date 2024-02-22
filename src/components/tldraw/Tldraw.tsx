@@ -390,7 +390,7 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
         {`.roam-article .rm-block-children {
         display: none;
       }
-      .rs-arrow-label__inner{
+      .tl-arrow-label__inner{
         min-width: initial;
       }
       kbd.tlui-kbd {
@@ -410,10 +410,10 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
       /* seems like width is being miscalculted cause letters to linebreak */
       /* TODO: this is a temporary fix */
       /* also Roam is hijacking the font choice */
-      .rs-arrow-label .rs-arrow-label__inner p {
+      .tl-arrow-label .tl-arrow-label__inner p {
         padding: 0;
         white-space: nowrap;
-        font-family: var(--rs-font-sans);
+        font-family: 'tldraw_draw', sans-serif;
       }`}
       </style>
       <TldrawEditor

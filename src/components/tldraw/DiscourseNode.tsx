@@ -51,7 +51,7 @@ const TEXT_PROPS = {
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: "m",
-  fontFamily: DefaultFontFamilies.sans,
+  fontFamily: "'tldraw_draw', sans-serif",
   width: "fit-content",
   padding: "40px",
 };
@@ -214,9 +214,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       finalUid?: string;
     } = {}
   ) {
-    //
-    // TODO, THIS BREAKS
-    //
     const isDiscourseRelationShape = (
       shape: TLShape
     ): shape is DiscourseRelationShape => {
@@ -272,38 +269,37 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
         return !relationAlreadyExists;
       })
       .map(({ relationId, complement, nodeId }) => {
+        const staticArrowProps = {
+          normalizedAnchor: { x: 0.5, y: 0.5 },
+          isExact: false,
+          isPrecise: false,
+          type: "binding",
+        };
+        const arrowProps = complement
+          ? {
+              start: {
+                boundShapeId: nodesInCanvas[nodeId].id,
+                ...staticArrowProps,
+              },
+              end: {
+                boundShapeId: shape.id,
+                ...staticArrowProps,
+              },
+            }
+          : {
+              start: {
+                boundShapeId: shape.id,
+                ...staticArrowProps,
+              },
+              end: {
+                boundShapeId: nodesInCanvas[nodeId].id,
+                ...staticArrowProps,
+              },
+            };
         return {
           id: createShapeId(),
           type: relationId,
-          props: complement
-            ? {
-                start: {
-                  type: "binding",
-                  boundShapeId: nodesInCanvas[nodeId].id,
-                  normalizedAnchor: { x: 0.5, y: 0.5 },
-                  isExact: false,
-                },
-                end: {
-                  type: "binding",
-                  boundShapeId: shape.id,
-                  normalizedAnchor: { x: 0.5, y: 0.5 },
-                  isExact: false,
-                },
-              }
-            : {
-                start: {
-                  type: "binding",
-                  boundShapeId: shape.id,
-                  normalizedAnchor: { x: 0.5, y: 0.5 },
-                  isExact: false,
-                },
-                end: {
-                  type: "binding",
-                  boundShapeId: nodesInCanvas[nodeId].id,
-                  normalizedAnchor: { x: 0.5, y: 0.5 },
-                  isExact: false,
-                },
-              },
+          props: arrowProps,
         };
       });
     this.editor.createShapes(toCreate);

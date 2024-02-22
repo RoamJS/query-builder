@@ -543,14 +543,13 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
           text: isValid
             ? Object.keys(discourseContext.relations)[relationIndex]
             : "",
-          font: "mono" as const,
         };
       }
       override onBeforeCreate = (shape: TLArrowShape) => {
-        // TODO - propsForNextShape is clobbering our choice of color
+        // TODO - propsForNextShape is clobbering our choice of color/text ?
         const relations = Object.values(discourseContext.relations);
         const relationIndex = relations.findIndex((rs) =>
-          rs.some((r) => r.id === this.type)
+          rs.some((r) => r.id === id)
         );
         const isValid = relationIndex >= 0 && relationIndex < relations.length;
         const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
@@ -560,6 +559,9 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
             ...shape.props,
             color,
             labelColor: color,
+            text: isValid
+              ? Object.keys(discourseContext.relations)[relationIndex]
+              : "",
           },
         };
       };
@@ -567,15 +569,15 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
         return (
           <>
             <style>{`#${shape.id.replace(":", "_")}_clip_0 {
-  display: none;
-}
-[data-shape-type="${this.type}"] .rs-arrow-label {
-  left: 0;
-  top: 0;
-  width: unset;
-  height: unset;
-}
-`}</style>
+          display: none;
+        }
+        [data-shape-type="${this.type}"] .tl-arrow-label {
+          left: 0;
+          top: 0;
+          width: unset;
+          height: unset;
+        }
+        `}</style>
             {super.component(shape)}
           </>
         );
