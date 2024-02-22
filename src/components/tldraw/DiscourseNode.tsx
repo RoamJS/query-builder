@@ -10,6 +10,11 @@ import {
   TLArrowShapeProps,
   DefaultFontFamilies,
   BaseBoxShapeTool,
+  TLOnResizeHandler,
+  resizeBox,
+  TLShape,
+  createShapeId,
+  isShape,
 } from "@tldraw/tldraw";
 import { useValue } from "signia-react";
 
@@ -31,6 +36,7 @@ import getDiscourseRelations, {
 } from "../../utils/getDiscourseRelations";
 import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw";
+import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
 // https://github.com/tldraw/tldraw/pull/1580/files
@@ -196,112 +202,114 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   // // in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
   // const SVG_FONT_FAMILY = "sans-serif";
 
-  // async createExistingRelations(
-  //   shape: DiscourseNodeShape,
-  //   {
-  //     allRecords = this.app.store.allRecords(),
-  //     relationIds = getRelationIds(),
-  //     finalUid = shape.props.uid,
-  //   }: {
-  //     allRecords?: TLRecord[];
-  //     relationIds?: Set<string>;
-  //     finalUid?: string;
-  //   } = {}
-  // ) {
-  //   const isDiscourseRelationShape = (
-  //     shape: TLShape
-  //   ): shape is DiscourseRelationShape => {
-  //     return relationIds.has(shape.type);
-  //   };
-  //   const nodes = Object.values(discourseContext.nodes);
-  //   const nodeIds = new Set(nodes.map((n) => n.type));
-  //   const nodesInCanvas = Object.fromEntries(
-  //     allRecords
-  //       .filter((r): r is DiscourseNodeShape => {
-  //         return r.typeName === "shape" && nodeIds.has(r.type);
-  //       })
-  //       .map((r) => [r.props.uid, r] as const)
-  //   );
-  //   const currentShapeRelations = allRecords
-  //     .filter(isShape)
-  //     .filter(isDiscourseRelationShape)
-  //     .filter((r) => {
-  //       const { start, end } = r.props;
-  //       return (
-  //         (start.type === "binding" && start.boundShapeId === shape.id) ||
-  //         (end.type === "binding" && end.boundShapeId === shape.id)
-  //       );
-  //     });
+  async createExistingRelations(
+    shape: DiscourseNodeShape,
+    {
+      allRecords = this.editor.store.allRecords(),
+      relationIds = getRelationIds(),
+      finalUid = shape.props.uid,
+    }: {
+      allRecords?: TLRecord[];
+      relationIds?: Set<string>;
+      finalUid?: string;
+    } = {}
+  ) {
+    //
+    // TODO, THIS BREAKS
+    //
+    const isDiscourseRelationShape = (
+      shape: TLShape
+    ): shape is DiscourseRelationShape => {
+      return relationIds.has(shape.type);
+    };
+    const nodes = Object.values(discourseContext.nodes);
+    const nodeIds = new Set(nodes.map((n) => n.type));
+    const nodesInCanvas = Object.fromEntries(
+      allRecords
+        .filter((r): r is DiscourseNodeShape => {
+          return r.typeName === "shape" && nodeIds.has(r.type);
+        })
+        .map((r) => [r.props.uid, r] as const)
+    );
+    const currentShapeRelations = allRecords
+      .filter(isShape)
+      .filter(isDiscourseRelationShape)
+      .filter((r) => {
+        const { start, end } = r.props;
+        return (
+          (start.type === "binding" && start.boundShapeId === shape.id) ||
+          (end.type === "binding" && end.boundShapeId === shape.id)
+        );
+      });
 
-  //   const results = await getDiscourseContextResults({
-  //     uid: finalUid,
-  //     nodes: Object.values(discourseContext.nodes),
-  //     relations: Object.values(discourseContext.relations).flat(),
-  //   });
+    const results = await getDiscourseContextResults({
+      uid: finalUid,
+      nodes: Object.values(discourseContext.nodes),
+      relations: Object.values(discourseContext.relations).flat(),
+    });
 
-  //   const toCreate = results
-  //     .flatMap((r) =>
-  //       Object.entries(r.results)
-  //         .filter(([k, v]) => nodesInCanvas[k] && v.id && relationIds.has(v.id))
-  //         .map(([k, v]) => ({
-  //           relationId: v.id!,
-  //           complement: v.complement,
-  //           nodeId: k,
-  //         }))
-  //     )
-  //     .filter(({ relationId, complement, nodeId }) => {
-  //       const startId = complement ? nodesInCanvas[nodeId].id : shape.id;
-  //       const endId = complement ? shape.id : nodesInCanvas[nodeId].id;
-  //       const relationAlreadyExists = currentShapeRelations.some(
-  //         (r) =>
-  //           r.type === relationId &&
-  //           r.props.start.type === "binding" &&
-  //           r.props.end.type === "binding" &&
-  //           r.props.start.boundShapeId === startId &&
-  //           r.props.end.boundShapeId === endId
-  //       );
-  //       return !relationAlreadyExists;
-  //     })
-  //     .map(({ relationId, complement, nodeId }) => {
-  //       return {
-  //         id: createShapeId(),
-  //         type: relationId,
-  //         props: complement
-  //           ? {
-  //               start: {
-  //                 type: "binding",
-  //                 boundShapeId: nodesInCanvas[nodeId].id,
-  //                 normalizedAnchor: { x: 0.5, y: 0.5 },
-  //                 isExact: false,
-  //               },
-  //               end: {
-  //                 type: "binding",
-  //                 boundShapeId: shape.id,
-  //                 normalizedAnchor: { x: 0.5, y: 0.5 },
-  //                 isExact: false,
-  //               },
-  //             }
-  //           : {
-  //               start: {
-  //                 type: "binding",
-  //                 boundShapeId: shape.id,
-  //                 normalizedAnchor: { x: 0.5, y: 0.5 },
-  //                 isExact: false,
-  //               },
-  //               end: {
-  //                 type: "binding",
-  //                 boundShapeId: nodesInCanvas[nodeId].id,
-  //                 normalizedAnchor: { x: 0.5, y: 0.5 },
-  //                 isExact: false,
-  //               },
-  //             },
-  //       };
-  //     });
-  //   this.app.createShapes(toCreate);
-  // }
+    const toCreate = results
+      .flatMap((r) =>
+        Object.entries(r.results)
+          .filter(([k, v]) => nodesInCanvas[k] && v.id && relationIds.has(v.id))
+          .map(([k, v]) => ({
+            relationId: v.id!,
+            complement: v.complement,
+            nodeId: k,
+          }))
+      )
+      .filter(({ relationId, complement, nodeId }) => {
+        const startId = complement ? nodesInCanvas[nodeId].id : shape.id;
+        const endId = complement ? shape.id : nodesInCanvas[nodeId].id;
+        const relationAlreadyExists = currentShapeRelations.some(
+          (r) =>
+            r.type === relationId &&
+            r.props.start.type === "binding" &&
+            r.props.end.type === "binding" &&
+            r.props.start.boundShapeId === startId &&
+            r.props.end.boundShapeId === endId
+        );
+        return !relationAlreadyExists;
+      })
+      .map(({ relationId, complement, nodeId }) => {
+        return {
+          id: createShapeId(),
+          type: relationId,
+          props: complement
+            ? {
+                start: {
+                  type: "binding",
+                  boundShapeId: nodesInCanvas[nodeId].id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+                end: {
+                  type: "binding",
+                  boundShapeId: shape.id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+              }
+            : {
+                start: {
+                  type: "binding",
+                  boundShapeId: shape.id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+                end: {
+                  type: "binding",
+                  boundShapeId: nodesInCanvas[nodeId].id,
+                  normalizedAnchor: { x: 0.5, y: 0.5 },
+                  isExact: false,
+                },
+              },
+        };
+      });
+    this.editor.createShapes(toCreate);
+  }
 
   override onBeforeCreate = (shape: DiscourseNodeShape) => {
-    console.log("onBeforeCreate", shape, discourseContext);
     if (discourseContext.lastAppEvent === "pointer_down") {
       setTimeout(() =>
         document.body.dispatchEvent(
@@ -318,8 +326,9 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   }
 
   onAfterCreate(shape: DiscourseNodeShape) {
-    // if (shape.props.title && shape.props.uid)
-    //   this.createExistingRelations(shape);
+    console.log("onAfterCreate", shape);
+    if (shape.props.title && shape.props.uid)
+      this.createExistingRelations(shape);
   }
 
   getColors() {
@@ -499,15 +508,15 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
               // Update Shape Relations
               const allRecords = editor.store.allRecords();
               const relationIds = getRelationIds();
-              //   this.deleteRelationsInCanvas(shape, {
-              //     allRecords,
-              //     relationIds,
-              //   });
-              //   await this.createExistingRelations(shape, {
-              //     allRecords,
-              //     relationIds,
-              //     finalUid: uid,
-              //   });
+              this.deleteRelationsInCanvas(shape, {
+                allRecords,
+                relationIds,
+              });
+              await this.createExistingRelations(shape, {
+                allRecords,
+                relationIds,
+                finalUid: uid,
+              });
 
               setIsEditLabelOpen(false);
               editor.setEditingShape(null);

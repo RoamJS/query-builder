@@ -68,6 +68,7 @@ import {
   TLClickEventInfo,
   TLPointerEventInfo,
   VecModel,
+  Editor,
 } from "@tldraw/tldraw";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
@@ -121,12 +122,12 @@ import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { createUiOverrides } from "./uiOverrides";
 import {
   BaseDiscourseNodeUtil,
+  DiscourseNodeShape,
   createNodeShapeTools,
   createNodeShapeUtils,
 } from "./DiscourseNode";
 import { useRoamStore } from "./useRoamStore";
 import {
-  MySelectTool,
   createSelectTool,
   createRelationShapeTools,
   createAllRelationShapeUtils,
@@ -249,6 +250,19 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
   const extensionAPI = useExtensionAPI();
   if (!extensionAPI) return null;
 
+  const getShapeAtPoint = (app: Editor) => {
+    return app.getShapeAtPoint(app.inputs.currentPagePoint, {
+      filter: (targetShape) => {
+        return (
+          !targetShape.isLocked &&
+          app.getShapeUtil(targetShape).canBind(targetShape)
+        );
+      },
+      margin: 0,
+      hitInside: true,
+      renderingOnly: true,
+    });
+  };
   const isCustomArrowShape = (shape: TLShape) => {
     // TODO: find a better way to identify custom arrow shapes
     // shape.type or shape.name probably?
@@ -411,20 +425,6 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
         components={defaultComponents}
         store={store}
         onMount={(app) => {
-          app.on("event", (e) => {
-            // `onClick` swallowed by canvas
-            // https://discord.com/channels/859816885297741824/1209834682384912397/1209834682384912397
-            if (e.type === "pointer" && e.name === "pointer_up") {
-              const element = document.elementFromPoint(e.point.x, e.point.y);
-              if (
-                element != null &&
-                "click" in element &&
-                typeof element.click === "function"
-              ) {
-                element.click();
-              }
-            }
-          });
           if (process.env.NODE_ENV !== "production") {
             if (!window.tldrawApps) window.tldrawApps = {};
             const { tldrawApps } = window;
@@ -435,59 +435,62 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
           app.on("event", (event) => {
             const e = event as TLPointerEventInfo;
             discourseContext.lastAppEvent = e.name;
+            const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
+            if (!(e.name === "pointer_up" && validModifier)) return;
+            if (app.getSelectedShapes().length) return; // User is positioning selected shape
+            const shape = getShapeAtPoint(app) as DiscourseNodeShape;
+            if (!shape) return;
+            const shapeUid = shape.props.uid;
 
-            const validModifier = e.shiftKey || e.ctrlKey;
-            // || e.metaKey;
-            if (!(e.name === "pointer_up" && e.shape && validModifier)) return;
-            // if (app.selectedIds.length) return; // User is positioning selected shape
+            if (!isLiveBlock(shapeUid)) {
+              if (!shape.props.title) return;
+              renderToast({
+                id: "tldraw-warning",
+                intent: "warning",
+                content: `Not a valid UID. Cannot Open.`,
+              });
+            }
 
-            // const shapeUid = e.shape?.props.uid;
-            // if (!isLiveBlock(shapeUid)) {
-            //   if (!e.shape.props.title) return;
-            //   renderToast({
-            //     id: "tldraw-warning",
-            //     intent: "warning",
-            //     content: `Not a valid UID. Cannot Open.`,
-            //   });
-            // }
+            if (e.shiftKey) openBlockInSidebar(shapeUid);
 
-            // if (e.shiftKey) {
-            //   // TODO - do not openBlockInSidebar if user is using shift to select
-            //   openBlockInSidebar(e.shape.props.uid);
-            // }
-            // if (e.ctrlKey || e.metaKey) {
-            //   const isPage = !!getPageTitleByPageUid(shapeUid);
-            //   if (isPage) {
-            //     window.roamAlphaAPI.ui.mainWindow.openPage({
-            //       page: { uid: shapeUid },
-            //     });
-            //   } else {
-            //     window.roamAlphaAPI.ui.mainWindow.openBlock({
-            //       block: { uid: shapeUid },
-            //     });
-            //   }
-            // }
+            if (
+              e.ctrlKey
+              // || e.metaKey
+            ) {
+              const isPage = !!getPageTitleByPageUid(shapeUid);
+              if (isPage) {
+                window.roamAlphaAPI.ui.mainWindow.openPage({
+                  page: { uid: shapeUid },
+                });
+              } else {
+                window.roamAlphaAPI.ui.mainWindow.openBlock({
+                  block: { uid: shapeUid },
+                });
+              }
+            }
           });
-          // const oldOnBeforeDelete = app.store.onBeforeDelete;
-          // app.store.onBeforeDelete = (record) => {
-          //   oldOnBeforeDelete?.(record);
-          //   if (record.typeName === "shape") {
-          //     const util = app.getShapeUtil(record);
-          //     if (util instanceof BaseDiscourseNodeUtil) {
-          //       util.onBeforeDelete(record as BaseDiscourseNodeUtil);
-          //     }
-          //   }
-          // };
-          // const oldOnAfterCreate = app.store.onAfterCreate;
-          // app.store.onAfterCreate = (record) => {
-          //   oldOnAfterCreate?.(record);
-          //   if (record.typeName === "shape") {
-          //     const util = app.getShapeUtil(record);
-          //     if (util instanceof BaseDiscourseNodeUtil) {
-          //       util.onAfterCreate(record as BaseDiscourseNodeUtil);
-          //     }
-          //   }
-          // };
+          const oldOnBeforeDelete = app.store.onBeforeDelete;
+          app.store.onBeforeDelete = (record) => {
+            oldOnBeforeDelete?.(record, "user");
+            if (record.typeName === "shape") {
+              const util = app.getShapeUtil(record);
+              if (util instanceof BaseDiscourseNodeUtil) {
+                util.onBeforeDelete(record as DiscourseNodeShape);
+                console.log("oldOnBeforeDelete ran util.onBeforeDelete");
+              }
+            }
+          };
+          const oldOnAfterCreate = app.store.onAfterCreate;
+          app.store.onAfterCreate = (record) => {
+            oldOnAfterCreate?.(record, "user");
+            if (record.typeName === "shape") {
+              const util = app.getShapeUtil(record);
+              if (util instanceof BaseDiscourseNodeUtil) {
+                util.onAfterCreate(record as DiscourseNodeShape);
+                console.log("oldOnBeforeDelete ran util.oldOnAfterCreate");
+              }
+            }
+          };
         }}
       >
         <TldrawUi
