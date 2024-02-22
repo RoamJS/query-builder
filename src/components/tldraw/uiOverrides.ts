@@ -43,7 +43,7 @@ export const createUiOverrides = ({
   discourseContext: DiscourseContextType;
 }): TLUiOverrides => ({
   tools(editor, tools) {
-    allNodes.forEach((node) => {
+    allNodes.forEach((node, index) => {
       const nodeId = node.type;
       tools[nodeId] = {
         id: nodeId,
@@ -54,6 +54,11 @@ export const createUiOverrides = ({
           editor.setCurrentTool(nodeId);
         },
         readonlyOk: true,
+        style: {
+          color:
+            formatHexColor(node.canvasSettings.color) ||
+            `var(--palette-${COLOR_ARRAY[index]})`,
+        },
       };
     });
     allRelationNames.forEach((relation, index) => {
@@ -66,9 +71,9 @@ export const createUiOverrides = ({
         onSelect: () => {
           editor.setCurrentTool(relation);
         },
-        // style: {
-        //   color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
-        // },
+        style: {
+          color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
+        },
       };
     });
     Object.keys(allAddRefNodeByAction).forEach((name) => {
@@ -89,9 +94,9 @@ export const createUiOverrides = ({
         onSelect: () => {
           editor.setCurrentTool(`${name}`);
         },
-        // style: {
-        //   color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
-        // },
+        style: {
+          color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
+        },
       };
     });
 

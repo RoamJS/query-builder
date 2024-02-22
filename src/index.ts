@@ -145,7 +145,10 @@ export default runExtension(async (onloadArgs) => {
   width: 100%;
 }
 
-svg.rs-svg-container {
+/* CANVAS */
+/* fixes drawing arrows in north-west direction */
+/* and selection context not being shown */
+#roamjs-tldraw-canvas-container svg {
   overflow: visible;
 }
 
@@ -154,7 +157,7 @@ svg.rs-svg-container {
   display: none;
 }
 
-
+/* KANBAN */
 .roamjs-kanban-container .roamjs-kanban-column {
   width: inherit;
 }
