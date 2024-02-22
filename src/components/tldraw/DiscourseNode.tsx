@@ -110,6 +110,9 @@ export const createNodeShapeUtils = (nodes: DiscourseNode[]) => {
   return nodes.map((node) => {
     // Create a subclass of CardShapeUtil for each type
     class DiscourseNodeUtil extends BaseDiscourseNodeUtil {
+      constructor(editor: Editor) {
+        super(editor, node.type);
+      }
       static override type = node.type;
       // getDefaultProps(): DiscourseNodeShape["props"] {
       //   const baseProps = super.getDefaultProps();
@@ -136,8 +139,13 @@ export type DiscourseNodeShape = TLBaseShape<
   }
 >;
 export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
-  // Required
-  type = "placeholder";
+  type: string;
+
+  constructor(editor: Editor, type: string) {
+    super(editor);
+    this.type = type;
+  }
+
   override isAspectRatioLocked = () => false;
   override canResize = () => true;
   override canBind = () => true;

@@ -1,5 +1,5 @@
 diff --git a/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts b/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
-index 47de67c..f801b19 100644
+index 47de67c..3fb0187 100644
 --- a/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
 +++ b/node_modules/@tldraw/tldraw/dist-cjs/index.d.ts
 @@ -157,13 +157,13 @@ declare interface ArrowShape extends TDBaseShape {
@@ -27,7 +27,15 @@ index 47de67c..f801b19 100644
      static id: string;
      shapeId: TLShapeId;
      initialHandle: TLHandle;
-@@ -2674,7 +2674,7 @@ declare interface TLV1Shape {
+@@ -2571,6 +2571,7 @@ export declare interface TLUiToolItem<TranslationKey extends string = string, Ic
+     meta?: {
+         [key: string]: any;
+     };
++    style?: CSSProperties
+ }
+ 
+ /** @public */
+@@ -2674,7 +2675,7 @@ declare interface TLV1Shape {
  /** @public */
  export declare function toolbarItem(toolItem: TLUiToolItem): TLUiToolbarItem;
  
@@ -36,16 +44,67 @@ index 47de67c..f801b19 100644
      static id: string;
      info: TLBaseEventInfo & {
          type: "pointer";
-diff --git a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
-index 8334720..11758b4 100644
---- a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
-+++ b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/ArrowShapeUtil.tsx
-@@ -60,7 +60,7 @@ export const ARROW_END_OFFSET = 0.1
+diff --git a/node_modules/@tldraw/tldraw/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs b/node_modules/@tldraw/tldraw/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
+index faf2fea..cb677c2 100644
+--- a/node_modules/@tldraw/tldraw/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
++++ b/node_modules/@tldraw/tldraw/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
+@@ -166,7 +166,7 @@ const OverflowToolsContent = track(function OverflowToolsContent2({
+   toolbarItems
+ }) {
+   const msg = useTranslation();
+-  return /* @__PURE__ */ jsx("div", { className: "tlui-buttons__grid", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon } }) => {
++  return /* @__PURE__ */ jsx("div", { className: "tlui-buttons__grid", children: toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon, style } }) => {
+     return /* @__PURE__ */ jsx(
+       M.Item,
+       {
+@@ -178,7 +178,8 @@ const OverflowToolsContent = track(function OverflowToolsContent2({
+         "aria-label": label,
+         onClick: () => onSelect("toolbar"),
+         title: label ? `${msg(label)} ${kbd ? kbdStr(kbd) : ""}` : "",
+-        icon
++        icon,
++        style
+       },
+       id
+     );
+diff --git a/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx b/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx
+index 8ae7e1f..71b1399 100644
+--- a/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx
++++ b/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx
+@@ -222,7 +222,7 @@ const OverflowToolsContent = track(function OverflowToolsContent({
+ 
+ 	return (
+ 		<div className="tlui-buttons__grid">
+-			{toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon } }) => {
++			{toolbarItems.map(({ toolItem: { id, meta, kbd, label, onSelect, icon, style } }) => {
+ 				return (
+ 					<M.Item
+ 						key={id}
+@@ -235,6 +235,7 @@ const OverflowToolsContent = track(function OverflowToolsContent({
+ 						onClick={() => onSelect('toolbar')}
+ 						title={label ? `${msg(label)} ${kbd ? kbdStr(kbd) : ''}` : ''}
+ 						icon={icon}
++						style={style}
+ 					/>
+ 				)
+ 			})}
+@@ -266,6 +267,7 @@ function ToolbarButton({
+ 				preventDefault(e)
+ 				item.onSelect('toolbar')
+ 			}}
++			style={item.style}
+ 		/>
+ 	)
+ }
+diff --git a/node_modules/@tldraw/tldraw/src/lib/ui/hooks/useTools.tsx b/node_modules/@tldraw/tldraw/src/lib/ui/hooks/useTools.tsx
+index b17211d..2b9ea6c 100644
+--- a/node_modules/@tldraw/tldraw/src/lib/ui/hooks/useTools.tsx
++++ b/node_modules/@tldraw/tldraw/src/lib/ui/hooks/useTools.tsx
+@@ -22,6 +22,7 @@ export interface TLUiToolItem<
+ 	meta?: {
+ 		[key: string]: any
+ 	}
++	style?: React.CSSProperties
+ }
  
  /** @public */
- export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
--	static override type = 'arrow' as const
-+	static override type = 'arrows' as const
- 	static override props = arrowShapeProps
- 	static override migrations = arrowShapeMigrations
- 
