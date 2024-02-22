@@ -57,7 +57,7 @@ export const createUiOverrides = ({
         style: {
           color:
             formatHexColor(node.canvasSettings.color) ||
-            `var(--palette-${COLOR_ARRAY[index]})`,
+            `${COLOR_ARRAY[index]}`,
         },
       };
     });
@@ -72,7 +72,7 @@ export const createUiOverrides = ({
           editor.setCurrentTool(relation);
         },
         style: {
-          color: `var(--palette-${COLOR_ARRAY[index + 1]})`,
+          color: `${COLOR_ARRAY[index + 1]}`,
         },
       };
     });
