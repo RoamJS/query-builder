@@ -385,8 +385,6 @@ const LabelDialog = ({
       .finally(() => setLoading(false));
   };
   const onCancelClick = () => {
-    console.log("onCancelClick");
-
     onCancel();
     onClose();
   };

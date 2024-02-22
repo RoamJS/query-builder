@@ -514,18 +514,6 @@ export const createSelectTool = ({
     };
   };
 
-export class MySelectTool extends SelectTool {
-  static id = "my-select-tool";
-  static initial = "my-initial-state";
-  static children: typeof SelectTool.children = () => {
-    return SelectTool.children().map((c) => {
-      console.log(c.id);
-      return c;
-    });
-  };
-  // Your new children here
-}
-
 export const createAllRelationShapeUtils = (relationIds: string[]) => {
   return relationIds.map((id) => {
     class DiscourseRelationUtil extends ArrowShapeUtil {
