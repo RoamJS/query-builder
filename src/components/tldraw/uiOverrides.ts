@@ -48,8 +48,8 @@ export const createUiOverrides = ({
       tools[nodeId] = {
         id: nodeId,
         icon: "color",
-        label: node.type.charAt(0).toUpperCase() + node.type.slice(1),
-        kbd: undefined,
+        label: `shape.node.${node.type}` as TLUiTranslationKey,
+        kbd: node.shortcut,
         onSelect: () => {
           editor.setCurrentTool(nodeId);
         },
