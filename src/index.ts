@@ -45,6 +45,7 @@ import getBlockProps, { json } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
+import { renderTldrawUpgradeCanvas } from "./components/tldraw-upgrade/TldrawUpgrade";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -256,6 +257,8 @@ export default runExtension(async (onloadArgs) => {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else if (title.startsWith("Upgrade/")) {
+      renderTldrawUpgradeCanvas(title, onloadArgs);
     }
   };
   extensionAPI.settings.panel.create({
