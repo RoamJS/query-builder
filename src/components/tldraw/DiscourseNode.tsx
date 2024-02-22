@@ -637,6 +637,10 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   //     return g;
   //   }
 
+  override onResize: TLOnResizeHandler<DiscourseNodeShape> = (shape, info) => {
+    return resizeBox(shape, info);
+  };
+
   indicator(shape: DiscourseNodeShape) {
     return <rect width={shape.props.w} height={shape.props.h} />;
   }
