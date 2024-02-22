@@ -411,10 +411,20 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
         components={defaultComponents}
         store={store}
         onMount={(app) => {
-          app.store.listen((entry) => {
-            // console.log(entry.changes.added); // { changes, source }
+          app.on("event", (e) => {
+            // `onClick` swallowed by canvas
+            // https://discord.com/channels/859816885297741824/1209834682384912397/1209834682384912397
+            if (e.type === "pointer" && e.name === "pointer_up") {
+              const element = document.elementFromPoint(e.point.x, e.point.y);
+              if (
+                element != null &&
+                "click" in element &&
+                typeof element.click === "function"
+              ) {
+                element.click();
+              }
+            }
           });
-
           if (process.env.NODE_ENV !== "production") {
             if (!window.tldrawApps) window.tldrawApps = {};
             const { tldrawApps } = window;
