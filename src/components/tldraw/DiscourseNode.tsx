@@ -15,6 +15,7 @@ import {
   TLShape,
   createShapeId,
   isShape,
+  TLEventMapHandler,
 } from "@tldraw/tldraw";
 import { useValue } from "signia-react";
 
@@ -358,18 +359,27 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     } = discourseContext.nodes[shape.type] || {};
 
     // Handle LabelDialog
-    const isEditing = useValue(
-      "isEditing",
-      () => editor.getEditingShapeId() === shape.id,
-      [shape.id]
-    );
-    const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     useEffect(() => {
-      if (isEditing) {
-        console.log("isEditing and setIsEditLabelOpen");
-        setIsEditLabelOpen(true);
-      }
-    }, [isEditing, setIsEditLabelOpen]);
+      const handleChangeEvent: TLEventMapHandler<"change"> = (change) => {
+        for (const [_, to] of Object.values(change.changes.updated)) {
+          if (to.typeName === "instance_page_state") {
+            if (to.editingShapeId === shape.id) {
+              setIsEditLabelOpen(true);
+            }
+          }
+        }
+      };
+      const cleanupFunction = editor.store.listen(handleChangeEvent, {
+        source: "user",
+        scope: "all",
+      });
+
+      return () => {
+        cleanupFunction();
+      };
+    }, [editor]);
+
+    const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
     const [loaded, setLoaded] = useState("");
     useEffect(() => {
