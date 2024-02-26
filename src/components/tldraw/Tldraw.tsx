@@ -434,6 +434,17 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (event) => {
             const e = event as TLPointerEventInfo;
+            // tldraw swallowing `onClick`
+            if (e.type === "pointer" && e.name === "pointer_down") {
+              const element = document.elementFromPoint(e.point.x, e.point.y);
+              if (
+                element != null &&
+                "click" in element &&
+                typeof element.click === "function"
+              ) {
+                element.click();
+              }
+            }
             discourseContext.lastAppEvent = e.name;
             const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
             if (!(e.name === "pointer_up" && validModifier)) return;
