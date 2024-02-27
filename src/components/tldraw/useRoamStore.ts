@@ -50,9 +50,6 @@ export const useRoamStore = ({
     return data;
   }, [tree, pageUid]);
 
-  const arrowUtilId = ["newArrow", "newArrowUtil2"];
-
-  const discourseRelationUtils = createAllRelationShapeUtils(arrowUtilId);
   const store = useMemo(() => {
     const _store = createTLStore({
       initialData,

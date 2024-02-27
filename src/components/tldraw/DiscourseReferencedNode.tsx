@@ -34,7 +34,7 @@ import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 export const createRelationShapeTools = (allRelationNames: string[]) => {
   return allRelationNames.map(
     (name) =>
-      class extends ArrowShapeTool {
+      class DiscourseShapeTool extends ArrowShapeTool {
         static id = name;
         static initial = "idle";
         static children: typeof ArrowShapeTool.children = () => {
@@ -90,7 +90,7 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
             Pointing,
           ];
         };
-        // shapeType = name; // error on tool select
+        // override shapeType = name; // error on tool select
         // override styles = ["opacity" as const];
       }
   );
@@ -227,6 +227,9 @@ export const createSelectTool = ({
   allRelationsById: Record<string, DiscourseRelation>;
 }) =>
   class extends SelectTool {
+    //
+    // TODO, NOT WORKING
+    //
     static id = "new-select-tool";
     static children: typeof SelectTool.children = () => {
       return SelectTool.children().map((c) => {
@@ -514,61 +517,75 @@ export const createSelectTool = ({
     };
   };
 
+export type DiscourseRelationShape = TLBaseShape<string, TLArrowShapeProps>;
+
 export const createAllRelationShapeUtils = (relationIds: string[]) => {
   return relationIds.map((id) => {
-    class DiscourseRelationUtil extends ArrowShapeUtil {
-      static type = id;
-      override canBind = () => true;
-      override canEdit = () => false;
-      defaultProps() {
-        const relations = Object.values(discourseContext.relations);
-        // TODO - add canvas settings to relations config
-        const relationIndex = relations.findIndex((rs) =>
-          rs.some((r) => r.id === this.type)
-        );
-        const isValid = relationIndex >= 0 && relationIndex < relations.length;
-        const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
-        return {
-          opacity: "1" as const,
-          dash: "draw" as const,
-          size: "s" as const,
-          fill: "none" as const,
-          color,
-          labelColor: color,
-          bend: 0,
-          start: { type: "point" as const, x: 0, y: 0 },
-          end: { type: "point" as const, x: 0, y: 0 },
-          arrowheadStart: "none" as const,
-          arrowheadEnd: "arrow" as const,
-          text: isValid
-            ? Object.keys(discourseContext.relations)[relationIndex]
-            : "",
-        };
+    class DiscourseRelationUtil extends BaseDiscourseRelationUtil {
+      constructor(editor: Editor) {
+        super(editor, id);
       }
-      override onBeforeCreate = (shape: TLArrowShape) => {
-        // TODO - propsForNextShape is clobbering our choice of color/text ?
-        const relations = Object.values(discourseContext.relations);
-        const relationIndex = relations.findIndex((rs) =>
-          rs.some((r) => r.id === id)
-        );
-        const isValid = relationIndex >= 0 && relationIndex < relations.length;
-        const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
-        return {
-          ...shape,
-          props: {
-            ...shape.props,
-            color,
-            labelColor: color,
-            text: isValid
-              ? Object.keys(discourseContext.relations)[relationIndex]
-              : "",
-          },
-        };
-      };
-      component(shape: TLArrowShape) {
-        return (
-          <>
-            <style>{`#${shape.id.replace(":", "_")}_clip_0 {
+      static override type = id; // removing this gives duplicate "arrow" error
+    }
+    return DiscourseRelationUtil;
+  });
+};
+class BaseDiscourseRelationUtil extends ArrowShapeUtil {
+  type: string;
+  constructor(editor: Editor, type: string) {
+    super(editor);
+    this.type = type;
+  }
+  override canBind = () => true;
+  override canEdit = () => false;
+  getDefaultProps() {
+    const relations = Object.values(discourseContext.relations);
+    // TODO - add canvas settings to relations config
+    const relationIndex = relations.findIndex((rs) =>
+      rs.some((r) => r.id === this.type)
+    );
+    const isValid = relationIndex >= 0 && relationIndex < relations.length;
+    const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
+    return {
+      labelColor: "green" as const,
+      color: "green" as const,
+      fill: "none" as const,
+      dash: "draw" as const,
+      opacity: "1" as const,
+      arrowheadStart: "none" as const,
+      arrowheadEnd: "arrow" as const,
+      font: "draw" as const,
+      size: "s" as const,
+      bend: 0,
+      start: { type: "point" as const, x: 0, y: 0 },
+      end: { type: "point" as const, x: 0, y: 0 },
+      text: "123",
+    };
+  }
+  override onBeforeCreate = (shape: TLArrowShape) => {
+    console.log("onBeforeCreate", shape); // Not called
+
+    // TODO - propsForNextShape is clobbering our choice of color/text ?
+    const relations = Object.values(discourseContext.relations);
+    const relationIndex = relations.findIndex((rs) =>
+      rs.some((r) => r.id === this.type)
+    );
+    const isValid = relationIndex >= 0 && relationIndex < relations.length;
+    const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        color,
+        labelColor: color,
+        text: "123",
+      },
+    };
+  };
+  component(shape: TLArrowShape) {
+    return (
+      <>
+        <style>{`#${shape.id.replace(":", "_")}_clip_0 {
           display: none;
         }
         [data-shape-type="${this.type}"] .tl-arrow-label {
@@ -578,11 +595,8 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
           height: unset;
         }
         `}</style>
-            {super.component(shape)}
-          </>
-        );
-      }
-    }
-    return DiscourseRelationUtil;
-  });
-};
+        {super.component(shape)}
+      </>
+    );
+  }
+}

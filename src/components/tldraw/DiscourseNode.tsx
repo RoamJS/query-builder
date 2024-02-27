@@ -38,6 +38,7 @@ import getDiscourseRelations, {
 import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
+import { DiscourseRelationShape } from "./DiscourseReferencedNode";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
 // https://github.com/tldraw/tldraw/pull/1580/files
@@ -120,7 +121,7 @@ export const createNodeShapeUtils = (nodes: DiscourseNode[]) => {
       constructor(editor: Editor) {
         super(editor, node.type);
       }
-      static override type = node.type;
+      static override type = node.type; // removing this gives undefined error
       // getDefaultProps(): DiscourseNodeShape["props"] {
       //   const baseProps = super.getDefaultProps();
       //   return {
@@ -133,7 +134,6 @@ export const createNodeShapeUtils = (nodes: DiscourseNode[]) => {
   });
 };
 
-type DiscourseRelationShape = TLBaseShape<string, TLArrowShapeProps>;
 export type DiscourseNodeShape = TLBaseShape<
   string,
   {
