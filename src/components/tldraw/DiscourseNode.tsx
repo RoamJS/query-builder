@@ -38,7 +38,7 @@ import getDiscourseRelations, {
 import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
-import { DiscourseRelationShape } from "./DiscourseReferencedNode";
+import { DiscourseRelationShape } from "./DiscourseRelations";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
 // https://github.com/tldraw/tldraw/pull/1580/files

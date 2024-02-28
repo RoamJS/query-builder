@@ -14,7 +14,7 @@ import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { defaultShapeUtils } from "@tldraw/tldraw";
 import { BaseDiscourseNodeUtil } from "./DiscourseNode";
 import { AddPullWatch } from "roamjs-components/types";
-import { createAllRelationShapeUtils } from "./DiscourseReferencedNode";
+import { createAllRelationShapeUtils } from "./DiscourseRelations";
 
 const THROTTLE = 350;
 

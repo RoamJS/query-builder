@@ -132,7 +132,7 @@ import {
   createRelationShapeTools,
   createAllRelationShapeUtils,
   createReferenceShapeTools,
-} from "./DiscourseReferencedNode";
+} from "./DiscourseRelations";
 
 declare global {
   interface Window {

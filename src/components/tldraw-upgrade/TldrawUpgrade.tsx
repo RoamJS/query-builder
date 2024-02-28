@@ -35,7 +35,7 @@ import {
   createRelationShapeTools,
   createReferenceShapeTools,
   createSelectTool,
-} from "../tldraw/DiscourseReferencedNode";
+} from "../tldraw/DiscourseRelations";
 import { discourseContext, AddReferencedNodeType } from "../tldraw/Tldraw";
 import { createUiOverrides } from "../tldraw/uiOverrides";
 import { useRoamStore } from "../tldraw/useRoamStore";
