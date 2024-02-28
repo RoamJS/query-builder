@@ -42,6 +42,7 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
           return [
             class extends Idle {
               override onPointerDown: TLPointerEvent = (info) => {
+                console.log("onPointerDown", info);
                 const target = this.editor.getShapeAtPoint(
                   this.editor.inputs.currentPagePoint,
                   {
@@ -539,6 +540,7 @@ class BaseDiscourseRelationUtil extends ArrowShapeUtil {
   override canBind = () => true;
   override canEdit = () => false;
   getDefaultProps() {
+    console.log("getDefaultProps");
     const relations = Object.values(discourseContext.relations);
     // TODO - add canvas settings to relations config
     const relationIndex = relations.findIndex((rs) =>
@@ -551,7 +553,7 @@ class BaseDiscourseRelationUtil extends ArrowShapeUtil {
       color: "green" as const,
       fill: "none" as const,
       dash: "draw" as const,
-      opacity: "1" as const,
+      // opacity: "1" as const,
       arrowheadStart: "none" as const,
       arrowheadEnd: "arrow" as const,
       font: "draw" as const,
@@ -559,11 +561,11 @@ class BaseDiscourseRelationUtil extends ArrowShapeUtil {
       bend: 0,
       start: { type: "point" as const, x: 0, y: 0 },
       end: { type: "point" as const, x: 0, y: 0 },
-      text: "123",
+      text: "getDefaultProps",
     };
   }
   override onBeforeCreate = (shape: TLArrowShape) => {
-    console.log("onBeforeCreate", shape); // Not called
+    console.log("onBeforeCreate", shape);
 
     // TODO - propsForNextShape is clobbering our choice of color/text ?
     const relations = Object.values(discourseContext.relations);
@@ -578,7 +580,7 @@ class BaseDiscourseRelationUtil extends ArrowShapeUtil {
         ...shape.props,
         color,
         labelColor: color,
-        text: "123",
+        text: "onBeforeCreate",
       },
     };
   };
