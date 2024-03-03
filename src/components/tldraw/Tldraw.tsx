@@ -69,6 +69,10 @@ import {
   TLPointerEventInfo,
   VecModel,
   Editor,
+  TLAsset,
+  TLExternalAssetContent,
+  containBoxSize,
+  getHashForString,
 } from "@tldraw/tldraw";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
@@ -133,6 +137,7 @@ import {
   createAllRelationShapeUtils,
   createReferenceShapeTools,
 } from "./DiscourseRelations";
+import { info } from "console";
 
 declare global {
   interface Window {
@@ -425,6 +430,17 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
         components={defaultComponents}
         store={store}
         onMount={(app) => {
+          // Handle file uploads
+          // app.registerExternalContentHandler("files", (info) => {
+          //   console.log(info);
+
+          //   app.putExternalContent({
+          //     type: "files",
+          //     files: info.files,
+          //     ignoreParent: true,
+          //   });
+          // });
+
           if (process.env.NODE_ENV !== "production") {
             if (!window.tldrawApps) window.tldrawApps = {};
             const { tldrawApps } = window;
