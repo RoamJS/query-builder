@@ -63,7 +63,6 @@ const calcCanvasNodeSizeAndImg = async ({
     ...DEFAULT_STYLE_PROPS,
     maxWidth: MAX_WIDTH,
     text: nodeText,
-    fontSize: 12, // DEFAULT_STYLE_PROPS.fontSize: FIX THIS, font size is now "m", but needs to be number for measureCanvasNodeText
   });
   if (!isKeyImage) return { w, h, imageUrl: "" };
 
