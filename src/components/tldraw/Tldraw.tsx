@@ -69,10 +69,6 @@ import {
   TLPointerEventInfo,
   VecModel,
   Editor,
-  TLAsset,
-  TLExternalAssetContent,
-  containBoxSize,
-  getHashForString,
 } from "@tldraw/tldraw";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
@@ -137,7 +133,6 @@ import {
   createAllRelationShapeUtils,
   createReferenceShapeTools,
 } from "./DiscourseRelations";
-import { info } from "console";
 
 declare global {
   interface Window {
