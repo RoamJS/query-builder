@@ -494,7 +494,7 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
       .tl-arrow-label .tl-arrow-label__inner p {
         padding: 0;
         white-space: nowrap;
-        font-family: 'tldraw_draw', sans-serif;
+        font-family: "Inter", sans-serif;
       }`}
       </style>
       <TldrawEditor

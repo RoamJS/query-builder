@@ -53,12 +53,12 @@ const TEXT_PROPS = {
 // // FONT_FAMILIES.sans or tldraw_sans not working in toSvg()
 // // maybe check getSvg()
 // // in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
-const SVG_FONT_FAMILY = "sans-serif";
+const SVG_FONT_FAMILY = `"Inter", "sans-serif"`;
 
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
   fontSize: 16,
-  fontFamily: "'tldraw_draw', sans-serif",
+  fontFamily: "'Inter', sans-serif",
   width: "fit-content",
   padding: "40px",
 };
@@ -179,8 +179,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       title: "",
     };
   }
-
-  // Custom
 
   deleteRelationsInCanvas(
     shape: DiscourseNodeShape,
@@ -351,6 +349,141 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     return { backgroundColor, textColor };
   }
 
+  async toSvg(shape: DiscourseNodeShape) {
+    const { backgroundColor, textColor } = this.getColors();
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+    // Create and set attributes for the rectangle (background of the shape)
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("width", shape.props.w.toString());
+    rect.setAttribute("height", shape.props.h.toString());
+    rect.setAttribute("fill", backgroundColor);
+    rect.setAttribute("opacity", "1");
+    rect.setAttribute("rx", "16");
+    rect.setAttribute("ry", "16");
+    g.appendChild(rect);
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+
+    // Calculate text dimensions and positioning
+    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+    const textWidth = measureCanvasNodeText({
+      ...DEFAULT_STYLE_PROPS,
+      maxWidth: shape.props.w - padding * 2 + "px",
+      text: shape.props.title,
+    }).w;
+
+    const textOpts = {
+      overflow: "wrap" as const,
+      width: textWidth,
+      height: shape.props.h,
+      padding: 0,
+      fontSize: DEFAULT_STYLE_PROPS.fontSize,
+      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+      textAlign: "start" as const,
+    };
+    const textSpans = this.editor.textMeasure.measureTextSpans(
+      shape.props.title,
+      textOpts
+    );
+
+    // set attributes for the text
+    text.setAttribute("font-family", SVG_FONT_FAMILY);
+    text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
+    text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
+    text.setAttribute("fill", textColor);
+    text.setAttribute("stroke", "none");
+
+    const lineHeight =
+      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+
+    // Add image to the node if imageUrl exists
+
+    // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
+    async function getDataURIFromURL(url: string): Promise<string> {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    let textYOffset = 0;
+    if (shape.props.imageUrl) {
+      const image = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "image"
+      );
+      const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
+      image.setAttribute("href", src);
+      image.setAttribute("width", shape.props.w.toString());
+
+      // Calculate height based on aspect ratio like in the HTML
+      const { width: imageWidth, height: imageHeight } = await loadImage(src);
+      const aspectRatio = imageWidth / imageHeight || 1;
+      const svgImageHeight = shape.props.w / aspectRatio;
+
+      // TODO - allow for cropped images (css overflow-hidden)
+      image.setAttribute("height", svgImageHeight.toString());
+
+      // Adjust text y attribute to be positioned below the image
+      textYOffset =
+        svgImageHeight +
+        (shape.props.h - svgImageHeight) / 2 -
+        (lineHeight * textSpans.length) / 2;
+      // text.setAttribute("y", textYOffset.toString());
+
+      g.appendChild(image);
+    } else {
+      // Position the text vertically in the center of the shape
+      // textYOffset =
+      // (shape.props.h - lineHeight * textSpans.length) / 2 + padding / 2;
+      // text.setAttribute("y", textY.toString());
+    }
+
+    textSpans.forEach((word) => {
+      const tspan = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "tspan"
+      );
+
+      const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+      const xValue = word.box.x + padding;
+      const yValue = word.box.y + padding + textYOffset;
+
+      tspan.setAttribute("x", xValue.toString());
+      tspan.setAttribute("y", yValue.toString());
+      tspan.textContent = word.text;
+
+      text.appendChild(tspan);
+    });
+
+    g.appendChild(text);
+
+    return g;
+  }
+
+  override onResize: TLOnResizeHandler<DiscourseNodeShape> = (shape, info) => {
+    return resizeBox(shape, info);
+  };
+
+  indicator(shape: DiscourseNodeShape) {
+    return <rect width={shape.props.w} height={shape.props.h} />;
+  }
+
+  updateProps(
+    id: DiscourseNodeShape["id"],
+    type: DiscourseNodeShape["type"],
+    props: Partial<DiscourseNodeShape["props"]>
+  ) {
+    this.editor.updateShapes([{ id, props, type }]);
+  }
   component(shape: DiscourseNodeShape) {
     const editor = useEditor();
     const extensionAPI = useExtensionAPI();
@@ -538,141 +671,5 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
         </div>
       </HTMLContainer>
     );
-  }
-
-  async toSvg(shape: DiscourseNodeShape) {
-    const { backgroundColor, textColor } = this.getColors();
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-
-    // Create and set attributes for the rectangle (background of the shape)
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("width", shape.props.w.toString());
-    rect.setAttribute("height", shape.props.h.toString());
-    rect.setAttribute("fill", backgroundColor);
-    rect.setAttribute("opacity", "1");
-    rect.setAttribute("rx", "16");
-    rect.setAttribute("ry", "16");
-    g.appendChild(rect);
-
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-
-    // Calculate text dimensions and positioning
-    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-    const textWidth = measureCanvasNodeText({
-      ...DEFAULT_STYLE_PROPS,
-      maxWidth: shape.props.w - padding * 2 + "px",
-      text: shape.props.title,
-    }).w;
-
-    const textOpts = {
-      overflow: "wrap" as const,
-      width: textWidth,
-      height: shape.props.h,
-      padding: 0,
-      fontSize: DEFAULT_STYLE_PROPS.fontSize,
-      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
-      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
-      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
-      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
-      textAlign: "start" as const,
-    };
-    const textSpans = this.editor.textMeasure.measureTextSpans(
-      shape.props.title,
-      textOpts
-    );
-
-    // set attributes for the text
-    text.setAttribute("font-family", SVG_FONT_FAMILY);
-    text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
-    text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
-    text.setAttribute("fill", textColor);
-    text.setAttribute("stroke", "none");
-
-    const lineHeight =
-      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
-
-    // Add image to the node if imageUrl exists
-
-    // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
-    async function getDataURIFromURL(url: string): Promise<string> {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    let textYOffset = 0;
-    if (shape.props.imageUrl) {
-      const image = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "image"
-      );
-      const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
-      image.setAttribute("href", src);
-      image.setAttribute("width", shape.props.w.toString());
-
-      // Calculate height based on aspect ratio like in the HTML
-      const { width: imageWidth, height: imageHeight } = await loadImage(src);
-      const aspectRatio = imageWidth / imageHeight || 1;
-      const svgImageHeight = shape.props.w / aspectRatio;
-
-      // TODO - allow for cropped images (css overflow-hidden)
-      image.setAttribute("height", svgImageHeight.toString());
-
-      // Adjust text y attribute to be positioned below the image
-      textYOffset =
-        svgImageHeight +
-        (shape.props.h - svgImageHeight) / 2 -
-        (lineHeight * textSpans.length) / 2;
-      // text.setAttribute("y", textYOffset.toString());
-
-      g.appendChild(image);
-    } else {
-      // Position the text vertically in the center of the shape
-      // textYOffset =
-      // (shape.props.h - lineHeight * textSpans.length) / 2 + padding / 2;
-      // text.setAttribute("y", textY.toString());
-    }
-
-    textSpans.forEach((word) => {
-      const tspan = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "tspan"
-      );
-
-      const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-      const xValue = word.box.x + padding;
-      const yValue = word.box.y + padding + textYOffset;
-
-      tspan.setAttribute("x", xValue.toString());
-      tspan.setAttribute("y", yValue.toString());
-      tspan.textContent = word.text;
-
-      text.appendChild(tspan);
-    });
-
-    g.appendChild(text);
-
-    return g;
-  }
-
-  override onResize: TLOnResizeHandler<DiscourseNodeShape> = (shape, info) => {
-    return resizeBox(shape, info);
-  };
-
-  indicator(shape: DiscourseNodeShape) {
-    return <rect width={shape.props.w} height={shape.props.h} />;
-  }
-
-  updateProps(
-    id: DiscourseNodeShape["id"],
-    type: DiscourseNodeShape["type"],
-    props: Partial<DiscourseNodeShape["props"]>
-  ) {
-    this.editor.updateShapes([{ id, props, type }]);
   }
 }
