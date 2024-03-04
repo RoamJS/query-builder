@@ -1,4 +1,10 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
 
 // tldraw
 import {
@@ -69,6 +75,13 @@ import {
   TLPointerEventInfo,
   VecModel,
   Editor,
+  TLExternalContent,
+  MediaHelpers,
+  AssetRecordType,
+  TLAsset,
+  getHashForString,
+  TLAssetId,
+  isGifAnimated,
 } from "@tldraw/tldraw";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
@@ -377,6 +390,74 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
     HoveredShapeIndicator: TldrawHoveredShapeIndicator,
   };
 
+  const ACCEPTED_IMG_TYPE = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/svg+xml",
+  ];
+  const isImage = (ext: string) => ACCEPTED_IMG_TYPE.includes(ext);
+  const handlePastedImages = useCallback((editor: Editor) => {
+    editor.registerExternalContentHandler(
+      "files",
+      async (content: TLExternalContent) => {
+        if (content.type !== "files") {
+          console.error("Expected files, received:", content.type);
+          return;
+        }
+        const file = content.files[0];
+
+        //@ts-ignore
+        const url = await window.roamAlphaAPI.file.upload({
+          file,
+          toast: {
+            hide: true,
+          },
+        });
+        const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
+        // TODO add video support
+        const isImageType = isImage(file.type);
+        if (!isImageType) {
+          console.error("Unsupported file type:", file.type);
+          return;
+        }
+        const size = await MediaHelpers.getImageSizeFromSrc(dataUrl);
+        const isAnimated =
+          file.type === "image/gif" && (await isGifAnimated(file));
+        const assetId: TLAssetId = AssetRecordType.createId(
+          getHashForString(dataUrl)
+        );
+        const shapeType = isImageType ? "image" : "video";
+        const asset: TLAsset = AssetRecordType.create({
+          id: assetId,
+          type: shapeType,
+          typeName: "asset",
+          props: {
+            name: file.name,
+            src: dataUrl,
+            w: size.w,
+            h: size.h,
+            mimeType: file.type,
+            isAnimated,
+          },
+        });
+        editor.createAssets([asset]);
+        editor.createShape({
+          type: "image",
+          // Center the image in the editor
+          x: (window.innerWidth - size.w) / 2,
+          y: (window.innerHeight - size.h) / 2,
+          props: {
+            assetId,
+            w: size.w,
+            h: size.h,
+          },
+        });
+
+        return asset;
+      }
+    );
+  }, []);
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
@@ -425,16 +506,7 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
         components={defaultComponents}
         store={store}
         onMount={(app) => {
-          // Handle file uploads
-          // app.registerExternalContentHandler("files", (info) => {
-          //   console.log(info);
-
-          //   app.putExternalContent({
-          //     type: "files",
-          //     files: info.files,
-          //     ignoreParent: true,
-          //   });
-          // });
+          handlePastedImages(app);
 
           if (process.env.NODE_ENV !== "production") {
             if (!window.tldrawApps) window.tldrawApps = {};
