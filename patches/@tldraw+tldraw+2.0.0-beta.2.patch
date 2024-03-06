@@ -67,6 +67,19 @@ index faf2fea..cb677c2 100644
        },
        id
      );
+diff --git a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/toolStates/Pointing.ts b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/toolStates/Pointing.ts
+index 75d151d..ae9eb81 100644
+--- a/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/toolStates/Pointing.ts
++++ b/node_modules/@tldraw/tldraw/src/lib/shapes/arrow/toolStates/Pointing.ts
+@@ -89,7 +89,7 @@ export class Pointing extends StateNode {
+ 		this.editor.createShapes<TLArrowShape>([
+ 			{
+ 				id,
+-				type: 'arrow',
++				type: this.parent.shapeType || "arrow",
+ 				x: originPagePoint.x,
+ 				y: originPagePoint.y,
+ 			},
 diff --git a/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx b/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx
 index 8ae7e1f..71b1399 100644
 --- a/node_modules/@tldraw/tldraw/src/lib/ui/components/Toolbar/Toolbar.tsx

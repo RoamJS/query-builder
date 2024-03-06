@@ -13,6 +13,7 @@ import {
   DraggingHandle,
   TLShapeId,
   VecModel,
+  createShapeId,
 } from "@tldraw/tldraw";
 import { AddReferencedNodeType, discourseContext, isPageUid } from "./Tldraw";
 import React from "react";
@@ -42,7 +43,6 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
           return [
             class extends Idle {
               override onPointerDown: TLPointerEvent = (info) => {
-                console.log("onPointerDown", info);
                 const target = this.editor.getShapeAtPoint(
                   this.editor.inputs.currentPagePoint,
                   {
@@ -88,11 +88,57 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
                 this.parent.transition("pointing", info);
               };
             },
-            Pointing,
+            // extend Pointing to set the type on createShapes()
+            class extends Pointing {
+              override createArrowShape() {
+                const { originPagePoint } = this.editor.inputs;
+
+                const id = createShapeId();
+
+                this.markId = `creating:${id}`;
+                this.editor.mark(this.markId);
+
+                this.editor.createShapes<TLArrowShape>([
+                  {
+                    id,
+                    // @ts-ignore
+                    type: this.parent.shapeType || "arrow",
+                    x: originPagePoint.x,
+                    y: originPagePoint.y,
+                  },
+                ]);
+
+                const shape = this.editor.getShape<TLArrowShape>(id);
+                if (!shape) throw Error(`expected shape`);
+
+                const handles = this.editor.getShapeHandles(shape);
+                if (!handles) throw Error(`expected handles for arrow`);
+
+                const util = this.editor.getShapeUtil<TLArrowShape>("arrow");
+                const initial = this.shape;
+                const startHandle = handles.find((h) => h.id === "start")!;
+                const change = util.onHandleChange?.(shape, {
+                  handle: { ...startHandle, x: 0, y: 0 },
+                  isPrecise: true,
+                  initial: initial,
+                });
+
+                if (change) {
+                  const startTerminal = change.props?.start;
+                  if (startTerminal?.type === "binding") {
+                    this.editor.setHintingShapes([startTerminal.boundShapeId]);
+                  }
+                  this.editor.updateShapes([change], { squashing: true });
+                }
+
+                // Cache the current shape after those changes
+                this.shape = this.editor.getShape(id);
+                this.editor.select(id);
+              }
+            },
           ];
         };
         // override shapeType = name; // error on tool select
-        // override styles = ["opacity" as const];
       }
   );
 };
