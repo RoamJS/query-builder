@@ -313,7 +313,7 @@ const TldrawCanvas = ({ title }: TldrawProps) => {
     ...discourseNodeTools,
     ...discourseRelationTools,
     ...referencedNodeTools,
-    selectTool,
+    // selectTool,
   ];
 
   const uiOverrides = createUiOverrides({
