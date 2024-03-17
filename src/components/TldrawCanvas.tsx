@@ -2,7 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../utils/isFlagEnabled";
 import {
-  App as TldrawApp,
+  Editor as TldrawApp,
   defineShape,
   TLInstance,
   TLUser,
@@ -16,16 +16,18 @@ import {
   TLBoxUtil,
   HTMLContainer,
   TLBoxTool,
-  TLArrowTool,
+  ArrowShape
+  // TLArrowTool,
   TLSelectTool,
   DraggingHandle,
   toolbarItem,
   MenuGroup,
   menuItem,
   TLTranslationKey,
-  TL_COLOR_TYPES,
+  DefaultColorStyle, // TL_COLOR_TYPES,
   StateNodeConstructor,
-  TLArrowUtil,
+  // TLArrowUtil,
+  ArrowShapeUtil
   TLArrowShapeProps,
   Vec2dModel,
   createShapeId,
@@ -44,6 +46,9 @@ import {
   TLArrowTerminal,
   TLShapeId,
   Translating,
+  ShapeUtil,
+  StyleProp,
+  Box2d,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -71,7 +76,7 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
-import { StoreSnapshot } from "@tldraw/tlstore";
+// import { StoreSnapshot } from "@tldraw/tlstore";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
 import nanoid from "nanoid";
@@ -85,6 +90,7 @@ import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { formatHexColor } from "./DiscourseNodeCanvasSettings";
 import { getNewDiscourseNodeText } from "../utils/formatUtils";
+import { useRoamStore } from "../utils/useRoamStore";
 
 declare global {
   interface Window {
@@ -124,89 +130,89 @@ const getRelationIds = () =>
     )
   );
 
-const diffObjects = (
-  oldRecord: Record<string, any>,
-  newRecord: Record<string, any>
-): Record<string, any> => {
-  const allKeys = Array.from(
-    new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
-  );
-  return Object.fromEntries(
-    allKeys
-      .map((key) => {
-        const oldValue = oldRecord[key];
-        const newValue = newRecord[key];
-        if (typeof oldValue !== typeof newValue) {
-          return [key, newValue];
-        }
-        if (
-          typeof oldValue === "object" &&
-          oldValue !== null &&
-          newValue !== null
-        ) {
-          const diffed = diffObjects(oldValue, newValue);
-          if (Object.keys(diffed).length) {
-            return [key, diffed];
-          }
-          return null;
-        }
-        if (oldValue !== newValue) {
-          return [key, newValue];
-        }
-        return null;
-      })
-      .filter((e): e is [string, any] => !!e)
-  );
-};
+// const diffObjects = (
+//   oldRecord: Record<string, any>,
+//   newRecord: Record<string, any>
+// ): Record<string, any> => {
+//   const allKeys = Array.from(
+//     new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
+//   );
+//   return Object.fromEntries(
+//     allKeys
+//       .map((key) => {
+//         const oldValue = oldRecord[key];
+//         const newValue = newRecord[key];
+//         if (typeof oldValue !== typeof newValue) {
+//           return [key, newValue];
+//         }
+//         if (
+//           typeof oldValue === "object" &&
+//           oldValue !== null &&
+//           newValue !== null
+//         ) {
+//           const diffed = diffObjects(oldValue, newValue);
+//           if (Object.keys(diffed).length) {
+//             return [key, diffed];
+//           }
+//           return null;
+//         }
+//         if (oldValue !== newValue) {
+//           return [key, newValue];
+//         }
+//         return null;
+//       })
+//       .filter((e): e is [string, any] => !!e)
+//   );
+// };
 
-const personalRecordTypes = new Set([
-  "camera",
-  "instance",
-  "instance_page_state",
-]);
-const pruneState = (state: StoreSnapshot<TLRecord>) =>
-  Object.fromEntries(
-    Object.entries(state).filter(
-      ([_, record]) => !personalRecordTypes.has(record.typeName)
-    )
-  );
+// const personalRecordTypes = new Set([
+//   "camera",
+//   "instance",
+//   "instance_page_state",
+// ]);
+// const pruneState = (state: StoreSnapshot<TLRecord>) =>
+//   Object.fromEntries(
+//     Object.entries(state).filter(
+//       ([_, record]) => !personalRecordTypes.has(record.typeName)
+//     )
+//   );
 
-const calculateDiff = (
-  _newState: StoreSnapshot<TLRecord>,
-  _oldState: StoreSnapshot<TLRecord>
-) => {
-  const newState = pruneState(_newState);
-  const oldState = pruneState(_oldState);
-  return {
-    added: Object.fromEntries(
-      Object.keys(newState)
-        .filter((id) => !oldState[id])
-        .map((id) => [id, newState[id]])
-    ),
-    removed: Object.fromEntries(
-      Object.keys(oldState)
-        .filter((id) => !newState[id])
-        .map((key) => [key, oldState[key]])
-    ),
-    updated: Object.fromEntries(
-      Object.keys(newState)
-        .map((id) => {
-          const oldRecord = oldState[id];
-          const newRecord = newState[id];
-          if (!oldRecord || !newRecord) {
-            return null;
-          }
+// const calculateDiff = (
+//   _newState: StoreSnapshot<TLRecord>,
+//   _oldState: StoreSnapshot<TLRecord>
+// ) => {
+//   const newState = pruneState(_newState);
+//   const oldState = pruneState(_oldState);
+//   return {
+//     added: Object.fromEntries(
+//       Object.keys(newState)
+//         .filter((id) => !oldState[id])
+//         .map((id) => [id, newState[id]])
+//     ),
+//     removed: Object.fromEntries(
+//       Object.keys(oldState)
+//         .filter((id) => !newState[id])
+//         .map((key) => [key, oldState[key]])
+//     ),
+//     updated: Object.fromEntries(
+//       Object.keys(newState)
+//         .map((id) => {
+//           const oldRecord = oldState[id];
+//           const newRecord = newState[id];
+//           if (!oldRecord || !newRecord) {
+//             return null;
+//           }
 
-          const diffed = diffObjects(oldRecord, newRecord);
-          if (Object.keys(diffed).length) {
-            return [id, [oldRecord, newRecord]];
-          }
-          return null;
-        })
-        .filter((e): e is [string, any] => !!e)
-    ),
-  };
-};
+//           const diffed = diffObjects(oldRecord, newRecord);
+//           if (Object.keys(diffed).length) {
+//             return [id, [oldRecord, newRecord]];
+//           }
+//           return null;
+//         })
+//         .filter((e): e is [string, any] => !!e)
+//     ),
+//   };
+// };
 
 export type DiscourseNodeShape = TLBaseShape<
   string,
@@ -238,7 +244,7 @@ const COLOR_PALETTE: Record<string, string> = {
   white: "#ffffff",
   yellow: "#ffc078",
 };
-const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
+const COLOR_ARRAY = Array.from(DefaultColorStyle.values).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 export const MAX_WIDTH = "400px";
@@ -277,9 +283,13 @@ export const loadImage = (
     img.src = url;
   });
 };
-class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
-  constructor(app: TldrawApp, type: string) {
-    super(app, type);
+class DiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
+  constructor(
+    app: TldrawApp,
+    type: string,
+    styleProps: ReadonlyMap<StyleProp<unknown>, string>
+  ) {
+    super(app, type, styleProps);
   }
 
   override isAspectRatioLocked = () => false;
@@ -287,9 +297,19 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   override canBind = () => true;
   override canEdit = () => true;
 
-  override defaultProps(): DiscourseNodeShape["props"] {
+  // node_modules\@tldraw\editor\src\lib\editor\Editor.ts
+  getBounds<T extends TLShape>(shape: T): Box2d {
+		const result = new Box2d()
+		if (result.width === 0 || result.height === 0) {
+			return new Box2d(result.x, result.y, Math.max(result.width, 1), Math.max(result.height, 1))
+		}
+		return result
+	}
+
+
+  getDefaultProps(): DiscourseNodeShape["props"] {
     return {
-      opacity: "1" as DiscourseNodeShape["props"]["opacity"],
+      opacity: 1,
       w: 160,
       h: 64,
       uid: window.roamAlphaAPI.util.generateUID(),
@@ -300,7 +320,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
   deleteRelationsInCanvas(
     shape: DiscourseNodeShape,
     {
-      allRecords = this.app.store.allRecords(),
+      allRecords = this.editor.store.allRecords(),
       relationIds = getRelationIds(),
     }: { allRecords?: TLRecord[]; relationIds?: Set<string> } = {}
   ) {
@@ -315,13 +335,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
           (end.type === "binding" && end.boundShapeId === shape.id)
         );
       });
-    this.app.deleteShapes(toDelete.map((r) => r.id));
+    this.editor.deleteShapes(toDelete.map((r) => r.id));
   }
 
   async createExistingRelations(
     shape: DiscourseNodeShape,
     {
-      allRecords = this.app.store.allRecords(),
+      allRecords = this.editor.store.allRecords(),
       relationIds = getRelationIds(),
       finalUid = shape.props.uid,
     }: {
@@ -419,7 +439,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               },
         };
       });
-    this.app.createShapes(toCreate);
+    this.editor.createShapes(toCreate);
   }
 
   override onBeforeCreate = (shape: DiscourseNodeShape) => {
@@ -474,15 +494,15 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     return { ...backgroundInfo, textColor };
   }
 
-  render(shape: DiscourseNodeShape) {
+  component(shape: DiscourseNodeShape) {
     const extensionAPI = useExtensionAPI();
     const {
       canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
     } = discourseContext.nodes[this.type] || {};
     const isEditing = useValue(
       "isEditing",
-      () => this.app.editingId === shape.id,
-      [this.app, shape.id]
+      () => this.editor.editingId === shape.id,
+      [this.editor, shape.id]
     );
     const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
     useEffect(() => {
@@ -509,7 +529,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       const listener = (e: CustomEvent) => {
         if (e.detail === shape.id) {
           setIsEditLabelOpen(true);
-          this.app.setEditingId(shape.id);
+          this.editor.setEditingId(shape.id);
         }
       };
       document.body.addEventListener(
@@ -581,7 +601,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
             initialUid={shape.props.uid}
             isOpen={isLabelEditOpen}
             onClose={() => {
-              this.app.setEditingId(null);
+              this.editor.setEditingId(null);
               setIsEditLabelOpen(false);
             }}
             label={shape.props.title}
@@ -615,7 +635,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               });
 
               // Update Shape Relations
-              const allRecords = this.app.store.allRecords();
+              const allRecords = this.editor.store.allRecords();
               const relationIds = getRelationIds();
               this.deleteRelationsInCanvas(shape, {
                 allRecords,
@@ -628,13 +648,13 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               });
 
               setIsEditLabelOpen(false);
-              this.app.setEditingId(null);
+              this.editor.setEditingId(null);
             }}
             onCancel={() => {
-              this.app.setEditingId(null);
+              this.editor.setEditingId(null);
               setIsEditLabelOpen(false);
               if (!isLiveBlock(shape.props.uid)) {
-                this.app.deleteShapes([shape.id]);
+                this.editor.deleteShapes([shape.id]);
               }
             }}
           />
@@ -667,7 +687,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
       text: shape.props.title,
     }).w;
 
-    const textLines = this.app.textMeasure.getTextLines({
+    const textLines = this.editor.textMeasure.getTextLines({
       fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
       fontSize: DEFAULT_STYLE_PROPS.fontSize,
       fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
@@ -764,7 +784,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
     props: Partial<DiscourseNodeShape["props"]>
   ) {
     // @ts-ignore
-    this.app.updateShapes([{ id, props }]);
+    this.editor.updateShapes([{ id, props }]);
   }
 }
 
@@ -772,9 +792,10 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 // EG: [[EVD]] - {content} - {Source}
 // {Source} is a referenced node
 type DiscourseReferencedNodeShape = TLBaseShape<string, TLArrowShapeProps>;
-class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeShape> {
-  constructor(app: TldrawApp, type: string) {
-    super(app, type);
+//@ts-ignore
+class DiscourseReferencedNodeUtil extends ArrowShapeUtil<DiscourseReferencedNodeShape> {
+  constructor(app: TldrawApp, type: string, styleProps: ReadonlyMap<StyleProp<unknown>, string>) {
+    super(app, type, styleProps);
   }
   override canBind = () => true;
   override canEdit = () => false;
@@ -808,14 +829,15 @@ class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeSha
   height: unset;
 }
 `}</style>
-        {super.render(shape)}
+        {super.component(shape)}
       </>
     );
   }
 }
-class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
-  constructor(app: TldrawApp, type: string) {
-    super(app, type);
+//@ts-ignore
+class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
+  constructor(app: TldrawApp, type: string, styleProps: ReadonlyMap<StyleProp<unknown>, string>) {
+    super(app, type, styleProps);
   }
   override canBind = () => true;
   override canEdit = () => false;
@@ -859,6 +881,7 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
         ...shape.props,
         color,
         labelColor: color,
+
       },
     };
   };
@@ -875,7 +898,7 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   height: unset;
 }
 `}</style>
-        {super.render(shape)}
+        {super.component(shape)}
       </>
     );
   }
@@ -1491,87 +1514,91 @@ const TldrawCanvas = ({ title }: Props) => {
   }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, setMaximized] = useState(false);
-  const localStateIds: string[] = [];
-  const store = useMemo(() => {
-    const _store = customTldrawConfig.createStore({
-      initialData: initialState.data,
-      instanceId: initialState.instanceId,
-      userId: initialState.userId,
-    });
-    _store.listen((rec) => {
-      if (rec.source !== "user") return;
-      const validChanges = Object.keys(rec.changes.added)
-        .concat(Object.keys(rec.changes.removed))
-        .concat(Object.keys(rec.changes.updated))
-        .filter(
-          (k) =>
-            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
-        );
-      if (!validChanges.length) return;
-      clearTimeout(serializeRef.current);
-      serializeRef.current = window.setTimeout(async () => {
-        const state = _store.serialize();
-        const props = getBlockProps(pageUid) as Record<string, unknown>;
-        const rjsqb =
-          typeof props["roamjs-query-builder"] === "object"
-            ? props["roamjs-query-builder"]
-            : {};
-        await setInputSetting({
-          blockUid: pageUid,
-          key: "timestamp",
-          value: new Date().valueOf().toString(),
-        });
-        const newstateId = nanoid();
-        localStateIds.push(newstateId);
-        localStateIds.splice(0, localStateIds.length - 25);
-        window.roamAlphaAPI.updateBlock({
-          block: {
-            uid: pageUid,
-            props: {
-              ...props,
-              ["roamjs-query-builder"]: {
-                ...rjsqb,
-                stateId: newstateId,
-                tldraw: state,
-              },
-            },
-          },
-        });
-      }, THROTTLE);
-    });
-    return _store;
-  }, [initialState, serializeRef]);
+  // const localStateIds: string[] = [];
+  const store = useRoamStore({
+    // customShapeUtils,
+    pageUid,
+  });
+  // const store = useMemo(() => {
+  //   const _store = customTldrawConfig.createStore({
+  //     initialData: initialState.data,
+  //     instanceId: initialState.instanceId,
+  //     userId: initialState.userId,
+  //   });
+  //   _store.listen((rec) => {
+  //     if (rec.source !== "user") return;
+  //     const validChanges = Object.keys(rec.changes.added)
+  //       .concat(Object.keys(rec.changes.removed))
+  //       .concat(Object.keys(rec.changes.updated))
+  //       .filter(
+  //         (k) =>
+  //           !/^(user_presence|camera|instance|instance_page_state):/.test(k)
+  //       );
+  //     if (!validChanges.length) return;
+  //     clearTimeout(serializeRef.current);
+  //     serializeRef.current = window.setTimeout(async () => {
+  //       const state = _store.serialize();
+  //       const props = getBlockProps(pageUid) as Record<string, unknown>;
+  //       const rjsqb =
+  //         typeof props["roamjs-query-builder"] === "object"
+  //           ? props["roamjs-query-builder"]
+  //           : {};
+  //       await setInputSetting({
+  //         blockUid: pageUid,
+  //         key: "timestamp",
+  //         value: new Date().valueOf().toString(),
+  //       });
+  //       const newstateId = nanoid();
+  //       localStateIds.push(newstateId);
+  //       localStateIds.splice(0, localStateIds.length - 25);
+  //       window.roamAlphaAPI.updateBlock({
+  //         block: {
+  //           uid: pageUid,
+  //           props: {
+  //             ...props,
+  //             ["roamjs-query-builder"]: {
+  //               ...rjsqb,
+  //               stateId: newstateId,
+  //               tldraw: state,
+  //             },
+  //           },
+  //         },
+  //       });
+  //     }, THROTTLE);
+  //   });
+  //   return _store;
+  // }, [initialState, serializeRef]);
 
-  useEffect(() => {
-    const pullWatchProps: Parameters<AddPullWatch> = [
-      "[:edit/user :block/props :block/string {:block/children ...}]",
-      `[:block/uid "${pageUid}"]`,
-      (_, after) => {
-        const props = normalizeProps(
-          (after?.[":block/props"] || {}) as json
-        ) as Record<string, json>;
-        const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-        const propsStateId = rjsqb?.stateId as string;
-        if (localStateIds.some((s) => s === propsStateId)) return;
-        const newState = rjsqb?.tldraw as Parameters<
-          typeof store.deserialize
-        >[0];
-        if (!newState) return;
-        clearTimeout(deserializeRef.current);
-        deserializeRef.current = window.setTimeout(() => {
-          store.mergeRemoteChanges(() => {
-            const currentState = store.serialize();
-            const diff = calculateDiff(newState, currentState);
-            store.applyDiff(diff);
-          });
-        }, THROTTLE);
-      },
-    ];
-    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
-    return () => {
-      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
-    };
-  }, [initialState, store]);
+  // useEffect(() => {
+  //   const pullWatchProps: Parameters<AddPullWatch> = [
+  //     "[:edit/user :block/props :block/string {:block/children ...}]",
+  //     `[:block/uid "${pageUid}"]`,
+  //     (_, after) => {
+  //       const props = normalizeProps(
+  //         (after?.[":block/props"] || {}) as json
+  //       ) as Record<string, json>;
+  //       const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+  //       const propsStateId = rjsqb?.stateId as string;
+  //       if (localStateIds.some((s) => s === propsStateId)) return;
+  //       const newState = rjsqb?.tldraw as Parameters<
+  //         typeof store.deserialize
+  //       >[0];
+  //       if (!newState) return;
+  //       clearTimeout(deserializeRef.current);
+  //       deserializeRef.current = window.setTimeout(() => {
+  //         store.mergeRemoteChanges(() => {
+  //           const currentState = store.serialize();
+  //           const diff = calculateDiff(newState, currentState);
+  //           store.applyDiff(diff);
+  //         });
+  //       }, THROTTLE);
+  //     },
+  //   ];
+  //   window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
+  //   return () => {
+  //     window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
+  //   };
+  // }, [initialState, store]);
   useEffect(() => {
     const actionListener = ((
       e: CustomEvent<{
@@ -1731,10 +1758,11 @@ const TldrawCanvas = ({ title }: Props) => {
       }`}
       </style>
       <TldrawEditor
-        baseUrl="https://samepage.network/assets/tldraw/"
-        instanceId={initialState.instanceId}
-        userId={initialState.userId}
-        config={customTldrawConfig}
+        // baseUrl="https://samepage.network/assets/tldraw/"
+        // instanceId={initialState.instanceId}
+        // userId={initialState.userId}
+        // config={customTldrawConfig}
+
         store={store}
         onMount={(app) => {
           if (process.env.NODE_ENV !== "production") {
@@ -1801,7 +1829,7 @@ const TldrawCanvas = ({ title }: Props) => {
         }}
       >
         <TldrawUi
-          assetBaseUrl="https://samepage.network/assets/tldraw/"
+          // assetBaseUrl="https://samepage.network/assets/tldraw/"
           overrides={{
             translations: {
               en: {
