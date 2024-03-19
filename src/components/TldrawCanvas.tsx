@@ -16,8 +16,7 @@ import {
   TLBoxUtil,
   HTMLContainer,
   TLBoxTool,
-  ArrowShape
-  // TLArrowTool,
+  ArrowShapeTool, // TLArrowTool,
   TLSelectTool,
   DraggingHandle,
   toolbarItem,
@@ -26,8 +25,7 @@ import {
   TLTranslationKey,
   DefaultColorStyle, // TL_COLOR_TYPES,
   StateNodeConstructor,
-  // TLArrowUtil,
-  ArrowShapeUtil
+  ArrowShapeUtil, // TLArrowUtil,
   TLArrowShapeProps,
   Vec2dModel,
   createShapeId,
@@ -299,13 +297,17 @@ class DiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
 
   // node_modules\@tldraw\editor\src\lib\editor\Editor.ts
   getBounds<T extends TLShape>(shape: T): Box2d {
-		const result = new Box2d()
-		if (result.width === 0 || result.height === 0) {
-			return new Box2d(result.x, result.y, Math.max(result.width, 1), Math.max(result.height, 1))
-		}
-		return result
-	}
-
+    const result = new Box2d();
+    if (result.width === 0 || result.height === 0) {
+      return new Box2d(
+        result.x,
+        result.y,
+        Math.max(result.width, 1),
+        Math.max(result.height, 1)
+      );
+    }
+    return result;
+  }
 
   getDefaultProps(): DiscourseNodeShape["props"] {
     return {
@@ -794,7 +796,11 @@ class DiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
 type DiscourseReferencedNodeShape = TLBaseShape<string, TLArrowShapeProps>;
 //@ts-ignore
 class DiscourseReferencedNodeUtil extends ArrowShapeUtil<DiscourseReferencedNodeShape> {
-  constructor(app: TldrawApp, type: string, styleProps: ReadonlyMap<StyleProp<unknown>, string>) {
+  constructor(
+    app: TldrawApp,
+    type: string,
+    styleProps: ReadonlyMap<StyleProp<unknown>, string>
+  ) {
     super(app, type, styleProps);
   }
   override canBind = () => true;
@@ -836,7 +842,11 @@ class DiscourseReferencedNodeUtil extends ArrowShapeUtil<DiscourseReferencedNode
 }
 //@ts-ignore
 class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
-  constructor(app: TldrawApp, type: string, styleProps: ReadonlyMap<StyleProp<unknown>, string>) {
+  constructor(
+    app: TldrawApp,
+    type: string,
+    styleProps: ReadonlyMap<StyleProp<unknown>, string>
+  ) {
     super(app, type, styleProps);
   }
   override canBind = () => true;
@@ -881,7 +891,6 @@ class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
         ...shape.props,
         color,
         labelColor: color,
-
       },
     };
   };
@@ -1043,17 +1052,18 @@ const TldrawCanvas = ({ title }: Props) => {
                 static id = n.type;
                 static initial = "idle";
                 shapeType = n.type;
+                //@ts-ignore MIKE FIX STYLES
                 override styles = ["opacity" as const];
               }
           )
           .concat(
             allRelationNames.map(
               (name) =>
-                class extends TLArrowTool {
+                class extends ArrowShapeTool {
                   static id = name;
                   static initial = "idle";
-                  static children: typeof TLArrowTool.children = () => {
-                    const [Idle, Pointing] = TLArrowTool.children();
+                  static children: typeof ArrowShapeTool.children = () => {
+                    const [Idle, Pointing] = ArrowShapeTool.children();
                     return [
                       class extends Idle {
                         override onPointerDown: TLPointerEvent = (info) => {
@@ -1082,7 +1092,7 @@ const TldrawCanvas = ({ title }: Props) => {
                                 .join(", ")}`
                             );
                           } else {
-                            (this.parent as TLArrowTool).shapeType =
+                            (this.parent as ArrowShapeTool).shapeType =
                               relation.id;
                           }
                           this.parent.transition("pointing", info);
@@ -1092,6 +1102,7 @@ const TldrawCanvas = ({ title }: Props) => {
                     ];
                   };
                   shapeType = name;
+                  //@ts-ignore MIKE FIX STYLES
                   override styles = ["opacity" as const];
                 }
             )
@@ -1099,11 +1110,11 @@ const TldrawCanvas = ({ title }: Props) => {
           .concat(
             Object.keys(allAddReferencedNodeByAction).map(
               (action) =>
-                class extends TLArrowTool {
+                class extends ArrowShapeTool {
                   static id = `${action}` as string;
                   static initial = "idle";
-                  static children: typeof TLArrowTool.children = () => {
-                    const [Idle, Pointing] = TLArrowTool.children();
+                  static children: typeof ArrowShapeTool.children = () => {
+                    const [Idle, Pointing] = ArrowShapeTool.children();
                     return [
                       class extends Idle {
                         override onPointerDown: TLPointerEvent = (info) => {

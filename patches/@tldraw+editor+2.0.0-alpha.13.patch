@@ -1,0 +1,120 @@
+diff --git a/node_modules/@tldraw/editor/dist-cjs/index.d.ts b/node_modules/@tldraw/editor/dist-cjs/index.d.ts
+index 5a5ce1a..874632f 100644
+--- a/node_modules/@tldraw/editor/dist-cjs/index.d.ts
++++ b/node_modules/@tldraw/editor/dist-cjs/index.d.ts
+@@ -135,38 +135,45 @@ declare type ArrowPoint = {
+ /** @public */
+ export declare const ArrowShape: TLShapeInfo<TLArrowShape>;
+ 
++export class ArrowShapeTool extends StateNode {
++	static override id: string;
++	static initial: string;
++	static children: () => [typeof Idle_4, typeof Pointing_3]
++    override shapeType: TLShapeType;
++}
++
+ /** @public */
+-export declare class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
+-    static type: "arrow";
++export declare class ArrowShapeUtil<Shape extends TLArrowShape> extends ShapeUtil<Shape> {
++    static type: string;
+     canEdit: () => boolean;
+     canBind: () => boolean;
+     isClosed: () => boolean;
+     canSnap: () => boolean;
+-    hideResizeHandles: TLShapeUtilFlag<TLArrowShape>;
+-    hideRotateHandle: TLShapeUtilFlag<TLArrowShape>;
+-    hideSelectionBoundsFg: TLShapeUtilFlag<TLArrowShape>;
+-    hideSelectionBoundsBg: TLShapeUtilFlag<TLArrowShape>;
+-    getDefaultProps(): TLArrowShape['props'];
+-    getCenter(shape: TLArrowShape): Vec2d;
+-    getBounds(shape: TLArrowShape): Box2d;
++    hideResizeHandles: TLShapeUtilFlag<Shape>;
++    hideRotateHandle: TLShapeUtilFlag<Shape>;
++    hideSelectionBoundsFg: TLShapeUtilFlag<Shape>;
++    hideSelectionBoundsBg: TLShapeUtilFlag<Shape>;
++    getDefaultProps(): Shape['props'];
++    getCenter(shape: Shape): Vec2d;
++    getBounds(shape: Shape): Box2d;
+     getOutlineWithoutLabel(shape: TLArrowShape): Vec2d[];
+-    getOutline(shape: TLArrowShape): Vec2d[];
+-    snapPoints(_shape: TLArrowShape): Vec2d[];
++    getOutline(shape: Shape): Vec2d[];
++    snapPoints(_shape: Shape): Vec2d[];
+     private get infoCache();
+-    getArrowInfo(shape: TLArrowShape): ArrowInfo | undefined;
+-    getHandles(shape: TLArrowShape): TLHandle[];
+-    onHandleChange: TLOnHandleChangeHandler<TLArrowShape>;
+-    onTranslateStart: TLOnTranslateStartHandler<TLArrowShape>;
+-    onResize: TLOnResizeHandler<TLArrowShape>;
+-    onDoubleClickHandle: (shape: TLArrowShape, handle: TLHandle) => TLShapePartial<TLArrowShape> | void;
+-    hitTestPoint(shape: TLArrowShape, point: VecLike): boolean;
+-    hitTestLineSegment(shape: TLArrowShape, A: VecLike, B: VecLike): boolean;
+-    component(shape: TLArrowShape): JSX.Element | null;
+-    indicator(shape: TLArrowShape): JSX.Element | null;
+-    get labelBoundsCache(): ComputedCache<Box2d | null, TLArrowShape>;
+-    getLabelBounds(shape: TLArrowShape): Box2d | null;
+-    onEditEnd: TLOnEditEndHandler<TLArrowShape>;
+-    toSvg(shape: TLArrowShape, ctx: SvgExportContext): SVGGElement;
++    getArrowInfo(shape: Shape): ArrowInfo | undefined;
++    getHandles(shape: Shape): TLHandle[];
++    onHandleChange: TLOnHandleChangeHandler<Shape>;
++    onTranslateStart: TLOnTranslateStartHandler<Shape>;
++    onResize: TLOnResizeHandler<Shape>;
++    onDoubleClickHandle: (shape: Shape, handle: TLHandle) => TLShapePartial<Shape> | void;
++    hitTestPoint(shape: Shape, point: VecLike): boolean;
++    hitTestLineSegment(shape: Shape, A: VecLike, B: VecLike): boolean;
++    component(shape: Shape): JSX.Element | null;
++    indicator(shape: Shape): JSX.Element | null;
++    get labelBoundsCache(): ComputedCache<Box2d | null, Shape>;
++    getLabelBounds(shape: Shape): Box2d | null;
++    onEditEnd: TLOnEditEndHandler<Shape>;
++    toSvg(shape: Shape, ctx: SvgExportContext): SVGGElement;
+     getCanvasSvgDefs(): TLShapeUtilCanvasSvgDef[];
+ }
+ 
+@@ -4520,6 +4527,24 @@ declare class Pointing_2 extends StateNode {
+     cancel(): void;
+ }
+ 
++declare class Pointing_3 extends StateNode {
++    static id: string;
++    shape?: TLArrowShape;
++    preciseTimeout: number;
++    didTimeout: boolean;
++    private startPreciseTimeout;
++    private clearPreciseTimeout;
++    onEnter: () => void;
++    onExit: () => void;
++    onPointerMove: TLEventHandlers['onPointerMove'];
++    onPointerUp: TLEventHandlers['onPointerUp'];
++    onCancel: TLEventHandlers['onCancel'];
++    onComplete: TLEventHandlers['onComplete'];
++    onInterrupt: TLEventHandlers['onInterrupt'];
++    complete(): void;
++    cancel(): void;
++}
++
+ declare class PointingCanvas extends StateNode {
+     static id: string;
+     onEnter: () => void;
+diff --git a/node_modules/@tldraw/editor/dist-cjs/index.js b/node_modules/@tldraw/editor/dist-cjs/index.js
+index 16298c5..355230d 100644
+--- a/node_modules/@tldraw/editor/dist-cjs/index.js
++++ b/node_modules/@tldraw/editor/dist-cjs/index.js
+@@ -48,6 +48,7 @@ __export(src_exports, {
+   GRID_INCREMENT: () => import_constants.GRID_INCREMENT,
+   GRID_STEPS: () => import_constants.GRID_STEPS,
+   GeoShape: () => import_GeoShape.GeoShape,
++  // ArrowShapeTool: () => import_ArrowShapeTool.ArrowShapeTool,
+   GeoShapeUtil: () => import_GeoShapeUtil.GeoShapeUtil,
+   GroupShape: () => import_GroupShape.GroupShape,
+   GroupShapeUtil: () => import_GroupShapeUtil.GroupShapeUtil,
+@@ -215,6 +216,7 @@ var import_EmbedShapeUtil = require("./lib/editor/shapes/embed/EmbedShapeUtil");
+ var import_FrameShape = require("./lib/editor/shapes/frame/FrameShape");
+ var import_FrameShapeUtil = require("./lib/editor/shapes/frame/FrameShapeUtil");
+ var import_GeoShape = require("./lib/editor/shapes/geo/GeoShape");
++// var import_ArrowShapeTool = require("./lib/editor/shapes/arrow/ArrowShapeTool");
+ var import_GeoShapeUtil = require("./lib/editor/shapes/geo/GeoShapeUtil");
+ var import_GroupShape = require("./lib/editor/shapes/group/GroupShape");
+ var import_GroupShapeUtil = require("./lib/editor/shapes/group/GroupShapeUtil");
