@@ -16,9 +16,11 @@ const THROTTLE = 350;
 export const useRoamStore = ({
   // customShapeUtils,
   pageUid,
+  customShapes,
 }: {
   // customShapeUtils: any[];
   pageUid: string;
+  customShapes: any;
 }) => {
   const localStateIds = useRef<string[]>([]);
   const serializeRef = useRef(0);
@@ -48,7 +50,7 @@ export const useRoamStore = ({
   const store = useMemo(() => {
     const _store = createTLStore({
       initialData,
-      shapes: defaultShapes,
+      shapes: [...defaultShapes, ...customShapes],
       // shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
     });
     _store.listen((rec) => {

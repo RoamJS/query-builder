@@ -4,56 +4,60 @@ import isFlagEnabled from "../utils/isFlagEnabled";
 import {
   Editor as TldrawApp,
   defineShape,
-  TLInstance,
-  TLUser,
-  TldrawEditorConfig,
+  // TLInstance,
+  // TLUser,
+  defaultTools, // TldrawEditorConfig,
+  defaultShapes, // TldrawEditorConfig,
   Canvas,
   TldrawEditor,
   ContextMenu,
   TldrawUi,
   TLBaseShape,
   TLOpacityType,
-  TLBoxUtil,
+  // TLBoxUtil,
   HTMLContainer,
-  TLBoxTool,
+  BaseBoxShapeTool, // TLBoxTool,
   ArrowShapeTool, // TLArrowTool,
-  TLSelectTool,
-  DraggingHandle,
+  // TLSelectTool,
+  // DraggingHandle,
   toolbarItem,
-  MenuGroup,
+  TLUiMenuGroup, // MenuGroup,
   menuItem,
-  TLTranslationKey,
+  TLUiTranslationKey, // TLTranslationKey,
   DefaultColorStyle, // TL_COLOR_TYPES,
-  StateNodeConstructor,
+  // StateNodeConstructor,
   ArrowShapeUtil, // TLArrowUtil,
   TLArrowShapeProps,
   Vec2dModel,
   createShapeId,
   TLStore,
-  SubMenu,
+  TLUiSubMenu, // SubMenu,
   TLPointerEvent,
   TLRecord,
   TLImageShape,
   TLTextShape,
-  TEXT_PROPS,
-  FONT_SIZES,
-  FONT_FAMILIES,
-  MenuItem,
+  // TEXT_PROPS,
+  // FONT_SIZES,
+  // FONT_FAMILIES,
+  TLUiMenuItem, // TLUiMenuItem,
   TLShape,
   isShape,
-  TLArrowTerminal,
+  TLArrowShapeTerminal, // TLArrowTerminal,
   TLShapeId,
-  Translating,
+  // Translating,
   ShapeUtil,
   StyleProp,
   Box2d,
+  TLPointerEventInfo,
 } from "@tldraw/tldraw";
+
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import "@tldraw/tldraw/editor.css";
-import "@tldraw/tldraw/ui.css";
+import "@tldraw/tldraw/tldraw.css";
+// import "@tldraw/tldraw/editor.css";
+// import "@tldraw/tldraw/ui.css";
 import getSubTree from "roamjs-components/util/getSubTree";
 import {
   AddPullWatch,
@@ -252,10 +256,21 @@ export const MAX_WIDTH = "400px";
 // in node_modules\@tldraw\tldraw\node_modules\@tldraw\editor\dist\cjs\lib\app\App.js
 const SVG_FONT_FAMILY = "sans-serif";
 
+// TODO REPLACE WITH TLDRAW DEFAULTS
+// https://github.com/tldraw/tldraw/pull/1580/files
+const TEXT_PROPS = {
+  lineHeight: 1.35,
+  fontWeight: "normal",
+  fontVariant: "normal",
+  fontStyle: "normal",
+  padding: "0px",
+  maxWidth: "auto",
+};
+
 export const DEFAULT_STYLE_PROPS = {
   ...TEXT_PROPS,
-  fontSize: FONT_SIZES.m,
-  fontFamily: FONT_FAMILIES.sans,
+  fontSize: "m",
+  fontFamily: "'tldraw_draw', sans-serif",
   width: "fit-content",
   padding: "40px",
 };
@@ -282,14 +297,6 @@ export const loadImage = (
   });
 };
 class DiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
-  constructor(
-    app: TldrawApp,
-    type: string,
-    styleProps: ReadonlyMap<StyleProp<unknown>, string>
-  ) {
-    super(app, type, styleProps);
-  }
-
   override isAspectRatioLocked = () => false;
   override canResize = () => true;
   override canBind = () => true;
@@ -665,117 +672,117 @@ class DiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     );
   }
 
-  async toSvg(shape: DiscourseNodeShape) {
-    const { backgroundColor, textColor } = this.getColors();
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  // async toSvg(shape: DiscourseNodeShape) {
+  //   const { backgroundColor, textColor } = this.getColors();
+  //   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
 
-    // Create and set attributes for the rectangle (background of the shape)
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("width", shape.props.w.toString());
-    rect.setAttribute("height", shape.props.h.toString());
-    rect.setAttribute("fill", backgroundColor);
-    rect.setAttribute("opacity", shape.props.opacity);
-    rect.setAttribute("rx", "16");
-    rect.setAttribute("ry", "16");
-    g.appendChild(rect);
+  //   // Create and set attributes for the rectangle (background of the shape)
+  //   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  //   rect.setAttribute("width", shape.props.w.toString());
+  //   rect.setAttribute("height", shape.props.h.toString());
+  //   rect.setAttribute("fill", backgroundColor);
+  //   rect.setAttribute("opacity", shape.props.opacity.toString());
+  //   rect.setAttribute("rx", "16");
+  //   rect.setAttribute("ry", "16");
+  //   g.appendChild(rect);
 
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  //   const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
-    // Calculate text dimensions and positioning
-    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-    const textWidth = measureCanvasNodeText({
-      ...DEFAULT_STYLE_PROPS,
-      maxWidth: shape.props.w - padding * 2 + "px",
-      text: shape.props.title,
-    }).w;
+  //   // Calculate text dimensions and positioning
+  //   const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+  //   const textWidth = measureCanvasNodeText({
+  //     ...DEFAULT_STYLE_PROPS,
+  //     maxWidth: shape.props.w - padding * 2 + "px",
+  //     text: shape.props.title,
+  //   }).w;
 
-    const textLines = this.editor.textMeasure.getTextLines({
-      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
-      fontSize: DEFAULT_STYLE_PROPS.fontSize,
-      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
-      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
-      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
-      height: shape.props.h,
-      text: shape.props.title,
-      padding: 0,
-      textAlign: "start",
-      width: textWidth,
-      wrap: true,
-    });
+  //   const textLines = this.editor.textMeasure.getTextLines({
+  //     fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+  //     fontSize: DEFAULT_STYLE_PROPS.fontSize,
+  //     fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+  //     fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+  //     lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+  //     height: shape.props.h,
+  //     text: shape.props.title,
+  //     padding: 0,
+  //     textAlign: "start",
+  //     width: textWidth,
+  //     wrap: true,
+  //   });
 
-    // set attributes for the text
-    text.setAttribute("font-family", SVG_FONT_FAMILY);
-    text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
-    text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
-    text.setAttribute("fill", textColor);
-    text.setAttribute("stroke", "none");
+  //   // set attributes for the text
+  //   text.setAttribute("font-family", SVG_FONT_FAMILY);
+  //   text.setAttribute("font-size", DEFAULT_STYLE_PROPS.fontSize + "px");
+  //   text.setAttribute("font-weight", DEFAULT_STYLE_PROPS.fontWeight);
+  //   text.setAttribute("fill", textColor);
+  //   text.setAttribute("stroke", "none");
 
-    const textX = (shape.props.w - textWidth) / 2;
-    const lineHeight =
-      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+  //   const textX = (shape.props.w - textWidth) / 2;
+  //   const lineHeight =
+  //     DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
 
-    // Loop through words and add them to lines, wrapping as needed
-    textLines.forEach((line, index) => {
-      const tspan = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "tspan"
-      );
-      tspan.setAttribute("x", textX.toString());
-      tspan.setAttribute("dy", (index === 0 ? 0 : lineHeight).toString());
-      tspan.textContent = line;
-      text.appendChild(tspan);
-    });
+  //   // Loop through words and add them to lines, wrapping as needed
+  //   textLines.forEach((line, index) => {
+  //     const tspan = document.createElementNS(
+  //       "http://www.w3.org/2000/svg",
+  //       "tspan"
+  //     );
+  //     tspan.setAttribute("x", textX.toString());
+  //     tspan.setAttribute("dy", (index === 0 ? 0 : lineHeight).toString());
+  //     tspan.textContent = line;
+  //     text.appendChild(tspan);
+  //   });
 
-    // Add image to the node if imageUrl exists
+  //   // Add image to the node if imageUrl exists
 
-    // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
-    async function getDataURIFromURL(url: string): Promise<string> {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
+  //   // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
+  //   async function getDataURIFromURL(url: string): Promise<string> {
+  //     const response = await fetch(url);
+  //     const blob = await response.blob();
+  //     return new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onloadend = () => resolve(reader.result as string);
+  //       reader.onerror = reject;
+  //       reader.readAsDataURL(blob);
+  //     });
+  //   }
 
-    if (shape.props.imageUrl) {
-      const image = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "image"
-      );
-      const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
-      image.setAttribute("href", src);
-      image.setAttribute("width", shape.props.w.toString());
+  //   if (shape.props.imageUrl) {
+  //     const image = document.createElementNS(
+  //       "http://www.w3.org/2000/svg",
+  //       "image"
+  //     );
+  //     const src = (await getDataURIFromURL(shape.props.imageUrl)) || "";
+  //     image.setAttribute("href", src);
+  //     image.setAttribute("width", shape.props.w.toString());
 
-      // Calculate height based on aspect ratio like in the HTML
-      const { width: imageWidth, height: imageHeight } = await loadImage(src);
-      const aspectRatio = imageWidth / imageHeight || 1;
-      const svgImageHeight = shape.props.w / aspectRatio;
+  //     // Calculate height based on aspect ratio like in the HTML
+  //     const { width: imageWidth, height: imageHeight } = await loadImage(src);
+  //     const aspectRatio = imageWidth / imageHeight || 1;
+  //     const svgImageHeight = shape.props.w / aspectRatio;
 
-      // TODO - allow for cropped images (css overflow-hidden)
-      image.setAttribute("height", svgImageHeight.toString());
+  //     // TODO - allow for cropped images (css overflow-hidden)
+  //     image.setAttribute("height", svgImageHeight.toString());
 
-      // Adjust text y attribute to be positioned below the image
-      const textYOffset =
-        svgImageHeight +
-        (shape.props.h - svgImageHeight) / 2 -
-        (lineHeight * textLines.length) / 2;
-      text.setAttribute("y", textYOffset.toString());
+  //     // Adjust text y attribute to be positioned below the image
+  //     const textYOffset =
+  //       svgImageHeight +
+  //       (shape.props.h - svgImageHeight) / 2 -
+  //       (lineHeight * textLines.length) / 2;
+  //     text.setAttribute("y", textYOffset.toString());
 
-      g.appendChild(image);
-    } else {
-      // Position the text vertically in the center of the shape
-      const textY =
-        (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
-      text.setAttribute("y", textY.toString());
-    }
+  //     g.appendChild(image);
+  //   } else {
+  //     // Position the text vertically in the center of the shape
+  //     const textY =
+  //       (shape.props.h - lineHeight * textLines.length) / 2 + padding / 2;
+  //     text.setAttribute("y", textY.toString());
+  //   }
 
-    g.appendChild(text);
+  //   g.appendChild(text);
 
-    return g;
-  }
+  //   return g;
+  // }
 
   indicator(shape: DiscourseNodeShape) {
     return <rect width={shape.props.w} height={shape.props.h} />;
@@ -828,7 +835,7 @@ class DiscourseReferencedNodeUtil extends ArrowShapeUtil<DiscourseReferencedNode
         <style>{`#${shape.id.replace(":", "_")}_clip_0 {
   display: none;
 }
-[data-shape-type="${this.type}"] .rs-arrow-label {
+[data-shape-type="${this.type}"] .tl-arrow-label {
   left: 0;
   top: 0;
   width: unset;
@@ -842,13 +849,6 @@ class DiscourseReferencedNodeUtil extends ArrowShapeUtil<DiscourseReferencedNode
 }
 //@ts-ignore
 class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
-  constructor(
-    app: TldrawApp,
-    type: string,
-    styleProps: ReadonlyMap<StyleProp<unknown>, string>
-  ) {
-    super(app, type, styleProps);
-  }
   override canBind = () => true;
   override canEdit = () => false;
   defaultProps() {
@@ -894,13 +894,13 @@ class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
       },
     };
   };
-  render(shape: DiscourseRelationShape) {
+  component(shape: DiscourseRelationShape) {
     return (
       <>
         <style>{`#${shape.id.replace(":", "_")}_clip_0 {
   display: none;
 }
-[data-shape-type="${this.type}"] .rs-arrow-label {
+[data-shape-type="${this.type}"] .tl-arrow-label {
   left: 0;
   top: 0;
   width: unset;
@@ -914,8 +914,8 @@ class DiscourseRelationUtil extends ArrowShapeUtil<DiscourseRelationShape> {
 }
 
 const TldrawCanvas = ({ title }: Props) => {
-  const serializeRef = useRef(0);
-  const deserializeRef = useRef(0);
+  // const serializeRef = useRef(0);
+  // const deserializeRef = useRef(0);
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
     discourseContext.relations = relations.reduce((acc, r) => {
@@ -1005,16 +1005,19 @@ const TldrawCanvas = ({ title }: Props) => {
   const extensionAPI = useExtensionAPI();
 
   const isBindingType = (
-    binding: TLArrowTerminal
-  ): binding is TLArrowTerminal & {
+    binding: TLArrowShapeTerminal
+  ): binding is TLArrowShapeTerminal & {
     boundShapeId: TLShapeId;
   } => {
     return binding.type === "binding" && !!binding.boundShapeId;
   };
-  const hasValidBindings = (bindings: TLArrowTerminal[]) => {
+  const hasValidBindings = (bindings: TLArrowShapeTerminal[]) => {
     return bindings.every(isBindingType);
   };
-  const compareBindings = (a: TLArrowTerminal, b: TLArrowTerminal) => {
+  const compareBindings = (
+    a: TLArrowShapeTerminal,
+    b: TLArrowShapeTerminal
+  ) => {
     if (isBindingType(a) && isBindingType(b)) {
       return a.boundShapeId === b.boundShapeId;
     }
@@ -1023,7 +1026,7 @@ const TldrawCanvas = ({ title }: Props) => {
   type CancelAndWarnType = {
     content: string;
     shape: TLShape;
-    context: Translating | DraggingHandle;
+    context: any; //Translating | DraggingHandle;
   };
   const cancelAndWarn = ({ content, shape, context }: CancelAndWarnType) => {
     renderToast({
@@ -1042,493 +1045,978 @@ const TldrawCanvas = ({ title }: Props) => {
     ]);
   };
 
-  const customTldrawConfig = useMemo(
-    () =>
-      new TldrawEditorConfig({
-        tools: allNodes
-          .map(
-            (n): StateNodeConstructor =>
-              class extends TLBoxTool {
-                static id = n.type;
-                static initial = "idle";
-                shapeType = n.type;
-                //@ts-ignore MIKE FIX STYLES
-                override styles = ["opacity" as const];
-              }
-          )
-          .concat(
-            allRelationNames.map(
-              (name) =>
-                class extends ArrowShapeTool {
-                  static id = name;
-                  static initial = "idle";
-                  static children: typeof ArrowShapeTool.children = () => {
-                    const [Idle, Pointing] = ArrowShapeTool.children();
-                    return [
-                      class extends Idle {
-                        override onPointerDown: TLPointerEvent = (info) => {
-                          const cancelAndWarn = (content: string) => {
-                            renderToast({
-                              id: "tldraw-warning",
-                              intent: "warning",
-                              content,
-                            });
-                            this.onCancel();
-                          };
-                          if (info.target !== "shape") {
-                            return cancelAndWarn("Must start on a node.");
-                          }
-                          const relation = discourseContext.relations[
-                            name
-                          ].find((r) => r.source === info.shape.type);
-                          if (!relation) {
-                            return cancelAndWarn(
-                              `Starting node must be one of ${discourseContext.relations[
-                                name
-                              ]
-                                .map(
-                                  (r) => discourseContext.nodes[r.source].text
-                                )
-                                .join(", ")}`
-                            );
-                          } else {
-                            (this.parent as ArrowShapeTool).shapeType =
-                              relation.id;
-                          }
-                          this.parent.transition("pointing", info);
-                        };
-                      },
-                      Pointing,
-                    ];
-                  };
-                  shapeType = name;
-                  //@ts-ignore MIKE FIX STYLES
-                  override styles = ["opacity" as const];
+  // const customTools = allNodes
+  //   .map(
+  //     (n): StateNodeConstructor =>
+  //       class extends BaseBoxShapeTool {
+  //         static id = n.type;
+  //         static initial = "idle";
+  //         shapeType = n.type;
+  //         // override styles = ["opacity" as const];
+  //       }
+  //   )
+  //   .concat(
+  //     allRelationNames.map(
+  //       (name) =>
+  //         class extends ArrowShapeTool {
+  //           static id = name;
+  //           static initial = "idle";
+  //           static children: typeof ArrowShapeTool.children = () => {
+  //             const [Idle, Pointing] = ArrowShapeTool.children();
+  //             return [
+  //               class extends Idle {
+  //                 override onPointerDown: TLPointerEvent = (info) => {
+  //                   const cancelAndWarn = (content: string) => {
+  //                     renderToast({
+  //                       id: "tldraw-warning",
+  //                       intent: "warning",
+  //                       content,
+  //                     });
+  //                     this.onCancel();
+  //                   };
+  //                   if (info.target !== "shape") {
+  //                     return cancelAndWarn("Must start on a node.");
+  //                   }
+  //                   const relation = discourseContext.relations[name].find(
+  //                     (r) => r.source === info.shape.type
+  //                   );
+  //                   if (!relation) {
+  //                     return cancelAndWarn(
+  //                       `Starting node must be one of ${discourseContext.relations[
+  //                         name
+  //                       ]
+  //                         .map((r) => discourseContext.nodes[r.source].text)
+  //                         .join(", ")}`
+  //                     );
+  //                   } else {
+  //                     (this.parent as ArrowShapeTool).shapeType = relation.id;
+  //                   }
+  //                   this.parent.transition("pointing", info);
+  //                 };
+  //               },
+  //               Pointing,
+  //             ];
+  //           };
+  //           shapeType = name;
+  //           // override styles = ["opacity" as const];
+  //         }
+  //     )
+  //   )
+  //   .concat(
+  //     Object.keys(allAddReferencedNodeByAction).map(
+  //       (action) =>
+  //         class extends ArrowShapeTool {
+  //           static id = `${action}` as string;
+  //           static initial = "idle";
+  //           static children: typeof ArrowShapeTool.children = () => {
+  //             const [Idle, Pointing] = ArrowShapeTool.children();
+  //             return [
+  //               class extends Idle {
+  //                 override onPointerDown: TLPointerEvent = (info) => {
+  //                   const cancelAndWarn = (content: string) => {
+  //                     renderToast({
+  //                       id: "tldraw-warning",
+  //                       intent: "warning",
+  //                       content,
+  //                     });
+  //                     this.onCancel();
+  //                   };
+  //                   if (info.target !== "shape") {
+  //                     return cancelAndWarn("Must start on a node.");
+  //                   }
+  //                   const sourceType =
+  //                     allAddReferencedNodeByAction[action][0].sourceType;
+  //                   const sourceName =
+  //                     allAddReferencedNodeByAction[action][0].sourceName;
+  //                   if (info.shape.type !== sourceType) {
+  //                     return cancelAndWarn(
+  //                       `Starting node must be one of ${sourceName}`
+  //                     );
+  //                   } else {
+  //                     (this.parent as ArrowShapeTool).shapeType = `${action}`;
+  //                   }
+  //                   this.parent.transition("pointing", info);
+  //                 };
+  //               },
+  //               Pointing,
+  //             ];
+  //           };
+  //           shapeType = `${action}`;
+  //           // override styles = ["opacity" as const];
+  //         }
+  //     )
+  //   );
+  // // ,
+  // // .concat([
+  // //   class extends TLSelectTool {
+  // //     // @ts-ignore
+  // //     static children: typeof TLSelectTool.children = () => {
+  // //       return TLSelectTool.children().map((c) => {
+  // //         if (c.id === "translating") {
+  // //           const Translate = c as unknown as typeof Translating;
+  // //           return class extends Translate {
+  // //             override onPointerUp: TLPointerEvent = () => {
+  // //               this.onComplete({
+  // //                 type: "misc",
+  // //                 name: "complete",
+  // //               });
+  // //               const shape = this.app.getShapeById(
+  // //                 this.info.shape?.id // sometimes undefined?
+  // //               );
+  // //               if (!shape) return;
+  // //               if (!isCustomArrowShape(shape)) return;
+
+  // //               // Stop accidental arrow reposition
+  // //               const { start, end } = shape.props as TLArrowShapeProps;
+  // //               const { end: thisEnd, start: thisStart } = this.info
+  // //                 .shape.props as TLArrowShapeProps;
+  // //               const hasPreviousBinding = hasValidBindings([
+  // //                 thisEnd,
+  // //                 thisStart,
+  // //               ]);
+  // //               const bindingsMatchPrevBindings =
+  // //                 compareBindings(thisEnd, end) &&
+  // //                 compareBindings(thisStart, start);
+  // //               if (hasPreviousBinding && !bindingsMatchPrevBindings) {
+  // //                 return cancelAndWarn({
+  // //                   content: "Cannot move relation.",
+  // //                   shape,
+  // //                   context: this,
+  // //                 });
+  // //               }
+  // //             };
+  // //           };
+  // //         }
+
+  // //         if (c.id === "dragging_handle") {
+  // //           const Handle = c as unknown as typeof DraggingHandle;
+  // //           const allRelationIdSet = new Set(allRelationIds);
+  // //           const allAddReferencedNodeActionsSet = new Set(
+  // //             allAddReferencedNodeActions
+  // //           );
+  // //           return class extends Handle {
+  // //             override onPointerUp: TLPointerEvent = async () => {
+  // //               this.onComplete({
+  // //                 type: "misc",
+  // //                 name: "complete",
+  // //               });
+
+  // //               const shape = this.app.getShapeById(this.shapeId);
+  // //               if (!shape) return;
+  // //               if (!isCustomArrowShape(shape)) return;
+  // //               const arrow = shape;
+  // //               const {
+  // //                 start,
+  // //                 end,
+  // //                 text: arrowText,
+  // //               } = arrow.props as TLArrowShapeProps;
+
+  // //               const deleteAndWarn = (content: string) => {
+  // //                 renderToast({
+  // //                   id: "tldraw-warning",
+  // //                   intent: "warning",
+  // //                   content,
+  // //                 });
+  // //                 this.app.deleteShapes([arrow.id]);
+  // //               };
+
+  // //               // Allow arrow bend
+  // //               if (this.info.handle.id === "middle") return;
+
+  // //               // Stop accidental handle removal
+  // //               const { end: thisEnd, start: thisStart } =
+  // //                 this.info.shape.props;
+  // //               const hasPreviousBindings = hasValidBindings([
+  // //                 thisEnd,
+  // //                 thisStart,
+  // //               ]);
+  // //               const bindingsMatchPrevBindings =
+  // //                 compareBindings(thisEnd, end) &&
+  // //                 compareBindings(thisStart, start);
+  // //               if (hasPreviousBindings && !bindingsMatchPrevBindings) {
+  // //                 return cancelAndWarn({
+  // //                   content: "Cannot remove handle.",
+  // //                   shape,
+  // //                   context: this,
+  // //                 });
+  // //               }
+
+  // //               // Allow handles to be repositioned in same shape
+  // //               if (hasPreviousBindings && bindingsMatchPrevBindings) {
+  // //                 return;
+  // //               }
+
+  // //               if (
+  // //                 start.type !== "binding" ||
+  // //                 end.type !== "binding"
+  // //               ) {
+  // //                 return deleteAndWarn(
+  // //                   "Relation must connect two nodes."
+  // //                 );
+  // //               }
+  // //               const source = this.app.getShapeById(
+  // //                 start.boundShapeId
+  // //               ) as DiscourseNodeShape;
+  // //               if (!source) {
+  // //                 return deleteAndWarn("Failed to find source node.");
+  // //               }
+  // //               const target = this.app.getShapeById(
+  // //                 end.boundShapeId
+  // //               ) as DiscourseNodeShape;
+  // //               if (!target) {
+  // //                 return deleteAndWarn("Failed to find target node.");
+  // //               }
+
+  // //               // Handle "Add Referenced Node" Arrows
+  // //               if (allAddReferencedNodeActionsSet.has(arrow.type)) {
+  // //                 const possibleTargets = allAddReferencedNodeByAction[
+  // //                   arrow.type
+  // //                 ].map((action) => action.destinationType);
+  // //                 if (!possibleTargets.includes(target.type)) {
+  // //                   return deleteAndWarn(
+  // //                     `Target node must be of type ${possibleTargets
+  // //                       .map((t) => discourseContext.nodes[t].text)
+  // //                       .join(", ")}`
+  // //                   );
+  // //                 }
+
+  // //                 // source and target are expected to be pages
+  // //                 // TODO: support blocks
+  // //                 const targetTitle = target.props.title;
+  // //                 const sourceTitle = source.props.title;
+  // //                 const isTargetTitleCurrent =
+  // //                   getPageTitleByPageUid(target.props.uid).trim() ===
+  // //                   targetTitle.trim();
+  // //                 const isSourceTitleCurrent =
+  // //                   getPageTitleByPageUid(source.props.uid).trim() ===
+  // //                   sourceTitle.trim();
+  // //                 if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
+  // //                   return deleteAndWarn(
+  // //                     "Either the source or target node has been renamed. Please update the nodes and try again."
+  // //                   );
+  // //                 }
+
+  // //                 // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
+  // //                 // replace when migrating from format to specification
+  // //                 let newTitle: string;
+  // //                 if (targetTitle.endsWith(" - ")) {
+  // //                   newTitle = `${targetTitle}[[${sourceTitle}]]`;
+  // //                 } else if (targetTitle.endsWith(" -")) {
+  // //                   newTitle = `${targetTitle} [[${sourceTitle}]]`;
+  // //                 } else {
+  // //                   newTitle = `${targetTitle} - [[${sourceTitle}]]`;
+  // //                 }
+
+  // //                 if (!extensionAPI) {
+  // //                   return deleteAndWarn(
+  // //                     `Failed to update node title.`
+  // //                   );
+  // //                 }
+
+  // //                 await window.roamAlphaAPI.data.page.update({
+  // //                   page: {
+  // //                     uid: target.props.uid,
+  // //                     title: newTitle,
+  // //                   },
+  // //                 });
+  // //                 const { h, w, imageUrl } =
+  // //                   await calcCanvasNodeSizeAndImg({
+  // //                     nodeText: newTitle,
+  // //                     uid: target.props.uid,
+  // //                     nodeType: target.type,
+  // //                     extensionAPI,
+  // //                   });
+  // //                 this.app.updateShapes([
+  // //                   {
+  // //                     id: target.id,
+  // //                     type: target.type,
+  // //                     props: {
+  // //                       h,
+  // //                       w,
+  // //                       imageUrl,
+  // //                       title: newTitle,
+  // //                     },
+  // //                   },
+  // //                 ]);
+
+  // //                 renderToast({
+  // //                   id: "tldraw-success",
+  // //                   intent: "success",
+  // //                   content: `Updated node title.`,
+  // //                 });
+
+  // //                 return;
+  // //               }
+
+  // //               // Handle "Add Relationship Arrows"
+  // //               if (allRelationIdSet.has(arrow.type)) {
+  // //                 const relation = allRelationsById[arrow.type];
+  // //                 if (!relation) return;
+  // //                 const sourceLabel =
+  // //                   discourseContext.nodes[relation.source].text;
+  // //                 if (source.type !== relation.source) {
+  // //                   return deleteAndWarn(
+  // //                     `Source node must be of type ${sourceLabel}`
+  // //                   );
+  // //                 }
+  // //                 const possibleTargets = discourseContext.relations[
+  // //                   relation.label
+  // //                 ]
+  // //                   .filter((r) => r.source === relation.source)
+  // //                   .map((r) => r.destination);
+  // //                 if (!possibleTargets.includes(target.type)) {
+  // //                   return deleteAndWarn(
+  // //                     `Target node must be of type ${possibleTargets
+  // //                       .map((t) => discourseContext.nodes[t].text)
+  // //                       .join(", ")}`
+  // //                   );
+  // //                 }
+  // //                 if (arrow.type !== target.type) {
+  // //                   this.app.updateShapes([
+  // //                     {
+  // //                       id: arrow.id,
+  // //                       type: target.type,
+  // //                     },
+  // //                   ]);
+  // //                 }
+  // //                 const {
+  // //                   triples,
+  // //                   label: relationLabel,
+  // //                   // complement,
+  // //                 } = relation;
+  // //                 const isOriginal = arrowText === relationLabel;
+  // //                 const newTriples = triples
+  // //                   .map((t) => {
+  // //                     if (/is a/i.test(t[1])) {
+  // //                       const targetNode =
+  // //                         (t[2] === "source" && isOriginal) ||
+  // //                         (t[2] === "destination" && !isOriginal)
+  // //                           ? source
+  // //                           : target;
+  // //                       const { title, uid } =
+  // //                         targetNode.props as DiscourseNodeShape["props"];
+  // //                       return [
+  // //                         t[0],
+  // //                         isPageUid(uid) ? "has title" : "with uid",
+  // //                         isPageUid(uid) ? title : uid,
+  // //                       ];
+  // //                     }
+  // //                     return t.slice(0);
+  // //                   })
+  // //                   .map(([source, relation, target]) => ({
+  // //                     source,
+  // //                     relation,
+  // //                     target,
+  // //                   }));
+  // //                 triplesToBlocks({
+  // //                   defaultPageTitle: `Auto generated from ${title}`,
+  // //                   toPage: async (
+  // //                     title: string,
+  // //                     blocks: InputTextNode[]
+  // //                   ) => {
+  // //                     const parentUid =
+  // //                       getPageUidByPageTitle(title) ||
+  // //                       (await createPage({
+  // //                         title: title,
+  // //                       }));
+
+  // //                     await Promise.all(
+  // //                       blocks.map((node, order) =>
+  // //                         createBlock({ node, order, parentUid }).catch(
+  // //                           () =>
+  // //                             console.error(
+  // //                               `Failed to create block: ${JSON.stringify(
+  // //                                 { node, order, parentUid },
+  // //                                 null,
+  // //                                 4
+  // //                               )}`
+  // //                             )
+  // //                         )
+  // //                       )
+  // //                     );
+  // //                     await openBlockInSidebar(parentUid);
+  // //                   },
+  // //                   nodeSpecificationsByLabel: Object.fromEntries(
+  // //                     Object.values(discourseContext.nodes).map((n) => [
+  // //                       n.text,
+  // //                       n.specification,
+  // //                     ])
+  // //                   ),
+  // //                 })(newTriples)();
+  // //               }
+  // //             };
+  // //           };
+  // //         }
+  // //         return c;
+  // //       });
+  // //     };
+  // //   },
+  // // ])
+
+  const customShapes = [
+    ...allNodes.map((n) => {
+      const NodeUtilClass = class extends DiscourseNodeUtil {
+        static type = n.type;
+      };
+      const NodeToolClass = class extends BaseBoxShapeTool {
+        static id = n.type;
+        static initial = "idle";
+        shapeType = NodeUtilClass;
+      };
+
+      return defineShape(n.type, {
+        util: NodeUtilClass,
+        tool: NodeToolClass,
+      });
+    }),
+    ...allRelationIds.flatMap((id) => {
+      // Use flatMap for a cleaner approach
+      const relationLabel =
+        Object.values(discourseContext.relations)
+          .flat()
+          .find((relation) => relation.id === id)?.label || "";
+
+      const RelationUtilClass = class extends DiscourseRelationUtil {
+        static type = id;
+      };
+
+      const RelationToolClass = class extends ArrowShapeTool {
+        static id = relationLabel;
+        static initial = "idle";
+        static children: typeof ArrowShapeTool.children = () => {
+          const [Idle, Pointing] = ArrowShapeTool.children();
+          return [
+            class extends Idle {
+              override onPointerDown: TLPointerEvent = (info) => {
+                const cancelAndWarn = (content: string) => {
+                  renderToast({
+                    id: "tldraw-warning",
+                    intent: "warning",
+                    content,
+                  });
+                  this.onCancel();
+                };
+                if (info.target !== "shape") {
+                  return cancelAndWarn("Must start on a node.");
                 }
-            )
-          )
-          .concat(
-            Object.keys(allAddReferencedNodeByAction).map(
-              (action) =>
-                class extends ArrowShapeTool {
-                  static id = `${action}` as string;
-                  static initial = "idle";
-                  static children: typeof ArrowShapeTool.children = () => {
-                    const [Idle, Pointing] = ArrowShapeTool.children();
-                    return [
-                      class extends Idle {
-                        override onPointerDown: TLPointerEvent = (info) => {
-                          const cancelAndWarn = (content: string) => {
-                            renderToast({
-                              id: "tldraw-warning",
-                              intent: "warning",
-                              content,
-                            });
-                            this.onCancel();
-                          };
-                          if (info.target !== "shape") {
-                            return cancelAndWarn("Must start on a node.");
-                          }
-                          const sourceType =
-                            allAddReferencedNodeByAction[action][0].sourceType;
-                          const sourceName =
-                            allAddReferencedNodeByAction[action][0].sourceName;
-                          if (info.shape.type !== sourceType) {
-                            return cancelAndWarn(
-                              `Starting node must be one of ${sourceName}`
-                            );
-                          } else {
-                            (
-                              this.parent as TLArrowTool
-                            ).shapeType = `${action}`;
-                          }
-                          this.parent.transition("pointing", info);
-                        };
-                      },
-                      Pointing,
-                    ];
-                  };
-                  shapeType = `${action}`;
-                  override styles = ["opacity" as const];
+                const relation = discourseContext.relations[relationLabel].find(
+                  (r) => r.source === info.shape.type
+                );
+                if (!relation) {
+                  return cancelAndWarn(
+                    `Starting node must be one of ${discourseContext.relations[
+                      relationLabel
+                    ]
+                      .map((r) => discourseContext.nodes[r.source].text)
+                      .join(", ")}`
+                  );
+                } else {
+                  (this.parent as ArrowShapeTool).shapeType = relation.id;
                 }
-            )
-          )
-          .concat([
-            class extends TLSelectTool {
-              // @ts-ignore
-              static children: typeof TLSelectTool.children = () => {
-                return TLSelectTool.children().map((c) => {
-                  if (c.id === "translating") {
-                    const Translate = c as unknown as typeof Translating;
-                    return class extends Translate {
-                      override onPointerUp: TLPointerEvent = () => {
-                        this.onComplete({
-                          type: "misc",
-                          name: "complete",
-                        });
-                        const shape = this.app.getShapeById(
-                          this.info.shape?.id // sometimes undefined?
-                        );
-                        if (!shape) return;
-                        if (!isCustomArrowShape(shape)) return;
-
-                        // Stop accidental arrow reposition
-                        const { start, end } = shape.props as TLArrowShapeProps;
-                        const { end: thisEnd, start: thisStart } = this.info
-                          .shape.props as TLArrowShapeProps;
-                        const hasPreviousBinding = hasValidBindings([
-                          thisEnd,
-                          thisStart,
-                        ]);
-                        const bindingsMatchPrevBindings =
-                          compareBindings(thisEnd, end) &&
-                          compareBindings(thisStart, start);
-                        if (hasPreviousBinding && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn({
-                            content: "Cannot move relation.",
-                            shape,
-                            context: this,
-                          });
-                        }
-                      };
-                    };
-                  }
-
-                  if (c.id === "dragging_handle") {
-                    const Handle = c as unknown as typeof DraggingHandle;
-                    const allRelationIdSet = new Set(allRelationIds);
-                    const allAddReferencedNodeActionsSet = new Set(
-                      allAddReferencedNodeActions
-                    );
-                    return class extends Handle {
-                      override onPointerUp: TLPointerEvent = async () => {
-                        this.onComplete({
-                          type: "misc",
-                          name: "complete",
-                        });
-
-                        const shape = this.app.getShapeById(this.shapeId);
-                        if (!shape) return;
-                        if (!isCustomArrowShape(shape)) return;
-                        const arrow = shape;
-                        const {
-                          start,
-                          end,
-                          text: arrowText,
-                        } = arrow.props as TLArrowShapeProps;
-
-                        const deleteAndWarn = (content: string) => {
-                          renderToast({
-                            id: "tldraw-warning",
-                            intent: "warning",
-                            content,
-                          });
-                          this.app.deleteShapes([arrow.id]);
-                        };
-
-                        // Allow arrow bend
-                        if (this.info.handle.id === "middle") return;
-
-                        // Stop accidental handle removal
-                        const { end: thisEnd, start: thisStart } =
-                          this.info.shape.props;
-                        const hasPreviousBindings = hasValidBindings([
-                          thisEnd,
-                          thisStart,
-                        ]);
-                        const bindingsMatchPrevBindings =
-                          compareBindings(thisEnd, end) &&
-                          compareBindings(thisStart, start);
-                        if (hasPreviousBindings && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn({
-                            content: "Cannot remove handle.",
-                            shape,
-                            context: this,
-                          });
-                        }
-
-                        // Allow handles to be repositioned in same shape
-                        if (hasPreviousBindings && bindingsMatchPrevBindings) {
-                          return;
-                        }
-
-                        if (
-                          start.type !== "binding" ||
-                          end.type !== "binding"
-                        ) {
-                          return deleteAndWarn(
-                            "Relation must connect two nodes."
-                          );
-                        }
-                        const source = this.app.getShapeById(
-                          start.boundShapeId
-                        ) as DiscourseNodeShape;
-                        if (!source) {
-                          return deleteAndWarn("Failed to find source node.");
-                        }
-                        const target = this.app.getShapeById(
-                          end.boundShapeId
-                        ) as DiscourseNodeShape;
-                        if (!target) {
-                          return deleteAndWarn("Failed to find target node.");
-                        }
-
-                        // Handle "Add Referenced Node" Arrows
-                        if (allAddReferencedNodeActionsSet.has(arrow.type)) {
-                          const possibleTargets = allAddReferencedNodeByAction[
-                            arrow.type
-                          ].map((action) => action.destinationType);
-                          if (!possibleTargets.includes(target.type)) {
-                            return deleteAndWarn(
-                              `Target node must be of type ${possibleTargets
-                                .map((t) => discourseContext.nodes[t].text)
-                                .join(", ")}`
-                            );
-                          }
-
-                          // source and target are expected to be pages
-                          // TODO: support blocks
-                          const targetTitle = target.props.title;
-                          const sourceTitle = source.props.title;
-                          const isTargetTitleCurrent =
-                            getPageTitleByPageUid(target.props.uid).trim() ===
-                            targetTitle.trim();
-                          const isSourceTitleCurrent =
-                            getPageTitleByPageUid(source.props.uid).trim() ===
-                            sourceTitle.trim();
-                          if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
-                            return deleteAndWarn(
-                              "Either the source or target node has been renamed. Please update the nodes and try again."
-                            );
-                          }
-
-                          // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
-                          // replace when migrating from format to specification
-                          let newTitle: string;
-                          if (targetTitle.endsWith(" - ")) {
-                            newTitle = `${targetTitle}[[${sourceTitle}]]`;
-                          } else if (targetTitle.endsWith(" -")) {
-                            newTitle = `${targetTitle} [[${sourceTitle}]]`;
-                          } else {
-                            newTitle = `${targetTitle} - [[${sourceTitle}]]`;
-                          }
-
-                          if (!extensionAPI) {
-                            return deleteAndWarn(
-                              `Failed to update node title.`
-                            );
-                          }
-
-                          await window.roamAlphaAPI.data.page.update({
-                            page: {
-                              uid: target.props.uid,
-                              title: newTitle,
-                            },
-                          });
-                          const { h, w, imageUrl } =
-                            await calcCanvasNodeSizeAndImg({
-                              nodeText: newTitle,
-                              uid: target.props.uid,
-                              nodeType: target.type,
-                              extensionAPI,
-                            });
-                          this.app.updateShapes([
-                            {
-                              id: target.id,
-                              type: target.type,
-                              props: {
-                                h,
-                                w,
-                                imageUrl,
-                                title: newTitle,
-                              },
-                            },
-                          ]);
-
-                          renderToast({
-                            id: "tldraw-success",
-                            intent: "success",
-                            content: `Updated node title.`,
-                          });
-
-                          return;
-                        }
-
-                        // Handle "Add Relationship Arrows"
-                        if (allRelationIdSet.has(arrow.type)) {
-                          const relation = allRelationsById[arrow.type];
-                          if (!relation) return;
-                          const sourceLabel =
-                            discourseContext.nodes[relation.source].text;
-                          if (source.type !== relation.source) {
-                            return deleteAndWarn(
-                              `Source node must be of type ${sourceLabel}`
-                            );
-                          }
-                          const possibleTargets = discourseContext.relations[
-                            relation.label
-                          ]
-                            .filter((r) => r.source === relation.source)
-                            .map((r) => r.destination);
-                          if (!possibleTargets.includes(target.type)) {
-                            return deleteAndWarn(
-                              `Target node must be of type ${possibleTargets
-                                .map((t) => discourseContext.nodes[t].text)
-                                .join(", ")}`
-                            );
-                          }
-                          if (arrow.type !== target.type) {
-                            this.app.updateShapes([
-                              {
-                                id: arrow.id,
-                                type: target.type,
-                              },
-                            ]);
-                          }
-                          const {
-                            triples,
-                            label: relationLabel,
-                            // complement,
-                          } = relation;
-                          const isOriginal = arrowText === relationLabel;
-                          const newTriples = triples
-                            .map((t) => {
-                              if (/is a/i.test(t[1])) {
-                                const targetNode =
-                                  (t[2] === "source" && isOriginal) ||
-                                  (t[2] === "destination" && !isOriginal)
-                                    ? source
-                                    : target;
-                                const { title, uid } =
-                                  targetNode.props as DiscourseNodeShape["props"];
-                                return [
-                                  t[0],
-                                  isPageUid(uid) ? "has title" : "with uid",
-                                  isPageUid(uid) ? title : uid,
-                                ];
-                              }
-                              return t.slice(0);
-                            })
-                            .map(([source, relation, target]) => ({
-                              source,
-                              relation,
-                              target,
-                            }));
-                          triplesToBlocks({
-                            defaultPageTitle: `Auto generated from ${title}`,
-                            toPage: async (
-                              title: string,
-                              blocks: InputTextNode[]
-                            ) => {
-                              const parentUid =
-                                getPageUidByPageTitle(title) ||
-                                (await createPage({
-                                  title: title,
-                                }));
-
-                              await Promise.all(
-                                blocks.map((node, order) =>
-                                  createBlock({ node, order, parentUid }).catch(
-                                    () =>
-                                      console.error(
-                                        `Failed to create block: ${JSON.stringify(
-                                          { node, order, parentUid },
-                                          null,
-                                          4
-                                        )}`
-                                      )
-                                  )
-                                )
-                              );
-                              await openBlockInSidebar(parentUid);
-                            },
-                            nodeSpecificationsByLabel: Object.fromEntries(
-                              Object.values(discourseContext.nodes).map((n) => [
-                                n.text,
-                                n.specification,
-                              ])
-                            ),
-                          })(newTriples)();
-                        }
-                      };
-                    };
-                  }
-                  return c;
-                });
+                this.parent.transition("pointing", info);
               };
             },
-          ]),
-        shapes: [
-          ...allNodes.map((n) =>
-            defineShape<DiscourseNodeShape>({
-              type: n.type,
-              getShapeUtil: () =>
-                class extends DiscourseNodeUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, n.type);
-                  }
-                },
-            })
-          ),
-          ...allRelationIds.map((id) =>
-            defineShape<DiscourseRelationShape>({
-              type: id,
-              getShapeUtil: () =>
-                class extends DiscourseRelationUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, id);
-                  }
-                },
-            })
-          ),
-          ...allAddReferencedNodeActions.map((action) =>
-            defineShape<DiscourseReferencedNodeShape>({
-              type: action,
-              getShapeUtil: () =>
-                class extends DiscourseReferencedNodeUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, action);
-                  }
-                },
-            })
-          ),
-        ],
-        allowUnknownShapes: true,
-      }),
-    [allNodes, allRelationIds, allRelationsById, allAddReferencedNodeActions]
-  );
+            Pointing,
+          ];
+        };
+        shapeType = RelationUtilClass; // This should be a ShapeUtil class, not a string
+      };
+
+      return defineShape(id, {
+        util: RelationUtilClass,
+        tool: RelationToolClass,
+      });
+    }),
+    // Filter out any undefined entries that might have been introduced
+  ].filter((shape) => shape !== undefined);
+
+  // Note: Ensure that shapeType in RelationToolClass is assigned a ShapeUtil class, not a string or an ID.
+
+  // const customTldrawConfig = useMemo(
+  //   () =>
+  //     new TldrawEditorConfig({
+  //       // tools: allNodes
+  //       //   .map(
+  //       //     (n): StateNodeConstructor =>
+  //       //       class extends TLBoxTool {
+  //       //         static id = n.type;
+  //       //         static initial = "idle";
+  //       //         shapeType = n.type;
+  //       //         // override styles = ["opacity" as const];
+  //       //       }
+  //       //   )
+  //       //   .concat(
+  //       //     allRelationNames.map(
+  //       //       (name) =>
+  //       //         class extends ArrowShapeTool {
+  //       //           static id = name;
+  //       //           static initial = "idle";
+  //       //           static children: typeof ArrowShapeTool.children = () => {
+  //       //             const [Idle, Pointing] = ArrowShapeTool.children();
+  //       //             return [
+  //       //               class extends Idle {
+  //       //                 override onPointerDown: TLPointerEvent = (info) => {
+  //       //                   const cancelAndWarn = (content: string) => {
+  //       //                     renderToast({
+  //       //                       id: "tldraw-warning",
+  //       //                       intent: "warning",
+  //       //                       content,
+  //       //                     });
+  //       //                     this.onCancel();
+  //       //                   };
+  //       //                   if (info.target !== "shape") {
+  //       //                     return cancelAndWarn("Must start on a node.");
+  //       //                   }
+  //       //                   const relation = discourseContext.relations[
+  //       //                     name
+  //       //                   ].find((r) => r.source === info.shape.type);
+  //       //                   if (!relation) {
+  //       //                     return cancelAndWarn(
+  //       //                       `Starting node must be one of ${discourseContext.relations[
+  //       //                         name
+  //       //                       ]
+  //       //                         .map(
+  //       //                           (r) => discourseContext.nodes[r.source].text
+  //       //                         )
+  //       //                         .join(", ")}`
+  //       //                     );
+  //       //                   } else {
+  //       //                     (this.parent as ArrowShapeTool).shapeType =
+  //       //                       relation.id;
+  //       //                   }
+  //       //                   this.parent.transition("pointing", info);
+  //       //                 };
+  //       //               },
+  //       //               Pointing,
+  //       //             ];
+  //       //           };
+  //       //           shapeType = name;
+  //       //           // override styles = ["opacity" as const];
+  //       //         }
+  //       //     )
+  //       //   )
+  //       //   .concat(
+  //       //     Object.keys(allAddReferencedNodeByAction).map(
+  //       //       (action) =>
+  //       //         class extends ArrowShapeTool {
+  //       //           static id = `${action}` as string;
+  //       //           static initial = "idle";
+  //       //           static children: typeof ArrowShapeTool.children = () => {
+  //       //             const [Idle, Pointing] = ArrowShapeTool.children();
+  //       //             return [
+  //       //               class extends Idle {
+  //       //                 override onPointerDown: TLPointerEvent = (info) => {
+  //       //                   const cancelAndWarn = (content: string) => {
+  //       //                     renderToast({
+  //       //                       id: "tldraw-warning",
+  //       //                       intent: "warning",
+  //       //                       content,
+  //       //                     });
+  //       //                     this.onCancel();
+  //       //                   };
+  //       //                   if (info.target !== "shape") {
+  //       //                     return cancelAndWarn("Must start on a node.");
+  //       //                   }
+  //       //                   const sourceType =
+  //       //                     allAddReferencedNodeByAction[action][0].sourceType;
+  //       //                   const sourceName =
+  //       //                     allAddReferencedNodeByAction[action][0].sourceName;
+  //       //                   if (info.shape.type !== sourceType) {
+  //       //                     return cancelAndWarn(
+  //       //                       `Starting node must be one of ${sourceName}`
+  //       //                     );
+  //       //                   } else {
+  //       //                     (
+  //       //                       this.parent as ArrowShapeTool
+  //       //                     ).shapeType = `${action}`;
+  //       //                   }
+  //       //                   this.parent.transition("pointing", info);
+  //       //                 };
+  //       //               },
+  //       //               Pointing,
+  //       //             ];
+  //       //           };
+  //       //           shapeType = `${action}`;
+  //       //           // override styles = ["opacity" as const];
+  //       //         }
+  //       //     )
+  //       //   ),
+  //       // .concat([
+  //       //   class extends TLSelectTool {
+  //       //     // @ts-ignore
+  //       //     static children: typeof TLSelectTool.children = () => {
+  //       //       return TLSelectTool.children().map((c) => {
+  //       //         if (c.id === "translating") {
+  //       //           const Translate = c as unknown as typeof Translating;
+  //       //           return class extends Translate {
+  //       //             override onPointerUp: TLPointerEvent = () => {
+  //       //               this.onComplete({
+  //       //                 type: "misc",
+  //       //                 name: "complete",
+  //       //               });
+  //       //               const shape = this.app.getShapeById(
+  //       //                 this.info.shape?.id // sometimes undefined?
+  //       //               );
+  //       //               if (!shape) return;
+  //       //               if (!isCustomArrowShape(shape)) return;
+
+  //       //               // Stop accidental arrow reposition
+  //       //               const { start, end } = shape.props as TLArrowShapeProps;
+  //       //               const { end: thisEnd, start: thisStart } = this.info
+  //       //                 .shape.props as TLArrowShapeProps;
+  //       //               const hasPreviousBinding = hasValidBindings([
+  //       //                 thisEnd,
+  //       //                 thisStart,
+  //       //               ]);
+  //       //               const bindingsMatchPrevBindings =
+  //       //                 compareBindings(thisEnd, end) &&
+  //       //                 compareBindings(thisStart, start);
+  //       //               if (hasPreviousBinding && !bindingsMatchPrevBindings) {
+  //       //                 return cancelAndWarn({
+  //       //                   content: "Cannot move relation.",
+  //       //                   shape,
+  //       //                   context: this,
+  //       //                 });
+  //       //               }
+  //       //             };
+  //       //           };
+  //       //         }
+
+  //       //         if (c.id === "dragging_handle") {
+  //       //           const Handle = c as unknown as typeof DraggingHandle;
+  //       //           const allRelationIdSet = new Set(allRelationIds);
+  //       //           const allAddReferencedNodeActionsSet = new Set(
+  //       //             allAddReferencedNodeActions
+  //       //           );
+  //       //           return class extends Handle {
+  //       //             override onPointerUp: TLPointerEvent = async () => {
+  //       //               this.onComplete({
+  //       //                 type: "misc",
+  //       //                 name: "complete",
+  //       //               });
+
+  //       //               const shape = this.app.getShapeById(this.shapeId);
+  //       //               if (!shape) return;
+  //       //               if (!isCustomArrowShape(shape)) return;
+  //       //               const arrow = shape;
+  //       //               const {
+  //       //                 start,
+  //       //                 end,
+  //       //                 text: arrowText,
+  //       //               } = arrow.props as TLArrowShapeProps;
+
+  //       //               const deleteAndWarn = (content: string) => {
+  //       //                 renderToast({
+  //       //                   id: "tldraw-warning",
+  //       //                   intent: "warning",
+  //       //                   content,
+  //       //                 });
+  //       //                 this.app.deleteShapes([arrow.id]);
+  //       //               };
+
+  //       //               // Allow arrow bend
+  //       //               if (this.info.handle.id === "middle") return;
+
+  //       //               // Stop accidental handle removal
+  //       //               const { end: thisEnd, start: thisStart } =
+  //       //                 this.info.shape.props;
+  //       //               const hasPreviousBindings = hasValidBindings([
+  //       //                 thisEnd,
+  //       //                 thisStart,
+  //       //               ]);
+  //       //               const bindingsMatchPrevBindings =
+  //       //                 compareBindings(thisEnd, end) &&
+  //       //                 compareBindings(thisStart, start);
+  //       //               if (hasPreviousBindings && !bindingsMatchPrevBindings) {
+  //       //                 return cancelAndWarn({
+  //       //                   content: "Cannot remove handle.",
+  //       //                   shape,
+  //       //                   context: this,
+  //       //                 });
+  //       //               }
+
+  //       //               // Allow handles to be repositioned in same shape
+  //       //               if (hasPreviousBindings && bindingsMatchPrevBindings) {
+  //       //                 return;
+  //       //               }
+
+  //       //               if (
+  //       //                 start.type !== "binding" ||
+  //       //                 end.type !== "binding"
+  //       //               ) {
+  //       //                 return deleteAndWarn(
+  //       //                   "Relation must connect two nodes."
+  //       //                 );
+  //       //               }
+  //       //               const source = this.app.getShapeById(
+  //       //                 start.boundShapeId
+  //       //               ) as DiscourseNodeShape;
+  //       //               if (!source) {
+  //       //                 return deleteAndWarn("Failed to find source node.");
+  //       //               }
+  //       //               const target = this.app.getShapeById(
+  //       //                 end.boundShapeId
+  //       //               ) as DiscourseNodeShape;
+  //       //               if (!target) {
+  //       //                 return deleteAndWarn("Failed to find target node.");
+  //       //               }
+
+  //       //               // Handle "Add Referenced Node" Arrows
+  //       //               if (allAddReferencedNodeActionsSet.has(arrow.type)) {
+  //       //                 const possibleTargets = allAddReferencedNodeByAction[
+  //       //                   arrow.type
+  //       //                 ].map((action) => action.destinationType);
+  //       //                 if (!possibleTargets.includes(target.type)) {
+  //       //                   return deleteAndWarn(
+  //       //                     `Target node must be of type ${possibleTargets
+  //       //                       .map((t) => discourseContext.nodes[t].text)
+  //       //                       .join(", ")}`
+  //       //                   );
+  //       //                 }
+
+  //       //                 // source and target are expected to be pages
+  //       //                 // TODO: support blocks
+  //       //                 const targetTitle = target.props.title;
+  //       //                 const sourceTitle = source.props.title;
+  //       //                 const isTargetTitleCurrent =
+  //       //                   getPageTitleByPageUid(target.props.uid).trim() ===
+  //       //                   targetTitle.trim();
+  //       //                 const isSourceTitleCurrent =
+  //       //                   getPageTitleByPageUid(source.props.uid).trim() ===
+  //       //                   sourceTitle.trim();
+  //       //                 if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
+  //       //                   return deleteAndWarn(
+  //       //                     "Either the source or target node has been renamed. Please update the nodes and try again."
+  //       //                   );
+  //       //                 }
+
+  //       //                 // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
+  //       //                 // replace when migrating from format to specification
+  //       //                 let newTitle: string;
+  //       //                 if (targetTitle.endsWith(" - ")) {
+  //       //                   newTitle = `${targetTitle}[[${sourceTitle}]]`;
+  //       //                 } else if (targetTitle.endsWith(" -")) {
+  //       //                   newTitle = `${targetTitle} [[${sourceTitle}]]`;
+  //       //                 } else {
+  //       //                   newTitle = `${targetTitle} - [[${sourceTitle}]]`;
+  //       //                 }
+
+  //       //                 if (!extensionAPI) {
+  //       //                   return deleteAndWarn(
+  //       //                     `Failed to update node title.`
+  //       //                   );
+  //       //                 }
+
+  //       //                 await window.roamAlphaAPI.data.page.update({
+  //       //                   page: {
+  //       //                     uid: target.props.uid,
+  //       //                     title: newTitle,
+  //       //                   },
+  //       //                 });
+  //       //                 const { h, w, imageUrl } =
+  //       //                   await calcCanvasNodeSizeAndImg({
+  //       //                     nodeText: newTitle,
+  //       //                     uid: target.props.uid,
+  //       //                     nodeType: target.type,
+  //       //                     extensionAPI,
+  //       //                   });
+  //       //                 this.app.updateShapes([
+  //       //                   {
+  //       //                     id: target.id,
+  //       //                     type: target.type,
+  //       //                     props: {
+  //       //                       h,
+  //       //                       w,
+  //       //                       imageUrl,
+  //       //                       title: newTitle,
+  //       //                     },
+  //       //                   },
+  //       //                 ]);
+
+  //       //                 renderToast({
+  //       //                   id: "tldraw-success",
+  //       //                   intent: "success",
+  //       //                   content: `Updated node title.`,
+  //       //                 });
+
+  //       //                 return;
+  //       //               }
+
+  //       //               // Handle "Add Relationship Arrows"
+  //       //               if (allRelationIdSet.has(arrow.type)) {
+  //       //                 const relation = allRelationsById[arrow.type];
+  //       //                 if (!relation) return;
+  //       //                 const sourceLabel =
+  //       //                   discourseContext.nodes[relation.source].text;
+  //       //                 if (source.type !== relation.source) {
+  //       //                   return deleteAndWarn(
+  //       //                     `Source node must be of type ${sourceLabel}`
+  //       //                   );
+  //       //                 }
+  //       //                 const possibleTargets = discourseContext.relations[
+  //       //                   relation.label
+  //       //                 ]
+  //       //                   .filter((r) => r.source === relation.source)
+  //       //                   .map((r) => r.destination);
+  //       //                 if (!possibleTargets.includes(target.type)) {
+  //       //                   return deleteAndWarn(
+  //       //                     `Target node must be of type ${possibleTargets
+  //       //                       .map((t) => discourseContext.nodes[t].text)
+  //       //                       .join(", ")}`
+  //       //                   );
+  //       //                 }
+  //       //                 if (arrow.type !== target.type) {
+  //       //                   this.app.updateShapes([
+  //       //                     {
+  //       //                       id: arrow.id,
+  //       //                       type: target.type,
+  //       //                     },
+  //       //                   ]);
+  //       //                 }
+  //       //                 const {
+  //       //                   triples,
+  //       //                   label: relationLabel,
+  //       //                   // complement,
+  //       //                 } = relation;
+  //       //                 const isOriginal = arrowText === relationLabel;
+  //       //                 const newTriples = triples
+  //       //                   .map((t) => {
+  //       //                     if (/is a/i.test(t[1])) {
+  //       //                       const targetNode =
+  //       //                         (t[2] === "source" && isOriginal) ||
+  //       //                         (t[2] === "destination" && !isOriginal)
+  //       //                           ? source
+  //       //                           : target;
+  //       //                       const { title, uid } =
+  //       //                         targetNode.props as DiscourseNodeShape["props"];
+  //       //                       return [
+  //       //                         t[0],
+  //       //                         isPageUid(uid) ? "has title" : "with uid",
+  //       //                         isPageUid(uid) ? title : uid,
+  //       //                       ];
+  //       //                     }
+  //       //                     return t.slice(0);
+  //       //                   })
+  //       //                   .map(([source, relation, target]) => ({
+  //       //                     source,
+  //       //                     relation,
+  //       //                     target,
+  //       //                   }));
+  //       //                 triplesToBlocks({
+  //       //                   defaultPageTitle: `Auto generated from ${title}`,
+  //       //                   toPage: async (
+  //       //                     title: string,
+  //       //                     blocks: InputTextNode[]
+  //       //                   ) => {
+  //       //                     const parentUid =
+  //       //                       getPageUidByPageTitle(title) ||
+  //       //                       (await createPage({
+  //       //                         title: title,
+  //       //                       }));
+
+  //       //                     await Promise.all(
+  //       //                       blocks.map((node, order) =>
+  //       //                         createBlock({ node, order, parentUid }).catch(
+  //       //                           () =>
+  //       //                             console.error(
+  //       //                               `Failed to create block: ${JSON.stringify(
+  //       //                                 { node, order, parentUid },
+  //       //                                 null,
+  //       //                                 4
+  //       //                               )}`
+  //       //                             )
+  //       //                         )
+  //       //                       )
+  //       //                     );
+  //       //                     await openBlockInSidebar(parentUid);
+  //       //                   },
+  //       //                   nodeSpecificationsByLabel: Object.fromEntries(
+  //       //                     Object.values(discourseContext.nodes).map((n) => [
+  //       //                       n.text,
+  //       //                       n.specification,
+  //       //                     ])
+  //       //                   ),
+  //       //                 })(newTriples)();
+  //       //               }
+  //       //             };
+  //       //           };
+  //       //         }
+  //       //         return c;
+  //       //       });
+  //       //     };
+  //       //   },
+  //       // ])
+  //       shapes: [
+  //         ...allNodes.map(
+  //           (n) =>
+  //             defineShape(n.type, {
+  //               util: class extends DiscourseNodeUtil {
+  //                 static type = n.type;
+  //               },
+  //             })
+  //           // defineShape<DiscourseNodeShape>({
+  //           //   type: n.type,
+  //           //   getShapeUtil: () =>
+  //           //     class extends DiscourseNodeUtil {
+  //           //       constructor(app: TldrawApp) {
+  //           //         super(app, n.type);
+  //           //       }
+  //           //     },
+  //           // })
+  //         ),
+  //         ...allRelationIds.map((id) =>
+  //           defineShape(id, {
+  //             util: class extends DiscourseRelationUtil {
+  //               static type = id;
+  //             },
+  //           })
+  //         ),
+  //         ...allAddReferencedNodeActions.map((action) =>
+  //           defineShape(action, {
+  //             util: class extends DiscourseReferencedNodeUtil {
+  //               static type = action;
+  //             },
+  //           })
+  //         ),
+  //       ],
+  //       allowUnknownShapes: true,
+  //     }),
+  //   [allNodes, allRelationIds, allRelationsById, allAddReferencedNodeActions]
+  // );
+
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
   const lastInsertRef = useRef<Vec2dModel>();
-  const initialState = useMemo(() => {
-    const persisted = getSubTree({
-      parentUid: pageUid,
-      tree,
-      key: "State",
-    });
-    if (!persisted.uid) {
-      // we create a block so that the page is not garbage collected
-      createBlock({
-        node: {
-          text: "State",
-        },
-        parentUid: pageUid,
-      });
-    }
-    const instanceId = TLInstance.createCustomId(pageUid);
-    const userId = TLUser.createCustomId(getCurrentUserUid());
-    const props = getBlockProps(pageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
-    return { instanceId, userId, data };
-  }, [tree, pageUid]);
+  // const initialState = useMemo(() => {
+  //   const persisted = getSubTree({
+  //     parentUid: pageUid,
+  //     tree,
+  //     key: "State",
+  //   });
+  //   if (!persisted.uid) {
+  //     // we create a block so that the page is not garbage collected
+  //     createBlock({
+  //       node: {
+  //         text: "State",
+  //       },
+  //       parentUid: pageUid,
+  //     });
+  //   }
+  //   // const instanceId = TLInstance.createCustomId(pageUid);
+  //   const userId = TLUser.createCustomId(getCurrentUserUid());
+  //   const props = getBlockProps(pageUid) as Record<string, unknown>;
+  //   const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+  //   const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
+  //   return { instanceId, userId, data };
+  // }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, setMaximized] = useState(false);
   // const localStateIds: string[] = [];
   const store = useRoamStore({
     // customShapeUtils,
     pageUid,
+    customShapes,
   });
   // const store = useMemo(() => {
   //   const _store = customTldrawConfig.createStore({
@@ -1622,8 +2110,8 @@ const TldrawCanvas = ({ title }: Props) => {
       if (!/canvas/i.test(e.detail.action)) return;
       const app = appRef.current;
       if (!app) return;
-      const { x, y } = app.pageCenter;
-      const { w, h } = app.pageBounds;
+      const { x, y } = app.viewportPageCenter;
+      const { w, h } = app.viewportPageBounds;
       const lastTime = lastInsertRef.current;
       const position = lastTime
         ? {
@@ -1680,12 +2168,14 @@ const TldrawCanvas = ({ title }: Props) => {
   };
 
   // Menu Overrides
-  const addFullScreenToggle = (mainMenu: MenuGroup) => {
+  // TODO FIX TYPES
+  const addFullScreenToggle = (mainMenu: TLUiMenuGroup) => {
     const viewSubMenu = mainMenu.children.find(
-      (m): m is SubMenu => m.type === "submenu" && m.id === "view"
+      (m: any): m is TLUiSubMenu => m.type === "submenu" && m.id === "view"
     );
     const viewActionsGroup = viewSubMenu?.children.find(
-      (m): m is MenuGroup => m.type === "group" && m.id === "view-actions"
+      (m: any): m is TLUiMenuGroup =>
+        m.type === "group" && m.id === "view-actions"
     );
     if (!viewActionsGroup) return;
     viewActionsGroup.children.push({
@@ -1696,7 +2186,7 @@ const TldrawCanvas = ({ title }: Props) => {
       checked: maximized,
       actionItem: {
         id: "toggle-full-screen",
-        label: "action.toggle-full-screen" as TLTranslationKey,
+        label: "action.toggle-full-screen" as TLUiTranslationKey,
         kbd: "!3",
         onSelect: () => {
           setMaximized(!maximized);
@@ -1705,24 +2195,26 @@ const TldrawCanvas = ({ title }: Props) => {
       },
     });
   };
-  const editCopyAsShortcuts = (mainMenu: MenuGroup) => {
+  const editCopyAsShortcuts = (mainMenu: TLUiMenuGroup) => {
     const editSubMenu = mainMenu.children.find(
-      (m): m is SubMenu => m.type === "submenu" && m.id === "edit"
+      (m: any): m is TLUiSubMenu => m.type === "submenu" && m.id === "edit"
     );
     const conversionsGroup = editSubMenu?.children.find(
-      (m): m is MenuGroup => m.type === "group" && m.id === "conversions"
+      (m: any): m is TLUiMenuGroup =>
+        m.type === "group" && m.id === "conversions"
     );
     const copyAsSubMenu = conversionsGroup?.children.find(
-      (m): m is SubMenu => m.type === "submenu" && m.id === "copy-as"
+      (m: any): m is TLUiSubMenu => m.type === "submenu" && m.id === "copy-as"
     );
     const copyAsGroup = copyAsSubMenu?.children.find(
-      (m): m is MenuGroup => m.type === "group" && m.id === "copy-as-group"
+      (m: any): m is TLUiMenuGroup =>
+        m.type === "group" && m.id === "copy-as-group"
     );
     const copyAsPngItem = copyAsGroup?.children.find(
-      (m): m is MenuItem => m.type === "item" && m.id === "copy-as-png"
+      (m: any): m is TLUiMenuItem => m.type === "item" && m.id === "copy-as-png"
     );
     const copyAsSvgItem = copyAsGroup?.children.find(
-      (m): m is MenuItem => m.type === "item" && m.id === "copy-as-svg"
+      (m: any): m is TLUiMenuItem => m.type === "item" && m.id === "copy-as-svg"
     );
     if (!copyAsPngItem || !copyAsSvgItem) return;
     copyAsPngItem.actionItem.kbd = "$!C";
@@ -1742,7 +2234,7 @@ const TldrawCanvas = ({ title }: Props) => {
         {`.roam-article .rm-block-children {
         display: none;
       }
-      .rs-arrow-label__inner{
+      .tl-arrow-label__inner{
         min-width: initial;
       }
       kbd.tlui-kbd {
@@ -1755,17 +2247,17 @@ const TldrawCanvas = ({ title }: Props) => {
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""
       }
-      #roamjs-tldraw-canvas-container .rs-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
+      #roamjs-tldraw-canvas-container .tl-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
         display: none;
       }
       /* arrow label line fix */
       /* seems like width is being miscalculted cause letters to linebreak */
       /* TODO: this is a temporary fix */
       /* also Roam is hijacking the font choice */
-      .rs-arrow-label .rs-arrow-label__inner p {
+      .tl-arrow-label .tl-arrow-label__inner p {
         padding: 0;
         white-space: nowrap;
-        font-family: var(--rs-font-sans);
+        font-family: var(--tl-font-sans);
       }`}
       </style>
       <TldrawEditor
@@ -1773,7 +2265,11 @@ const TldrawCanvas = ({ title }: Props) => {
         // instanceId={initialState.instanceId}
         // userId={initialState.userId}
         // config={customTldrawConfig}
-
+        shapes={[...defaultShapes, , ...customShapes]}
+        tools={[
+          ...defaultTools,
+          // ...customTools
+        ]}
         store={store}
         onMount={(app) => {
           if (process.env.NODE_ENV !== "production") {
@@ -1783,16 +2279,20 @@ const TldrawCanvas = ({ title }: Props) => {
           }
           appRef.current = app;
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
-          app.on("event", (e) => {
+          app.on("event", (event) => {
+            const e = event as TLPointerEventInfo;
             discourseContext.lastAppEvent = e.name;
 
-            const validModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+            const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
             if (!(e.name === "pointer_up" && e.shape && validModifier)) return;
             if (app.selectedIds.length) return; // User is positioning selected shape
 
-            const shapeUid = e.shape?.props.uid;
+            // const shape = app.getShapesAtPoint({x: e.point.x, y: e.point.y})[0] as DiscourseNodeShape;
+            // if (!shape) return;
+            const shape = e.shape as DiscourseNodeShape;
+            const shapeUid = shape.props.uid;
             if (!isLiveBlock(shapeUid)) {
-              if (!e.shape.props.title) return;
+              if (!shape.props.title) return;
               renderToast({
                 id: "tldraw-warning",
                 intent: "warning",
@@ -1802,9 +2302,12 @@ const TldrawCanvas = ({ title }: Props) => {
 
             if (e.shiftKey) {
               // TODO - do not openBlockInSidebar if user is using shift to select
-              openBlockInSidebar(e.shape.props.uid);
+              openBlockInSidebar(shape.props.uid);
             }
-            if (e.ctrlKey || e.metaKey) {
+            if (
+              e.ctrlKey
+              // || e.metaKey
+            ) {
               const isPage = !!getPageTitleByPageUid(shapeUid);
               if (isPage) {
                 window.roamAlphaAPI.ui.mainWindow.openPage({
@@ -1962,15 +2465,15 @@ const TldrawCanvas = ({ title }: Props) => {
                       disabled: false,
                       actionItem: {
                         label:
-                          `action.convert-to-${node.type}` as TLTranslationKey,
+                          `action.convert-to-${node.type}` as TLUiTranslationKey,
                         id: `convert-to-${node.type}`,
                         onSelect: getOnSelectForShape(shape, node.type),
                         readonlyOk: true,
                         menuLabel:
-                          `Convert to ${node.text}` as TLTranslationKey,
+                          `Convert to ${node.text}` as TLUiTranslationKey,
                         title: `Convert to ${node.text}`,
                       },
-                    } as MenuItem;
+                    } as TLUiMenuItem;
                   });
 
                   // Page not yet supported
@@ -1982,7 +2485,7 @@ const TldrawCanvas = ({ title }: Props) => {
                         )
                       : nodeMenuItems;
 
-                  const submenuGroup: MenuGroup = {
+                  const submenuGroup: TLUiMenuGroup = {
                     id: "convert-to-group",
                     type: "group",
                     checkbox: false,
@@ -1992,7 +2495,7 @@ const TldrawCanvas = ({ title }: Props) => {
                       {
                         id: "convert-to",
                         type: "submenu",
-                        label: "action.convert-to" as TLTranslationKey,
+                        label: "action.convert-to" as TLUiTranslationKey,
                         disabled: false,
                         readonlyOk: true,
                         children: [...filteredItems],
@@ -2008,7 +2511,7 @@ const TldrawCanvas = ({ title }: Props) => {
             actions(_app, actions) {
               (actions["toggle-full-screen"] = {
                 id: "toggle-full-screen",
-                label: "action.toggle-full-screen" as TLTranslationKey,
+                label: "action.toggle-full-screen" as TLUiTranslationKey,
                 kbd: "!3",
                 onSelect: () => {
                   setMaximized(!maximized);
@@ -2017,7 +2520,7 @@ const TldrawCanvas = ({ title }: Props) => {
               }),
                 (actions["convert-to"] = {
                   id: "convert-to",
-                  label: "action.convert-to" as TLTranslationKey,
+                  label: "action.convert-to" as TLUiTranslationKey,
                   kbd: "?C",
                   onSelect: () => triggerContextMenuConvertTo(),
                   readonlyOk: true,
@@ -2029,7 +2532,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 tools[node.type] = {
                   id: node.type,
                   icon: "color",
-                  label: `shape.node.${node.type}` as TLTranslationKey,
+                  label: `shape.node.${node.type}` as TLUiTranslationKey,
                   kbd: node.shortcut,
                   readonlyOk: true,
                   onSelect: () => {
@@ -2046,7 +2549,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 tools[relation] = {
                   id: relation,
                   icon: "tool-arrow",
-                  label: `shape.relation.${relation}` as TLTranslationKey,
+                  label: `shape.relation.${relation}` as TLUiTranslationKey,
                   kbd: "",
                   readonlyOk: true,
                   onSelect: () => {
@@ -2071,7 +2574,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 tools[name] = {
                   id: name,
                   icon: "tool-arrow",
-                  label: `shape.referenced.${name}` as TLTranslationKey,
+                  label: `shape.referenced.${name}` as TLUiTranslationKey,
                   kbd: "",
                   readonlyOk: true,
                   onSelect: () => {
@@ -2103,13 +2606,13 @@ const TldrawCanvas = ({ title }: Props) => {
             ) {
               const toolsGroup = keyboardShortcutsMenu.find(
                 (group) => group.id === "shortcuts-dialog.tools"
-              ) as MenuGroup;
+              ) as TLUiMenuGroup;
               const viewGroup = keyboardShortcutsMenu.find(
                 (group) => group.id === "shortcuts-dialog.view"
-              ) as MenuGroup;
+              ) as TLUiMenuGroup;
               const transformGroup = keyboardShortcutsMenu.find(
                 (group) => group.id === "shortcuts-dialog.transform"
-              ) as MenuGroup;
+              ) as TLUiMenuGroup;
 
               toolsGroup.children.push(
                 ...allNodes.map((n) => menuItem(tools[n.type]))
@@ -2121,7 +2624,7 @@ const TldrawCanvas = ({ title }: Props) => {
             },
             menu(_app, menu) {
               const mainMenu = menu.find(
-                (m): m is MenuGroup => m.type === "group" && m.id === "menu"
+                (m): m is TLUiMenuGroup => m.type === "group" && m.id === "menu"
               );
               if (mainMenu) {
                 addFullScreenToggle(mainMenu);

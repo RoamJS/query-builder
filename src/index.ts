@@ -145,12 +145,12 @@ export default runExtension(async (onloadArgs) => {
   width: 100%;
 }
 
-svg.rs-svg-container {
+svg.tl-svg-container {
   overflow: visible;
 }
 
 .roamjs-tldraw-node .rm-api-render--block .rm-block__controls,
-.rs-shape .rm-api-render--block .rm-block__ref-count {
+.tl-shape .rm-api-render--block .rm-block__ref-count {
   display: none;
 }
 
@@ -606,6 +606,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          //@ts-ignore
           clearOnClick,
           onloadArgs,
         })

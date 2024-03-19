@@ -118,3 +118,23 @@ index 16298c5..355230d 100644
  var import_GeoShapeUtil = require("./lib/editor/shapes/geo/GeoShapeUtil");
  var import_GroupShape = require("./lib/editor/shapes/group/GroupShape");
  var import_GroupShapeUtil = require("./lib/editor/shapes/group/GroupShapeUtil");
+diff --git a/node_modules/@tldraw/editor/dist-esm/index.mjs b/node_modules/@tldraw/editor/dist-esm/index.mjs
+index 849e56f..d484dc6 100644
+--- a/node_modules/@tldraw/editor/dist-esm/index.mjs
++++ b/node_modules/@tldraw/editor/dist-esm/index.mjs
+@@ -82,6 +82,7 @@ import {
+   ShapeUtil
+ } from "./lib/editor/shapes/ShapeUtil.mjs";
+ import { ArrowShape } from "./lib/editor/shapes/arrow/ArrowShape.mjs";
++import { ArrowShapeTool } from "./lib/editor/shapes/arrow/ArrowShapeTool.mjs";
+ import { ArrowShapeUtil } from "./lib/editor/shapes/arrow/ArrowShapeUtil.mjs";
+ import { BookmarkShape } from "./lib/editor/shapes/bookmark/BookmarkShape.mjs";
+ import { BookmarkShapeUtil } from "./lib/editor/shapes/bookmark/BookmarkShapeUtil.mjs";
+@@ -194,6 +195,7 @@ export {
+   ANIMATION_MEDIUM_MS,
+   ANIMATION_SHORT_MS,
+   ArrowShape,
++  ArrowShapeTool,
+   ArrowShapeUtil,
+   BaseBoxShapeTool,
+   BaseBoxShapeUtil,
