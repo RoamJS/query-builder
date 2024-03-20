@@ -91,6 +91,7 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
             // extend Pointing to set the type on createShapes()
             class extends Pointing {
               override createArrowShape() {
+                const shapeType = this.parent.shapeType;
                 const { originPagePoint } = this.editor.inputs;
 
                 const id = createShapeId();
@@ -102,19 +103,22 @@ export const createRelationShapeTools = (allRelationNames: string[]) => {
                   {
                     id,
                     // @ts-ignore
-                    type: this.parent.shapeType || "arrow",
+                    type: shapeType || "arrow",
                     x: originPagePoint.x,
                     y: originPagePoint.y,
                   },
                 ]);
 
-                const shape = this.editor.getShape<TLArrowShape>(id);
+                const shape = this.editor.getShape<DiscourseRelationShape>(id);
                 if (!shape) throw Error(`expected shape`);
 
                 const handles = this.editor.getShapeHandles(shape);
                 if (!handles) throw Error(`expected handles for arrow`);
 
-                const util = this.editor.getShapeUtil<TLArrowShape>("arrow");
+                const util = this.editor.getShapeUtil<DiscourseRelationShape>(
+                  shapeType || "arrow"
+                );
+                console.log(util, shapeType, "util, shapeType");
                 const initial = this.shape;
                 const startHandle = handles.find((h) => h.id === "start")!;
                 const change = util.onHandleChange?.(shape, {
