@@ -317,7 +317,10 @@ const LabelDialog = ({
   const initialValue = useMemo(() => {
     return { text: initialLabel, uid: initialUid };
   }, [initialLabel, initialUid]);
-  const [label, setLabel] = useState(initialValue.text);
+  const [label, setLabel] = useState("");
+  useEffect(() => {
+    setLabel(initialLabel);
+  }, [initialLabel]);
   const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
   const isCreateCanvasNode = !isLiveBlock(initialUid);
