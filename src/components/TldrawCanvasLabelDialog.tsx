@@ -22,6 +22,8 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { DiscourseContextType } from "./TldrawCanvas";
 import { getPlainTitleFromSpecification } from "../discourseGraphsMode";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -306,11 +308,12 @@ const LabelDialog = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const initialLabel = useMemo(() => {
-    if (_label) return _label;
+    if (_label)
+      return getPageTitleByPageUid(initialUid) || getTextByBlockUid(initialUid);
     const { specification, text } = discourseContext.nodes[nodeType];
     if (!specification.length) return "";
     return getPlainTitleFromSpecification({ specification, text });
-  }, [_label, nodeType]);
+  }, [_label, nodeType, initialUid, isOpen]);
   const initialValue = useMemo(() => {
     return { text: initialLabel, uid: initialUid };
   }, [initialLabel, initialUid]);
