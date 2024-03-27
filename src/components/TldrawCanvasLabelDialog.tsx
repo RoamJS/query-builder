@@ -287,7 +287,7 @@ const LabelDialogAutocomplete = ({
 };
 
 type NodeDialogProps = {
-  label: string;
+  isExistingCanvasNode: boolean;
   onSuccess: (a: Result) => Promise<void>;
   onCancel: () => void;
   nodeType: string;
@@ -295,10 +295,14 @@ type NodeDialogProps = {
   discourseContext: DiscourseContextType;
 };
 
+const getCurrentNodeContent = (uid: string) => {
+  return getPageTitleByPageUid(uid) || getTextByBlockUid(uid);
+};
+
 const LabelDialog = ({
   isOpen,
   onClose,
-  label: _label,
+  isExistingCanvasNode,
   onSuccess,
   onCancel,
   nodeType,
@@ -308,19 +312,21 @@ const LabelDialog = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const initialLabel = useMemo(() => {
-    if (_label)
-      return getPageTitleByPageUid(initialUid) || getTextByBlockUid(initialUid);
-    const { specification, text } = discourseContext.nodes[nodeType];
-    if (!specification.length) return "";
-    return getPlainTitleFromSpecification({ specification, text });
-  }, [_label, nodeType, initialUid, isOpen]);
+    if (isExistingCanvasNode) {
+      return getCurrentNodeContent(initialUid);
+    } else {
+      const { specification, text } = discourseContext.nodes[nodeType];
+      if (!specification.length) return "";
+      return getPlainTitleFromSpecification({ specification, text });
+    }
+  }, [isExistingCanvasNode, nodeType, initialUid, isOpen]);
   const initialValue = useMemo(() => {
     return { text: initialLabel, uid: initialUid };
   }, [initialLabel, initialUid]);
   const [label, setLabel] = useState("");
   useEffect(() => {
-    setLabel(initialLabel);
-  }, [initialLabel]);
+    if (isOpen) setLabel(initialLabel);
+  }, [initialLabel, isOpen]);
   const [uid, setUid] = useState(initialValue.uid);
   const [loading, setLoading] = useState(false);
   const isCreateCanvasNode = !isLiveBlock(initialUid);

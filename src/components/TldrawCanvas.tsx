@@ -584,7 +584,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               this.app.setEditingId(null);
               setIsEditLabelOpen(false);
             }}
-            label={shape.props.title}
+            isExistingCanvasNode={!!shape.props.title}
             nodeType={this.type}
             discourseContext={discourseContext}
             onSuccess={async ({ text, uid, action }) => {
