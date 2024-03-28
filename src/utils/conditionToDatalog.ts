@@ -21,6 +21,13 @@ type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
 const INPUT_REGEX = /^:in /;
 
+const isRegex = (str: string) => /^\/.+\/(i)?$/.test(str);
+const regexRePatternValue = (str: string) => {
+  const isCaseInsensitive = str.endsWith("/i");
+  return isCaseInsensitive
+    ? `"(?i)${str.slice(1, -2).replace(/\\/g, "\\\\")}"`
+    : `"${str.slice(1, -1).replace(/\\/g, "\\\\")}"`;
+};
 const getTitleDatalog = ({
   source,
   target,
@@ -100,7 +107,8 @@ const getTitleDatalog = ({
       },
     ];
   }
-  if (target.startsWith("/") && target.endsWith("/")) {
+  if (isRegex(target)) {
+    const rePattern = regexRePatternValue(target);
     return [
       {
         type: "data-pattern",
@@ -116,7 +124,7 @@ const getTitleDatalog = ({
         arguments: [
           {
             type: "constant",
-            value: `"${target.slice(1, -1).replace(/\\/g, "\\\\")}"`,
+            value: rePattern,
           },
         ],
         binding: {
@@ -388,37 +396,88 @@ const translator: Record<string, Translator> = {
     isVariable: true,
   },
   "with text": {
-    callback: ({ source, target }) => [
-      {
-        type: "or-clause",
-        clauses: [
+    callback: ({ source, target }) => {
+      if (isRegex(target)) {
+        const rePattern = regexRePatternValue(target);
+        return [
           {
-            type: "data-pattern",
-            arguments: [
-              { type: "variable", value: source },
-              { type: "constant", value: ":block/string" },
-              { type: "variable", value: `${source}-String` },
+            type: "or-clause",
+            clauses: [
+              {
+                type: "data-pattern",
+                arguments: [
+                  { type: "variable", value: source },
+                  { type: "constant", value: ":block/string" },
+                  { type: "variable", value: `${source}-String` },
+                ],
+              },
+              {
+                type: "data-pattern",
+                arguments: [
+                  { type: "variable", value: source },
+                  { type: "constant", value: ":node/title" },
+                  { type: "variable", value: `${source}-String` },
+                ],
+              },
             ],
           },
           {
-            type: "data-pattern",
+            type: "fn-expr",
+            fn: "re-pattern",
             arguments: [
-              { type: "variable", value: source },
-              { type: "constant", value: ":node/title" },
+              {
+                type: "constant",
+                value: rePattern,
+              },
+            ],
+            binding: {
+              type: "bind-scalar",
+              variable: { type: "variable", value: `${target}-regex` },
+            },
+          },
+          {
+            type: "pred-expr",
+            pred: "re-find",
+            arguments: [
+              { type: "variable", value: `${target}-regex` },
               { type: "variable", value: `${source}-String` },
             ],
           },
-        ],
-      },
-      {
-        type: "pred-expr",
-        pred: "clojure.string/includes?",
-        arguments: [
-          { type: "variable", value: `${source}-String` },
-          { type: "constant", value: `"${normalizePageTitle(target)}"` },
-        ],
-      },
-    ],
+        ];
+      } else {
+        return [
+          {
+            type: "or-clause",
+            clauses: [
+              {
+                type: "data-pattern",
+                arguments: [
+                  { type: "variable", value: source },
+                  { type: "constant", value: ":block/string" },
+                  { type: "variable", value: `${source}-String` },
+                ],
+              },
+              {
+                type: "data-pattern",
+                arguments: [
+                  { type: "variable", value: source },
+                  { type: "constant", value: ":node/title" },
+                  { type: "variable", value: `${source}-String` },
+                ],
+              },
+            ],
+          },
+          {
+            type: "pred-expr",
+            pred: "clojure.string/includes?",
+            arguments: [
+              { type: "variable", value: `${source}-String` },
+              { type: "constant", value: `"${normalizePageTitle(target)}"` },
+            ],
+          },
+        ];
+      }
+    },
     placeholder: "Enter any text",
   },
   "created by": {
