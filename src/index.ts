@@ -52,6 +52,7 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import { TLBaseShape, TLStore } from "@tldraw/tldraw";
 import { GroupedShapes } from "./components/CanvasDrawer";
+import isDiscourseNode from "./utils/isDiscourseNode";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -600,6 +601,7 @@ svg.rs-svg-container {
             ]]`
         ) as [PullBlock][]
       ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
+    isDiscourseNode: isDiscourseNode,
   };
 
   extensionAPI.ui.commandPalette.addCommand({
