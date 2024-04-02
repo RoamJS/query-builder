@@ -55,7 +55,7 @@ type ParseQuery = (q: RoamBasicNode | string) => {
 
 export const DEFAULT_RETURN_NODE = "node";
 
-const parseQuery: ParseQuery = (parentUidOrNode) => {
+export const parseQuery: ParseQuery = (parentUidOrNode) => {
   const queryNode =
     typeof parentUidOrNode === "string"
       ? getSubTree({ key: "scratch", parentUid: parentUidOrNode })

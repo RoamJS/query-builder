@@ -53,6 +53,8 @@ import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import { TLBaseShape, TLStore } from "@tldraw/tldraw";
 import { GroupedShapes } from "./components/CanvasDrawer";
 import isDiscourseNode from "./utils/isDiscourseNode";
+import { fireQuerySync } from "./utils/fireQuery";
+import parseQuery from "./utils/parseQuery";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -586,6 +588,10 @@ svg.rs-svg-container {
       runQuery({ parentUid, extensionAPI }).then(
         ({ allProcessedResults }) => allProcessedResults
       ),
+    runQuerySync: (parentUid: string) => {
+      const queryArgs = parseQuery(parentUid);
+      return fireQuerySync(queryArgs);
+    },
     listActiveQueries: () =>
       (
         window.roamAlphaAPI.data.fast.q(
