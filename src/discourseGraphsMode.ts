@@ -908,6 +908,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             results,
             title: "Export Discourse Graph",
             isExportDiscourseGraph: true,
+            initialPanel: "export",
           });
         },
       });
