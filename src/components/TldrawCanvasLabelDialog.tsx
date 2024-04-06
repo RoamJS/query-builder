@@ -24,6 +24,8 @@ import { getPlainTitleFromSpecification } from "../discourseGraphsMode";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import { getReferencedNodeInFormat } from "../utils/formatUtils";
+import { DiscourseNode } from "../utils/getDiscourseNodes";
 
 const LabelDialogAutocomplete = ({
   setLabel,
@@ -45,7 +47,7 @@ const LabelDialogAutocomplete = ({
   initialValue: { text: string; uid: string };
   onSubmit: () => void;
   isCreateCanvasNode: boolean;
-  referencedNode: { name: string; nodeType: string } | null;
+  referencedNode: DiscourseNode | null;
   action: string;
   format: string;
   label: string;
@@ -90,7 +92,7 @@ const LabelDialogAutocomplete = ({
             {
               source: "node",
               relation: "is a",
-              target: referencedNode.nodeType,
+              target: referencedNode.type,
               uid: conditionUid,
               type: "clause",
             },
@@ -103,12 +105,7 @@ const LabelDialogAutocomplete = ({
         setIsLoading(false);
       }
     }, 100);
-  }, [
-    nodeType,
-    referencedNode?.nodeType,
-    setOptions,
-    setReferencedNodeOptions,
-  ]);
+  }, [nodeType, referencedNode?.type, setOptions, setReferencedNodeOptions]);
   const inputDivRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (isAddReferencedNode && inputDivRef.current) {
@@ -126,7 +123,7 @@ const LabelDialogAutocomplete = ({
           if (/content/i.test(val)) return r.text;
           if (
             referencedNode &&
-            new RegExp(referencedNode.name, "i").test(val) &&
+            new RegExp(referencedNode.text, "i").test(val) &&
             isAddReferencedNode
           )
             return referencedNodeValue;
@@ -157,7 +154,7 @@ const LabelDialogAutocomplete = ({
       } else {
         const pageName = format.replace(/{([\w\d-]*)}/g, (_, val) => {
           if (/content/i.test(val)) return content;
-          if (new RegExp(referencedNode.name, "i").test(val))
+          if (new RegExp(referencedNode.text, "i").test(val))
             return `[[${r.text}]]`;
           return "";
         });
@@ -229,7 +226,7 @@ const LabelDialogAutocomplete = ({
         )}
         {referencedNode && (
           <Checkbox
-            label={`Set ${referencedNode?.name}`}
+            label={`Set ${referencedNode?.text}`}
             checked={isAddReferencedNode}
             onChange={(e) => {
               const checked = e.target as HTMLInputElement;
@@ -262,7 +259,7 @@ const LabelDialogAutocomplete = ({
       {isAddReferencedNode &&
         (action === "creating" || action === "editing") && (
           <div className="referenced-node-autocomplete" ref={inputDivRef}>
-            <Label>{referencedNode?.name}</Label>
+            <Label>{referencedNode?.text}</Label>
             <AutocompleteInput
               value={
                 referencedNodeValue
@@ -276,7 +273,7 @@ const LabelDialogAutocomplete = ({
               itemToQuery={itemToQuery}
               filterOptions={filterOptions}
               placeholder={
-                isLoading ? "..." : `Enter a ${referencedNode?.name} ...`
+                isLoading ? "..." : `Enter a ${referencedNode?.text} ...`
               }
               maxItemsDisplayed={100}
             />
@@ -331,29 +328,10 @@ const LabelDialog = ({
   const [loading, setLoading] = useState(false);
   const isCreateCanvasNode = !isLiveBlock(initialUid);
   const { format } = discourseContext.nodes[nodeType];
-  const getReferencedNodeInFormat = () => {
-    const regex = /{([\w\d-]*)}/g;
-    const matches = [...format.matchAll(regex)];
-
-    for (const match of matches) {
-      const val = match[1];
-      if (val.toLowerCase() === "context") continue;
-
-      const referencedNode = Object.values(discourseContext.nodes).find(
-        ({ text }) => new RegExp(text, "i").test(val)
-      );
-
-      if (referencedNode) {
-        return {
-          name: referencedNode.text,
-          nodeType: referencedNode.type,
-        };
-      }
-    }
-
-    return null;
-  };
-  const referencedNode = getReferencedNodeInFormat();
+  const referencedNode = getReferencedNodeInFormat({
+    format,
+    discourseNodes: Object.values(discourseContext.nodes),
+  });
 
   const renderCalloutText = () => {
     let title = "Please provide a label";
