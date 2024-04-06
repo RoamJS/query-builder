@@ -55,6 +55,8 @@ import { GroupedShapes } from "./components/CanvasDrawer";
 import isDiscourseNode from "./utils/isDiscourseNode";
 import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
+import { render as exportRender } from "./components/Export";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -721,7 +723,23 @@ svg.rs-svg-container {
       }, 200);
     },
   });
-
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Export Current Page",
+    callback: () => {
+      const pageUid = getCurrentPageUid();
+      const pageTitle = getPageTitleByPageUid(pageUid);
+      exportRender({
+        results: [
+          {
+            uid: pageUid,
+            text: pageTitle,
+          },
+        ],
+        title: "Export Current Page",
+        initialPanel: "export",
+      });
+    },
+  });
   extensionAPI.ui.commandPalette.addCommand({
     label: "Preview Current Query Builder Results",
     callback: () => {

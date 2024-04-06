@@ -80,6 +80,7 @@ export type ExportDialogProps = {
   title?: string;
   columns?: Column[];
   isExportDiscourseGraph?: boolean;
+  initialPanel?: "sendTo" | "export";
 };
 
 type ExportDialogComponent = (
@@ -102,6 +103,7 @@ const ExportDialog: ExportDialogComponent = ({
   columns,
   title = "Share Data",
   isExportDiscourseGraph = false,
+  initialPanel,
 }) => {
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
@@ -148,8 +150,8 @@ const ExportDialog: ExportDialogComponent = ({
   const [livePages, setLivePages] = useState<Result[]>([]);
   const [selectedTabId, setSelectedTabId] = useState("sendto");
   useEffect(() => {
-    if (isExportDiscourseGraph) setSelectedTabId("export");
-  }, [isExportDiscourseGraph]);
+    if (initialPanel === "export") setSelectedTabId("export");
+  }, [initialPanel]);
   const [discourseGraphEnabled, setDiscourseGraphEnabled] = useState(() => {
     return getExtensionAPI().settings.get("discourse-graphs");
   });
@@ -522,9 +524,6 @@ const ExportDialog: ExportDialogComponent = ({
                     (e) => e.name === activeExportType
                   );
                   if (exportType && window.RoamLazy) {
-                    const zip = await window.RoamLazy.JSZip().then(
-                      (j) => new j()
-                    );
                     setDialogOpen(true);
                     setLoading(false);
                     updateExportProgress({
@@ -548,6 +547,19 @@ const ExportDialog: ExportDialogComponent = ({
                       return;
                     }
 
+                    if (files.length === 1) {
+                      const { title, content } = files[0];
+                      const blob = new Blob([content], {
+                        type: "text/plain;charset=utf-8",
+                      });
+                      saveAs(blob, title);
+                      onClose();
+                      return;
+                    }
+
+                    const zip = await window.RoamLazy.JSZip().then(
+                      (j) => new j()
+                    );
                     files.forEach(({ title, content }) =>
                       zip.file(title, content)
                     );
