@@ -228,13 +228,13 @@ const handleDiscourseContext = async ({
   uid,
   pageTitle,
   isSamePageEnabled,
-  appendReferencedNodeToDiscourseContext,
+  appendRefNodeContext,
 }: {
   includeDiscourseContext: boolean;
   uid: string;
   pageTitle: string;
   isSamePageEnabled: boolean;
-  appendReferencedNodeToDiscourseContext: boolean;
+  appendRefNodeContext: boolean;
 }) => {
   if (!includeDiscourseContext) return [];
 
@@ -242,7 +242,7 @@ const handleDiscourseContext = async ({
     uid,
     isSamePageEnabled,
   });
-  if (!appendReferencedNodeToDiscourseContext) return discourseResults;
+  if (!appendRefNodeContext) return discourseResults;
 
   const referencedDiscourseNode = getReferencedNodeInFormat({ uid });
   if (referencedDiscourseNode) {
@@ -432,6 +432,10 @@ const getExportTypes = ({
       tree: exportTree.children,
       key: "resolve block embeds",
     }).uid;
+    const appendRefNodeContext = !!getSubTree({
+      tree: exportTree.children,
+      key: "append referenced node",
+    }).uid;
     const yaml = frontmatter.length
       ? frontmatter
       : [
@@ -448,6 +452,7 @@ const getExportTypes = ({
       maxFilenameLength,
       removeSpecialCharacters,
       linkType,
+      appendRefNodeContext,
     };
   };
 
@@ -466,6 +471,7 @@ const getExportTypes = ({
           maxFilenameLength,
           removeSpecialCharacters,
           linkType,
+          appendRefNodeContext,
         } = getExportSettings();
         const allPages = await getPageData(
           isSamePageEnabled,
@@ -495,13 +501,12 @@ const getExportTypes = ({
               };
               const treeNode = getFullTreeByParentUid(uid);
 
-              const appendReferencedNodeToDiscourseContext = true; // TODO: make this a setting
               const discourseResults = await handleDiscourseContext({
                 includeDiscourseContext,
                 pageTitle: text,
                 uid,
                 isSamePageEnabled,
-                appendReferencedNodeToDiscourseContext,
+                appendRefNodeContext,
               });
 
               const referenceResults = isFlagEnabled("render references")
