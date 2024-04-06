@@ -2,7 +2,7 @@
 // https://github.com/RoamJS/query-builder/issues/189
 
 import { PullBlock } from "roamjs-components/types";
-import getDiscourseNodes from "../utils/getDiscourseNodes";
+import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
 import compileDatalog from "./compileDatalog";
 import discourseNodeFormatToDatalog from "./discourseNodeFormatToDatalog";
 import createOverlayRender from "roamjs-components/util/createOverlayRender";
@@ -87,15 +87,12 @@ export const getNewDiscourseNodeText = async ({
 };
 
 export const getReferencedNodeInFormat = ({
-  nodeType,
+  format,
+  discourseNodes = getDiscourseNodes(),
 }: {
-  nodeType: string;
+  format: string;
+  discourseNodes?: DiscourseNode[];
 }) => {
-  const discourseNodes = getDiscourseNodes();
-  const discourseNode = discourseNodes.find((n) => n.type === nodeType);
-  const format = discourseNode?.format;
-  if (!format) return null;
-
   const regex = /{([\w\d-]*)}/g;
   const matches = [...format.matchAll(regex)];
 

@@ -328,7 +328,10 @@ const LabelDialog = ({
   const [loading, setLoading] = useState(false);
   const isCreateCanvasNode = !isLiveBlock(initialUid);
   const { format } = discourseContext.nodes[nodeType];
-  const referencedNode = getReferencedNodeInFormat({ nodeType });
+  const referencedNode = getReferencedNodeInFormat({
+    format,
+    discourseNodes: Object.values(discourseContext.nodes),
+  });
 
   const renderCalloutText = () => {
     let title = "Please provide a label";
