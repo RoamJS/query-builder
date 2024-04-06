@@ -85,3 +85,30 @@ export const getNewDiscourseNodeText = async ({
   });
   return formattedText;
 };
+
+export const getReferencedNodeInFormat = ({
+  nodeType,
+}: {
+  nodeType: string;
+}) => {
+  const discourseNodes = getDiscourseNodes();
+  const discourseNode = discourseNodes.find((n) => n.type === nodeType);
+  const format = discourseNode?.format;
+  if (!format) return null;
+
+  const regex = /{([\w\d-]*)}/g;
+  const matches = [...format.matchAll(regex)];
+
+  for (const match of matches) {
+    const val = match[1];
+    if (val.toLowerCase() === "context") continue;
+
+    const referencedNode = Object.values(discourseNodes).find(({ text }) =>
+      new RegExp(text, "i").test(val)
+    );
+
+    if (referencedNode) return referencedNode;
+  }
+
+  return null;
+};
