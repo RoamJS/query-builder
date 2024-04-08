@@ -20,6 +20,10 @@ import getPageMetadata from "./getPageMetadata";
 import getDiscourseContextResults from "./getDiscourseContextResults";
 import fireQuery from "./fireQuery";
 import { ExportTypes } from "./types";
+import {
+  findReferencedNodeInText,
+  getReferencedNodeInFormat,
+} from "./formatUtils";
 
 export const updateExportProgress = (detail: {
   progress: number;
@@ -219,6 +223,44 @@ const toMarkdown = ({
   return `${indentation}${viewTypePrefix}${headingPrefix}${finalProcessedText}${lineBreak}${childrenMarkdown}`;
 };
 
+const handleDiscourseContext = async ({
+  includeDiscourseContext,
+  uid,
+  pageTitle,
+  isSamePageEnabled,
+  appendRefNodeContext,
+}: {
+  includeDiscourseContext: boolean;
+  uid: string;
+  pageTitle: string;
+  isSamePageEnabled: boolean;
+  appendRefNodeContext: boolean;
+}) => {
+  if (!includeDiscourseContext) return [];
+
+  const discourseResults = await getDiscourseContextResults({
+    uid,
+    isSamePageEnabled,
+  });
+  if (!appendRefNodeContext) return discourseResults;
+
+  const referencedDiscourseNode = getReferencedNodeInFormat({ uid });
+  if (referencedDiscourseNode) {
+    const referencedResult = findReferencedNodeInText({
+      text: pageTitle,
+      discourseNode: referencedDiscourseNode,
+    });
+    if (!referencedResult) return discourseResults;
+    const appendedContext = {
+      label: referencedDiscourseNode.text,
+      results: { [referencedResult.uid]: referencedResult },
+    };
+    return [...discourseResults, appendedContext];
+  }
+
+  return discourseResults;
+};
+
 type getExportTypesProps = {
   results?: ExportDialogProps["results"];
   exportId: string;
@@ -390,6 +432,10 @@ const getExportTypes = ({
       tree: exportTree.children,
       key: "resolve block embeds",
     }).uid;
+    const appendRefNodeContext = !!getSubTree({
+      tree: exportTree.children,
+      key: "append referenced node",
+    }).uid;
     const yaml = frontmatter.length
       ? frontmatter
       : [
@@ -406,6 +452,7 @@ const getExportTypes = ({
       maxFilenameLength,
       removeSpecialCharacters,
       linkType,
+      appendRefNodeContext,
     };
   };
 
@@ -424,6 +471,7 @@ const getExportTypes = ({
           maxFilenameLength,
           removeSpecialCharacters,
           linkType,
+          appendRefNodeContext,
         } = getExportSettings();
         const allPages = await getPageData(
           isSamePageEnabled,
@@ -452,12 +500,15 @@ const getExportTypes = ({
                 type,
               };
               const treeNode = getFullTreeByParentUid(uid);
-              const discourseResults = includeDiscourseContext
-                ? await getDiscourseContextResults({
-                    uid,
-                    isSamePageEnabled,
-                  })
-                : [];
+
+              const discourseResults = await handleDiscourseContext({
+                includeDiscourseContext,
+                pageTitle: text,
+                uid,
+                isSamePageEnabled,
+                appendRefNodeContext,
+              });
+
               const referenceResults = isFlagEnabled("render references")
                 ? (
                     window.roamAlphaAPI.data.fast.q(

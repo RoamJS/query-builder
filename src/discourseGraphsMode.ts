@@ -612,6 +612,13 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                     items: ["alias", "wikilinks"],
                   },
                 } as Field<SelectField>,
+                {
+                  title: "append referenced node",
+                  // @ts-ignore
+                  Panel: FlagPanel,
+                  description:
+                    "If a referenced node is defined in a node's format, it will be appended to the discourse context",
+                },
               ],
             },
           ],

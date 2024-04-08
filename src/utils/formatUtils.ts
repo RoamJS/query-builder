@@ -8,6 +8,10 @@ import discourseNodeFormatToDatalog from "./discourseNodeFormatToDatalog";
 import createOverlayRender from "roamjs-components/util/createOverlayRender";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import FormDialog from "roamjs-components/components/FormDialog";
+import { QBClause, Result } from "./types";
+import findDiscourseNode from "./findDiscourseNode";
+import extractTag from "roamjs-components/util/extractTag";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 
 type FormDialogProps = Parameters<typeof FormDialog>[0];
 const renderFormDialog = createOverlayRender<FormDialogProps>(
@@ -87,12 +91,21 @@ export const getNewDiscourseNodeText = async ({
 };
 
 export const getReferencedNodeInFormat = ({
-  format,
+  uid,
+  format: providedFormat,
   discourseNodes = getDiscourseNodes(),
 }: {
-  format: string;
+  uid?: string;
+  format?: string;
   discourseNodes?: DiscourseNode[];
 }) => {
+  let format = providedFormat;
+  if (!format) {
+    const discourseNode = findDiscourseNode(uid);
+    if (discourseNode) format = discourseNode.format;
+  }
+  if (!format) return null;
+
   const regex = /{([\w\d-]*)}/g;
   const matches = [...format.matchAll(regex)];
 
@@ -108,4 +121,42 @@ export const getReferencedNodeInFormat = ({
   }
 
   return null;
+};
+
+export const findReferencedNodeInText = ({
+  text,
+  discourseNode,
+}: {
+  text: string;
+  discourseNode: DiscourseNode;
+}) => {
+  // assumes that the referenced node in format has a specification
+  // which includes:
+  // has title relation
+  // a (.*?) pattern in it's target
+  // eg: Source: /^@(.*?)$/
+
+  const specification = discourseNode.specification;
+  const titleCondition = specification.find(
+    (s): s is QBClause => s.type === "clause" && s.relation === "has title"
+  );
+  if (!titleCondition) return null;
+
+  // Remove leading and trailing slashes and start/end modifiers
+  const patternStr = titleCondition.target.slice(1, -1).replace(/^\^|\$$/g, "");
+
+  // Since we assume there's always a (.*?), we replace it with a specific pattern to capture text within [[ ]]
+  // This assumes (.*?) is meant to capture the relevant content
+  const modifiedPatternStr = patternStr.replace(/\(\.\*\?\)/, "(.*?)");
+  const dynamicPattern = new RegExp(`\\[\\[${modifiedPatternStr}\\]\\]`, "g");
+  const match = text.match(dynamicPattern)?.[0] || "";
+  if (!match) return null;
+
+  const pageTitle = extractTag(match);
+  const uid = getPageUidByPageTitle(pageTitle);
+
+  return {
+    uid,
+    text: pageTitle,
+  } as Result;
 };
