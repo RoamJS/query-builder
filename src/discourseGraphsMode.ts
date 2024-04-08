@@ -607,9 +607,10 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 {
                   title: "link type",
                   Panel: SelectPanel,
-                  description: "How to format links that appear in your export",
+                  description:
+                    "How to format links that appear in your export.",
                   options: {
-                    items: ["alias", "wikilinks"],
+                    items: ["alias", "wikilinks", "roam url"],
                   },
                 } as Field<SelectField>,
                 {

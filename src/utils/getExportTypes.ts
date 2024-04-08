@@ -128,10 +128,13 @@ const collectUids = (t: TreeNode): string[] => [
 const MATCHES_NONE = /$.+^/;
 const EMBED_REGEX = /{{(?:\[\[)embed(?:\]\]):\s*\(\(([\w\d-]{9,10})\)\)\s*}}/;
 
-const toLink = (s: string, linkType: string) => {
-  if (linkType === "wikilinks") return `[[${s.replace(/\.md$/, "")}]]`;
-  if (linkType === "alias") return `[${s}](${s})`;
-  return s;
+const toLink = (filename: string, uid: string, linkType: string) => {
+  const extensionRemoved = filename.replace(/\.\w+$/, "");
+  if (linkType === "wikilinks") return `[[${extensionRemoved}]]`;
+  if (linkType === "alias") return `[${filename}](${filename})`;
+  if (linkType === "roam url")
+    return `[${extensionRemoved}](https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/${uid})`;
+  return filename;
 };
 
 const toMarkdown = ({
@@ -193,7 +196,7 @@ const toMarkdown = ({
                 simplifiedFilename,
                 removeSpecialCharacters,
               });
-              return toLink(name, linkType);
+              return toLink(name, c.uid, linkType);
             } else if (s.name === "left" || s.name === "right") {
               return "";
             } else {
@@ -580,6 +583,7 @@ const getExportTypes = ({
                                 allNodes,
                                 removeSpecialCharacters,
                               }),
+                              t.uid,
                               linkType
                             )}`
                         )
@@ -599,6 +603,7 @@ const getExportTypes = ({
                               allNodes,
                               removeSpecialCharacters,
                             }),
+                            r_1[0][":block/uid"] || "",
                             linkType
                           )}\n\n${toMarkdown({
                             c: pullBlockToTreeNode(r_1[1], ":bullet"),
@@ -782,7 +787,8 @@ const getExportTypes = ({
                         allNodes,
                         removeSpecialCharacters,
                       });
-                      const link = toLink(filename, linkType);
+                      const uid = t.uid || "";
+                      const link = toLink(filename, uid, linkType);
                       return `**${r.label}::** ${link}`;
                     })
                   )
@@ -822,7 +828,8 @@ const getExportTypes = ({
                       allNodes,
                       removeSpecialCharacters,
                     });
-                    const link = toLink(filename, linkType);
+                    const uid = r[0][":block/uid"] || "";
+                    const link = toLink(filename, uid, linkType);
                     const node = treeNodeToMarkdown(
                       pullBlockToTreeNode(r[1], ":bullet")
                     );
