@@ -145,7 +145,7 @@ export const findReferencedNodeInText = ({
   // Remove leading and trailing slashes and start/end modifiers
   const patternStr = titleCondition.target.slice(1, -1).replace(/^\^|\$$/g, "");
 
-  // Since we aummar there's always a (.*?), we replace it with a specific pattern to capture text within [[ ]]
+  // Since we assume there's always a (.*?), we replace it with a specific pattern to capture text within [[ ]]
   // This assumes (.*?) is meant to capture the relevant content
   const modifiedPatternStr = patternStr.replace(/\(\.\*\?\)/, "(.*?)");
   const dynamicPattern = new RegExp(`\\[\\[${modifiedPatternStr}\\]\\]`, "g");
