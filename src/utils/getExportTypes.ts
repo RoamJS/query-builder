@@ -261,6 +261,41 @@ const handleDiscourseContext = async ({
   return discourseResults;
 };
 
+const handleFrontmatter = ({
+  frontmatter,
+  rest,
+  result,
+}: {
+  frontmatter: string[];
+  rest: Record<string, unknown>;
+  result: Result;
+}) => {
+  const yaml = frontmatter.length
+    ? frontmatter
+    : [
+        "title: {text}",
+        `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
+        `author: {author}`,
+        "date: {date}",
+      ];
+  const resultCols = Object.keys(rest).filter((k) => !k.includes("uid"));
+  const yamlLines = yaml.concat(resultCols.map((k) => `${k}: {${k}}`));
+  const content = yamlLines
+    .map((s) =>
+      s.replace(/{([^}]+)}/g, (_, capt: string) => {
+        if (capt === "text") {
+          // Wrap title in quotes and escape additional quotes
+          const escapedText = result[capt].toString().replace(/"/g, '\\"');
+          return `"${escapedText}"`;
+        }
+        return result[capt].toString();
+      })
+    )
+    .join("\n");
+  const output = `---\n${content}\n---`;
+  return output;
+};
+
 type getExportTypesProps = {
   results?: ExportDialogProps["results"];
   exportId: string;
@@ -436,16 +471,8 @@ const getExportTypes = ({
       tree: exportTree.children,
       key: "append referenced node",
     }).uid;
-    const yaml = frontmatter.length
-      ? frontmatter
-      : [
-          "title: {text}",
-          `url: https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/{uid}`,
-          `author: {author}`,
-          "date: {date}",
-        ];
     return {
-      yaml,
+      frontmatter,
       optsRefs,
       optsEmbeds,
       simplifiedFilename,
@@ -464,7 +491,7 @@ const getExportTypes = ({
         includeDiscourseContext = false,
       }) => {
         const {
-          yaml,
+          frontmatter,
           optsRefs,
           optsEmbeds,
           simplifiedFilename,
@@ -485,20 +512,6 @@ const getExportTypes = ({
               await new Promise((resolve) => setTimeout(resolve));
               const v = getPageViewType(text) || "bullet";
               const { date, displayName } = getPageMetadata(text);
-              const resultCols = Object.keys(rest).filter(
-                (k) => !k.includes("uid")
-              );
-              const yamlLines = yaml.concat(
-                resultCols.map((k) => `${k}: {${k}}`)
-              );
-              const result: Result = {
-                ...rest,
-                date,
-                text,
-                uid,
-                author: displayName,
-                type,
-              };
               const treeNode = getFullTreeByParentUid(uid);
 
               const discourseResults = await handleDiscourseContext({
@@ -521,13 +534,22 @@ const getExportTypes = ({
                       Array.isArray(children) && children.length
                   )
                 : [];
-              const content = `---\n${yamlLines
-                .map((s) =>
-                  s.replace(/{([^}]+)}/g, (_, capt: string) =>
-                    result[capt].toString()
-                  )
-                )
-                .join("\n")}\n---\n\n${treeNode.children
+
+              const result: Result = {
+                ...rest,
+                date,
+                text,
+                uid,
+                author: displayName,
+                type,
+              };
+              const yamlLines = handleFrontmatter({
+                frontmatter,
+                rest,
+                result,
+              });
+
+              const content = `${yamlLines}\n\n${treeNode.children
                 .map((c) =>
                   toMarkdown({
                     c,
