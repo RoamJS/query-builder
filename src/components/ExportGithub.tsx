@@ -180,7 +180,7 @@ export const ExportGithub = ({
       intent="primary"
       onClick={async () => {
         authWindow.current = window.open(
-          "https://github.com/login/oauth/authorize?client_id=Iv1.86a652fa1b0490df",
+          "https://github.com/login/oauth/authorize?client_id=Iv1.e7e282a385b7b2da",
           "_blank",
           `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
         );
