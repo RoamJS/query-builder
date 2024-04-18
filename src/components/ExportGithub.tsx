@@ -1,7 +1,8 @@
 import { Button } from "@blueprintjs/core";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import apiGet from "roamjs-components/util/apiGet";
+import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 
 type UserReposResponse = {
@@ -26,7 +27,6 @@ export const ExportGithub = ({
   selectedRepo,
   setSelectedRepo,
   setError,
-  clearGitHubToken,
   gitHubAccessToken,
   setGitHubAccessToken,
   setCanSendToGitHub,
@@ -35,7 +35,6 @@ export const ExportGithub = ({
   selectedRepo: string;
   setSelectedRepo: (selectedRepo: string) => void;
   setError: (error: string) => void;
-  clearGitHubToken: boolean;
   gitHubAccessToken: string | null;
   setGitHubAccessToken: (gitHubAccessToken: string | null) => void;
   setCanSendToGitHub: (canSendToGitHub: boolean) => void;
@@ -53,42 +52,43 @@ export const ExportGithub = ({
     localStorageSet("selected-repo", repo);
   };
 
-  const clearAuth = () => {
-    setGitHubAccessToken(null);
-    localStorageSet("oauth-github", "");
-  };
-
-  const fetchAndSetInstallation = async () => {
+  const fetchAndSetInstallation = useCallback(async () => {
     try {
       const res = await apiGet<{ installations: { app_id: number }[] }>({
         domain: "https://api.github.com",
         path: "user/installations",
         headers: {
-          Authorization: `token ${gitHubAccessToken}`,
+          Authorization: `token ${localStorageGet("oauth-github")}`,
         },
       });
       const installations = res.installations;
+      const APP_ID = Number(process.env.GITHUB_APP_ID);
       const isAppInstalled = installations.some(
-        (installation) => installation.app_id === 874256
+        (installation) => installation.app_id === APP_ID
       );
       setIsGitHubAppInstalled(isAppInstalled);
       return isAppInstalled;
     } catch (error) {
       const e = error as Error;
       if (e.message === "Bad credentials") {
-        clearAuth();
+        setGitHubAccessToken(null);
+        localStorageSet("oauth-github", "");
       }
       return false;
     }
-  };
+  }, []);
 
   // listen for messages from the auth window
   useEffect(() => {
     const handleGitHubAuthMessage = (event: MessageEvent) => {
-      if (event.data) {
+      const targetOrigin =
+        process.env.NODE_ENV !== "production"
+          ? "https://samepage.ngrok.io"
+          : "https://samepage.network";
+      if (event.data && event.origin === targetOrigin) {
+        localStorageSet("oauth-github", event.data);
         setGitHubAccessToken(event.data);
         setClickedInstall(false);
-        localStorageSet("oauth-github", event.data);
         authWindow.current?.close();
       }
     };
@@ -137,65 +137,54 @@ export const ExportGithub = ({
     }
   }, [gitHubAccessToken, isGitHubAppInstalled, selectedRepo]);
 
-  // clear github token if error writing to github
-  useEffect(() => {
-    if (clearGitHubToken) clearAuth();
-  }, [clearGitHubToken]);
-
-  const InstallButton = () => (
-    <Button
-      text="Install SamePage App"
-      id="qb-install-button"
-      icon="cloud-download"
-      className={clickedInstall ? "opacity-30 hover:opacity-100" : ""}
-      intent={clickedInstall ? "none" : "primary"}
-      onClick={async () => {
-        authWindow.current = window.open(
-          "https://github.com/apps/samepage-network",
-          "_blank",
-          `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
-        );
-        setClickedInstall(true);
-        document.getElementById("qb-install-button")?.blur();
-      }}
-    />
-  );
-
-  const ConfirmInstallationButton = () => (
-    <Button
-      text="Confirm Installation"
-      icon="confirm"
-      intent="primary"
-      onClick={async () => {
-        setClickedInstall(false);
-        setIsGitHubAppInstalled(true);
-      }}
-    />
-  );
-
-  const AuthorizeButton = () => (
-    <Button
-      text="Authorize"
-      icon="key"
-      intent="primary"
-      onClick={async () => {
-        authWindow.current = window.open(
-          "https://github.com/login/oauth/authorize?client_id=Iv1.e7e282a385b7b2da",
-          "_blank",
-          `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
-        );
-      }}
-    />
-  );
-
   if (!isVisible) return null;
   return (
     <div className="flex mb-4">
       <div className="flex flex-col">
-        {!isGitHubAppInstalled && <InstallButton />}
-        {clickedInstall && <ConfirmInstallationButton />}
+        {!isGitHubAppInstalled && (
+          <Button
+            text="Install SamePage App"
+            id="qb-install-button"
+            icon="cloud-download"
+            className={clickedInstall ? "opacity-30 hover:opacity-100" : ""}
+            intent={clickedInstall ? "none" : "primary"}
+            onClick={async () => {
+              authWindow.current = window.open(
+                "https://github.com/apps/samepage-network",
+                "_blank",
+                `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
+              );
+              setClickedInstall(true);
+              document.getElementById("qb-install-button")?.blur();
+            }}
+          />
+        )}
+        {clickedInstall && (
+          <Button
+            text="Confirm Installation"
+            icon="confirm"
+            intent="primary"
+            onClick={async () => {
+              setClickedInstall(false);
+              setIsGitHubAppInstalled(true);
+            }}
+          />
+        )}
       </div>
-      {showGitHubLogin && <AuthorizeButton />}
+      {showGitHubLogin && (
+        <Button
+          text="Authorize"
+          icon="key"
+          intent="primary"
+          onClick={async () => {
+            authWindow.current = window.open(
+              "https://github.com/login/oauth/authorize?client_id=Iv1.e7e282a385b7b2da",
+              "_blank",
+              `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
+            );
+          }}
+        />
+      )}
       {repoSelectEnabled && (
         <MenuItemSelect
           items={repos.map((repo) => repo.full_name)}

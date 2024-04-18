@@ -46,6 +46,7 @@ import apiGet from "roamjs-components/util/apiGet";
 import apiPut from "roamjs-components/util/apiPut";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import { ExportGithub } from "./ExportGithub";
+import localStorageSet from "roamjs-components/util/localStorageSet";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -168,7 +169,6 @@ const ExportDialog: ExportDialogComponent = ({
   const [gitHubAccessToken, setGitHubAccessToken] = useState<string | null>(
     localStorageGet("oauth-github")
   );
-  const [clearGitHubToken, setClearGitHubToken] = useState(false);
   const [canSendToGitHub, setCanSendToGitHub] = useState(false);
 
   const writeFileToRepo = async ({
@@ -195,12 +195,18 @@ const ExportDialog: ExportDialogComponent = ({
         },
       });
       if (response.status === 401) {
+        setGitHubAccessToken(null);
         setError("Authentication failed. Please log in again.");
-        setClearGitHubToken(true);
+        localStorageSet("oauth-github", "");
         return { status: 401 };
       }
       return { status: response.status };
     } catch (error) {
+      const e = error as Error;
+      if (e.message.includes('"sha" wasn\'t supplied.')) {
+        setError("File already exists");
+        return { status: 500 };
+      }
       setError("Failed to upload file to repo");
       return { status: 500 };
     }
@@ -492,7 +498,6 @@ const ExportDialog: ExportDialogComponent = ({
               selectedRepo={selectedRepo}
               setSelectedRepo={setSelectedRepo}
               setError={setError}
-              clearGitHubToken={clearGitHubToken}
               gitHubAccessToken={gitHubAccessToken}
               setGitHubAccessToken={setGitHubAccessToken}
               setCanSendToGitHub={setCanSendToGitHub}
