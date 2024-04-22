@@ -182,16 +182,14 @@ const QueryNestedData = ({
 }) => {
   return (
     <>
-      <Button
-        rightIcon={"arrow-right"}
-        text={"Edit"}
-        onClick={() => setView({ uid: con.uid, branch: 0 })}
-        style={{
-          minWidth: 144,
-          maxWidth: 144,
-          paddingRight: 8,
-        }}
-      />
+      <span style={{ minWidth: 144, display: "inline-block" }}>
+        <Button
+          rightIcon={"arrow-right"}
+          text={"Edit"}
+          onClick={() => setView({ uid: con.uid, branch: 0 })}
+          style={{ maxHeight: 32 }}
+        />
+      </span>
       <span
         style={{
           minWidth: 144,
@@ -598,6 +596,106 @@ const QueryEditor: QueryEditorComponent = ({
       ).concat(DEFAULT_RETURN_NODE),
     [viewConditions]
   );
+  const addCondition = useCallback(
+    ({ parentUid, order }: { parentUid: string; order: number }) => {
+      createBlock({
+        parentUid,
+        order,
+        node: { text: "clause" },
+      }).then((uid) => {
+        setConditions((cons) => [
+          ...cons,
+          {
+            uid,
+            source: "node",
+            relation: "",
+            target: "",
+            type: "clause",
+          },
+        ]);
+        setInputSetting({
+          blockUid: uid,
+          key: "source",
+          value: "node",
+        });
+        document.getElementById(`${uid}-relation`)?.focus();
+      });
+    },
+    [setConditions, setInputSetting]
+  );
+  const createBranch = useCallback(() => {
+    createBlock({
+      parentUid: view.uid,
+      order: viewCondition?.conditions.length || 0,
+      node: {
+        text: `AND`,
+      },
+    }).then(() => {
+      const newBranch = viewCondition?.conditions.length || 0;
+      viewCondition?.conditions.push([]);
+
+      setViewStack((vs) =>
+        vs.slice(0, -1).concat({
+          uid: view.uid,
+          branch: newBranch,
+        })
+      );
+    });
+  }, [view.uid, viewCondition, setViewStack]);
+  useEffect(() => {
+    // Create Initial Branch and Condition
+    if (view.uid === parentUid) return;
+
+    const branches = viewCondition?.conditions.length;
+    const branchUid = getNthChildUidByBlockUid({
+      blockUid: view.uid,
+      order: view.branch,
+    });
+    const branchConditions = getChildrenLengthByPageUid(branchUid);
+
+    if (!branches) createBranch();
+    if (!branchConditions && branches) {
+      addCondition({
+        parentUid: branchUid,
+        order: 0,
+      });
+    }
+  }, [view, viewCondition, addCondition, createBranch]);
+  useEffect(() => {
+    // Navigate Branches with Left Or Right Arrows
+    // TODO - this should only mount once, change to ref
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (view.uid === parentUid) return;
+      if ((event.target as HTMLElement).tagName === "INPUT") return;
+
+      const totalBranches = viewCondition?.conditions.length || 0;
+      const isFirstBranch = view.branch === 0;
+      const isLastBranch = view.branch - 1 === totalBranches;
+
+      if (event.key === "ArrowLeft" && !isFirstBranch) {
+        setViewStack(
+          viewStack.slice(0, -1).concat([
+            {
+              uid: view.uid,
+              branch: view.branch - 1,
+            },
+          ])
+        );
+        event.preventDefault();
+      }
+      if (event.key === "ArrowRight" && !isLastBranch) {
+        setViewStack(
+          viewStack
+            .slice(0, -1)
+            .concat([{ uid: view.uid, branch: view.branch + 1 }])
+        );
+        event.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [view, viewCondition]);
+
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
       <H6
@@ -812,33 +910,12 @@ const QueryEditor: QueryEditorComponent = ({
             rightIcon={"plus"}
             text={"Add Condition"}
             style={{ maxHeight: 32 }}
-            onClick={() => {
-              createBlock({
+            onClick={() =>
+              addCondition({
                 parentUid: conditionsNodesUid,
                 order: conditions.length,
-                node: {
-                  text: "clause",
-                },
-              }).then((uid) => {
-                setConditions([
-                  ...conditions,
-                  {
-                    uid,
-                    source: "node",
-                    relation: "",
-                    target: "",
-                    not: false,
-                    type: "clause",
-                  },
-                ]);
-                setInputSetting({
-                  blockUid: uid,
-                  key: "source",
-                  value: "node",
-                });
-                document.getElementById(`${uid}-relation`)?.focus();
-              });
-            }}
+              })
+            }
           />
         </span>
         <span style={{ display: "inline-block", minWidth: 144 }}>
@@ -917,6 +994,7 @@ const QueryEditor: QueryEditorComponent = ({
       <div>
         <h4>OR Branches</h4>
         <Tabs
+          renderActiveTabPanelOnly={true}
           selectedTabId={view.branch}
           onChange={(e) =>
             setViewStack(
@@ -972,35 +1050,10 @@ const QueryEditor: QueryEditorComponent = ({
                   blockUid: view.uid,
                   order: view.branch,
                 });
-                (branchUid
-                  ? Promise.resolve(branchUid)
-                  : createBlock({
-                      parentUid: view.uid,
-                      order: view.branch,
-                      node: { text: "AND" },
-                    })
-                )
-                  .then((branchUid) =>
-                    createBlock({
-                      parentUid: branchUid,
-                      order: getChildrenLengthByPageUid(branchUid),
-                      node: {
-                        text: `clause`,
-                      },
-                    })
-                  )
-                  .then((uid) => {
-                    setConditions((cons) => [
-                      ...cons,
-                      {
-                        uid,
-                        source: "",
-                        relation: "",
-                        target: "",
-                        type: "clause",
-                      },
-                    ]);
-                  });
+                addCondition({
+                  parentUid: branchUid,
+                  order: getChildrenLengthByPageUid(branchUid),
+                });
               }}
             />
           </span>
@@ -1009,23 +1062,29 @@ const QueryEditor: QueryEditorComponent = ({
               rightIcon={"plus"}
               text={"Add Branch"}
               style={{ maxHeight: 32 }}
+              onClick={createBranch}
+            />
+          </span>
+          <span style={{ minWidth: 144, display: "inline-block" }}>
+            <Button
+              disabled={viewCondition?.conditions.length === 1}
+              rightIcon={"trash"}
+              text={"Delete Branch"}
+              style={{ maxHeight: 32 }}
               onClick={() => {
-                createBlock({
-                  parentUid: view.uid,
-                  order: viewConditions.length,
-                  node: {
-                    text: `AND`,
-                  },
-                }).then(() => {
-                  const newBranch = viewCondition?.conditions.length || 0;
-                  viewCondition?.conditions.push([]);
-                  setViewStack((vs) =>
-                    vs.slice(0, -1).concat({
-                      uid: view.uid,
-                      branch: newBranch,
-                    })
-                  );
-                });
+                deleteBlock(
+                  getNthChildUidByBlockUid({
+                    blockUid: view.uid,
+                    order: view.branch,
+                  })
+                );
+                viewCondition?.conditions.splice(view.branch, 1);
+                setViewStack(
+                  viewStack.slice(0, -1).concat({
+                    uid: view.uid,
+                    branch: view.branch === 0 ? 0 : view.branch - 1,
+                  })
+                );
               }}
             />
           </span>
