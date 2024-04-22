@@ -596,6 +596,52 @@ const QueryEditor: QueryEditorComponent = ({
       ).concat(DEFAULT_RETURN_NODE),
     [viewConditions]
   );
+  const addCondition = useCallback(
+    ({ parentUid, order }: { parentUid: string; order: number }) => {
+      createBlock({
+        parentUid,
+        order,
+        node: { text: "clause" },
+      }).then((uid) => {
+        setConditions((cons) => [
+          ...cons,
+          {
+            uid,
+            source: "node",
+            relation: "",
+            target: "",
+            type: "clause",
+          },
+        ]);
+        setInputSetting({
+          blockUid: uid,
+          key: "source",
+          value: "node",
+        });
+        document.getElementById(`${uid}-relation`)?.focus();
+      });
+    },
+    [setConditions, setInputSetting]
+  );
+  const createBranch = useCallback(() => {
+    createBlock({
+      parentUid: view.uid,
+      order: viewCondition?.conditions.length || 0,
+      node: {
+        text: `AND`,
+      },
+    }).then(() => {
+      const newBranch = viewCondition?.conditions.length || 0;
+      viewCondition?.conditions.push([]);
+
+      setViewStack((vs) =>
+        vs.slice(0, -1).concat({
+          uid: view.uid,
+          branch: newBranch,
+        })
+      );
+    });
+  }, [view.uid, viewCondition, setViewStack]);
   useEffect(() => {
     // Create Initial Branch and Condition
     if (view.uid === parentUid) return;
@@ -612,12 +658,12 @@ const QueryEditor: QueryEditorComponent = ({
       addCondition({
         parentUid: branchUid,
         order: 0,
-        isNested: true,
       });
     }
-  }, [view, viewCondition]);
+  }, [view, viewCondition, addCondition, createBranch]);
   useEffect(() => {
     // Navigate Branches with Left Or Right Arrows
+    // TODO - this should only mount once, change to ref
     const handleKeyDown = (event: KeyboardEvent) => {
       if (view.uid === parentUid) return;
       if ((event.target as HTMLElement).tagName === "INPUT") return;
@@ -649,70 +695,7 @@ const QueryEditor: QueryEditorComponent = ({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [view, viewCondition]);
-  const addCondition = ({
-    parentUid,
-    order,
-    isNested,
-  }: {
-    parentUid: string;
-    order: number;
-    isNested?: boolean;
-  }) => {
-    createBlock({
-      parentUid,
-      order,
-      node: { text: "clause" },
-    }).then((uid) => {
-      if (isNested) {
-        setConditions((cons) => [
-          ...cons,
-          {
-            uid,
-            source: "node",
-            relation: "",
-            target: "",
-            type: "clause",
-          },
-        ]);
-      } else {
-        setConditions([
-          ...conditions,
-          {
-            uid,
-            source: "node",
-            relation: "",
-            target: "",
-            type: "clause",
-          },
-        ]);
-      }
-      setInputSetting({
-        blockUid: uid,
-        key: "source",
-        value: "node",
-      });
-      document.getElementById(`${uid}-relation`)?.focus();
-    });
-  };
-  const createBranch = () => {
-    createBlock({
-      parentUid: view.uid,
-      order: viewCondition?.conditions.length || 0,
-      node: {
-        text: `AND`,
-      },
-    }).then(() => {
-      const newBranch = viewCondition?.conditions.length || 0;
-      viewCondition?.conditions.push([]);
 
-      setViewStack((vs) =>
-        vs.slice(0, -1).concat({
-          uid: view.uid,
-          branch: newBranch,
-        })
-      );
-    });
-  };
   return view.uid === parentUid ? (
     <div className={"p-4 overflow-auto"}>
       <H6
@@ -1070,7 +1053,6 @@ const QueryEditor: QueryEditorComponent = ({
                 addCondition({
                   parentUid: branchUid,
                   order: getChildrenLengthByPageUid(branchUid),
-                  isNested: true,
                 });
               }}
             />
