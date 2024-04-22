@@ -62,7 +62,7 @@ export const ExportGithub = ({
         },
       });
       const installations = res.installations;
-      const APP_ID = Number(process.env.GITHUB_APP_ID);
+      const APP_ID = 312167; // TODO - pull from process.env.GITHUB_APP_ID
       const isAppInstalled = installations.some(
         (installation) => installation.app_id === APP_ID
       );
