@@ -43,6 +43,10 @@ import { Column } from "../utils/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { getNodeEnv } from "roamjs-components/util/env";
 import apiGet from "roamjs-components/util/apiGet";
+import apiPut from "roamjs-components/util/apiPut";
+import localStorageGet from "roamjs-components/util/localStorageGet";
+import { ExportGithub } from "./ExportGithub";
+import localStorageSet from "roamjs-components/util/localStorageSet";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -91,6 +95,7 @@ const EXPORT_DESTINATIONS = [
   { id: "local", label: "Download Locally", active: true },
   { id: "app", label: "Store in Roam", active: false },
   { id: "samepage", label: "Store with SamePage", active: false },
+  { id: "github", label: "Send to GitHub", active: true },
 ];
 const exportDestinationById = Object.fromEntries(
   EXPORT_DESTINATIONS.map((ed) => [ed.id, ed])
@@ -105,6 +110,9 @@ const ExportDialog: ExportDialogComponent = ({
   isExportDiscourseGraph = false,
   initialPanel,
 }) => {
+  const [selectedRepo, setSelectedRepo] = useState(
+    localStorageGet("selected-repo")
+  );
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
     setDialogOpen(isOpen);
@@ -158,6 +166,52 @@ const ExportDialog: ExportDialogComponent = ({
   const [includeDiscourseContext, setIncludeDiscourseContext] = useState(
     discourseGraphEnabled as boolean
   );
+  const [gitHubAccessToken, setGitHubAccessToken] = useState<string | null>(
+    localStorageGet("oauth-github")
+  );
+  const [canSendToGitHub, setCanSendToGitHub] = useState(false);
+
+  const writeFileToRepo = async ({
+    filename,
+    content,
+    setError,
+  }: {
+    filename: string;
+    content: string;
+    setError: (error: string) => void;
+  }): Promise<{ status: number }> => {
+    const base64Content = btoa(content);
+
+    try {
+      const response = await apiPut({
+        domain: "https://api.github.com",
+        path: `repos/${selectedRepo}/contents/${filename}`,
+        headers: {
+          Authorization: `token ${gitHubAccessToken}`,
+        },
+        data: {
+          message: `Add ${filename}`,
+          content: base64Content,
+        },
+      });
+      if (response.status === 401) {
+        setGitHubAccessToken(null);
+        setError("Authentication failed. Please log in again.");
+        localStorageSet("oauth-github", "");
+        return { status: 401 };
+      }
+      return { status: response.status };
+    } catch (error) {
+      const e = error as Error;
+      if (e.message.includes('"sha" wasn\'t supplied.')) {
+        setError("File already exists");
+        return { status: 500 };
+      }
+      setError("Failed to upload file to repo");
+      return { status: 500 };
+    }
+  };
+
   const handleSetSelectedPage = (title: string) => {
     setSelectedPageTitle(title);
     setSelectedPageUid(getPageUidByPageTitle(title));
@@ -414,7 +468,7 @@ const ExportDialog: ExportDialogComponent = ({
   const ExportPanel = (
     <>
       <div className={Classes.DIALOG_BODY}>
-        <div className="flex justify-between items-center gap-16">
+        <div className="flex justify-between items-start gap-16">
           <Label className="flex-grow">
             Export Type
             <MenuItemSelect
@@ -423,21 +477,40 @@ const ExportDialog: ExportDialogComponent = ({
               onItemSelect={(et) => setActiveExportType(et)}
             />
           </Label>
-          <Label className="flex-grow">
-            Destination
-            <MenuItemSelect
-              items={EXPORT_DESTINATIONS.map((ed) => ed.id)}
-              transformItem={(s) => exportDestinationById[s].label}
-              activeItem={activeExportDestination}
-              onItemSelect={(et) => setActiveExportDestination(et)}
+          <div>
+            <Label className="flex-grow">
+              Destination
+              <MenuItemSelect
+                items={
+                  results.length === 1 && activeExportType === "Markdown" // TODO handle more github exports
+                    ? EXPORT_DESTINATIONS.map((ed) => ed.id)
+                    : EXPORT_DESTINATIONS.map((ed) => ed.id).filter(
+                        (ed) => ed !== "github"
+                      )
+                }
+                transformItem={(s) => exportDestinationById[s].label}
+                activeItem={activeExportDestination}
+                onItemSelect={(et) => setActiveExportDestination(et)}
+              />
+            </Label>
+            <ExportGithub
+              isVisible={activeExportDestination === "github"}
+              selectedRepo={selectedRepo}
+              setSelectedRepo={setSelectedRepo}
+              setError={setError}
+              gitHubAccessToken={gitHubAccessToken}
+              setGitHubAccessToken={setGitHubAccessToken}
+              setCanSendToGitHub={setCanSendToGitHub}
             />
-          </Label>
+          </div>
         </div>
+
         <Label>
           Filename
           <InputGroup
             value={filename}
             onChange={(e) => setFilename(e.target.value)}
+            disabled={results.length === 1} // TODO handle single result filename based on export type or user input
           />
         </Label>
 
@@ -547,6 +620,30 @@ const ExportDialog: ExportDialogComponent = ({
                       return;
                     }
 
+                    if (activeExportDestination === "github") {
+                      const { title, content } = files[0];
+                      try {
+                        const { status } = await writeFileToRepo({
+                          filename: title,
+                          content,
+                          setError,
+                        });
+                        if (status === 201) {
+                          // TODO: remove toast by prolonging ExportProgress
+                          renderToast({
+                            id: "export-success",
+                            content: "Upload Success",
+                            intent: "success",
+                          });
+                          onClose();
+                        }
+                      } catch (error) {
+                        const e = error as Error;
+                        setError(e.message);
+                      }
+                      return;
+                    }
+
                     if (files.length === 1) {
                       const { title, content } = files[0];
                       const blob = new Blob([content], {
@@ -602,7 +699,10 @@ const ExportDialog: ExportDialogComponent = ({
               }, 1);
             }}
             style={{ minWidth: 64 }}
-            disabled={loading}
+            disabled={
+              loading ||
+              (activeExportDestination === "github" && !canSendToGitHub)
+            }
           />
         </div>
       </div>

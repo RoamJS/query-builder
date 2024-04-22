@@ -15,6 +15,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ${{ vars.AWS_REGION }}
   ROAMJS_PROXY: ${{ vars.ROAMJS_PROXY }}
+  GITHUB_APP_ID: 312167
 
 jobs:
   deploy:
