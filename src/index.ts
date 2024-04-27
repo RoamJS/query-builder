@@ -612,6 +612,139 @@ svg.rs-svg-container {
     isDiscourseNode: isDiscourseNode,
   };
 
+  type GitHubIssueProps = {
+    ":number": number;
+  };
+  type GitHubSyncProps = {
+    ":issue": GitHubIssueProps;
+  };
+  type GitHubCommentProps = {
+    id: number;
+    body: string;
+    html_url: string;
+    author: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  type GitHubCommentResponse = {
+    id: number;
+    body: string;
+    html_url: string;
+    user: {
+      login: string;
+    };
+    created_at: string;
+    updated_at: string;
+  };
+
+  type GitHubCommentBlock = {
+    uid: string;
+    props: GitHubCommentProps;
+    string: string;
+  };
+
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Get Github Issue Comments",
+    callback: async () => {
+      const getBlockProps = (uid: string) => {
+        return (
+          window.roamAlphaAPI.pull("[:block/props]", [":block/uid", uid])?.[
+            ":block/props"
+          ] || {}
+        );
+      };
+      const getCommentsOnPage = (pageUid: string) => {
+        const query = `[:find
+        (pull ?node [:block/string :block/uid :block/props])
+         :where
+        [?p :block/uid "${pageUid}"]
+        [?node :block/page ?p]
+        [?node :block/props ?props]
+      ]`;
+        const results = window.roamAlphaAPI.q(query);
+        return results
+          .filter((r: any) => r[0].props["github-sync"])
+          .map((r: any) => {
+            const node = r[0];
+            return {
+              id: node.props["github-sync"]["comment"]["id"],
+              uid: node.uid,
+              string: node.string,
+            };
+          });
+      };
+
+      const pageUid = getCurrentPageUid();
+      const blockProps = getBlockProps(pageUid) as Record<string, unknown>;
+      const githubProps = blockProps?.[":github-sync"] as GitHubSyncProps;
+      const issueNumber = githubProps?.[":issue"]?.[":number"];
+      if (!issueNumber) {
+        renderToast({
+          id: "github-issue-comments",
+          content: "No Issue Number",
+        });
+        console.log("blockProps", blockProps);
+        return;
+      }
+
+      const gitHubAccessToken = localStorage.getItem(
+        "roamjs:oauth-github:roamjs-dev"
+      );
+      const selectedRepo = localStorage.getItem(
+        "roamjs:selected-repo:roamjs-dev"
+      );
+
+      const apiUrl = `https://api.github.com/repos/${selectedRepo}/issues/${issueNumber}/comments`;
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `token ${gitHubAccessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(`Failed to add comment: ${response.status} ${message}`);
+      }
+      const body: GitHubCommentResponse[] = await response.json();
+      const commentsOnGithub = body.map((c) => ({
+        id: c.id,
+        body: c.body,
+        html_url: c.html_url,
+        author: c.user.login,
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      }));
+
+      if (response.ok) {
+        const commentsOnPage = getCommentsOnPage(pageUid);
+        const commentsOnPageIds = new Set(commentsOnPage.map((gc) => gc.id));
+        const newComments = commentsOnGithub.filter(
+          (comment) => !commentsOnPageIds.has(comment.id)
+        );
+        console.log("newComments", newComments);
+
+        // newComments.forEach(async (commentId: number) => {
+        //   const commentDetails = commentsOnGithub.find(
+        //     (c: { id: number }) => c.id === commentId
+        //   );
+        //   if (commentDetails) {
+        //     const { id, body, user, created_at, updated_at } = commentDetails;
+        //     const newComment = {
+        //       id,
+        //       body,
+        //       author: user.login,
+        //       createdAt: created_at,
+        //       updatedAt: updated_at,
+        //     };
+        //     // Assuming there's a function to handle the new comment
+        //     await processNewComment(newComment);
+        //   }
+        // });
+      }
+    },
+  });
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
     callback: () => {

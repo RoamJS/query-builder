@@ -47,6 +47,7 @@ import apiPut from "roamjs-components/util/apiPut";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
+import { ExportGithubIssue } from "./ExportGithubIssue";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -92,6 +93,7 @@ type ExportDialogComponent = (
 ) => JSX.Element;
 
 const EXPORT_DESTINATIONS = [
+  { id: "github-issue", label: "Send to GitHub Issue", active: true },
   { id: "local", label: "Download Locally", active: true },
   { id: "app", label: "Store in Roam", active: false },
   { id: "samepage", label: "Store with SamePage", active: false },
@@ -208,6 +210,70 @@ const ExportDialog: ExportDialogComponent = ({
         return { status: 500 };
       }
       setError("Failed to upload file to repo");
+      return { status: 500 };
+    }
+  };
+  const writeFileToIssue = async ({
+    title,
+    body,
+    setError,
+  }: {
+    title: string;
+    body: string;
+    setError: (error: string) => void;
+  }): Promise<{ status: number }> => {
+    try {
+      const response = await apiPost({
+        domain: "https://api.github.com",
+        path: `repos/${selectedRepo}/issues`,
+        headers: {
+          Authorization: `token ${gitHubAccessToken}`,
+        },
+        data: {
+          title,
+          body,
+          // milestone, // The number of the milestone to associate this issue
+          // labels,
+          // assignees
+        },
+      });
+      if (response.status === 401) {
+        setGitHubAccessToken(null);
+        setError("Authentication failed. Please log in again.");
+        localStorageSet("oauth-github", "");
+        return { status: 401 };
+      }
+
+      if (response.status === 201) {
+        console.log(response);
+
+        const props = getBlockProps(currentPageUid);
+        const newProps = {
+          ...props,
+          ["github-sync"]: {
+            issue: {
+              id: response.id,
+              number: response.number,
+              html_url: response.html_url,
+              state: response.state,
+              labels: response.labels,
+              createdAt: response.created_at,
+              updatedAt: response.updated_at,
+            },
+          },
+        };
+        window.roamAlphaAPI.updateBlock({
+          block: {
+            uid: currentPageUid,
+            props: newProps,
+          },
+        });
+      }
+
+      return { status: response.status };
+    } catch (error) {
+      const e = error as Error;
+      setError("Failed to create issue");
       return { status: 500 };
     }
   };
@@ -502,6 +568,15 @@ const ExportDialog: ExportDialogComponent = ({
               setGitHubAccessToken={setGitHubAccessToken}
               setCanSendToGitHub={setCanSendToGitHub}
             />
+            <ExportGithubIssue
+              isVisible={activeExportDestination === "github-issue"}
+              selectedRepo={selectedRepo}
+              setSelectedRepo={setSelectedRepo}
+              setError={setError}
+              gitHubAccessToken={gitHubAccessToken}
+              setGitHubAccessToken={setGitHubAccessToken}
+              setCanSendToGitHub={setCanSendToGitHub}
+            />
           </div>
         </div>
 
@@ -626,6 +701,29 @@ const ExportDialog: ExportDialogComponent = ({
                         const { status } = await writeFileToRepo({
                           filename: title,
                           content,
+                          setError,
+                        });
+                        if (status === 201) {
+                          // TODO: remove toast by prolonging ExportProgress
+                          renderToast({
+                            id: "export-success",
+                            content: "Upload Success",
+                            intent: "success",
+                          });
+                          onClose();
+                        }
+                      } catch (error) {
+                        const e = error as Error;
+                        setError(e.message);
+                      }
+                      return;
+                    }
+                    if (activeExportDestination === "github-issue") {
+                      const { title, content } = files[0];
+                      try {
+                        const { status } = await writeFileToIssue({
+                          title: title.replace(/\.[^/.]+$/, ""), // remove extension
+                          body: content,
                           setError,
                         });
                         if (status === 201) {
