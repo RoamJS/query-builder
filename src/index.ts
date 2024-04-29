@@ -57,6 +57,9 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
+import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -675,6 +678,7 @@ svg.rs-svg-container {
       };
 
       const pageUid = getCurrentPageUid();
+      const pageTitle = getPageTitleByPageUid(pageUid);
       const blockProps = getBlockProps(pageUid) as Record<string, unknown>;
       const githubProps = blockProps?.[":github-sync"] as GitHubSyncProps;
       const issueNumber = githubProps?.[":issue"]?.[":number"];
@@ -723,28 +727,85 @@ svg.rs-svg-container {
         const newComments = commentsOnGithub.filter(
           (comment) => !commentsOnPageIds.has(comment.id)
         );
-        console.log("newComments", newComments);
 
-        // newComments.forEach(async (commentId: number) => {
-        //   const commentDetails = commentsOnGithub.find(
-        //     (c: { id: number }) => c.id === commentId
-        //   );
-        //   if (commentDetails) {
-        //     const { id, body, user, created_at, updated_at } = commentDetails;
-        //     const newComment = {
-        //       id,
-        //       body,
-        //       author: user.login,
-        //       createdAt: created_at,
-        //       updatedAt: updated_at,
-        //     };
-        //     // Assuming there's a function to handle the new comment
-        //     await processNewComment(newComment);
-        //   }
-        // });
+        if (newComments.length === 0) {
+          renderToast({
+            id: "github-issue-comments",
+            content: "No new comments",
+          });
+          return;
+        }
+
+        const configUid = getPageUidByPageTitle("roam/js/github-sync");
+        const configTree = getBasicTreeByParentUid(configUid);
+
+        const qbAlias = getSettingValueFromTree({
+          tree: configTree,
+          key: "Query Builder reference",
+        });
+        const qbAliasUid = resolveQueryBuilderRef({
+          queryRef: qbAlias,
+          extensionAPI,
+        });
+        const results = await runQuery({
+          extensionAPI,
+          parentUid: qbAliasUid,
+          inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
+        });
+        const commentHeaderUid = results.results[0]?.uid;
+
+        await Promise.all(
+          newComments.map(async (c) => {
+            const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
+              new Date(c.createdAt)
+            );
+            const roamUpdatedDate = window.roamAlphaAPI.util.dateToPageTitle(
+              new Date(c.updatedAt)
+            );
+            const commentHeader = `${c.author} on [[${roamCreatedDate}]] (from [GitHub](${c.html_url}))`;
+            const commentBody = c.body.trim();
+            await createBlock({
+              node: {
+                text: commentHeader,
+                children: [{ text: commentBody }],
+                props: {
+                  "github-sync": {
+                    comment: c,
+                  },
+                },
+              },
+              parentUid: commentHeaderUid,
+            });
+          })
+        );
+        renderToast({
+          intent: "success",
+          id: "github-issue-comments",
+          content: "GitHub Comments Added",
+        });
+        console.log(newComments);
       }
     },
   });
+
+  createConfigObserver({
+    title: "roam/js/github-sync",
+    config: {
+      tabs: [
+        {
+          id: "home",
+          fields: [
+            {
+              Panel: TextPanel,
+              title: "Query Builder reference",
+              description: "Use a Query Builder alias or block reference",
+            },
+          ],
+        },
+      ],
+    },
+  });
+
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
     callback: () => {
