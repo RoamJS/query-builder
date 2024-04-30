@@ -80,25 +80,27 @@ const ExportProgress = ({ id }: { id: string }) => {
   );
 };
 
+const EXPORT_DESTINATIONS = [
+  { id: "local", label: "Download Locally", active: true },
+  { id: "app", label: "Store in Roam", active: false },
+  { id: "samepage", label: "Store with SamePage", active: false },
+  { id: "github", label: "Send to GitHub", active: true },
+  { id: "github-issue", label: "Send to GitHub Issue", active: true },
+];
+
 export type ExportDialogProps = {
   results?: Result[] | ((isSamePageEnabled: boolean) => Promise<Result[]>);
   title?: string;
   columns?: Column[];
   isExportDiscourseGraph?: boolean;
   initialPanel?: "sendTo" | "export";
+  initialExportType?: (typeof EXPORT_DESTINATIONS)[number]["id"];
 };
 
 type ExportDialogComponent = (
   props: RoamOverlayProps<ExportDialogProps>
 ) => JSX.Element;
 
-const EXPORT_DESTINATIONS = [
-  { id: "github-issue", label: "Send to GitHub Issue", active: true },
-  { id: "local", label: "Download Locally", active: true },
-  { id: "app", label: "Store in Roam", active: false },
-  { id: "samepage", label: "Store with SamePage", active: false },
-  { id: "github", label: "Send to GitHub", active: true },
-];
 const exportDestinationById = Object.fromEntries(
   EXPORT_DESTINATIONS.map((ed) => [ed.id, ed])
 );
@@ -111,6 +113,7 @@ const ExportDialog: ExportDialogComponent = ({
   title = "Share Data",
   isExportDiscourseGraph = false,
   initialPanel,
+  initialExportType,
 }) => {
   const [selectedRepo, setSelectedRepo] = useState(
     localStorageGet("selected-repo")
@@ -141,7 +144,11 @@ const ExportDialog: ExportDialogComponent = ({
     exportTypes[0].name
   );
   const [activeExportDestination, setActiveExportDestination] =
-    useState<string>(EXPORT_DESTINATIONS[0].id);
+    useState<string>(
+      initialExportType
+        ? exportDestinationById[initialExportType].id
+        : EXPORT_DESTINATIONS[0].id
+    );
   const [isSamePageEnabled, setIsSamePageEnabled] = useState(false);
 
   const checkForCanvasPage = (title: string) => {

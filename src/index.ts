@@ -57,9 +57,11 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import { createConfigObserver } from "roamjs-components/components/ConfigPage";
-import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import GitHubSync, {
+  getGitHubIssueComments,
+  renderGitHubSyncConfigPage,
+} from "./components/GitHubSync";
+import { handleTitleAdditions } from "./utils/handleTitleAdditions";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -209,32 +211,22 @@ svg.rs-svg-container {
       DEFAULT_CANVAS_PAGE_FORMAT;
     return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
   };
-  const h1ObserverCallback = (h1: HTMLHeadingElement) => {
+  const h1ObserverCallback = async (h1: HTMLHeadingElement) => {
     const title = getPageTitleValueByHtmlElement(h1);
     if (!!extensionAPI.settings.get("show-page-metadata")) {
       const { displayName, date } = getPageMetadata(title);
-      const container = document.createElement("div");
-      const oldMarginBottom = getComputedStyle(h1).marginBottom;
-      container.style.marginTop = `${
-        4 - Number(oldMarginBottom.replace("px", "")) / 2
-      }px`;
-      container.style.marginBottom = oldMarginBottom;
       const label = document.createElement("i");
       label.innerText = `Created by ${
         displayName || "Anonymous"
       } on ${date.toLocaleString()}`;
-      container.appendChild(label);
-      if (h1.parentElement) {
-        if (h1.parentElement.lastChild === h1) {
-          h1.parentElement.appendChild(container);
-        } else {
-          h1.parentElement.insertBefore(container, h1.nextSibling);
-        }
-      }
+
+      handleTitleAdditions(h1, label);
     }
 
     if (title.startsWith("discourse-graph/nodes/")) {
       renderDiscourseNodeTypeConfigPage({ title, h: h1, onloadArgs });
+    } else if (title.startsWith("roam/js/github-sync")) {
+      renderGitHubSyncConfigPage({ title, h: h1 });
     } else if (
       getQueryPages(extensionAPI)
         .map(
@@ -268,6 +260,15 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else if (!!extensionAPI.settings.get("github-sync")) {
+      const githubSyncComponent = GitHubSync({
+        title,
+        pageTitle: title,
+        extensionAPI,
+      });
+      if (!githubSyncComponent) return;
+
+      handleTitleAdditions(h1, githubSyncComponent);
     }
   };
   extensionAPI.settings.panel.create({
@@ -397,6 +398,14 @@ svg.rs-svg-container {
               }
             });
           },
+        },
+      },
+      {
+        id: "github-sync",
+        name: "GitHub Sync",
+        description: "Syncs with GitHub to show issues and comments",
+        action: {
+          type: "switch",
         },
       },
     ],
@@ -615,195 +624,9 @@ svg.rs-svg-container {
     isDiscourseNode: isDiscourseNode,
   };
 
-  type GitHubIssueProps = {
-    ":number": number;
-  };
-  type GitHubSyncProps = {
-    ":issue": GitHubIssueProps;
-  };
-  type GitHubCommentProps = {
-    id: number;
-    body: string;
-    html_url: string;
-    author: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-  type GitHubCommentResponse = {
-    id: number;
-    body: string;
-    html_url: string;
-    user: {
-      login: string;
-    };
-    created_at: string;
-    updated_at: string;
-  };
-
-  type GitHubCommentBlock = {
-    uid: string;
-    props: GitHubCommentProps;
-    string: string;
-  };
-
   extensionAPI.ui.commandPalette.addCommand({
     label: "Get Github Issue Comments",
-    callback: async () => {
-      const getBlockProps = (uid: string) => {
-        return (
-          window.roamAlphaAPI.pull("[:block/props]", [":block/uid", uid])?.[
-            ":block/props"
-          ] || {}
-        );
-      };
-      const getCommentsOnPage = (pageUid: string) => {
-        const query = `[:find
-        (pull ?node [:block/string :block/uid :block/props])
-         :where
-        [?p :block/uid "${pageUid}"]
-        [?node :block/page ?p]
-        [?node :block/props ?props]
-      ]`;
-        const results = window.roamAlphaAPI.q(query);
-        return results
-          .filter((r: any) => r[0].props["github-sync"])
-          .map((r: any) => {
-            const node = r[0];
-            return {
-              id: node.props["github-sync"]["comment"]["id"],
-              uid: node.uid,
-              string: node.string,
-            };
-          });
-      };
-
-      const pageUid = getCurrentPageUid();
-      const pageTitle = getPageTitleByPageUid(pageUid);
-      const blockProps = getBlockProps(pageUid) as Record<string, unknown>;
-      const githubProps = blockProps?.[":github-sync"] as GitHubSyncProps;
-      const issueNumber = githubProps?.[":issue"]?.[":number"];
-      if (!issueNumber) {
-        renderToast({
-          id: "github-issue-comments",
-          content: "No Issue Number",
-        });
-        console.log("blockProps", blockProps);
-        return;
-      }
-
-      const gitHubAccessToken = localStorage.getItem(
-        "roamjs:oauth-github:roamjs-dev"
-      );
-      const selectedRepo = localStorage.getItem(
-        "roamjs:selected-repo:roamjs-dev"
-      );
-
-      const apiUrl = `https://api.github.com/repos/${selectedRepo}/issues/${issueNumber}/comments`;
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          Authorization: `token ${gitHubAccessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(`Failed to add comment: ${response.status} ${message}`);
-      }
-      const body: GitHubCommentResponse[] = await response.json();
-      const commentsOnGithub = body.map((c) => ({
-        id: c.id,
-        body: c.body,
-        html_url: c.html_url,
-        author: c.user.login,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
-      }));
-
-      if (response.ok) {
-        const commentsOnPage = getCommentsOnPage(pageUid);
-        const commentsOnPageIds = new Set(commentsOnPage.map((gc) => gc.id));
-        const newComments = commentsOnGithub.filter(
-          (comment) => !commentsOnPageIds.has(comment.id)
-        );
-
-        if (newComments.length === 0) {
-          renderToast({
-            id: "github-issue-comments",
-            content: "No new comments",
-          });
-          return;
-        }
-
-        const configUid = getPageUidByPageTitle("roam/js/github-sync");
-        const configTree = getBasicTreeByParentUid(configUid);
-
-        const qbAlias = getSettingValueFromTree({
-          tree: configTree,
-          key: "Query Builder reference",
-        });
-        const qbAliasUid = resolveQueryBuilderRef({
-          queryRef: qbAlias,
-          extensionAPI,
-        });
-        const results = await runQuery({
-          extensionAPI,
-          parentUid: qbAliasUid,
-          inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
-        });
-        const commentHeaderUid = results.results[0]?.uid;
-
-        await Promise.all(
-          newComments.map(async (c) => {
-            const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
-              new Date(c.createdAt)
-            );
-            const roamUpdatedDate = window.roamAlphaAPI.util.dateToPageTitle(
-              new Date(c.updatedAt)
-            );
-            const commentHeader = `${c.author} on [[${roamCreatedDate}]] (from [GitHub](${c.html_url}))`;
-            const commentBody = c.body.trim();
-            await createBlock({
-              node: {
-                text: commentHeader,
-                children: [{ text: commentBody }],
-                props: {
-                  "github-sync": {
-                    comment: c,
-                  },
-                },
-              },
-              parentUid: commentHeaderUid,
-            });
-          })
-        );
-        renderToast({
-          intent: "success",
-          id: "github-issue-comments",
-          content: "GitHub Comments Added",
-        });
-        console.log(newComments);
-      }
-    },
-  });
-
-  createConfigObserver({
-    title: "roam/js/github-sync",
-    config: {
-      tabs: [
-        {
-          id: "home",
-          fields: [
-            {
-              Panel: TextPanel,
-              title: "Query Builder reference",
-              description: "Use a Query Builder alias or block reference",
-            },
-          ],
-        },
-      ],
-    },
+    callback: () => getGitHubIssueComments(extensionAPI),
   });
 
   extensionAPI.ui.commandPalette.addCommand({
@@ -834,7 +657,6 @@ svg.rs-svg-container {
       canvasDrawerRender({ groupedShapes, pageUid });
     },
   });
-
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Query Drawer",
     callback: () =>
