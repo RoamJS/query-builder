@@ -57,11 +57,14 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import GitHubSync, {
+import {
   getGitHubIssueComments,
+  isGitHubSyncPage,
   renderGitHubSyncConfigPage,
+  renderGitHubSyncPage,
 } from "./components/GitHubSync";
 import { handleTitleAdditions } from "./utils/handleTitleAdditions";
+import initializeGitHubSync from "./components/GitHubSync";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -260,15 +263,12 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
-    } else if (!!extensionAPI.settings.get("github-sync")) {
-      const githubSyncComponent = GitHubSync({
-        title,
+    } else if (isGitHubSyncPage(title)) {
+      renderGitHubSyncPage({
+        h1,
         pageTitle: title,
-        extensionAPI,
+        onloadArgs,
       });
-      if (!githubSyncComponent) return;
-
-      handleTitleAdditions(h1, githubSyncComponent);
     }
   };
   extensionAPI.settings.panel.create({
@@ -406,6 +406,10 @@ svg.rs-svg-container {
         description: "Syncs with GitHub to show issues and comments",
         action: {
           type: "switch",
+          onChange: (e) => {
+            const flag = e.target.checked;
+            toggleGitHubSync(flag);
+          },
         },
       },
     ],
@@ -423,6 +427,7 @@ svg.rs-svg-container {
   const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
     onloadArgs
   );
+  const toggleGitHubSync = await initializeGitHubSync(onloadArgs);
   if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
     extensionAPI.settings.set(SETTING, true);
     toggleDiscourseGraphsMode(true);
@@ -626,7 +631,10 @@ svg.rs-svg-container {
 
   extensionAPI.ui.commandPalette.addCommand({
     label: "Get Github Issue Comments",
-    callback: () => getGitHubIssueComments(extensionAPI),
+    callback: () => {
+      const pageUid = getCurrentPageUid();
+      getGitHubIssueComments({ pageUid });
+    },
   });
 
   extensionAPI.ui.commandPalette.addCommand({
@@ -668,6 +676,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          // @ts-ignore - TODO: remove clearOnClick, no longer used
           clearOnClick,
           onloadArgs,
         })

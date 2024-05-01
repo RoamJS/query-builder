@@ -19,6 +19,11 @@ import { render as exportRender } from "../components/Export";
 import getBlockProps from "../utils/getBlockProps";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import apiGet from "roamjs-components/util/apiGet";
+import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
+import { handleTitleAdditions } from "../utils/handleTitleAdditions";
+import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
+import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
+import getUids from "roamjs-components/dom/getUids";
 
 type GitHubIssuePage = {
   "github-sync": {
@@ -62,6 +67,7 @@ type GitHubCommentBlock = {
 };
 
 const CONFIG_PAGE = "roam/js/github-sync";
+const SETTING = "github-sync";
 
 const getPageIssueNumber = (pageUid: string) => {
   const blockProps = getBlockProps(pageUid) as GitHubIssuePage;
@@ -70,10 +76,8 @@ const getPageIssueNumber = (pageUid: string) => {
 };
 
 export const getGitHubIssueComments = async ({
-  extensionAPI,
   pageUid,
 }: {
-  extensionAPI: OnloadArgs["extensionAPI"];
   pageUid: string;
 }) => {
   const getCommentsOnPage = (pageUid: string) => {
@@ -97,7 +101,6 @@ export const getGitHubIssueComments = async ({
       });
   };
 
-  const pageTitle = getPageTitleByPageUid(pageUid);
   const issueNumber = getPageIssueNumber(pageUid);
   if (!issueNumber) {
     renderToast({
@@ -106,6 +109,8 @@ export const getGitHubIssueComments = async ({
     });
     return;
   }
+
+  const commentHeaderUid = getCommentHeaderUid(pageUid); // TODO implement this
 
   const gitHubAccessToken = localStorageGet("oauth-github");
   const selectedRepo = localStorageGet("selected-repo");
@@ -146,30 +151,6 @@ export const getGitHubIssueComments = async ({
         });
         return;
       }
-
-      const configUid = getPageUidByPageTitle(CONFIG_PAGE);
-      const configTree = getBasicTreeByParentUid(configUid);
-      const qbAlias = getSettingValueFromTree({
-        tree: configTree,
-        key: "Comments Block",
-      });
-      if (!qbAlias) {
-        renderToast({
-          id: "github-issue-comments",
-          content: `Comments Block reference not set. Set it in ${CONFIG_PAGE}`,
-        });
-        return;
-      }
-      const qbAliasUid = resolveQueryBuilderRef({
-        queryRef: qbAlias,
-        extensionAPI,
-      });
-      const results = await runQuery({
-        extensionAPI,
-        parentUid: qbAliasUid,
-        inputs: { NODETEXT: pageTitle, NODEUID: configUid },
-      });
-      const commentHeaderUid = results.results[0]?.uid;
 
       if (!commentHeaderUid) {
         renderToast({
@@ -219,6 +200,33 @@ export const getGitHubIssueComments = async ({
   }
 };
 
+let enabled = false;
+export const isGitHubSyncPage = (pageTitle: string) => {
+  if (!enabled) return;
+  const gitHubNodeResult = window.roamAlphaAPI.data.fast.q(`[:find
+    (pull ?node [:block/string])
+    :where
+      [?roamjsgithub-sync :node/title "roam/js/github-sync"]
+      [?node :block/page ?roamjsgithub-sync]
+      [?p :block/children ?node]
+    (or     [?p :block/string ?p-String]
+      [?p :node/title ?p-String])
+    [(clojure.string/includes? ?p-String "Node Select")]
+    ]`) as [PullBlock][];
+  const nodeText = gitHubNodeResult[0]?.[0]?.[":block/string"] || "";
+  if (!nodeText) return;
+
+  const discourseNodes = getDiscourseNodes();
+  const selectedNode = discourseNodes.find((node) => node.text === nodeText);
+  const isPageTypeOfNode = matchDiscourseNode({
+    format: selectedNode?.format || "",
+    specification: selectedNode?.specification || [],
+    text: selectedNode?.text || "",
+    title: pageTitle,
+  });
+  return isPageTypeOfNode;
+};
+
 export const renderGitHubSyncConfigPage = ({
   title,
   h,
@@ -226,6 +234,7 @@ export const renderGitHubSyncConfigPage = ({
   title: string;
   h: HTMLHeadingElement;
 }) => {
+  if (!enabled) return;
   renderConfigPage({
     title,
     h,
@@ -264,39 +273,124 @@ export const renderGitHubSyncConfigPage = ({
   });
 };
 
-const GitHubSync = ({
-  title,
+export const renderGitHubSyncPage = async ({
+  h1,
   pageTitle,
-  extensionAPI,
+  onloadArgs,
 }: {
-  title: string;
+  h1: HTMLHeadingElement;
   pageTitle: string;
+  onloadArgs: OnloadArgs;
+}) => {
+  const extensionAPI = onloadArgs.extensionAPI;
+  const configUid = getPageUidByPageTitle(CONFIG_PAGE);
+  const configTree = getBasicTreeByParentUid(configUid);
+  const qbAlias = getSettingValueFromTree({
+    tree: configTree,
+    key: "Comments Block",
+  });
+  if (!qbAlias) {
+    renderToast({
+      id: "github-issue-comments",
+      content: `Comments Block reference not set. Set it in ${CONFIG_PAGE}`,
+    });
+    return;
+  }
+  const qbAliasUid = resolveQueryBuilderRef({
+    queryRef: qbAlias,
+    extensionAPI,
+  });
+  const results = await runQuery({
+    extensionAPI,
+    parentUid: qbAliasUid,
+    inputs: { NODETEXT: pageTitle, NODEUID: configUid },
+  });
+  const commentHeaderUid = results.results[0]?.uid;
+  const commentHeaderEl = document.querySelector(
+    `.rm-block__input[id$="${commentHeaderUid}"] span`
+  );
+  if (commentHeaderEl) {
+    const containerDiv = document.createElement("div");
+    containerDiv.className = "inline-block ml-2";
+    containerDiv.onmousedown = (e) => e.stopPropagation();
+    commentHeaderEl.append(containerDiv);
+    renderWithUnmount(
+      <GitHubSyncComments commentHeaderUid={commentHeaderUid} />,
+      containerDiv
+    );
+  }
+  handleTitleAdditions(
+    h1,
+    <GitHubSyncButtons
+      extensionAPI={onloadArgs.extensionAPI}
+      pageTitle={pageTitle}
+      commentHeaderUid={commentHeaderUid}
+    />
+  );
+};
+
+const GitHubSyncComments = ({
+  commentHeaderUid,
+}: {
+  commentHeaderUid: string;
+}) => {
+  return (
+    <>
+      <Button
+        text="Add Comment"
+        icon="add"
+        minimal
+        small
+        outlined
+        onClick={async () => {
+          const today = window.roamAlphaAPI.util.dateToPageTitle(new Date());
+          const currentUserDisplayName = getCurrentUserDisplayName();
+          const commentHeader = `[[${currentUserDisplayName}]] on [[${today}]]`;
+          const newBlock = await createBlock({
+            node: {
+              text: commentHeader,
+              children: [{ text: "" }],
+            },
+            parentUid: commentHeaderUid,
+          });
+          setTimeout(() => {
+            const commentBlockUid = getFirstChildUidByBlockUid(newBlock);
+            const commentBlockEl = document.querySelector(
+              `.rm-block__input[id$="${commentBlockUid}"]`
+            ) as HTMLDivElement;
+            if (!commentBlockEl) {
+              renderToast({
+                id: "github-issue-comments",
+                content: "Failed to focus cursor",
+              });
+              return;
+            }
+            window.roamAlphaAPI.ui.setBlockFocusAndSelection({
+              location: {
+                "block-uid": commentBlockUid,
+                "window-id": getUids(commentBlockEl).windowId,
+              },
+              selection: {
+                start: 0,
+                end: 0,
+              },
+            });
+          }, 100);
+        }}
+      />
+    </>
+  );
+};
+export const GitHubSyncButtons = ({
+  extensionAPI,
+  pageTitle,
+  commentHeaderUid,
+}: {
   extensionAPI: OnloadArgs["extensionAPI"];
+  pageTitle: string;
+  commentHeaderUid: string;
 }) => {
   const pageUid = getPageUidByPageTitle(pageTitle);
-  const result = window.roamAlphaAPI.data.fast.q(`[:find
-    (pull ?node [:block/string])
-  :where
-    [?roamjsgithub-sync :node/title "roam/js/github-sync"]
-    [?node :block/page ?roamjsgithub-sync]
-    [?p :block/children ?node]
-    (or     [?p :block/string ?p-String]
-      [?p :node/title ?p-String])
-    [(clojure.string/includes? ?p-String "Node Select")]
-  ]`) as [PullBlock][];
-  const nodeText = result[0]?.[0]?.[":block/string"] || "";
-  if (!nodeText) return;
-
-  const discourseNodes = getDiscourseNodes();
-  const selectedNode = discourseNodes.find((node) => node.text === nodeText);
-  const isTypeOfNode = matchDiscourseNode({
-    format: selectedNode?.format || "",
-    specification: selectedNode?.specification || [],
-    text: selectedNode?.text || "",
-    title,
-  });
-  if (!isTypeOfNode) return;
-
   return (
     <div className="github-sync-container flex space-x-2">
       <Button
@@ -324,17 +418,23 @@ const GitHubSync = ({
         icon="comment"
         minimal
         outlined
-        onClick={() => getGitHubIssueComments({ extensionAPI, pageUid })}
-      />
-      <Button
-        text="Get Block Props"
-        icon="add"
-        minimal
-        outlined
-        onClick={() => getPageIssueNumber(pageUid)}
+        onClick={() => getGitHubIssueComments({ pageUid })}
       />
     </div>
   );
 };
 
-export default GitHubSync;
+const initializeGitHubSync = async (args: OnloadArgs) => {
+  const unloads = new Set<() => void>();
+  const toggle = async (flag: boolean) => {
+    if (flag && !enabled) {
+    } else if (!flag && enabled) {
+      unloads.forEach((u) => u());
+      unloads.clear();
+    }
+    enabled = flag;
+  };
+  await toggle(!!args.extensionAPI.settings.get(SETTING));
+  return toggle;
+};
+export default initializeGitHubSync;
