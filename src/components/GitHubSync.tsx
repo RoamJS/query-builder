@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import matchDiscourseNode from "../utils/matchDiscourseNode";
 import { OnloadArgs, PullBlock } from "roamjs-components/types";
@@ -24,6 +24,16 @@ import { handleTitleAdditions } from "../utils/handleTitleAdditions";
 import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import getUids from "roamjs-components/dom/getUids";
+import createBlockObserver from "roamjs-components/dom/createBlockObserver";
+import ReactDOM from "react-dom";
+import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
+import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
+import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
+import getPageUidByBlockUid from "roamjs-components/queries/getPageUidByBlockUid";
+import apiPost from "roamjs-components/util/apiPost";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 
 type GitHubIssuePage = {
   "github-sync": {
@@ -43,8 +53,11 @@ type GitHubIssueResponse = {
   data: GitHubIssue[];
   status: number;
 };
-
-// TODO COMBINE WITH GITHUB GITHUBCOMMENTRESPONSE
+type GitHubCommentBlock = {
+  "github-sync": {
+    comment: GitHubComment;
+  };
+};
 type GitHubComment = {
   id: number;
   body: string;
@@ -55,30 +68,67 @@ type GitHubComment = {
   created_at: string;
   updated_at: string;
 };
-type GitHubCommentResponse = {
+type GitHubCommentResponse = GitHubComment & { status: number };
+type GitHubCommentsResponse = {
   data: GitHubComment[];
   status: number;
 };
 
-type GitHubCommentBlock = {
-  uid: string;
-  props: GitHubComment;
-  string: string;
-};
+// type GitHubCommentBlock = {
+//   uid: string;
+//   props: GitHubComment;
+//   string: string;
+// };
 
 const CONFIG_PAGE = "roam/js/github-sync";
 const SETTING = "github-sync";
+let enabled = false;
 
+// Utils
 const getPageIssueNumber = (pageUid: string) => {
   const blockProps = getBlockProps(pageUid) as GitHubIssuePage;
   const issueNumber = blockProps?.["github-sync"]?.["issue"]?.["number"];
   return issueNumber;
 };
-
-export const getGitHubIssueComments = async ({
+const getRoamCommentsContainerUid = async ({
   pageUid,
+  extensionAPI,
 }: {
   pageUid: string;
+  extensionAPI: OnloadArgs["extensionAPI"];
+}) => {
+  const pageTitle = getPageTitleByPageUid(pageUid);
+  const configUid = getPageUidByPageTitle(CONFIG_PAGE);
+  const configTree = getBasicTreeByParentUid(configUid);
+  const qbAlias = getSettingValueFromTree({
+    tree: configTree,
+    key: "Comments Block",
+  });
+  if (!qbAlias) {
+    renderToast({
+      id: "github-issue-comments",
+      content: `Comments Block reference not set. Set it in ${CONFIG_PAGE}`,
+    });
+    return;
+  }
+  const qbAliasUid = resolveQueryBuilderRef({
+    queryRef: qbAlias,
+    extensionAPI,
+  });
+  const results = await runQuery({
+    extensionAPI,
+    parentUid: qbAliasUid,
+    inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
+  });
+
+  return results.results[0]?.uid;
+};
+export const getCommentsFromGitHub = async ({
+  pageUid,
+  extensionAPI,
+}: {
+  pageUid: string;
+  extensionAPI: OnloadArgs["extensionAPI"];
 }) => {
   const getCommentsOnPage = (pageUid: string) => {
     const query = `[:find
@@ -110,13 +160,16 @@ export const getGitHubIssueComments = async ({
     return;
   }
 
-  const commentHeaderUid = getCommentHeaderUid(pageUid); // TODO implement this
+  const commentsContainerUid = await getRoamCommentsContainerUid({
+    pageUid,
+    extensionAPI,
+  });
 
   const gitHubAccessToken = localStorageGet("oauth-github");
   const selectedRepo = localStorageGet("selected-repo");
 
   try {
-    const response = await apiGet<GitHubCommentResponse>({
+    const response = await apiGet<GitHubCommentsResponse>({
       domain: "https://api.github.com",
       path: `repos/${selectedRepo}/issues/${issueNumber}/comments`,
       headers: {
@@ -126,8 +179,7 @@ export const getGitHubIssueComments = async ({
     });
 
     if (response.status === 200) {
-      const body = response.data;
-      const commentsOnGithub = body.map((c) => ({
+      const commentsOnGithub = response.data.map((c) => ({
         id: c.id,
         body: c.body,
         html_url: c.html_url,
@@ -152,13 +204,17 @@ export const getGitHubIssueComments = async ({
         return;
       }
 
-      if (!commentHeaderUid) {
+      if (!commentsContainerUid) {
         renderToast({
           id: "github-issue-comments",
           content: "Comments Block not found.  Please create one.",
         });
         return;
       }
+
+      // TODO: sort comments
+      // TODO: add dialog to confirm before adding new comments
+      // TODO: open new comments in sidebar
       await Promise.all(
         newComments.map(async (c) => {
           const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
@@ -167,7 +223,7 @@ export const getGitHubIssueComments = async ({
           const roamUpdatedDate = window.roamAlphaAPI.util.dateToPageTitle(
             new Date(c.updated_at)
           );
-          const commentHeader = `${c.user.login} on [[${roamCreatedDate}]] (from [GitHub](${c.html_url}))`;
+          const commentHeader = `${c.user.login} on [[${roamCreatedDate}]]`;
           const commentBody = c.body.trim();
           await createBlock({
             node: {
@@ -179,7 +235,7 @@ export const getGitHubIssueComments = async ({
                 },
               },
             },
-            parentUid: commentHeaderUid,
+            parentUid: commentsContainerUid,
           });
         })
       );
@@ -199,8 +255,6 @@ export const getGitHubIssueComments = async ({
     });
   }
 };
-
-let enabled = false;
 export const isGitHubSyncPage = (pageTitle: string) => {
   if (!enabled) return;
   const gitHubNodeResult = window.roamAlphaAPI.data.fast.q(`[:find
@@ -226,7 +280,6 @@ export const isGitHubSyncPage = (pageTitle: string) => {
   });
   return isPageTypeOfNode;
 };
-
 export const renderGitHubSyncConfigPage = ({
   title,
   h,
@@ -272,133 +325,269 @@ export const renderGitHubSyncConfigPage = ({
     },
   });
 };
-
 export const renderGitHubSyncPage = async ({
   h1,
-  pageTitle,
+  pageUid,
   onloadArgs,
 }: {
   h1: HTMLHeadingElement;
-  pageTitle: string;
+  pageUid: string;
   onloadArgs: OnloadArgs;
 }) => {
   const extensionAPI = onloadArgs.extensionAPI;
-  const configUid = getPageUidByPageTitle(CONFIG_PAGE);
-  const configTree = getBasicTreeByParentUid(configUid);
-  const qbAlias = getSettingValueFromTree({
-    tree: configTree,
-    key: "Comments Block",
-  });
-  if (!qbAlias) {
-    renderToast({
-      id: "github-issue-comments",
-      content: `Comments Block reference not set. Set it in ${CONFIG_PAGE}`,
-    });
-    return;
-  }
-  const qbAliasUid = resolveQueryBuilderRef({
-    queryRef: qbAlias,
+
+  const commentsContainerUid = await getRoamCommentsContainerUid({
+    pageUid,
     extensionAPI,
   });
-  const results = await runQuery({
-    extensionAPI,
-    parentUid: qbAliasUid,
-    inputs: { NODETEXT: pageTitle, NODEUID: configUid },
-  });
-  const commentHeaderUid = results.results[0]?.uid;
   const commentHeaderEl = document.querySelector(
-    `.rm-block__input[id$="${commentHeaderUid}"] span`
+    `.rm-block__input[id$="${commentsContainerUid}"]`
   );
-  if (commentHeaderEl) {
+  if (commentHeaderEl && commentsContainerUid) {
+    // TODO: seems like there is some redundancy here
+    if (commentHeaderEl.hasAttribute("github-sync-loaded")) return;
+    commentHeaderEl.setAttribute("github-sync-loaded", "true");
     const containerDiv = document.createElement("div");
     containerDiv.className = "inline-block ml-2";
-    containerDiv.onmousedown = (e) => e.stopPropagation();
-    commentHeaderEl.append(containerDiv);
-    renderWithUnmount(
-      <GitHubSyncComments commentHeaderUid={commentHeaderUid} />,
+    commentHeaderEl.appendChild(containerDiv);
+    ReactDOM.render(
+      <GitHubSyncPage commentsContainerUid={commentsContainerUid} />,
       containerDiv
     );
   }
+  commentHeaderEl;
   handleTitleAdditions(
     h1,
-    <GitHubSyncButtons
-      extensionAPI={onloadArgs.extensionAPI}
-      pageTitle={pageTitle}
-      commentHeaderUid={commentHeaderUid}
-    />
+    <TitleButtons extensionAPI={onloadArgs.extensionAPI} pageUid={pageUid} />
   );
 };
 
-const GitHubSyncComments = ({
-  commentHeaderUid,
-}: {
-  commentHeaderUid: string;
-}) => {
+// Components
+const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
+  const [loading, setLoading] = useState(false);
+  const url = useMemo(() => {
+    const props = getBlockProps(blockUid) as GitHubCommentBlock;
+    const commentProps = props?.["github-sync"]?.["comment"];
+    return commentProps?.html_url;
+  }, [blockUid, loading]);
+
   return (
     <>
       <Button
-        text="Add Comment"
-        icon="add"
+        title={
+          !!url
+            ? "Comment was already sent. Click to view on GitHub."
+            : "Add to GitHub"
+        }
+        text={!!url ? "" : "Add to GitHub"}
+        icon={!!url ? "link" : "git-push"}
         minimal
         small
-        outlined
-        onClick={async () => {
-          const today = window.roamAlphaAPI.util.dateToPageTitle(new Date());
-          const currentUserDisplayName = getCurrentUserDisplayName();
-          const commentHeader = `[[${currentUserDisplayName}]] on [[${today}]]`;
-          const newBlock = await createBlock({
-            node: {
-              text: commentHeader,
-              children: [{ text: "" }],
-            },
-            parentUid: commentHeaderUid,
-          });
-          setTimeout(() => {
-            const commentBlockUid = getFirstChildUidByBlockUid(newBlock);
-            const commentBlockEl = document.querySelector(
-              `.rm-block__input[id$="${commentBlockUid}"]`
-            ) as HTMLDivElement;
-            if (!commentBlockEl) {
-              renderToast({
-                id: "github-issue-comments",
-                content: "Failed to focus cursor",
-              });
-              return;
-            }
-            window.roamAlphaAPI.ui.setBlockFocusAndSelection({
-              location: {
-                "block-uid": commentBlockUid,
-                "window-id": getUids(commentBlockEl).windowId,
+        loading={loading}
+        outlined={!url}
+        onClick={async (e) => {
+          if (!!url) {
+            window.open(url, "_blank");
+            return;
+          }
+          setLoading(true);
+          const gitHubAccessToken = localStorageGet("oauth-github");
+          const selectedRepo = localStorageGet("selected-repo");
+          const el = e.target as HTMLButtonElement;
+          const { blockUid: triggerUid } = getUidsFromButton(el);
+          const pageUid = getPageUidByBlockUid(triggerUid);
+          const issueNumber = getPageIssueNumber(pageUid);
+
+          const commentsTree = getBasicTreeByParentUid(blockUid);
+          const comment = commentsTree.map((c) => c.text).join("\n\n");
+          try {
+            const response = await apiPost<GitHubCommentResponse>({
+              domain: "https://api.github.com",
+              path: `repos/${selectedRepo}/issues/${issueNumber}/comments`,
+              headers: {
+                Authorization: `token ${gitHubAccessToken}`,
+                "Content-Type": "application/json",
               },
-              selection: {
-                start: 0,
-                end: 0,
+              data: {
+                body: comment,
               },
             });
-          }, 100);
+
+            if (response.status === 201) {
+              const triggerProps = getBlockProps(triggerUid);
+              const newProps = {
+                ...triggerProps,
+                ["github-sync"]: {
+                  comment: {
+                    id: response.id,
+                    html_url: response.html_url,
+                    author: response.user.login,
+                    createdAt: response.created_at,
+                    updatedAt: response.updated_at,
+                  },
+                },
+              };
+
+              await window.roamAlphaAPI.updateBlock({
+                block: {
+                  uid: triggerUid,
+                  props: newProps,
+                },
+              });
+              renderToast({
+                intent: "success",
+                id: "github-issue-comments",
+                content: "Comment Added",
+              });
+            }
+          } catch (error) {
+            const e = error as Error;
+            const message = e.message;
+            renderToast({
+              intent: "danger",
+              id: "github-issue-comments",
+              content: `Failed to add comment: ${message}`,
+            });
+          }
+          setLoading(false);
+
+          return null;
         }}
       />
     </>
   );
 };
-export const GitHubSyncButtons = ({
+const CommentsHeaderComponent = ({
+  commentsContainerUid,
+}: {
+  commentsContainerUid: string;
+}) => {
+  return (
+    <Button
+      text="Add Comment"
+      icon="add"
+      minimal
+      small
+      outlined
+      onClick={async () => {
+        const today = window.roamAlphaAPI.util.dateToPageTitle(new Date());
+        const currentUserDisplayName = getCurrentUserDisplayName();
+        const commentHeader = `[[${currentUserDisplayName}]] on [[${today}]]`;
+        const newBlock = await createBlock({
+          node: {
+            text: commentHeader,
+            children: [{ text: "" }],
+          },
+          parentUid: commentsContainerUid,
+        });
+        setTimeout(() => {
+          const commentBlockUid = getFirstChildUidByBlockUid(newBlock);
+          const commentBlockEl = document.querySelector(
+            `.rm-block__input[id$="${commentBlockUid}"]`
+          ) as HTMLDivElement;
+          if (!commentBlockEl) {
+            renderToast({
+              id: "github-issue-comments",
+              content: "Failed to focus cursor",
+            });
+            return;
+          }
+          window.roamAlphaAPI.ui.setBlockFocusAndSelection({
+            location: {
+              "block-uid": commentBlockUid,
+              "window-id": getUids(commentBlockEl).windowId,
+            },
+            selection: {
+              start: 0,
+              end: 0,
+            },
+          });
+        }, 100);
+      }}
+    />
+  );
+};
+const GitHubSyncPage = ({
+  commentsContainerUid,
+}: {
+  commentsContainerUid: string;
+}) => {
+  useEffect(() => {
+    const headerCommentObserver = createBlockObserver({
+      onBlockLoad: (b) => {
+        const { blockUid } = getUids(b);
+        if (blockUid === commentsContainerUid) {
+          if (b.hasAttribute("github-sync-comment-header")) return;
+          b.setAttribute("github-sync-comment-header", "true");
+          const containerDiv = document.createElement("div");
+          containerDiv.className = "inline-block ml-2";
+          containerDiv.onmousedown = (e) => e.stopPropagation();
+          b.append(containerDiv);
+          ReactDOM.render(
+            <CommentsHeaderComponent
+              commentsContainerUid={commentsContainerUid}
+            />,
+            containerDiv
+          );
+        }
+      },
+    });
+    const childCommentObserver = createBlockObserver({
+      onBlockLoad: (b) => {
+        const { blockUid } = getUids(b);
+        const parentUid = getParentUidByBlockUid(blockUid);
+        if (parentUid === commentsContainerUid) {
+          if (b.hasAttribute("github-sync-comment")) return;
+          b.setAttribute("github-sync-comment", "true");
+          const containerDiv = document.createElement("div");
+          containerDiv.className = "inline-block ml-2";
+          containerDiv.onmousedown = (e) => e.stopPropagation();
+          b.append(containerDiv);
+          ReactDOM.render(
+            <CommentsComponent blockUid={blockUid} />,
+            containerDiv
+          );
+        }
+      },
+    });
+
+    return () => {
+      headerCommentObserver.forEach((o) => o.disconnect());
+      childCommentObserver.forEach((o) => o.disconnect());
+      // console.log("Disconnecting GitHubSyncComments useEffect"); // this isn't logging?
+    };
+  }, [commentsContainerUid]);
+
+  return null;
+};
+export const TitleButtons = ({
   extensionAPI,
-  pageTitle,
-  commentHeaderUid,
+  pageUid,
 }: {
   extensionAPI: OnloadArgs["extensionAPI"];
-  pageTitle: string;
-  commentHeaderUid: string;
+  pageUid: string;
 }) => {
-  const pageUid = getPageUidByPageTitle(pageTitle);
+  const [loading, setLoading] = useState({
+    sendToGitHub: false,
+    syncWithGitHub: false,
+    getNewComments: false,
+  });
+  const pageTitle = getPageTitleByPageUid(pageUid);
+  const issueNumber = useMemo(() => {
+    const props = getBlockProps(pageUid) as GitHubIssuePage;
+    return props?.["github-sync"]?.["issue"]?.["number"];
+  }, [pageUid, loading.sendToGitHub]);
+
   return (
     <div className="github-sync-container flex space-x-2">
       <Button
         text="Send To GitHub"
-        icon="send-to"
+        icon="git-push"
         minimal
         outlined
-        onClick={() =>
+        hidden={!!issueNumber}
+        onClick={() => {
+          setLoading({ ...loading, sendToGitHub: true });
           exportRender({
             results: [
               {
@@ -409,21 +598,45 @@ export const GitHubSyncButtons = ({
             title: "Export Current Page",
             initialPanel: "export",
             initialExportType: "github-issue",
-          })
-        }
+            onCloseCallback: () => {
+              setTimeout(() => {
+                setLoading({ ...loading, sendToGitHub: false });
+              }, 500);
+            },
+          });
+        }}
       />
-      <Button text="Sync with GitHub" icon="refresh" minimal outlined />
+      <Button
+        text="Sync with GitHub"
+        icon="refresh"
+        minimal
+        outlined
+        loading={loading.syncWithGitHub}
+        hidden={!issueNumber}
+        onClick={async () => {
+          setLoading({ ...loading, syncWithGitHub: true });
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          setLoading({ ...loading, syncWithGitHub: false });
+        }}
+      />
       <Button
         text="Get New Comments"
         icon="comment"
         minimal
         outlined
-        onClick={() => getGitHubIssueComments({ pageUid })}
+        loading={loading.getNewComments}
+        hidden={!issueNumber}
+        onClick={async () => {
+          setLoading({ ...loading, getNewComments: true });
+          await getCommentsFromGitHub({ pageUid, extensionAPI });
+          setLoading({ ...loading, getNewComments: false });
+        }}
       />
     </div>
   );
 };
 
+// Init
 const initializeGitHubSync = async (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {

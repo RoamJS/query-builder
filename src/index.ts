@@ -58,7 +58,7 @@ import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import {
-  getGitHubIssueComments,
+  getCommentsFromGitHub,
   isGitHubSyncPage,
   renderGitHubSyncConfigPage,
   renderGitHubSyncPage,
@@ -264,9 +264,10 @@ svg.rs-svg-container {
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
     } else if (isGitHubSyncPage(title)) {
+      const pageUid = getPageUidByPageTitle(title);
       renderGitHubSyncPage({
         h1,
-        pageTitle: title,
+        pageUid,
         onloadArgs,
       });
     }
@@ -628,14 +629,6 @@ svg.rs-svg-container {
       ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
     isDiscourseNode: isDiscourseNode,
   };
-
-  extensionAPI.ui.commandPalette.addCommand({
-    label: "Get Github Issue Comments",
-    callback: () => {
-      const pageUid = getCurrentPageUid();
-      getGitHubIssueComments({ pageUid });
-    },
-  });
 
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
