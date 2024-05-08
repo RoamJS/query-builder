@@ -7,16 +7,8 @@ import React, {
 } from "react";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import matchDiscourseNode from "../utils/matchDiscourseNode";
-import { OnloadArgs, PullBlock } from "roamjs-components/types";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Classes,
-  Dialog,
-  FormGroup,
-} from "@blueprintjs/core";
-import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import { OnloadArgs, PullBlock, RoamBasicNode } from "roamjs-components/types";
+import { Button, Card, Classes, Dialog, Tag } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -28,12 +20,10 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import { render as renderConfigPage } from "roamjs-components/components/ConfigPage";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
 import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
-import OauthPanel from "roamjs-components/components/ConfigPanels/OauthPanel";
 import { render as exportRender } from "../components/Export";
 import getBlockProps from "../utils/getBlockProps";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import apiGet from "roamjs-components/util/apiGet";
-import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import { handleTitleAdditions } from "../utils/handleTitleAdditions";
 import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
@@ -41,32 +31,20 @@ import getUids from "roamjs-components/dom/getUids";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import ReactDOM from "react-dom";
 import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
-import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
-import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
-import getNthChildUidByBlockUid from "roamjs-components/queries/getNthChildUidByBlockUid";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import getPageUidByBlockUid from "roamjs-components/queries/getPageUidByBlockUid";
 import apiPost from "roamjs-components/util/apiPost";
-import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import renderOverlay from "roamjs-components/util/renderOverlay";
 import {
-  ExportGithub,
-  UserRepos,
   WINDOW_HEIGHT,
   WINDOW_LEFT,
   WINDOW_TOP,
   WINDOW_WIDTH,
   fetchInstallationStatus,
-  initialRepos,
-  UserReposResponse,
 } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
-import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
-import {
-  CustomField,
-  Field,
-} from "roamjs-components/components/ConfigPanels/types";
-import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import { getNodeEnv } from "roamjs-components/util/env";
+import nanoid from "nanoid";
 
 type GitHubIssuePage = {
   "github-sync": {
@@ -79,7 +57,7 @@ type GitHubIssue = {
   updatedAt: string;
   labels: string[];
   id: number;
-  url: string;
+  html_url: string;
   state: string;
 };
 type GitHubIssueResponse = {
@@ -156,7 +134,7 @@ const getRoamCommentsContainerUid = async ({
 
   return results.results[0]?.uid;
 };
-export const getCommentsFromGitHub = async ({
+export const insertNewCommentsFromGitHub = async ({
   pageUid,
   extensionAPI,
 }: {
@@ -246,7 +224,7 @@ export const getCommentsFromGitHub = async ({
       }
 
       renderOverlay({
-        Overlay: CommentsConfirmationDialog,
+        Overlay: NewCommentsConfirmationDialog,
         props: {
           comments: newComments,
           commentsContainerUid,
@@ -413,6 +391,15 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
         loading={loading}
         outlined={!url}
         onClick={async (e) => {
+          // const el = e.target as HTMLButtonElement;
+          // const { blockUid: triggerUid } = getUidsFromButton(el);
+          // const tree = getBasicTreeByParentUid(triggerUid);
+          // const flatten = (nodes: RoamBasicNode[] = []): RoamBasicNode[] =>
+          //   nodes.flatMap((node) => [node, ...flatten(node["children"])]);
+          // const flattened = flatten(tree);
+          // const comment = flattened.map((c) => c.text).join("\n\n");
+          // console.log(comment);
+
           if (!!url) {
             window.open(url, "_blank");
             return;
@@ -433,7 +420,10 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           }
 
           const commentsTree = getBasicTreeByParentUid(blockUid);
-          const comment = commentsTree.map((c) => c.text).join("\n\n");
+          const flatten = (nodes: RoamBasicNode[] = []): RoamBasicNode[] =>
+            nodes.flatMap((node) => [node, ...flatten(node["children"])]);
+          const flattened = flatten(commentsTree);
+          const comment = flattened.map((c) => c.text).join("\n\n");
           try {
             const response = await apiPost<GitHubCommentResponse>({
               domain: "https://api.github.com",
@@ -446,7 +436,6 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
                 body: comment,
               },
             });
-
             if (response.status === 201) {
               const triggerProps = getBlockProps(triggerUid);
               const newProps = {
@@ -477,6 +466,7 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           } catch (error) {
             const e = error as Error;
             const message = e.message;
+            console.log(e);
             renderToast({
               intent: "danger",
               id: "github-issue-comments",
@@ -550,7 +540,7 @@ const CommentsContainerComponent = ({
         onClick={async () => {
           setLoadingComments(true);
           const pageUid = getPageUidByBlockUid(commentsContainerUid);
-          await getCommentsFromGitHub({ pageUid, extensionAPI });
+          await insertNewCommentsFromGitHub({ pageUid, extensionAPI });
           setLoadingComments(false);
         }}
       />
@@ -668,20 +658,21 @@ export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
         }}
       /> */}
       <Button
-        text={!!issueNumber ? "GitHub Sync Settings" : ""}
+        text={!!issueNumber ? "GitHub Sync Details" : ""}
         icon="cog"
         minimal
         outlined
         onClick={async () => {
           renderOverlay({
             Overlay: SettingsDialog,
+            props: { pageUid },
           });
         }}
       />
     </div>
   );
 };
-const CommentsConfirmationDialog = ({
+const NewCommentsConfirmationDialog = ({
   comments,
   commentsContainerUid,
 }: {
@@ -751,6 +742,7 @@ const CommentsConfirmationDialog = ({
                       },
                     },
                     parentUid: commentsContainerUid,
+                    order: "last",
                   });
                 })
               );
@@ -767,30 +759,29 @@ const CommentsConfirmationDialog = ({
     </Dialog>
   );
 };
-const SettingsDialog = ({}: {}) => {
-  // TODO combine with ExportGithub.tsx
+const SettingsDialog = ({ pageUid }: { pageUid: string }) => {
   const authWindow = useRef<Window | null>(null);
 
   const [isGitHubAppInstalled, setIsGitHubAppInstalled] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
   const [error, setError] = useState("");
   const [clickedInstall, setClickedInstall] = useState(false);
-  const [repos, setRepos] = useState<UserRepos>(initialRepos);
+  const [state, setState] = useState("");
 
   const [gitHubAccessToken, setGitHubAccessToken] = useState<string | null>(
     localStorageGet("oauth-github")
   );
-  const [selectedRepo, setSelectedRepo] = useState(
-    localStorageGet("selected-repo")
-  );
+
+  const issueProps = useMemo(() => {
+    const props = getBlockProps(pageUid) as GitHubIssuePage;
+    return props?.["github-sync"]?.["issue"];
+  }, [pageUid]);
+
+  const isDev = useMemo(() => getNodeEnv() === "development", []);
+  const configPageUid = useMemo(() => getPageUidByPageTitle(CONFIG_PAGE), []);
 
   const showGitHubLogin = isGitHubAppInstalled && !gitHubAccessToken;
   const repoSelectEnabled = isGitHubAppInstalled && gitHubAccessToken;
-
-  const setRepo = (repo: string) => {
-    setSelectedRepo(repo);
-    localStorageSet("selected-repo", repo);
-  };
 
   const fetchAndSetInstallation = useCallback(async () => {
     try {
@@ -807,11 +798,14 @@ const SettingsDialog = ({}: {}) => {
 
   // listen for messages from the auth window
   useEffect(() => {
+    const otp = nanoid().replace(/_/g, "-");
+    const key = nanoid().replace(/_/g, "-");
+    const state = `github_${otp}_${key}`;
+    setState(state);
     const handleGitHubAuthMessage = (event: MessageEvent) => {
-      const targetOrigin =
-        process.env.NODE_ENV !== "production"
-          ? "https://samepage.ngrok.io"
-          : "https://samepage.network";
+      const targetOrigin = isDev
+        ? "https://samepage.ngrok.io"
+        : "https://samepage.network";
       if (event.data && event.origin === targetOrigin) {
         localStorageSet("oauth-github", event.data);
         setGitHubAccessToken(event.data);
@@ -832,38 +826,41 @@ const SettingsDialog = ({}: {}) => {
     if (gitHubAccessToken) fetchAndSetInstallation();
   }, [gitHubAccessToken]);
 
-  // get the list of repos
-  useEffect(() => {
-    if (!gitHubAccessToken || !isGitHubAppInstalled) return;
-    const fetchAndSetRepos = async () => {
-      try {
-        const res = await apiGet<UserReposResponse>({
-          domain: "https://api.github.com",
-          path: "user/repos?per_page=100&type=owner",
-          headers: {
-            Authorization: `token ${gitHubAccessToken}`,
-          },
-        });
-        setError("");
-        setRepos(res.data);
-      } catch (error) {
-        setError("Failed to fetch repositories");
-      }
-    };
-    fetchAndSetRepos();
-  }, [gitHubAccessToken, isGitHubAppInstalled]);
-
   return (
     <Dialog
       isOpen={isOpen}
-      title="GitHub Sync Settings"
+      title="GitHub Sync Details"
       icon="cog"
       autoFocus={false}
       enforceFocus={false}
       onClose={() => setIsOpen(false)}
     >
       <div className={Classes.DIALOG_BODY}>
-        <div className="flex justify-center mb-4">
+        <div className="flex flex-col justify-center mb-4">
+          {issueProps && (
+            <>
+              <h3>Issue Details</h3>
+              <Button
+                text="Open in GitHub"
+                icon="git-repo"
+                onClick={() => {
+                  window.open(issueProps.html_url, "_blank");
+                }}
+                className="mb-4 w-52"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <span className="font-semibold">Number:</span>
+                <span>{issueProps.number}</span>
+                <span className="font-semibold">Status:</span>
+                <span className="capitalize">{issueProps.state}</span>
+                <span className="font-semibold">Created:</span>
+                <span>{new Date(issueProps.createdAt).toLocaleString()}</span>
+                <span className="font-semibold">Last Updated:</span>
+                <span>{new Date(issueProps.updatedAt).toLocaleString()}</span>
+              </div>
+            </>
+          )}
+          <h3>Authorization</h3>
           {(!isGitHubAppInstalled || clickedInstall) && (
             <div className="flex flex-col">
               {!isGitHubAppInstalled && (
@@ -877,7 +874,9 @@ const SettingsDialog = ({}: {}) => {
                   intent={clickedInstall ? "none" : "primary"}
                   onClick={async () => {
                     authWindow.current = window.open(
-                      "https://github.com/apps/samepage-network",
+                      isDev
+                        ? "https://github.com/apps/samepage-network-dev"
+                        : "https://github.com/apps/samepage-network",
                       "_blank",
                       `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
                     );
@@ -906,26 +905,54 @@ const SettingsDialog = ({}: {}) => {
               icon="key"
               intent="primary"
               onClick={async () => {
+                const params = isDev
+                  ? `client_id=Iv1.4bf062a6c6636672&state=${state}`
+                  : `client_id=Iv1.e7e282a385b7b2da&state=${state}`;
                 authWindow.current = window.open(
-                  "https://github.com/login/oauth/authorize?client_id=Iv1.e7e282a385b7b2da",
+                  `https://github.com/login/oauth/authorize?${params}`,
                   "_blank",
                   `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
                 );
+
+                let attemptCount = 0;
+                const check = () => {
+                  if (attemptCount < 10) {
+                    apiPost({
+                      path: "access-token",
+                      domain: isDev
+                        ? "https://api.samepage.ngrok.io"
+                        : "https://api.samepage.network",
+                      data: { state },
+                    }).then((r) => {
+                      if (r.accessToken) {
+                        localStorageSet("oauth-github", r.accessToken);
+                        setGitHubAccessToken(r.accessToken);
+                        setClickedInstall(false);
+                        authWindow.current?.close();
+                      } else {
+                        attemptCount++;
+                        setTimeout(check, 1000);
+                      }
+                    });
+                  } else {
+                    setError("Something went wrong.  Please contact support.");
+                  }
+                };
+                setTimeout(check, 1500);
               }}
             />
           )}
           {repoSelectEnabled && (
-            <FormGroup label="Repository" inline>
-              <MenuItemSelect
-                items={repos.map((repo) => repo.full_name)}
-                onItemSelect={setRepo}
-                activeItem={selectedRepo}
-                filterable={true}
-                transformItem={(item) => item.split("/")[1]}
-                emptyValueText="Choose Repo"
-              />
-            </FormGroup>
+            <Tag intent="success" large className="text-center w-52">
+              Authorized
+            </Tag>
           )}
+          <h3>GitHub Sync Settings</h3>
+          <a
+            href={`https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/${configPageUid}`}
+          >
+            {`[[${CONFIG_PAGE}]]`}
+          </a>
         </div>
       </div>
       <div className={Classes.DIALOG_FOOTER}>

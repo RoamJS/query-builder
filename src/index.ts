@@ -58,7 +58,6 @@ import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import {
-  getCommentsFromGitHub,
   isGitHubSyncPage,
   renderGitHubSyncConfigPage,
   renderGitHubSyncPage,
