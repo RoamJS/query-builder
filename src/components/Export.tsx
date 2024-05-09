@@ -254,7 +254,7 @@ const ExportDialog: ExportDialogComponent = ({
         data: {
           title,
           body,
-          // milestone, // The number of the milestone to associate this issue
+          // milestone,
           // labels,
           // assignees
         },
@@ -730,8 +730,6 @@ const ExportDialog: ExportDialogComponent = ({
                             })
                           ).status;
                         }
-
-                        console.log(status);
 
                         if (status === 201) {
                           // TODO: remove toast by prolonging ExportProgress

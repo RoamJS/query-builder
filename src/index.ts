@@ -657,6 +657,7 @@ svg.rs-svg-container {
       canvasDrawerRender({ groupedShapes, pageUid });
     },
   });
+
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Query Drawer",
     callback: () =>

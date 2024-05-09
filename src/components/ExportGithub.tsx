@@ -9,8 +9,8 @@ import React, {
 } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import apiGet from "roamjs-components/util/apiGet";
-import apiPost from "roamjs-components/util/apiPost";
 import { getNodeEnv } from "roamjs-components/util/env";
+import apiPost from "roamjs-components/util/apiPost";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 
@@ -53,7 +53,6 @@ export const fetchInstallationStatus = async () => {
     );
     return isAppInstalled;
   } catch (error) {
-    // TODO: test Bad Credentials
     const e = error as Error;
     return false;
   }

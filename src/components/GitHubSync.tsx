@@ -60,10 +60,6 @@ type GitHubIssue = {
   html_url: string;
   state: string;
 };
-type GitHubIssueResponse = {
-  data: GitHubIssue[];
-  status: number;
-};
 type GitHubCommentBlock = {
   "github-sync": {
     comment: GitHubComment;
@@ -84,12 +80,6 @@ type GitHubCommentsResponse = {
   data: GitHubComment[];
   status: number;
 };
-
-// type GitHubCommentBlock = {
-//   uid: string;
-//   props: GitHubComment;
-//   string: string;
-// };
 
 const CONFIG_PAGE = "roam/js/github-sync";
 const SETTING = "github-sync";
@@ -283,7 +273,6 @@ export const renderGitHubSyncConfigPage = ({
           id: "home",
           fields: [
             {
-              // TODO: should this create node "type" as a block to be able to have multiple defined?
               // @ts-ignore
               Panel: SelectPanel,
               title: "Node Select",
@@ -330,7 +319,6 @@ export const renderGitHubSyncPage = async ({
     `.rm-block__input[id$="${commentsContainerUid}"]`
   );
   if (commentHeaderEl && commentsContainerUid) {
-    // TODO: seems like there is some redundancy here but I'm not sure
     if (commentHeaderEl.hasAttribute("github-sync-loaded")) return;
     commentHeaderEl.setAttribute("github-sync-loaded", "true");
     const containerDiv = document.createElement("div");
@@ -350,9 +338,6 @@ export const renderGitHubSyncPage = async ({
 const formatComment = (c: GitHubComment) => {
   const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
     new Date(c.created_at)
-  );
-  const roamUpdatedDate = window.roamAlphaAPI.util.dateToPageTitle(
-    new Date(c.updated_at)
   );
   const commentHeader = `${c.user.login} on [[${roamCreatedDate}]]`;
   const commentBody = c.body.trim();
@@ -391,15 +376,6 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
         loading={loading}
         outlined={!url}
         onClick={async (e) => {
-          // const el = e.target as HTMLButtonElement;
-          // const { blockUid: triggerUid } = getUidsFromButton(el);
-          // const tree = getBasicTreeByParentUid(triggerUid);
-          // const flatten = (nodes: RoamBasicNode[] = []): RoamBasicNode[] =>
-          //   nodes.flatMap((node) => [node, ...flatten(node["children"])]);
-          // const flattened = flatten(tree);
-          // const comment = flattened.map((c) => c.text).join("\n\n");
-          // console.log(comment);
-
           if (!!url) {
             window.open(url, "_blank");
             return;
@@ -466,7 +442,6 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           } catch (error) {
             const e = error as Error;
             const message = e.message;
-            console.log(e);
             renderToast({
               intent: "danger",
               id: "github-issue-comments",
@@ -597,7 +572,6 @@ const GitHubSyncPage = ({
     return () => {
       headerCommentObserver.forEach((o) => o.disconnect());
       childCommentObserver.forEach((o) => o.disconnect());
-      // console.log("Disconnecting GitHubSyncComments useEffect"); // this isn't logging?
     };
   }, [commentsContainerUid]);
 
@@ -681,7 +655,6 @@ const NewCommentsConfirmationDialog = ({
   commentsContainerUid: string;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
-  // const [openInSidebar, setOpenInSidebar] = useState(false);
   return (
     <Dialog
       isOpen={isOpen}
@@ -712,13 +685,6 @@ const NewCommentsConfirmationDialog = ({
         <div
           className={`${Classes.DIALOG_FOOTER_ACTIONS} flex flex-col items-end space-y-2`}
         >
-          {/* <Checkbox
-            label="Open in Sidebar"
-            checked={openInSidebar}
-            className="m-0"
-            onChange={() => setOpenInSidebar(!openInSidebar)}
-            alignIndicator="right"
-          /> */}
           <Button
             text="Add Comments"
             icon="add"
@@ -861,6 +827,7 @@ const SettingsDialog = ({ pageUid }: { pageUid: string }) => {
               </div>
             </>
           )}
+
           <h3>Authorization</h3>
           {(!isGitHubAppInstalled || clickedInstall) && (
             <div className="flex flex-col">
@@ -943,6 +910,7 @@ const SettingsDialog = ({ pageUid }: { pageUid: string }) => {
               }}
             />
           )}
+
           {repoSelectEnabled && (
             <Tag intent="success" large className="text-center w-52">
               Authorized
