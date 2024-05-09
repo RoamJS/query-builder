@@ -14,7 +14,7 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 
-type UserReposResponse = {
+export type UserReposResponse = {
   data: [
     {
       name: string;
@@ -23,13 +23,39 @@ type UserReposResponse = {
   ];
   status: number;
 };
-type UserRepos = UserReposResponse["data"];
-const initialRepos: UserRepos = [{ name: "", full_name: "" }];
+export type UserRepos = UserReposResponse["data"];
+export const initialRepos: UserRepos = [{ name: "", full_name: "" }];
 
-const WINDOW_WIDTH = 600;
-const WINDOW_HEIGHT = 525;
-const WINDOW_LEFT = window.screenX + (window.innerWidth - WINDOW_WIDTH) / 2;
-const WINDOW_TOP = window.screenY + (window.innerHeight - WINDOW_HEIGHT) / 2;
+export const WINDOW_WIDTH = 600;
+export const WINDOW_HEIGHT = 525;
+export const WINDOW_LEFT =
+  window.screenX + (window.innerWidth - WINDOW_WIDTH) / 2;
+export const WINDOW_TOP =
+  window.screenY + (window.innerHeight - WINDOW_HEIGHT) / 2;
+
+const isDev = getNodeEnv() === "development";
+
+export const fetchInstallationStatus = async () => {
+  try {
+    const res = await apiGet<{ installations: { app_id: number }[] }>({
+      domain: "https://api.github.com",
+      path: "user/installations",
+      headers: {
+        Authorization: `token ${localStorageGet("oauth-github")}`,
+      },
+    });
+    const installations = res.installations;
+    const APP_ID = isDev ? 882491 : 312167; // TODO - pull from process.env.GITHUB_APP_ID
+    const isAppInstalled = installations.some(
+      (installation) => installation.app_id === APP_ID
+    );
+    return isAppInstalled;
+  } catch (error) {
+    // TODO: test Bad Credentials
+    const e = error as Error;
+    return false;
+  }
+};
 
 export const ExportGithub = ({
   isVisible,
@@ -73,27 +99,14 @@ export const ExportGithub = ({
 
   const fetchAndSetInstallation = useCallback(async () => {
     try {
-      const res = await apiGet<{ installations: { app_id: number }[] }>({
-        domain: "https://api.github.com",
-        path: "user/installations",
-        headers: {
-          Authorization: `token ${localStorageGet("oauth-github")}`,
-        },
-      });
-      const installations = res.installations;
-      const APP_ID = isDev ? 882491 : 312167; // TODO - pull from process.env.GITHUB_APP_ID
-      const isAppInstalled = installations.some(
-        (installation) => installation.app_id === APP_ID
-      );
+      const isAppInstalled = await fetchInstallationStatus();
       setIsGitHubAppInstalled(isAppInstalled);
-      return isAppInstalled;
     } catch (error) {
       const e = error as Error;
       if (e.message === "Bad credentials") {
         setGitHubAccessToken(null);
         localStorageSet("oauth-github", "");
       }
-      return false;
     }
   }, []);
 
@@ -202,7 +215,9 @@ export const ExportGithub = ({
               ? `client_id=Iv1.4bf062a6c6636672&state=${state}`
               : `client_id=Iv1.e7e282a385b7b2da&state=${state}`;
             authWindow.current = window.open(
-              `https://github.com/login/oauth/authorize?${params}`,
+              isDev
+                ? "https://github.com/login/oauth/authorize?client_id=Iv1.4bf062a6c6636672"
+                : `https://github.com/login/oauth/authorize?${params}`,
               "_blank",
               `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
             );
