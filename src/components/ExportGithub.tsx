@@ -216,7 +216,7 @@ export const ExportGithub = ({
               : `client_id=Iv1.e7e282a385b7b2da&state=${state}`;
             authWindow.current = window.open(
               isDev
-                ? "https://github.com/login/oauth/authorize?client_id=Iv1.4bf062a6c6636672"
+                ? `https://github.com/login/oauth/authorize?${params}`
                 : `https://github.com/login/oauth/authorize?${params}`,
               "_blank",
               `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`

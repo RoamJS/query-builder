@@ -17,10 +17,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import resolveQueryBuilderRef from "../utils/resolveQueryBuilderRef";
 import runQuery from "../utils/runQuery";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import {
-  createConfigObserver,
-  render as renderConfigPage,
-} from "roamjs-components/components/ConfigPage";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
 import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
 import { render as exportRender } from "../components/Export";
@@ -705,8 +702,6 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
   }, [pageUid]);
 
   const isDev = useMemo(() => getNodeEnv() === "development", []);
-  const configPageUid = useMemo(() => getPageUidByPageTitle(CONFIG_PAGE), []);
-
   const showGitHubLogin = isGitHubAppInstalled && !gitHubAccessToken;
   const repoSelectEnabled = isGitHubAppInstalled && gitHubAccessToken;
 
