@@ -605,11 +605,11 @@ export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
                 text: pageTitle,
               },
             ],
-            title: "Export Current Page",
+            title: "Send to GitHub",
             initialPanel: "export",
             initialExportDestination: "github",
             initialGitHubDestination: "Issue",
-            onCloseCallback: () => {
+            onClose: () => {
               setTimeout(() => {
                 setLoading({ ...loading, sendToGitHub: false });
               }, 500);

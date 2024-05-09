@@ -94,7 +94,7 @@ export type ExportDialogProps = {
   initialPanel?: "sendTo" | "export";
   initialExportDestination?: (typeof EXPORT_DESTINATIONS)[number]["id"];
   initialGitHubDestination?: GitHubDestination;
-  onCloseCallback?: () => void;
+  onClose?: () => void;
 };
 
 type ExportDialogComponent = (
@@ -107,7 +107,6 @@ const exportDestinationById = Object.fromEntries(
 
 const ExportDialog: ExportDialogComponent = ({
   onClose,
-  onCloseCallback,
   isOpen,
   results = [],
   columns,
@@ -117,14 +116,6 @@ const ExportDialog: ExportDialogComponent = ({
   initialExportDestination,
   initialGitHubDestination,
 }) => {
-  const handleClose = () => {
-    if (onCloseCallback) {
-      onClose();
-      onCloseCallback();
-    } else {
-      onClose();
-    }
-  };
   const [selectedRepo, setSelectedRepo] = useState(
     localStorageGet("selected-repo")
   );
@@ -505,7 +496,7 @@ const ExportDialog: ExportDialogComponent = ({
         },
       }).catch(() => {});
     } finally {
-      handleClose();
+      onClose();
     }
   };
 
@@ -546,7 +537,7 @@ const ExportDialog: ExportDialogComponent = ({
         const blob = new Blob([download], { type: "application/zip" });
         saveAs(blob, `${filename}.zip`);
       }
-      handleClose();
+      onClose();
     } catch (e) {
       setError("Failed to export files.");
     }
@@ -665,7 +656,7 @@ const ExportDialog: ExportDialogComponent = ({
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
           <span style={{ color: "darkred" }}>{error}</span>
-          <Button text={"Cancel"} intent={Intent.NONE} onClick={handleClose} />
+          <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
           <Button
             text={"Export"}
             intent={Intent.PRIMARY}
@@ -738,7 +729,7 @@ const ExportDialog: ExportDialogComponent = ({
                             content: "Upload Success",
                             intent: "success",
                           });
-                          handleClose();
+                          onClose();
                         }
                       } catch (error) {
                         const e = error as Error;
@@ -753,7 +744,7 @@ const ExportDialog: ExportDialogComponent = ({
                         type: "text/plain;charset=utf-8",
                       });
                       saveAs(blob, title);
-                      handleClose();
+                      onClose();
                       return;
                     }
 
@@ -765,7 +756,7 @@ const ExportDialog: ExportDialogComponent = ({
                     );
                     zip.generateAsync({ type: "blob" }).then((content) => {
                       saveAs(content, `${filename}.zip`);
-                      handleClose();
+                      onClose();
                     });
                   } else {
                     setError(`Unsupported export type: ${exportType}`);
@@ -840,7 +831,7 @@ const ExportDialog: ExportDialogComponent = ({
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-          <Button text={"Cancel"} intent={Intent.NONE} onClick={handleClose} />
+          <Button text={"Cancel"} intent={Intent.NONE} onClick={onClose} />
           <Button
             text={`Send ${
               isSendToGraph ? livePages.length : results.length
