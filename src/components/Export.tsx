@@ -202,7 +202,9 @@ const ExportDialog: ExportDialogComponent = ({
     content: string;
     setError: (error: string) => void;
   }): Promise<{ status: number }> => {
-    const base64Content = btoa(content);
+    const encoder = new TextEncoder();
+    const uint8Array = encoder.encode(content);
+    const base64Content = btoa(String.fromCharCode(...uint8Array));
 
     try {
       const response = await apiPut({
