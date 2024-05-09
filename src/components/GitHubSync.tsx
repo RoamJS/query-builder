@@ -17,7 +17,10 @@ import createBlock from "roamjs-components/writes/createBlock";
 import resolveQueryBuilderRef from "../utils/resolveQueryBuilderRef";
 import runQuery from "../utils/runQuery";
 import { render as renderToast } from "roamjs-components/components/Toast";
-import { render as renderConfigPage } from "roamjs-components/components/ConfigPage";
+import {
+  createConfigObserver,
+  render as renderConfigPage,
+} from "roamjs-components/components/ConfigPage";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
 import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
 import { render as exportRender } from "../components/Export";
@@ -255,49 +258,6 @@ export const isGitHubSyncPage = (pageTitle: string) => {
     title: pageTitle,
   });
   return isPageTypeOfNode;
-};
-export const renderGitHubSyncConfigPage = ({
-  title,
-  h,
-}: {
-  title: string;
-  h: HTMLHeadingElement;
-}) => {
-  if (!enabled) return;
-  renderConfigPage({
-    title,
-    h,
-    config: {
-      tabs: [
-        {
-          id: "home",
-          fields: [
-            {
-              // @ts-ignore
-              Panel: SelectPanel,
-              title: "Node Select",
-              description: "Select a node to pull comments from",
-              options: {
-                items: [
-                  "None",
-                  ...getDiscourseNodes()
-                    .map((node) => node.text)
-                    .filter((text) => text !== "Block"),
-                ],
-              },
-              defaultValue: "None",
-            },
-            {
-              // @ts-ignore
-              Panel: TextPanel,
-              title: "Comments Block",
-              description: "Use a Query Builder alias or block reference",
-            },
-          ],
-        },
-      ],
-    },
-  });
 };
 
 export const renderGitHubSyncPage = async ({
@@ -943,6 +903,43 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
     if (flag && !enabled) {
+      const { observer } = await createConfigObserver({
+        title: "roam/js/github-sync",
+        config: {
+          tabs: [
+            {
+              id: "home",
+              fields: [
+                {
+                  // @ts-ignore
+                  Panel: SelectPanel,
+                  title: "Node Select",
+                  description: "Select a node to pull comments from",
+                  options: {
+                    items: [
+                      "None",
+                      ...getDiscourseNodes()
+                        .map((node) => node.text)
+                        .filter((text) => text !== "Block"),
+                    ],
+                  },
+                  defaultValue: "None",
+                },
+                {
+                  // @ts-ignore
+                  Panel: TextPanel,
+                  title: "Comments Block",
+                  description: "Use a Query Builder alias or block reference",
+                },
+              ],
+            },
+          ],
+        },
+      });
+      unloads.add(function configObserverDisconnect() {
+        observer?.disconnect();
+        unloads.delete(configObserverDisconnect);
+      });
     } else if (!flag && enabled) {
       unloads.forEach((u) => u());
       unloads.clear();

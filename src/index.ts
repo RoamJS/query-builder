@@ -59,7 +59,6 @@ import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import {
   isGitHubSyncPage,
-  renderGitHubSyncConfigPage,
   renderGitHubSyncPage,
 } from "./components/GitHubSync";
 import { handleTitleAdditions } from "./utils/handleTitleAdditions";
@@ -227,8 +226,6 @@ svg.rs-svg-container {
 
     if (title.startsWith("discourse-graph/nodes/")) {
       renderDiscourseNodeTypeConfigPage({ title, h: h1, onloadArgs });
-    } else if (title.startsWith("roam/js/github-sync")) {
-      renderGitHubSyncConfigPage({ title, h: h1 });
     } else if (
       getQueryPages(extensionAPI)
         .map(
