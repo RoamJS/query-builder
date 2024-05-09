@@ -1,4 +1,4 @@
-import { Button } from "@blueprintjs/core";
+import { Button, Label } from "@blueprintjs/core";
 import nanoid from "nanoid";
 import React, {
   useCallback,
@@ -25,6 +25,8 @@ export type UserReposResponse = {
 };
 export type UserRepos = UserReposResponse["data"];
 export const initialRepos: UserRepos = [{ name: "", full_name: "" }];
+export type GitHubDestination = "Issue" | "File";
+const GITHUB_DESTINATIONS: GitHubDestination[] = ["Issue", "File"];
 
 export const WINDOW_WIDTH = 600;
 export const WINDOW_HEIGHT = 525;
@@ -65,6 +67,8 @@ export const ExportGithub = ({
   gitHubAccessToken,
   setGitHubAccessToken,
   setCanSendToGitHub,
+  githubDestination,
+  setGithubDestination,
 }: {
   isVisible: boolean;
   selectedRepo: string;
@@ -73,6 +77,8 @@ export const ExportGithub = ({
   gitHubAccessToken: string | null;
   setGitHubAccessToken: (gitHubAccessToken: string | null) => void;
   setCanSendToGitHub: (canSendToGitHub: boolean) => void;
+  githubDestination: GitHubDestination;
+  setGithubDestination: (githubDestination: GitHubDestination) => void;
 }) => {
   const authWindow = useRef<Window | null>(null);
 
@@ -81,9 +87,8 @@ export const ExportGithub = ({
   const [repos, setRepos] = useState<UserRepos>(initialRepos);
   const [state, setState] = useState("");
   const showGitHubLogin = isGitHubAppInstalled && !gitHubAccessToken;
-  const repoSelectEnabled = isGitHubAppInstalled && gitHubAccessToken;
-
-  const isDev = useMemo(() => getNodeEnv() === "development", []);
+  const repoAndDestinationSelectEnabled =
+    isGitHubAppInstalled && gitHubAccessToken;
 
   const setRepo = (repo: string) => {
     setSelectedRepo(repo);
@@ -172,39 +177,41 @@ export const ExportGithub = ({
   if (!isVisible) return null;
   return (
     <div className="flex mb-4">
-      <div className="flex flex-col">
-        {!isGitHubAppInstalled && (
-          <Button
-            text="Install SamePage App"
-            id="qb-install-button"
-            icon="cloud-download"
-            className={clickedInstall ? "opacity-30 hover:opacity-100" : ""}
-            intent={clickedInstall ? "none" : "primary"}
-            onClick={async () => {
-              authWindow.current = window.open(
-                isDev
-                  ? "https://github.com/apps/samepage-network-dev"
-                  : "https://github.com/apps/samepage-network",
-                "_blank",
-                `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
-              );
-              setClickedInstall(true);
-              document.getElementById("qb-install-button")?.blur();
-            }}
-          />
-        )}
-        {clickedInstall && (
-          <Button
-            text="Confirm Installation"
-            icon="confirm"
-            intent="primary"
-            onClick={async () => {
-              setClickedInstall(false);
-              setIsGitHubAppInstalled(true);
-            }}
-          />
-        )}
-      </div>
+      {!isGitHubAppInstalled && clickedInstall && (
+        <div className="flex flex-col">
+          {!isGitHubAppInstalled && (
+            <Button
+              text="Install SamePage App"
+              id="qb-install-button"
+              icon="cloud-download"
+              className={clickedInstall ? "opacity-30 hover:opacity-100" : ""}
+              intent={clickedInstall ? "none" : "primary"}
+              onClick={async () => {
+                authWindow.current = window.open(
+                  isDev
+                    ? "https://github.com/apps/samepage-network-dev"
+                    : "https://github.com/apps/samepage-network",
+                  "_blank",
+                  `width=${WINDOW_WIDTH}, height=${WINDOW_HEIGHT}, top=${WINDOW_TOP}, left=${WINDOW_LEFT}`
+                );
+                setClickedInstall(true);
+                document.getElementById("qb-install-button")?.blur();
+              }}
+            />
+          )}
+          {clickedInstall && (
+            <Button
+              text="Confirm Installation"
+              icon="confirm"
+              intent="primary"
+              onClick={async () => {
+                setClickedInstall(false);
+                setIsGitHubAppInstalled(true);
+              }}
+            />
+          )}
+        </div>
+      )}
       {showGitHubLogin && (
         <Button
           text="Authorize"
@@ -247,15 +254,28 @@ export const ExportGithub = ({
           }}
         />
       )}
-      {repoSelectEnabled && (
-        <MenuItemSelect
-          items={repos.map((repo) => repo.full_name)}
-          onItemSelect={setRepo}
-          activeItem={selectedRepo}
-          filterable={true}
-          transformItem={(item) => item.split("/")[1]}
-          emptyValueText="Choose Repo"
-        />
+      {repoAndDestinationSelectEnabled && (
+        <div className="flex flex-col">
+          <Label className="flex flex-col">
+            Repo
+            <MenuItemSelect
+              items={repos.map((repo) => repo.full_name)}
+              onItemSelect={setRepo}
+              activeItem={selectedRepo}
+              filterable={true}
+              transformItem={(item) => item.split("/")[1]}
+              emptyValueText="Choose Repo"
+            />
+          </Label>
+          <Label>
+            Type
+            <MenuItemSelect
+              items={GITHUB_DESTINATIONS}
+              onItemSelect={setGithubDestination}
+              activeItem={githubDestination}
+            />
+          </Label>
+        </div>
       )}
     </div>
   );
