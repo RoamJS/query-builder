@@ -639,7 +639,7 @@ export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
         outlined
         onClick={async () => {
           renderOverlay({
-            Overlay: SettingsDialog,
+            Overlay: IssueDetailsDialog,
             props: { pageUid },
           });
         }}
@@ -726,7 +726,7 @@ const NewCommentsConfirmationDialog = ({
     </Dialog>
   );
 };
-const SettingsDialog = ({ pageUid }: { pageUid: string }) => {
+const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
   const authWindow = useRef<Window | null>(null);
 
   const [isGitHubAppInstalled, setIsGitHubAppInstalled] = useState(false);
@@ -918,7 +918,12 @@ const SettingsDialog = ({ pageUid }: { pageUid: string }) => {
           )}
           <h3>GitHub Sync Settings</h3>
           <a
-            href={`https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/${configPageUid}`}
+            onClick={() => {
+              window.roamAlphaAPI.ui.mainWindow.openPage({
+                page: { title: CONFIG_PAGE },
+              });
+              setIsOpen(false);
+            }}
           >
             {`[[${CONFIG_PAGE}]]`}
           </a>

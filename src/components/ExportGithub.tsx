@@ -1,12 +1,6 @@
 import { Button, Label } from "@blueprintjs/core";
 import nanoid from "nanoid";
-import React, {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import apiGet from "roamjs-components/util/apiGet";
 import { getNodeEnv } from "roamjs-components/util/env";
@@ -176,7 +170,7 @@ export const ExportGithub = ({
   if (!isVisible) return null;
   return (
     <div className="flex mb-4">
-      {!isGitHubAppInstalled && clickedInstall && (
+      {(!isGitHubAppInstalled || clickedInstall) && (
         <div className="flex flex-col">
           {!isGitHubAppInstalled && (
             <Button
