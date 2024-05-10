@@ -24,6 +24,7 @@ For more information, check out our docs at [https://github.com/RoamJS/query-bui
   - [Examples](https://github.com/RoamJS/query-builder/blob/main/docs/query-builder.md#examples)
 - [Discourse Graphs](https://github.com/RoamJS/query-builder/blob/main/docs/discourse-graphs.md)
 - [Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#native-roam-queries)
+- [GitHub Sync](https://github.com/RoamJS/query-builder/blob/main/docs/github-sync.md)
   - [Creating Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#creating-native-roam-queries)
   - [Manipulating Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#manipulating-native-roam-queries)
     - [Sorting](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#sorting)
