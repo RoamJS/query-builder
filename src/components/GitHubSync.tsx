@@ -176,6 +176,7 @@ export const insertNewCommentsFromGitHub = async ({
   });
 
   try {
+    // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28#list-issue-comments
     const response = await apiGet<GitHubCommentsResponse>({
       domain: "https://api.github.com",
       path: `repos/${issueRepo}/issues/${issueNumber}/comments`,
@@ -370,6 +371,7 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           const flattened = flatten(commentsTree);
           const comment = flattened.map((c) => c.text).join("\n\n");
           try {
+            // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28#create-an-issue-comment
             const response = await apiPost<GitHubCommentResponse>({
               domain: "https://api.github.com",
               path: `repos/${issueRepo}/issues/${issueNumber}/comments`,

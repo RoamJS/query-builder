@@ -33,6 +33,7 @@ const isDev = getNodeEnv() === "development";
 
 export const fetchInstallationStatus = async () => {
   try {
+    // https://docs.github.com/en/rest/apps/installations?apiVersion=2022-11-28#list-app-installations-accessible-to-the-user-access-token
     const res = await apiGet<{ installations: { app_id: number }[] }>({
       domain: "https://api.github.com",
       path: "user/installations",
@@ -144,6 +145,7 @@ export const ExportGithub = ({
     if (!gitHubAccessToken || !isGitHubAppInstalled) return;
     const fetchAndSetRepos = async () => {
       try {
+        // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
         const res = await apiGet<UserReposResponse>({
           domain: "https://api.github.com",
           path: "user/repos?per_page=100&type=owner",

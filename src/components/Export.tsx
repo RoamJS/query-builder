@@ -198,6 +198,7 @@ const ExportDialog: ExportDialogComponent = ({
     const base64Content = btoa(String.fromCharCode(...uint8Array));
 
     try {
+      // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
       const response = await apiPut({
         domain: "https://api.github.com",
         path: `repos/${selectedRepo}/contents/${filename}`,
@@ -236,6 +237,7 @@ const ExportDialog: ExportDialogComponent = ({
     setError: (error: string) => void;
   }): Promise<{ status: number }> => {
     try {
+      // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
       const response = await apiPost({
         domain: "https://api.github.com",
         path: `repos/${selectedRepo}/issues`,
