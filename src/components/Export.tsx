@@ -270,6 +270,7 @@ const ExportDialog: ExportDialogComponent = ({
               labels: response.labels,
               createdAt: response.created_at,
               updatedAt: response.updated_at,
+              repo: selectedRepo,
             },
           },
         };

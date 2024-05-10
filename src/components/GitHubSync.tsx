@@ -59,6 +59,7 @@ type GitHubIssue = {
   id: number;
   html_url: string;
   state: string;
+  repo: string;
 };
 type GitHubCommentBlock = {
   "github-sync": {
@@ -86,10 +87,11 @@ const SETTING = "github-sync";
 let enabled = false;
 
 // Utils
-const getPageIssueNumber = (pageUid: string) => {
+const getPageGitHubPropsDetails = (pageUid: string) => {
   const blockProps = getBlockProps(pageUid) as GitHubIssuePage;
   const issueNumber = blockProps?.["github-sync"]?.["issue"]?.["number"];
-  return issueNumber;
+  const issueRepo = blockProps?.["github-sync"]?.["issue"]?.["repo"];
+  return { issueNumber, issueRepo };
 };
 const getRoamCommentsContainerUid = async ({
   pageUid,
@@ -152,7 +154,7 @@ export const insertNewCommentsFromGitHub = async ({
       });
   };
 
-  const issueNumber = getPageIssueNumber(pageUid);
+  const { issueNumber, issueRepo } = getPageGitHubPropsDetails(pageUid);
   if (!issueNumber) {
     renderToast({
       id: "github-issue-comments",
@@ -167,12 +169,16 @@ export const insertNewCommentsFromGitHub = async ({
   });
 
   const gitHubAccessToken = localStorageGet("oauth-github");
-  const selectedRepo = localStorageGet("selected-repo");
+  renderToast({
+    id: "github-issue-auth",
+    content:
+      "GitHub Authorization not found.  Please connect your GitHub account.",
+  });
 
   try {
     const response = await apiGet<GitHubCommentsResponse>({
       domain: "https://api.github.com",
-      path: `repos/${selectedRepo}/issues/${issueNumber}/comments`,
+      path: `repos/${issueRepo}/issues/${issueNumber}/comments`,
       headers: {
         Authorization: `token ${gitHubAccessToken}`,
         "Content-Type": "application/json",
@@ -338,12 +344,18 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
             return;
           }
           setLoading(true);
+
           const gitHubAccessToken = localStorageGet("oauth-github");
-          const selectedRepo = localStorageGet("selected-repo");
+          renderToast({
+            id: "github-issue-auth",
+            content:
+              "GitHub Authorization not found.  Please connect your GitHub account.",
+          });
+
           const el = e.target as HTMLButtonElement;
           const { blockUid: triggerUid } = getUidsFromButton(el);
           const pageUid = getPageUidByBlockUid(triggerUid);
-          const issueNumber = getPageIssueNumber(pageUid);
+          const { issueNumber, issueRepo } = getPageGitHubPropsDetails(pageUid);
           if (!issueNumber) {
             renderToast({
               id: "github-issue-comments",
@@ -360,7 +372,7 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           try {
             const response = await apiPost<GitHubCommentResponse>({
               domain: "https://api.github.com",
-              path: `repos/${selectedRepo}/issues/${issueNumber}/comments`,
+              path: `repos/${issueRepo}/issues/${issueNumber}/comments`,
               headers: {
                 Authorization: `token ${gitHubAccessToken}`,
                 "Content-Type": "application/json",
