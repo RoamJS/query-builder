@@ -921,7 +921,8 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
                   // @ts-ignore
                   Panel: SelectPanel,
                   title: "Node Select",
-                  description: "Select a node to pull comments from",
+                  description:
+                    "Select the node type to sync with GitHub Issues",
                   options: {
                     items: [
                       "None",
@@ -936,7 +937,8 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
                   // @ts-ignore
                   Panel: TextPanel,
                   title: "Comments Block",
-                  description: "Use a Query Builder alias or block reference",
+                  description:
+                    "Where comments are synced to.  Use a Query Builder alias or block reference.",
                 },
               ],
             },

@@ -400,7 +400,7 @@ svg.rs-svg-container {
       {
         id: "github-sync",
         name: "GitHub Sync",
-        description: "Syncs with GitHub to show issues and comments",
+        description: "Sync select pages with GitHub Issues",
         action: {
           type: "switch",
           onChange: (e) => {

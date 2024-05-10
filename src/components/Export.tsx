@@ -727,7 +727,7 @@ const ExportDialog: ExportDialogComponent = ({
                           // TODO: remove toast by prolonging ExportProgress
                           renderToast({
                             id: "export-success",
-                            content: "Upload Success",
+                            content: `Upload Success to ${githubDestination}`,
                             intent: "success",
                           });
                           onClose();
