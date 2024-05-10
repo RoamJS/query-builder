@@ -45,6 +45,11 @@ import {
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import { getNodeEnv } from "roamjs-components/util/env";
 import nanoid from "nanoid";
+import {
+  CustomField,
+  Field,
+} from "roamjs-components/components/ConfigPanels/types";
+import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
 
 type GitHubIssuePage = {
   "github-sync": {
@@ -919,6 +924,30 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
             {
               id: "home",
               fields: [
+                // @ts-ignore
+                {
+                  title: "Docs",
+                  description: `More information about the GitHub Sync Feature.`,
+                  Panel: CustomPanel,
+                  options: {
+                    component: () => {
+                      return (
+                        <div>
+                          <p>
+                            For more information about the GitHub Sync feature,
+                            visit the GitHub page:
+                          </p>
+                          <a
+                            href="https://github.com/RoamJS/query-builder/blob/main/docs/github-sync.md"
+                            target="_blank"
+                          >
+                            GitHub Sync Documentation
+                          </a>
+                        </div>
+                      );
+                    },
+                  },
+                } as Field<CustomField>,
                 {
                   // @ts-ignore
                   Panel: SelectPanel,
