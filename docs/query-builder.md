@@ -77,7 +77,7 @@ You can use a combination of multiple **conditions** to select the data you want
 | `titled after`          | The `source` page is a DNP that is after the naturally specified `target`.                                                                  | [Link](examples.md#titled-after)          |
 | `titled before`         | The `source` page is a DNP that is before the naturally specified `target`.                                                                 | [Link](examples.md#titled-before)         |
 | `with text`             | The `source` block or page has the exact text `target` somewhere in its block text or page title.                                           | [Link](examples.md#with-text)             |
-| `with title in text`    | The `source` page has the exact text `target` somewhere in its page title.                                                                  | [Link](examples.md#with-title-in-text)    |
+| `with text in title`    | The `source` page has the exact text `target` somewhere in its page title.                                                                  | [Link](examples.md#with-title-in-text)    |
 
 ## Selections
 
