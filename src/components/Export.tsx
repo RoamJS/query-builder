@@ -231,10 +231,12 @@ const ExportDialog: ExportDialogComponent = ({
     title,
     body,
     setError,
+    pageUid,
   }: {
     title: string;
     body: string;
     setError: (error: string) => void;
+    pageUid: string;
   }): Promise<{ status: number }> => {
     try {
       // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
@@ -260,7 +262,7 @@ const ExportDialog: ExportDialogComponent = ({
       }
 
       if (response.status === 201) {
-        const props = getBlockProps(currentPageUid);
+        const props = getBlockProps(pageUid);
         const newProps = {
           ...props,
           ["github-sync"]: {
@@ -278,7 +280,7 @@ const ExportDialog: ExportDialogComponent = ({
         };
         window.roamAlphaAPI.updateBlock({
           block: {
-            uid: currentPageUid,
+            uid: pageUid,
             props: newProps,
           },
         });
@@ -716,11 +718,18 @@ const ExportDialog: ExportDialogComponent = ({
                           ).status;
                         }
                         if (githubDestination === "Issue") {
+                          const pageUid =
+                            typeof results === "function" ? "" : results[0].uid; // TODO handle multiple results
+                          if (!pageUid) {
+                            setError("No page UID found.");
+                            return;
+                          }
                           status = (
                             await writeFileToIssue({
                               title: title.replace(/\.[^/.]+$/, ""), // remove extension
                               body: content,
                               setError,
+                              pageUid,
                             })
                           ).status;
                         }
