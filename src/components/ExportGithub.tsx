@@ -19,8 +19,8 @@ export type UserReposResponse = {
 };
 export type UserRepos = UserReposResponse["data"];
 export const initialRepos: UserRepos = [{ name: "", full_name: "" }];
-export type GitHubDestination = "Issue" | "File";
-const GITHUB_DESTINATIONS: GitHubDestination[] = ["Issue", "File"];
+export type GitHubDestination = (typeof GITHUB_DESTINATIONS)[number];
+const GITHUB_DESTINATIONS = ["Issue", "File"] as const;
 
 export const WINDOW_WIDTH = 600;
 export const WINDOW_HEIGHT = 525;
@@ -265,7 +265,7 @@ export const ExportGithub = ({
           <Label>
             Type
             <MenuItemSelect
-              items={GITHUB_DESTINATIONS}
+              items={[...GITHUB_DESTINATIONS]}
               onItemSelect={setGithubDestination}
               activeItem={githubDestination}
             />

@@ -14,7 +14,7 @@ The list is made from defined [Discourse Graph Nodes](discourse-graphs.md).
 
 ### Comments Block
 
-This is where the comments will live. A `Add Comment` button will appear on this block as well as a download button.
+This is where the comments will live. An `Add Comment` button will appear on this block as well as a download button.
 
 After you add a comment, that new comment block will have a `Add to GitHub` button to send it to the issue.
 
@@ -47,7 +47,9 @@ Click the Send To GitHub button to start the upload process. The process is as f
 - select the repository you want to send the issue to
 - click `Export`
 
-Once this is complete, the title will just show the `GitHub Sync Details Button`. Clicking this button will show additional details about the issue, include a link to the issue, a link to settings, as well as the ability to re-authorize if required.
+You will only need to do this once for each page you would like to sync.
+
+Once this is complete, the title will just show the `GitHub Sync Details` Button. Clicking this button will show additional details about the issue, include a link to the issue, a link to settings, as well as the ability to re-authorize if required.
 
 ### Comments
 

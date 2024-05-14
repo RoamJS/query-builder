@@ -356,22 +356,23 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
   return (
     <>
       <Button
-        title={
-          !!url
-            ? "Comment was already sent. Click to view on GitHub."
-            : "Add to GitHub"
-        }
-        text={!!url ? "" : "Add to GitHub"}
-        icon={!!url ? "link" : "git-push"}
+        hidden={!url}
+        title={`Click to view comment on GitHub.`}
+        icon={"link"}
         minimal
         small
         loading={loading}
-        outlined={!url}
+        onClick={() => window.open(url, "_blank")}
+      />
+      <Button
+        hidden={!!url}
+        text={"Add to GitHub"}
+        icon={"git-push"}
+        minimal
+        small
+        outlined
+        loading={loading}
         onClick={async (e) => {
-          if (!!url) {
-            window.open(url, "_blank");
-            return;
-          }
           setLoading(true);
 
           const gitHubAccessToken = localStorageGet("oauth-github");
