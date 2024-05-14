@@ -851,7 +851,7 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
 
                 let attemptCount = 0;
                 const check = () => {
-                  if (attemptCount < 10) {
+                  if (attemptCount < 30 && !gitHubAccessToken) {
                     apiPost({
                       path: "access-token",
                       domain: isDev

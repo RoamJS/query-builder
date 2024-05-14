@@ -230,7 +230,7 @@ export const ExportGithub = ({
 
             let attemptCount = 0;
             const check = () => {
-              if (attemptCount < 30) {
+              if (attemptCount < 30 && !gitHubAccessToken) {
                 apiPost({
                   path: "access-token",
                   domain: isDev
