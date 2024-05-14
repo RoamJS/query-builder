@@ -32,6 +32,7 @@ import getPageUidByBlockUid from "roamjs-components/queries/getPageUidByBlockUid
 import apiPost from "roamjs-components/util/apiPost";
 import renderOverlay from "roamjs-components/util/renderOverlay";
 import {
+  GitHubDestination,
   WINDOW_HEIGHT,
   WINDOW_LEFT,
   WINDOW_TOP,
@@ -171,7 +172,7 @@ export const insertNewCommentsFromGitHub = async ({
     extensionAPI,
   });
 
-  const gitHubAccessToken = localStorageGet("oauth-github");
+  const gitHubAccessToken = localStorageGet("github-oauth");
   if (!gitHubAccessToken) {
     renderToast({
       id: "github-issue-auth",
@@ -377,7 +378,7 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
         onClick={async (e) => {
           setLoading(true);
 
-          const gitHubAccessToken = localStorageGet("oauth-github");
+          const gitHubAccessToken = localStorageGet("github-oauth");
           if (!gitHubAccessToken) {
             renderToast({
               id: "github-issue-auth",
@@ -560,6 +561,8 @@ export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
         hidden={!!issueNumber}
         onClick={() => {
           setLoading({ ...loading, sendToGitHub: true });
+          const destination: GitHubDestination = "Issue";
+          localStorageSet("github-destination", destination);
           exportRender({
             results: [
               {
@@ -570,8 +573,8 @@ export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
             title: "Send to GitHub",
             initialPanel: "export",
             initialExportDestination: "github",
-            initialGitHubDestination: "Issue",
             onClose: () => {
+              localStorageSet("github-destination", "");
               setTimeout(() => {
                 setLoading({ ...loading, sendToGitHub: false });
               }, 500);
@@ -697,9 +700,14 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
   const [clickedInstall, setClickedInstall] = useState(false);
   const [state, setState] = useState("");
 
-  const [gitHubAccessToken, setGitHubAccessToken] = useState<string | null>(
-    localStorageGet("oauth-github")
+  const [gitHubAccessToken, _setGitHubAccessToken] = useState<string>(
+    localStorageGet("github-oauth")
   );
+
+  const setGitHubAccessToken = (token: string) => {
+    localStorageSet("github-oauth", token);
+    _setGitHubAccessToken(token);
+  };
 
   const issueProps = useMemo(() => {
     const props = getBlockProps(pageUid) as GitHubIssuePage;
@@ -707,6 +715,7 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
   }, [pageUid]);
 
   const isDev = useMemo(() => getNodeEnv() === "development", []);
+
   const showGitHubLogin = isGitHubAppInstalled && !gitHubAccessToken;
   const repoSelectEnabled = isGitHubAppInstalled && gitHubAccessToken;
 
@@ -717,11 +726,10 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
     } catch (error) {
       const e = error as Error;
       if (e.message === "Bad credentials") {
-        setGitHubAccessToken(null);
-        localStorageSet("oauth-github", "");
+        setGitHubAccessToken("");
       }
     }
-  }, [fetchInstallationStatus]);
+  }, []);
 
   // listen for messages from the auth window
   useEffect(() => {
@@ -734,7 +742,6 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
         ? "https://samepage.ngrok.io"
         : "https://samepage.network";
       if (event.data && event.origin === targetOrigin) {
-        localStorageSet("oauth-github", event.data);
         setGitHubAccessToken(event.data);
         setClickedInstall(false);
         authWindow.current?.close();
@@ -853,7 +860,6 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
                       data: { state },
                     }).then((r) => {
                       if (r.accessToken) {
-                        localStorageSet("oauth-github", r.accessToken);
                         setGitHubAccessToken(r.accessToken);
                         setClickedInstall(false);
                         authWindow.current?.close();

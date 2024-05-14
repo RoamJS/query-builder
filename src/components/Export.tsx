@@ -93,7 +93,6 @@ export type ExportDialogProps = {
   isExportDiscourseGraph?: boolean;
   initialPanel?: "sendTo" | "export";
   initialExportDestination?: (typeof EXPORT_DESTINATIONS)[number]["id"];
-  initialGitHubDestination?: GitHubDestination;
   onClose?: () => void;
 };
 
@@ -114,11 +113,7 @@ const ExportDialog: ExportDialogComponent = ({
   isExportDiscourseGraph = false,
   initialPanel,
   initialExportDestination,
-  initialGitHubDestination,
 }) => {
-  const [selectedRepo, setSelectedRepo] = useState(
-    localStorageGet("selected-repo")
-  );
   const exportId = useMemo(() => nanoid(), []);
   useEffect(() => {
     setDialogOpen(isOpen);
@@ -176,13 +171,7 @@ const ExportDialog: ExportDialogComponent = ({
   const [includeDiscourseContext, setIncludeDiscourseContext] = useState(
     discourseGraphEnabled as boolean
   );
-  const [gitHubAccessToken, setGitHubAccessToken] = useState<string | null>(
-    localStorageGet("oauth-github")
-  );
   const [canSendToGitHub, setCanSendToGitHub] = useState(false);
-  const [githubDestination, setGithubDestination] = useState<GitHubDestination>(
-    initialGitHubDestination || "File"
-  );
 
   const writeFileToRepo = async ({
     filename,
@@ -193,6 +182,9 @@ const ExportDialog: ExportDialogComponent = ({
     content: string;
     setError: (error: string) => void;
   }): Promise<{ status: number }> => {
+    const gitHubAccessToken = localStorageGet("github-oauth");
+    const selectedRepo = localStorageGet("github-repo");
+
     const encoder = new TextEncoder();
     const uint8Array = encoder.encode(content);
     const base64Content = btoa(String.fromCharCode(...uint8Array));
@@ -211,7 +203,6 @@ const ExportDialog: ExportDialogComponent = ({
         },
       });
       if (response.status === 401) {
-        setGitHubAccessToken(null);
         setError("Authentication failed. Please log in again.");
         localStorageSet("oauth-github", "");
         return { status: 401 };
@@ -238,6 +229,8 @@ const ExportDialog: ExportDialogComponent = ({
     setError: (error: string) => void;
     pageUid: string;
   }): Promise<{ status: number }> => {
+    const gitHubAccessToken = localStorageGet("github-oauth");
+    const selectedRepo = localStorageGet("github-repo");
     try {
       // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
       const response = await apiPost({
@@ -255,7 +248,6 @@ const ExportDialog: ExportDialogComponent = ({
         },
       });
       if (response.status === 401) {
-        setGitHubAccessToken(null);
         setError("Authentication failed. Please log in again.");
         localStorageSet("oauth-github", "");
         return { status: 401 };
@@ -577,14 +569,8 @@ const ExportDialog: ExportDialogComponent = ({
             </Label>
             <ExportGithub
               isVisible={activeExportDestination === "github"}
-              selectedRepo={selectedRepo}
-              setSelectedRepo={setSelectedRepo}
               setError={setError}
-              gitHubAccessToken={gitHubAccessToken}
-              setGitHubAccessToken={setGitHubAccessToken}
               setCanSendToGitHub={setCanSendToGitHub}
-              githubDestination={githubDestination}
-              setGithubDestination={setGithubDestination}
             />
           </div>
         </div>
@@ -706,6 +692,8 @@ const ExportDialog: ExportDialogComponent = ({
 
                     if (activeExportDestination === "github") {
                       const { title, content } = files[0];
+                      const githubDestination =
+                        localStorageGet("github-destination");
                       try {
                         let status;
                         if (githubDestination === "File") {
