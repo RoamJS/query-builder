@@ -395,6 +395,7 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
               id: "github-issue-comments",
               content: "No Issue Number Found.  Please send to GitHub first.",
             });
+            setLoading(false);
             return;
           }
 
@@ -403,6 +404,14 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
             nodes.flatMap((node) => [node, ...flatten(node["children"])]);
           const flattened = flatten(commentsTree);
           const comment = flattened.map((c) => c.text).join("\n\n");
+          if (!comment) {
+            renderToast({
+              id: "github-issue-comments",
+              content: "No comment found.",
+            });
+            setLoading(false);
+            return;
+          }
           try {
             // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28#create-an-issue-comment
             const response = await apiPost<GitHubCommentResponse>({
