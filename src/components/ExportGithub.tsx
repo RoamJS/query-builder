@@ -38,7 +38,7 @@ export const fetchInstallationStatus = async () => {
       domain: "https://api.github.com",
       path: "user/installations",
       headers: {
-        Authorization: `token ${localStorageGet("oauth-github")}`,
+        Authorization: `token ${localStorageGet("github-oauth")}`,
       },
     });
     const installations = res.installations;
@@ -55,24 +55,12 @@ export const fetchInstallationStatus = async () => {
 
 export const ExportGithub = ({
   isVisible,
-  selectedRepo,
-  setSelectedRepo,
   setError,
-  gitHubAccessToken,
-  setGitHubAccessToken,
   setCanSendToGitHub,
-  githubDestination,
-  setGithubDestination,
 }: {
   isVisible: boolean;
-  selectedRepo: string;
-  setSelectedRepo: (selectedRepo: string) => void;
   setError: (error: string) => void;
-  gitHubAccessToken: string | null;
-  setGitHubAccessToken: (gitHubAccessToken: string | null) => void;
   setCanSendToGitHub: (canSendToGitHub: boolean) => void;
-  githubDestination: GitHubDestination;
-  setGithubDestination: (githubDestination: GitHubDestination) => void;
 }) => {
   const authWindow = useRef<Window | null>(null);
 
@@ -80,17 +68,34 @@ export const ExportGithub = ({
   const [clickedInstall, setClickedInstall] = useState(false);
   const [repos, setRepos] = useState<UserRepos>(initialRepos);
   const [state, setState] = useState("");
+  const [gitHubAccessToken, _setGitHubAccessToken] = useState<string>(
+    localStorageGet("github-oauth")
+  );
+  const [githubDestination, _setGithubDestination] =
+    useState<GitHubDestination>(
+      (localStorageGet("github-destination") as GitHubDestination) || "File"
+    );
+  const [selectedRepo, _setSelectedRepo] = useState(
+    localStorageGet("github-repo")
+  );
   const showGitHubLogin = isGitHubAppInstalled && !gitHubAccessToken;
   const repoAndDestinationSelectEnabled =
     isGitHubAppInstalled && gitHubAccessToken;
 
-  const setRepo = (repo: string) => {
-    setSelectedRepo(repo);
-    localStorageSet("selected-repo", repo);
+  const setGitHubAccessToken = (token: string) => {
+    localStorageSet("github-oauth", token);
+    _setGitHubAccessToken(token);
+  };
+  const setGithubDestination = (destination: GitHubDestination) => {
+    localStorageSet("github-destination", destination);
+    _setGithubDestination(destination);
+  };
+  const setSelectedRepo = (repo: string) => {
+    localStorageSet("github-repo", repo);
+    _setSelectedRepo(repo);
   };
 
   const handleReceivedAccessToken = (token: string) => {
-    localStorageSet("oauth-github", token);
     setGitHubAccessToken(token);
     setClickedInstall(false);
     authWindow.current?.close();
@@ -103,8 +108,7 @@ export const ExportGithub = ({
     } catch (error) {
       const e = error as Error;
       if (e.message === "Bad credentials") {
-        setGitHubAccessToken(null);
-        localStorageSet("oauth-github", "");
+        setGitHubAccessToken("");
       }
     }
   }, []);
@@ -255,7 +259,7 @@ export const ExportGithub = ({
             Repo
             <MenuItemSelect
               items={repos.map((repo) => repo.full_name)}
-              onItemSelect={setRepo}
+              onItemSelect={setSelectedRepo}
               activeItem={selectedRepo}
               filterable={true}
               transformItem={(item) => item.split("/")[1]}
