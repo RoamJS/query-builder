@@ -12,14 +12,11 @@ import { Button, Card, Classes, Dialog, Tag } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import createBlock from "roamjs-components/writes/createBlock";
-import resolveQueryBuilderRef from "../utils/resolveQueryBuilderRef";
 import runQuery from "../utils/runQuery";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { createConfigObserver } from "roamjs-components/components/ConfigPage";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
-import TextPanel from "roamjs-components/components/ConfigPanels/TextPanel";
 import { render as exportRender } from "../components/Export";
 import getBlockProps from "../utils/getBlockProps";
 import localStorageGet from "roamjs-components/util/localStorageGet";
@@ -30,7 +27,6 @@ import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildU
 import getUids from "roamjs-components/dom/getUids";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import ReactDOM from "react-dom";
-import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import getPageUidByBlockUid from "roamjs-components/queries/getPageUidByBlockUid";
 import apiPost from "roamjs-components/util/apiPost";
@@ -51,6 +47,8 @@ import {
 } from "roamjs-components/components/ConfigPanels/types";
 import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
 import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
+import CommentsQuery from "./GitHubSyncCommentsQuery";
+import getSubTree from "roamjs-components/util/getSubTree";
 
 const CommentUidCache = new Set<string>();
 const CommentContainerUidCache = new Set<string>();
@@ -109,28 +107,22 @@ const getRoamCommentsContainerUid = async ({
   pageUid: string;
   extensionAPI: OnloadArgs["extensionAPI"];
 }) => {
-  const pageTitle = getPageTitleByPageUid(pageUid);
   const configUid = getPageUidByPageTitle(CONFIG_PAGE);
   const configTree = getBasicTreeByParentUid(configUid);
-  const qbAlias = getSettingValueFromTree({
+  const queryNode = getSubTree({
     tree: configTree,
     key: "Comments Block",
   });
-  if (!qbAlias) {
+  if (!queryNode) {
     renderToast({
       id: "github-issue-comments",
-      content: `Comments Block reference not set. Set it in ${CONFIG_PAGE}`,
+      content: `Comments Block query not set. Set it in ${CONFIG_PAGE}`,
     });
     return;
   }
-  const qbAliasUid = resolveQueryBuilderRef({
-    queryRef: qbAlias,
-    extensionAPI,
-  });
   const results = await runQuery({
     extensionAPI,
-    parentUid: qbAliasUid,
-    inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
+    parentUid: queryNode.uid,
   });
 
   return results.results[0]?.uid;
@@ -334,6 +326,7 @@ export const renderGitHubSyncPage = async ({
     }
   }
 };
+
 const formatComment = (c: GitHubComment) => {
   const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
     new Date(c.created_at)
@@ -894,7 +887,7 @@ const IssueDetailsDialog = ({ pageUid }: { pageUid: string }) => {
 };
 
 // Init
-const initializeGitHubSync = async (args: OnloadArgs) => {
+const initializeGitHubSync = async (onloadArgs: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
     if (flag && !enabled) {
@@ -945,13 +938,20 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
                   },
                   defaultValue: "None",
                 },
+                // @ts-ignore
                 {
-                  // @ts-ignore
-                  Panel: TextPanel,
+                  Panel: CustomPanel,
                   title: "Comments Block",
                   description:
-                    "Where comments are synced to.  Use a Query Builder alias or block reference.",
-                },
+                    "Where comments are synced to.  This will fire when the node is loaded.",
+                  options: {
+                    component: ({ uid }) =>
+                      React.createElement(CommentsQuery, {
+                        parentUid: uid,
+                        onloadArgs,
+                      }),
+                  },
+                } as Field<CustomField>,
               ],
             },
           ],
@@ -971,7 +971,7 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
             ReactDOM.render(
               <CommentsContainerComponent
                 commentsContainerUid={blockUid}
-                extensionAPI={args.extensionAPI}
+                extensionAPI={onloadArgs.extensionAPI}
               />,
               containerDiv
             );
@@ -1001,7 +1001,7 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
     }
     enabled = flag;
   };
-  await toggle(!!args.extensionAPI.settings.get(SETTING));
+  await toggle(!!onloadArgs.extensionAPI.settings.get(SETTING));
   return toggle;
 };
 export default initializeGitHubSync;
