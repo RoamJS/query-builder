@@ -178,11 +178,14 @@ export const insertNewCommentsFromGitHub = async ({
   });
 
   const gitHubAccessToken = localStorageGet("oauth-github");
-  renderToast({
-    id: "github-issue-auth",
-    content:
-      "GitHub Authorization not found.  Please connect your GitHub account.",
-  });
+  if (!gitHubAccessToken) {
+    renderToast({
+      id: "github-issue-auth",
+      content:
+        "GitHub Authorization not found.  Please re-authorize in the details window at the top of the page.",
+    });
+    return;
+  }
 
   try {
     // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28#list-issue-comments
@@ -243,7 +246,11 @@ export const insertNewCommentsFromGitHub = async ({
     renderToast({
       intent: "danger",
       id: "github-issue-comments",
-      content: `Failed to add comments: ${message}`,
+      content: `Failed to add comments: ${
+        message === "Bad credentials"
+          ? `${message}. Please re-authorize in the details window at the top of the page.`
+          : message
+      }`,
     });
   }
 };
@@ -375,11 +382,15 @@ const CommentsComponent = ({ blockUid }: { blockUid: string }) => {
           setLoading(true);
 
           const gitHubAccessToken = localStorageGet("oauth-github");
-          renderToast({
-            id: "github-issue-auth",
-            content:
-              "GitHub Authorization not found.  Please connect your GitHub account.",
-          });
+          if (!gitHubAccessToken) {
+            renderToast({
+              id: "github-issue-auth",
+              content:
+                "GitHub Authorization not found.  Please re-authorize in the details window at the top of the page.",
+            });
+            setLoading(false);
+            return;
+          }
 
           const el = e.target as HTMLButtonElement;
           const { blockUid: triggerUid } = getUidsFromButton(el);
