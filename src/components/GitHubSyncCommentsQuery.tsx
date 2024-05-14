@@ -34,7 +34,7 @@ const CommentsQuery = ({
           text: "target",
           children: [
             {
-              text: "{current}",
+              text: ":in NODETEXT",
             },
           ],
         },

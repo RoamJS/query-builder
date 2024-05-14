@@ -107,6 +107,7 @@ const getRoamCommentsContainerUid = async ({
   pageUid: string;
   extensionAPI: OnloadArgs["extensionAPI"];
 }) => {
+  const pageTitle = getPageTitleByPageUid(pageUid);
   const configUid = getPageUidByPageTitle(CONFIG_PAGE);
   const configTree = getBasicTreeByParentUid(configUid);
   const queryNode = getSubTree({
@@ -123,6 +124,7 @@ const getRoamCommentsContainerUid = async ({
   const results = await runQuery({
     extensionAPI,
     parentUid: queryNode.uid,
+    inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
   });
 
   return results.results[0]?.uid;
@@ -953,7 +955,7 @@ const initializeGitHubSync = async (onloadArgs: OnloadArgs) => {
                   Panel: CustomPanel,
                   title: "Comments Block",
                   description:
-                    "Where comments are synced to.  This will fire when the node is loaded.",
+                    "Where comments are synced to. This will fire when the node is loaded. You have access to ':in NODETEXT' and ':in NODEUID' as variables for the current node.",
                   options: {
                     component: ({ uid }) =>
                       React.createElement(CommentsQuery, {
