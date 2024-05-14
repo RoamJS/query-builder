@@ -22,11 +22,9 @@ Clicking the download button will grab any new comments and open a dialog to con
 
 **Query Block Definition**
 
-Create a `{{query block}}` somewhere in your graph to define which block will be the Comments Block.
+Define which block will be the Comments Block.
 
 You can add the variables `:in NODETEXT` or `:in NODETITLE` which will grab the current pages's text or title.
-
-Then add that Query Block's alias or block reference to the field.
 
 Example:
 
