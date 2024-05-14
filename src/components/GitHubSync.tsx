@@ -50,6 +50,10 @@ import {
   Field,
 } from "roamjs-components/components/ConfigPanels/types";
 import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
+import getShallowTreeByParentUid from "roamjs-components/queries/getShallowTreeByParentUid";
+
+const CommentUidCache = new Set<string>();
+const CommentContainerUidCache = new Set<string>();
 
 type GitHubIssuePage = {
   "github-sync": {
@@ -287,22 +291,41 @@ export const renderGitHubSyncPage = async ({
   const commentHeaderEl = document.querySelector(
     `.rm-block__input[id$="${commentsContainerUid}"]`
   );
-  if (commentHeaderEl && commentsContainerUid) {
-    if (commentHeaderEl.hasAttribute("github-sync-loaded")) return;
-    commentHeaderEl.setAttribute("github-sync-loaded", "true");
-    const containerDiv = document.createElement("div");
-    containerDiv.className = "inline-block ml-2";
-    commentHeaderEl.appendChild(containerDiv);
-    ReactDOM.render(
-      <GitHubSyncPage
-        commentsContainerUid={commentsContainerUid}
-        extensionAPI={extensionAPI}
-      />,
-      containerDiv
-    );
-  }
-  commentHeaderEl;
   handleTitleAdditions(h1, <TitleButtons pageUid={pageUid} />);
+
+  // Initial render for existing comments / comment container
+  if (commentHeaderEl && commentsContainerUid) {
+    const commentNodes = getShallowTreeByParentUid(commentsContainerUid);
+    commentNodes.map((comment) => {
+      const uid = comment.uid;
+      CommentUidCache.add(uid);
+
+      const commentDiv = document.querySelector(`[id*="${uid}"]`);
+      if (commentDiv && !commentDiv.hasAttribute("github-sync-comment")) {
+        const containerDiv = document.createElement("div");
+        containerDiv.className = "inline-block ml-2";
+        containerDiv.onmousedown = (e) => e.stopPropagation();
+        commentDiv.append(containerDiv);
+        ReactDOM.render(<CommentsComponent blockUid={uid} />, containerDiv);
+      }
+    });
+
+    if (!commentHeaderEl.hasAttribute("github-sync-comment-container")) {
+      CommentContainerUidCache.add(commentsContainerUid);
+      commentHeaderEl.setAttribute("github-sync-comment-container", "true");
+      const containerDiv = document.createElement("div");
+      containerDiv.className = "inline-block ml-2";
+      containerDiv.onmousedown = (e) => e.stopPropagation();
+      commentHeaderEl.appendChild(containerDiv);
+      ReactDOM.render(
+        <CommentsContainerComponent
+          commentsContainerUid={commentsContainerUid}
+          extensionAPI={extensionAPI}
+        />,
+        containerDiv
+      );
+    }
+  }
 };
 const formatComment = (c: GitHubComment) => {
   const roamCreatedDate = window.roamAlphaAPI.util.dateToPageTitle(
@@ -460,6 +483,7 @@ const CommentsContainerComponent = ({
             parentUid: commentsContainerUid,
             order: "last",
           });
+          CommentUidCache.add(newBlock);
           setTimeout(() => {
             const commentBlockUid = getFirstChildUidByBlockUid(newBlock);
             const commentBlockEl = document.querySelector(
@@ -498,61 +522,7 @@ const CommentsContainerComponent = ({
     </div>
   );
 };
-const GitHubSyncPage = ({
-  commentsContainerUid,
-  extensionAPI,
-}: {
-  commentsContainerUid: string;
-  extensionAPI: OnloadArgs["extensionAPI"];
-}) => {
-  useEffect(() => {
-    const headerCommentObserver = createBlockObserver({
-      onBlockLoad: (b) => {
-        const { blockUid } = getUids(b);
-        if (blockUid === commentsContainerUid) {
-          if (b.hasAttribute("github-sync-comment-header")) return;
-          b.setAttribute("github-sync-comment-header", "true");
-          const containerDiv = document.createElement("div");
-          containerDiv.className = "inline-block ml-2";
-          containerDiv.onmousedown = (e) => e.stopPropagation();
-          b.append(containerDiv);
-          ReactDOM.render(
-            <CommentsContainerComponent
-              commentsContainerUid={commentsContainerUid}
-              extensionAPI={extensionAPI}
-            />,
-            containerDiv
-          );
-        }
-      },
-    });
-    const childCommentObserver = createBlockObserver({
-      onBlockLoad: (b) => {
-        const { blockUid } = getUids(b);
-        const parentUid = getParentUidByBlockUid(blockUid);
-        if (parentUid === commentsContainerUid) {
-          if (b.hasAttribute("github-sync-comment")) return;
-          b.setAttribute("github-sync-comment", "true");
-          const containerDiv = document.createElement("div");
-          containerDiv.className = "inline-block ml-2";
-          containerDiv.onmousedown = (e) => e.stopPropagation();
-          b.append(containerDiv);
-          ReactDOM.render(
-            <CommentsComponent blockUid={blockUid} />,
-            containerDiv
-          );
-        }
-      },
-    });
 
-    return () => {
-      headerCommentObserver.forEach((o) => o.disconnect());
-      childCommentObserver.forEach((o) => o.disconnect());
-    };
-  }, [commentsContainerUid]);
-
-  return null;
-};
 export const TitleButtons = ({ pageUid }: { pageUid: string }) => {
   const [loading, setLoading] = useState({
     sendToGitHub: false,
@@ -917,7 +887,7 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
   const unloads = new Set<() => void>();
   const toggle = async (flag: boolean) => {
     if (flag && !enabled) {
-      const { observer } = await createConfigObserver({
+      const { observer: configObserver } = await createConfigObserver({
         title: "roam/js/github-sync",
         config: {
           tabs: [
@@ -976,10 +946,44 @@ const initializeGitHubSync = async (args: OnloadArgs) => {
           ],
         },
       });
-      unloads.add(function configObserverDisconnect() {
-        observer?.disconnect();
-        unloads.delete(configObserverDisconnect);
+
+      const commentObserver = createBlockObserver({
+        onBlockLoad: (b) => {
+          const { blockUid } = getUids(b);
+          if (CommentContainerUidCache.has(blockUid)) {
+            if (b.hasAttribute("github-sync-comment-container")) return;
+            b.setAttribute("github-sync-comment-container", "true");
+            const containerDiv = document.createElement("div");
+            containerDiv.className = "inline-block ml-2";
+            containerDiv.onmousedown = (e) => e.stopPropagation();
+            b.append(containerDiv);
+            ReactDOM.render(
+              <CommentsContainerComponent
+                commentsContainerUid={blockUid}
+                extensionAPI={args.extensionAPI}
+              />,
+              containerDiv
+            );
+          }
+          if (CommentUidCache.has(blockUid)) {
+            if (b.hasAttribute("github-sync-comment")) return;
+            b.setAttribute("github-sync-comment", "true");
+            const containerDiv = document.createElement("div");
+            containerDiv.className = "inline-block ml-2";
+            containerDiv.onmousedown = (e) => e.stopPropagation();
+            b.append(containerDiv);
+            ReactDOM.render(
+              <CommentsComponent blockUid={blockUid} />,
+              containerDiv
+            );
+          }
+        },
       });
+
+      unloads.add(() => configObserver?.disconnect());
+      unloads.add(() => commentObserver.forEach((o) => o.disconnect()));
+      unloads.add(() => CommentUidCache.clear());
+      unloads.add(() => CommentContainerUidCache.clear());
     } else if (!flag && enabled) {
       unloads.forEach((u) => u());
       unloads.clear();
