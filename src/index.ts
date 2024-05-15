@@ -57,6 +57,12 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import {
+  isGitHubSyncPage,
+  renderGitHubSyncPage,
+} from "./components/GitHubSync";
+import { handleTitleAdditions } from "./utils/handleTitleAdditions";
+import initializeGitHubSync from "./components/GitHubSync";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -206,28 +212,16 @@ svg.rs-svg-container {
       DEFAULT_CANVAS_PAGE_FORMAT;
     return new RegExp(`^${canvasPageFormat}$`.replace(/\*/g, ".+")).test(title);
   };
-  const h1ObserverCallback = (h1: HTMLHeadingElement) => {
+  const h1ObserverCallback = async (h1: HTMLHeadingElement) => {
     const title = getPageTitleValueByHtmlElement(h1);
     if (!!extensionAPI.settings.get("show-page-metadata")) {
       const { displayName, date } = getPageMetadata(title);
-      const container = document.createElement("div");
-      const oldMarginBottom = getComputedStyle(h1).marginBottom;
-      container.style.marginTop = `${
-        4 - Number(oldMarginBottom.replace("px", "")) / 2
-      }px`;
-      container.style.marginBottom = oldMarginBottom;
       const label = document.createElement("i");
       label.innerText = `Created by ${
         displayName || "Anonymous"
       } on ${date.toLocaleString()}`;
-      container.appendChild(label);
-      if (h1.parentElement) {
-        if (h1.parentElement.lastChild === h1) {
-          h1.parentElement.appendChild(container);
-        } else {
-          h1.parentElement.insertBefore(container, h1.nextSibling);
-        }
-      }
+
+      handleTitleAdditions(h1, label);
     }
 
     if (title.startsWith("discourse-graph/nodes/")) {
@@ -265,6 +259,13 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else if (isGitHubSyncPage(title)) {
+      const pageUid = getPageUidByPageTitle(title);
+      renderGitHubSyncPage({
+        h1,
+        pageUid,
+        onloadArgs,
+      });
     }
   };
   extensionAPI.settings.panel.create({
@@ -396,6 +397,18 @@ svg.rs-svg-container {
           },
         },
       },
+      {
+        id: "github-sync",
+        name: "GitHub Sync",
+        description: "Sync select pages with GitHub Issues",
+        action: {
+          type: "switch",
+          onChange: (e) => {
+            const flag = e.target.checked;
+            toggleGitHubSync(flag);
+          },
+        },
+      },
     ],
   });
   if (loadedElsewhere) {
@@ -411,6 +424,7 @@ svg.rs-svg-container {
   const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
     onloadArgs
   );
+  const toggleGitHubSync = await initializeGitHubSync(onloadArgs);
   if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
     extensionAPI.settings.set(SETTING, true);
     toggleDiscourseGraphsMode(true);
@@ -652,6 +666,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          // @ts-ignore - TODO: remove clearOnClick, no longer used
           clearOnClick,
           onloadArgs,
         })
