@@ -54,11 +54,9 @@ export const fetchInstallationStatus = async () => {
 };
 
 export const ExportGithub = ({
-  isVisible,
   setError,
   setCanSendToGitHub,
 }: {
-  isVisible: boolean;
   setError: (error: string) => void;
   setCanSendToGitHub: (canSendToGitHub: boolean) => void;
 }) => {
@@ -128,16 +126,11 @@ export const ExportGithub = ({
       }
     };
 
-    if (isVisible) {
-      window.addEventListener("message", handleGitHubAuthMessage);
-    }
-
+    window.addEventListener("message", handleGitHubAuthMessage);
     return () => {
-      if (isVisible) {
-        window.removeEventListener("message", handleGitHubAuthMessage);
-      }
+      window.removeEventListener("message", handleGitHubAuthMessage);
     };
-  }, [isVisible]);
+  }, []);
 
   // check for installation
   useEffect(() => {
@@ -173,7 +166,6 @@ export const ExportGithub = ({
     }
   }, [gitHubAccessToken, isGitHubAppInstalled, selectedRepo]);
 
-  if (!isVisible) return null;
   return (
     <div className="flex mb-4">
       {(!isGitHubAppInstalled || clickedInstall) && (

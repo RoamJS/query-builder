@@ -567,11 +567,12 @@ const ExportDialog: ExportDialogComponent = ({
                 onItemSelect={(et) => setActiveExportDestination(et)}
               />
             </Label>
-            <ExportGithub
-              isVisible={activeExportDestination === "github"}
-              setError={setError}
-              setCanSendToGitHub={setCanSendToGitHub}
-            />
+            {activeExportDestination === "github" && (
+              <ExportGithub
+                setError={setError}
+                setCanSendToGitHub={setCanSendToGitHub}
+              />
+            )}
           </div>
         </div>
 
