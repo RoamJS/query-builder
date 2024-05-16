@@ -47,6 +47,8 @@ import apiPut from "roamjs-components/util/apiPut";
 import localStorageGet from "roamjs-components/util/localStorageGet";
 import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
+import createPage from "roamjs-components/writes/createPage";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -221,18 +223,50 @@ const ExportDialog: ExportDialogComponent = ({
     setSelectedPageUid(getPageUidByPageTitle(title));
   };
 
-  const addToSelectedCanvas = async () => {
+  const addToSelectedCanvas = async (pageUid: string, isNew: boolean) => {
     if (typeof results !== "object") return;
+
+    let props: Record<string, unknown> = getBlockProps(pageUid);
+    if (isNew) {
+      await window.roamAlphaAPI.ui.mainWindow.openPage({
+        page: { uid: pageUid },
+      });
+
+      let attemptCount = 0;
+      const waitForBlockProps = (): Promise<void> =>
+        new Promise((resolve, reject) => {
+          const checkProps = () => {
+            props = getBlockProps(pageUid);
+            const rjsqb = props?.["roamjs-query-builder"] as Record<
+              string,
+              unknown
+            >;
+            const tldraw = rjsqb?.["tldraw"];
+
+            if (tldraw) {
+              resolve();
+            } else if (attemptCount < 20) {
+              attemptCount++;
+              setTimeout(checkProps, 250);
+            } else {
+              reject(new Error("Failed to get block props"));
+            }
+          };
+
+          checkProps();
+        });
+      await waitForBlockProps();
+    }
 
     const PADDING_BETWEEN_SHAPES = 20;
     const COMMON_BOUNDS_XOFFSET = 250;
     const MAX_COLUMNS = 5;
     const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
-    const props = getBlockProps(selectedPageUid) as Record<string, unknown>;
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
     const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
 
-    const getPageKey = (obj: Record<string, unknown>): string | undefined => {
+    const getPageKey = (obj: Record<string, unknown>): string => {
+      if (!obj) return "";
       for (const key in obj) {
         if (
           obj[key] &&
@@ -242,6 +276,7 @@ const ExportDialog: ExportDialogComponent = ({
           return key;
         }
       }
+      return "";
     };
     const pageKey = getPageKey(tldraw);
 
@@ -255,6 +290,7 @@ const ExportDialog: ExportDialogComponent = ({
       h: number;
     };
     const extractShapesBounds = (tldraw: TLdrawProps): ShapeBounds[] => {
+      if (!tldraw) return [];
       return Object.keys(tldraw)
         .filter((key) => tldraw[key].typeName === "shape")
         .map((key) => {
@@ -345,7 +381,7 @@ const ExportDialog: ExportDialogComponent = ({
     const newStateId = nanoid();
     window.roamAlphaAPI.updateBlock({
       block: {
-        uid: selectedPageUid,
+        uid: pageUid,
         props: {
           ...props,
           ["roamjs-query-builder"]: {
@@ -357,12 +393,12 @@ const ExportDialog: ExportDialogComponent = ({
     });
   };
 
-  const addToSelectedPage = () => {
+  const addToSelectedPage = (pageUid: string) => {
     if (typeof results === "object") {
       results.map((r) => {
         const isPage = !!getPageTitleByPageUid(r.uid);
         window.roamAlphaAPI.data.block.create({
-          location: { "parent-uid": selectedPageUid, order: "last" },
+          location: { "parent-uid": pageUid, order: "last" },
           block: {
             string: isPage ? `[[${r[firstColumnKey]}]]` : `((${r.uid}))`,
           },
@@ -391,13 +427,20 @@ const ExportDialog: ExportDialogComponent = ({
 
   const handleSendTo = async () => {
     try {
-      if (isSendToGraph) addToGraphOverView();
-      else if (isCanvasPage) await addToSelectedCanvas();
-      else addToSelectedPage();
+      let toastContent: React.ReactNode;
+      let uid = selectedPageUid;
+      const title = selectedPageTitle;
 
-      const selectedPageUid = getPageUidByPageTitle(selectedPageTitle);
-      const content =
-        activeSendToDestination === "page" ? (
+      if (isSendToGraph) {
+        addToGraphOverView();
+        toastContent = "Results sent!";
+      } else {
+        const isNewPage = !isLiveBlock(uid);
+        if (isNewPage) uid = await createPage({ title });
+        if (isCanvasPage) await addToSelectedCanvas(uid, isNewPage);
+        else addToSelectedPage(uid);
+
+        toastContent = (
           <>
             Results sent to{" "}
             <a
@@ -405,26 +448,25 @@ const ExportDialog: ExportDialogComponent = ({
                 if (event.shiftKey) {
                   window.roamAlphaAPI.ui.rightSidebar.addWindow({
                     window: {
-                      "block-uid": selectedPageUid,
+                      "block-uid": uid,
                       type: "outline",
                     },
                   });
                 } else {
                   window.roamAlphaAPI.ui.mainWindow.openPage({
-                    page: { uid: selectedPageUid },
+                    page: { uid: uid },
                   });
                 }
               }}
             >
-              [[{selectedPageTitle}]]
+              [[{title}]]
             </a>
           </>
-        ) : (
-          "Results sent!"
         );
+      }
 
       renderToast({
-        content,
+        content: toastContent,
         intent: "success",
         id: "query-builder-export-success",
       });
