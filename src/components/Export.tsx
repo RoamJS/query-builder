@@ -16,7 +16,7 @@ import {
   Radio,
   FormGroup,
 } from "@blueprintjs/core";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, FormEvent } from "react";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { saveAs } from "file-saver";
 import { Result } from "roamjs-components/types/query-builder";
@@ -97,6 +97,8 @@ const EXPORT_DESTINATIONS = [
   { id: "samepage", label: "Store with SamePage", active: false },
   { id: "github", label: "Send to GitHub", active: true },
 ];
+const SEND_TO_DESTINATIONS = ["page", "graph"];
+
 const exportDestinationById = Object.fromEntries(
   EXPORT_DESTINATIONS.map((ed) => [ed.id, ed])
 );
@@ -154,7 +156,9 @@ const ExportDialog: ExportDialogComponent = ({
   const [selectedPageTitle, setSelectedPageTitle] = useState(currentPageTitle);
   const [selectedPageUid, setSelectedPageUid] = useState(currentPageUid);
   const isCanvasPage = checkForCanvasPage(selectedPageTitle);
-  const [isSendToGraph, setIsSendToGraph] = useState(false);
+  const [activeSendToDestination, setActiveSendToDestination] =
+    useState<(typeof SEND_TO_DESTINATIONS)[number]>("page");
+  const isSendToGraph = activeSendToDestination === "graph";
   const [livePages, setLivePages] = useState<Result[]>([]);
   const [selectedTabId, setSelectedTabId] = useState("sendto");
   useEffect(() => {
@@ -390,8 +394,37 @@ const ExportDialog: ExportDialogComponent = ({
       if (isSendToGraph) addToGraphOverView();
       else if (isCanvasPage) await addToSelectedCanvas();
       else addToSelectedPage();
+
+      const selectedPageUid = getPageUidByPageTitle(selectedPageTitle);
+      const content =
+        activeSendToDestination === "page" ? (
+          <>
+            Results sent to{" "}
+            <a
+              onClick={(event) => {
+                if (event.shiftKey) {
+                  window.roamAlphaAPI.ui.rightSidebar.addWindow({
+                    window: {
+                      "block-uid": selectedPageUid,
+                      type: "outline",
+                    },
+                  });
+                } else {
+                  window.roamAlphaAPI.ui.mainWindow.openPage({
+                    page: { uid: selectedPageUid },
+                  });
+                }
+              }}
+            >
+              [[{selectedPageTitle}]]
+            </a>
+          </>
+        ) : (
+          "Results sent!"
+        );
+
       renderToast({
-        content: "Results sent!",
+        content,
         intent: "success",
         id: "query-builder-export-success",
       });
@@ -713,10 +746,11 @@ const ExportDialog: ExportDialogComponent = ({
     <>
       <div className={Classes.DIALOG_BODY}>
         <RadioGroup
-          onChange={(e: React.FormEvent<HTMLInputElement>) =>
-            setIsSendToGraph(isSendToGraph ? false : true)
-          }
-          selectedValue={isSendToGraph ? "graph" : "page"}
+          onChange={(e: FormEvent<HTMLInputElement>) => {
+            const target = e.target as HTMLInputElement;
+            setActiveSendToDestination(target.value);
+          }}
+          selectedValue={activeSendToDestination}
         >
           <Radio value="graph" label="Visualize in Graph Overview" />
           <Radio value="page" label="Send to Page" />
