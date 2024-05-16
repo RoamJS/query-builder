@@ -418,7 +418,6 @@ const ExportDialog: ExportDialogComponent = ({
             >
               [[{selectedPageTitle}]]
             </a>
-            !
           </>
         ) : (
           "Results sent!"
