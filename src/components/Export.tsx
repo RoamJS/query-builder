@@ -49,7 +49,7 @@ import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
-import { createInitialTldrawProps } from "../utils/createTldrawPage";
+import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
