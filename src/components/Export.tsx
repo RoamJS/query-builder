@@ -49,6 +49,7 @@ import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
+import { createInitialTldrawProps } from "../utils/createTldrawPage";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -223,50 +224,21 @@ const ExportDialog: ExportDialogComponent = ({
     setSelectedPageUid(getPageUidByPageTitle(title));
   };
 
-  const addToSelectedCanvas = async (pageUid: string, isNew: boolean) => {
+  const addToSelectedCanvas = async (pageUid: string) => {
     if (typeof results !== "object") return;
 
     let props: Record<string, unknown> = getBlockProps(pageUid);
-    if (isNew) {
-      await window.roamAlphaAPI.ui.mainWindow.openPage({
-        page: { uid: pageUid },
-      });
-
-      let attemptCount = 0;
-      const waitForBlockProps = (): Promise<void> =>
-        new Promise((resolve, reject) => {
-          const checkProps = () => {
-            props = getBlockProps(pageUid);
-            const rjsqb = props?.["roamjs-query-builder"] as Record<
-              string,
-              unknown
-            >;
-            const tldraw = rjsqb?.["tldraw"];
-
-            if (tldraw) {
-              resolve();
-            } else if (attemptCount < 20) {
-              attemptCount++;
-              setTimeout(checkProps, 250);
-            } else {
-              reject(new Error("Failed to get block props"));
-            }
-          };
-
-          checkProps();
-        });
-      await waitForBlockProps();
-    }
 
     const PADDING_BETWEEN_SHAPES = 20;
     const COMMON_BOUNDS_XOFFSET = 250;
     const MAX_COLUMNS = 5;
     const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const tldraw = rjsqb["tldraw"] as Record<string, unknown>;
+    const tldraw =
+      (rjsqb?.["tldraw"] as Record<string, unknown>) ||
+      createInitialTldrawProps();
 
     const getPageKey = (obj: Record<string, unknown>): string => {
-      if (!obj) return "";
       for (const key in obj) {
         if (
           obj[key] &&
@@ -386,6 +358,7 @@ const ExportDialog: ExportDialogComponent = ({
           ...props,
           ["roamjs-query-builder"]: {
             ...rjsqb,
+            tldraw,
             stateId: newStateId,
           },
         },
@@ -437,7 +410,7 @@ const ExportDialog: ExportDialogComponent = ({
       } else {
         const isNewPage = !isLiveBlock(uid);
         if (isNewPage) uid = await createPage({ title });
-        if (isCanvasPage) await addToSelectedCanvas(uid, isNewPage);
+        if (isCanvasPage) await addToSelectedCanvas(uid);
         else addToSelectedPage(uid);
 
         toastContent = (
