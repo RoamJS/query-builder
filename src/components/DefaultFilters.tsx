@@ -61,7 +61,7 @@ const Filter = ({
       </div>
       <div className="justify-between items-center flex gap-1">
         <InputGroup
-          value={newFilter}
+                    value={newFilter}
           onChange={(e) => setNewFilter(e.target.value)}
         />
         <div
@@ -166,9 +166,9 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
           }}
         />
       ))}
-      <div className="flex justify-between items-center gap-2">
+      <div className="flex justify-end items-center gap-2">
         <InputGroup
-          value={newColumn}
+                    value={newColumn}
           onChange={(e) => setNewColumn(e.target.value)}
         />
         <Button
