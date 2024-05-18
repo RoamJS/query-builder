@@ -166,7 +166,7 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
           }}
         />
       ))}
-      <div className="flex justify-between items-center gap-2">
+      <div className="flex justify-end items-center gap-2">
         <InputGroup
           value={newColumn}
           onChange={(e) => setNewColumn(e.target.value)}

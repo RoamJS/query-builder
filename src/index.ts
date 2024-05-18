@@ -199,6 +199,9 @@ svg.rs-svg-container {
 .roamjs-query-column-views table.bp3-html-table td {
   vertical-align: initial;
 }
+.rm-settings .rm-extensions-settings input[type="text"] {
+  min-width: initial;
+}
 `);
   const isCanvasPage = (title: string) => {
     const canvasPageFormat =
