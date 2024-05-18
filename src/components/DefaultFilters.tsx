@@ -61,7 +61,7 @@ const Filter = ({
       </div>
       <div className="justify-between items-center flex gap-1">
         <InputGroup
-                    value={newFilter}
+          value={newFilter}
           onChange={(e) => setNewFilter(e.target.value)}
         />
         <div
