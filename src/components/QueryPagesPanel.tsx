@@ -28,7 +28,11 @@ const QueryPagesPanel = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
       }}
     >
       <div className={"flex gap-2"}>
-        <InputGroup value={value} onChange={(e) => setValue(e.target.value)} />
+        <InputGroup
+          style={{ minWidth: "initial" }}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
         <Button
           icon={"plus"}
           minimal
