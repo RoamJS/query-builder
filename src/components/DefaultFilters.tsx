@@ -59,8 +59,9 @@ const Filter = ({
           ))}
         </ul>
       </div>
-      <div className="justify-between items-center flex gap-1">
+      <div className="justify-end items-center flex gap-1">
         <InputGroup
+          style={{ minWidth: "initial" }}
           value={newFilter}
           onChange={(e) => setNewFilter(e.target.value)}
         />
@@ -135,7 +136,6 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
   return (
     <div
       style={{
-        width: "100%",
         minWidth: 256,
       }}
     >
@@ -166,8 +166,9 @@ const DefaultFilters = (extensionAPI: OnloadArgs["extensionAPI"]) => () => {
           }}
         />
       ))}
-      <div className="flex justify-between items-center gap-2">
+      <div className="flex justify-end items-center gap-2">
         <InputGroup
+          style={{ minWidth: "initial" }}
           value={newColumn}
           onChange={(e) => setNewColumn(e.target.value)}
         />
