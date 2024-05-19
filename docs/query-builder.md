@@ -210,7 +210,7 @@ For developers of other extensions who want to use the queries defined by users,
   - `uid` - `string` The reference of the primary node involved in the result.
   - `${string}-uid` - `string` If the users define selections that return intermediary nodes, the reference of those nodes will always end in `-uid` and will always be of type `string`.
   - `{string}` - `string | number | Date` All other fields returned in the result can be any of the primitive value types.
-- `isDiscourseNode` - `(uid?: string, nodes?: DiscourseNode[]) => boolean` Returns whether the input `uid` is a discourse node.
+- `isDiscourseNode` - `(uid: string) => boolean` Returns whether the input `uid` is a discourse node.
 
 ## Examples
 
