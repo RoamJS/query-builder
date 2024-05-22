@@ -9,7 +9,7 @@ import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import getDiscourseNodes from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
-import { OnloadArgs } from "roamjs-components/types";
+import { OnloadArgs, RoamBasicNode } from "roamjs-components/types";
 import runQuery from "./runQuery";
 import updateBlock from "roamjs-components/writes/updateBlock";
 
@@ -140,8 +140,12 @@ const createDiscourseNode = async ({
     }
   };
 
-  const useSmartBlocks =
-    templateNode.children.filter((obj) => obj.text.includes("<%")).length > 0;
+  const hasSmartBlockSyntax = (node: RoamBasicNode) => {
+    if (node.text.includes("<%")) return true;
+    if (node.children) return node.children.some(hasSmartBlockSyntax);
+    return false;
+  };
+  const useSmartBlocks = hasSmartBlockSyntax(templateNode);
 
   if (useSmartBlocks && !window.roamjs?.extension?.smartblocks) {
     renderToast({
