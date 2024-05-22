@@ -272,7 +272,7 @@ export const loadImage = (
 
     setTimeout(() => {
       reject(new Error("Image load timeout"));
-    }, 3000);
+    }, 5000);
 
     img.src = url;
   });
@@ -608,7 +608,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
               }
 
               // Update Shape Props
-              setSizeAndImgProps({ context: this, text, uid });
+              await setSizeAndImgProps({ context: this, text, uid });
               this.updateProps(shape.id, {
                 title: text,
                 uid,
