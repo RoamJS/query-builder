@@ -6,6 +6,9 @@ import { Button, Collapse, Checkbox } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import getBlockProps from "../utils/getBlockProps";
+import { TLBaseShape } from "@tldraw/tldraw";
 
 export type GroupedShapes = Record<string, DiscourseNodeShape[]>;
 
@@ -156,7 +159,30 @@ const CanvasDrawer = ({
   </ResizableDrawer>
 );
 
-export const render = (props: Props) =>
-  renderOverlay({ Overlay: CanvasDrawer, props });
+export const openCanvasDrawer = () => {
+  const pageUid = getCurrentPageUid();
+  const props = getBlockProps(pageUid) as Record<string, unknown>;
+  const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
+  const tldraw = (rjsqb?.tldraw as Record<string, unknown>) || {};
+  const shapes = Object.values(tldraw).filter((s) => {
+    const shape = s as TLBaseShape<string, { uid: string }>;
+    const uid = shape.props?.uid;
+    return !!uid;
+  }) as DiscourseNodeShape[];
+
+  const groupShapesByUid = (shapes: DiscourseNodeShape[]) => {
+    const groupedShapes = shapes.reduce((acc: GroupedShapes, shape) => {
+      const uid = shape.props.uid;
+      if (!acc[uid]) acc[uid] = [];
+      acc[uid].push(shape);
+      return acc;
+    }, {});
+
+    return groupedShapes;
+  };
+
+  const groupedShapes = groupShapesByUid(shapes);
+  renderOverlay({ Overlay: CanvasDrawer, props: { groupedShapes, pageUid } });
+};
 
 export default CanvasDrawer;
