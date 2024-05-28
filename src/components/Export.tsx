@@ -400,6 +400,7 @@ const ExportDialog: ExportDialogComponent = ({
 
   const handleSendTo = async () => {
     try {
+      setLoading(true);
       let toastContent: React.ReactNode;
       let uid = selectedPageUid;
       const title = selectedPageTitle;
@@ -467,6 +468,7 @@ const ExportDialog: ExportDialogComponent = ({
         },
       }).catch(() => {});
     } finally {
+      setLoading(false);
       onClose();
     }
   };
@@ -795,6 +797,7 @@ const ExportDialog: ExportDialogComponent = ({
             onClick={handleSendTo}
             style={{ minWidth: 64 }}
             disabled={isSendToGraph ? !livePages.length : false}
+            loading={loading}
           />
         </div>
       </div>
