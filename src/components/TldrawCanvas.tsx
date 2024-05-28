@@ -85,6 +85,7 @@ import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { formatHexColor } from "./DiscourseNodeCanvasSettings";
 import { getNewDiscourseNodeText } from "../utils/formatUtils";
+import { openCanvasDrawer } from "./CanvasDrawer";
 
 declare global {
   interface Window {
@@ -1866,6 +1867,7 @@ const TldrawCanvas = ({ title }: Props) => {
                 ),
                 "action.toggle-full-screen": "Toggle Full Screen",
                 "action.convert-to": "Convert to",
+                "action.open-canvas-drawer": "Open Canvas Drawer",
                 ...Object.fromEntries(
                   allNodes.map((node) => [
                     `action.convert-to-${node.type}`,
@@ -1875,6 +1877,35 @@ const TldrawCanvas = ({ title }: Props) => {
               },
             },
             contextMenu(app, schema, helpers) {
+              // Open Canvas Drawer
+              if (!app.selectedIds.length) {
+                const openCanvasDrawerGroup: MenuGroup = {
+                  id: "open-canvas-drawer-group",
+                  type: "group",
+                  checkbox: false,
+                  disabled: false,
+                  readonlyOk: true,
+                  children: [
+                    {
+                      checked: false,
+                      disabled: false,
+                      readonlyOk: true,
+                      id: "open-canvas-drawer",
+                      type: "item",
+                      actionItem: {
+                        id: "open-canvas-drawer",
+                        label: "action.open-canvas-drawer" as TLTranslationKey,
+                        onSelect: openCanvasDrawer,
+                        readonlyOk: true,
+                      },
+                    },
+                  ],
+                };
+                schema.push(openCanvasDrawerGroup);
+              }
+
+              // Convert To
+              // convert image/text to Discourse Node
               if (helpers.oneSelected) {
                 const shape = app.getShapeById(app.selectedIds[0]);
                 if (!shape) return schema;
