@@ -16,6 +16,7 @@ import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageTitlesStartingWithPrefix from "roamjs-components/queries/getPageTitlesStartingWithPrefix";
 import extractRef from "roamjs-components/util/extractRef";
+import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 
 type ConditionToDatalog = (condition: Condition) => DatalogClause[];
 
@@ -103,6 +104,19 @@ const getTitleDatalog = ({
             type: "constant",
             value: `"${getPageTitleByPageUid(uid)}"`,
           },
+        ],
+      },
+    ];
+  }
+  const currentUserMatch = /^\s*{current user}\s*$/i.test(target);
+  if (currentUserMatch) {
+    return [
+      {
+        type: "data-pattern",
+        arguments: [
+          { type: "variable", value: source },
+          { type: "constant", value: ":node/title" },
+          { type: "constant", value: `"${getCurrentUserDisplayName()}"` },
         ],
       },
     ];
@@ -240,7 +254,12 @@ const translator: Record<string, Translator> = {
     ],
     placeholder: "Enter any placeholder for the node",
     targetOptions: () =>
-      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
+      getAllPageNames().concat([
+        "{date}",
+        "{date:today}",
+        "{current}",
+        "{current user}",
+      ]),
   },
   "is in page": {
     callback: ({ source, target }) => [
@@ -259,7 +278,12 @@ const translator: Record<string, Translator> = {
   "has title": {
     callback: getTitleDatalog,
     targetOptions: () =>
-      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
+      getAllPageNames().concat([
+        "{date}",
+        "{date:today}",
+        "{current}",
+        "{current user}",
+      ]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "with text in title": {
@@ -517,17 +541,7 @@ const translator: Record<string, Translator> = {
           ]
         : [
             ...initialDatalog,
-            {
-              type: "data-pattern",
-              arguments: [
-                { type: "variable", value: `${source}-User-Display` },
-                { type: "constant", value: ":node/title" },
-                {
-                  type: "constant",
-                  value: `"${normalizePageTitle(target)}"`,
-                },
-              ],
-            },
+            ...getTitleDatalog({ source: `${source}-User-Display`, target }),
           ];
     },
     targetOptions: () =>
@@ -535,7 +549,9 @@ const translator: Record<string, Translator> = {
         window.roamAlphaAPI.data.fast.q(
           `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
         ) as [PullBlock][]
-      ).map((d) => d[0][":node/title"] || ""),
+      )
+        .map((d) => d[0][":node/title"] || "")
+        .concat(["{current user}"]),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "edited by": {
@@ -556,21 +572,16 @@ const translator: Record<string, Translator> = {
           { type: "variable", value: `${source}-User-Display` },
         ],
       },
-      {
-        type: "data-pattern",
-        arguments: [
-          { type: "variable", value: `${source}-User-Display` },
-          { type: "constant", value: ":node/title" },
-          { type: "constant", value: `"${normalizePageTitle(target)}"` },
-        ],
-      },
+      ...getTitleDatalog({ source: `${source}-User-Display`, target }),
     ],
     targetOptions: () =>
       (
         window.roamAlphaAPI.data.fast.q(
           `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
         ) as [PullBlock][]
-      ).map((d) => d[0][":node/title"] || ""),
+      )
+        .map((d) => d[0][":node/title"] || "")
+        .concat(["{current user}"]),
     placeholder: "Enter the display name of any user with access to this graph",
   },
   "references title": {
@@ -586,7 +597,12 @@ const translator: Record<string, Translator> = {
       ...getTitleDatalog({ source: `${target}-Ref`, target }),
     ],
     targetOptions: () =>
-      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
+      getAllPageNames().concat([
+        "{date}",
+        "{date:today}",
+        "{current}",
+        "{current user}",
+      ]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "has heading": {
@@ -616,7 +632,12 @@ const translator: Record<string, Translator> = {
       ...getTitleDatalog({ source: target, target }),
     ],
     targetOptions: () =>
-      getAllPageNames().concat(["{date}", "{date:today}", "{current}"]),
+      getAllPageNames().concat([
+        "{date}",
+        "{date:today}",
+        "{current}",
+        "{current user}",
+      ]),
     placeholder: "Enter a page name or {date} for any DNP",
   },
   "created after": {
