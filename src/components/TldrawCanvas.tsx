@@ -4,8 +4,6 @@ import isFlagEnabled from "../utils/isFlagEnabled";
 import {
   App as TldrawApp,
   defineShape,
-  TLInstance,
-  TLUser,
   TldrawEditorConfig,
   Canvas,
   TldrawEditor,
@@ -29,7 +27,6 @@ import {
   TLArrowShapeProps,
   Vec2dModel,
   createShapeId,
-  TLStore,
   SubMenu,
   TLPointerEvent,
   TLRecord,
@@ -46,17 +43,10 @@ import {
   Translating,
 } from "@tldraw/tldraw";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
-import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import "@tldraw/tldraw/editor.css";
 import "@tldraw/tldraw/ui.css";
-import getSubTree from "roamjs-components/util/getSubTree";
-import {
-  AddPullWatch,
-  InputTextNode,
-  OnloadArgs,
-} from "roamjs-components/types";
+import { InputTextNode, OnloadArgs } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
@@ -66,15 +56,11 @@ import getDiscourseRelations, {
 } from "../utils/getDiscourseRelations";
 import { useValue } from "signia-react";
 import findDiscourseNode from "../utils/findDiscourseNode";
-import getBlockProps, { json, normalizeProps } from "../utils/getBlockProps";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import renderToast from "roamjs-components/components/Toast";
 import triplesToBlocks from "../utils/triplesToBlocks";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
-import { StoreSnapshot } from "@tldraw/tlstore";
-import setInputSetting from "roamjs-components/util/setInputSetting";
 import ContrastColor from "contrast-color";
-import nanoid from "nanoid";
 import createDiscourseNode from "../utils/createDiscourseNode";
 import LabelDialog from "./TldrawCanvasLabelDialog";
 import { measureCanvasNodeText } from "../utils/measureCanvasNodeText";
@@ -86,6 +72,7 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import { formatHexColor } from "./DiscourseNodeCanvasSettings";
 import { getNewDiscourseNodeText } from "../utils/formatUtils";
 import { openCanvasDrawer } from "./CanvasDrawer";
+import { useRoamStore } from "./tldraw/useRoamStore";
 
 declare global {
   interface Window {
@@ -124,90 +111,6 @@ const getRelationIds = () =>
       rs.map((r) => r.id)
     )
   );
-
-const diffObjects = (
-  oldRecord: Record<string, any>,
-  newRecord: Record<string, any>
-): Record<string, any> => {
-  const allKeys = Array.from(
-    new Set(Object.keys(oldRecord).concat(Object.keys(newRecord)))
-  );
-  return Object.fromEntries(
-    allKeys
-      .map((key) => {
-        const oldValue = oldRecord[key];
-        const newValue = newRecord[key];
-        if (typeof oldValue !== typeof newValue) {
-          return [key, newValue];
-        }
-        if (
-          typeof oldValue === "object" &&
-          oldValue !== null &&
-          newValue !== null
-        ) {
-          const diffed = diffObjects(oldValue, newValue);
-          if (Object.keys(diffed).length) {
-            return [key, diffed];
-          }
-          return null;
-        }
-        if (oldValue !== newValue) {
-          return [key, newValue];
-        }
-        return null;
-      })
-      .filter((e): e is [string, any] => !!e)
-  );
-};
-
-const personalRecordTypes = new Set([
-  "camera",
-  "instance",
-  "instance_page_state",
-]);
-const pruneState = (state: StoreSnapshot<TLRecord>) =>
-  Object.fromEntries(
-    Object.entries(state).filter(
-      ([_, record]) => !personalRecordTypes.has(record.typeName)
-    )
-  );
-
-const calculateDiff = (
-  _newState: StoreSnapshot<TLRecord>,
-  _oldState: StoreSnapshot<TLRecord>
-) => {
-  const newState = pruneState(_newState);
-  const oldState = pruneState(_oldState);
-  return {
-    added: Object.fromEntries(
-      Object.keys(newState)
-        .filter((id) => !oldState[id])
-        .map((id) => [id, newState[id]])
-    ),
-    removed: Object.fromEntries(
-      Object.keys(oldState)
-        .filter((id) => !newState[id])
-        .map((key) => [key, oldState[key]])
-    ),
-    updated: Object.fromEntries(
-      Object.keys(newState)
-        .map((id) => {
-          const oldRecord = oldState[id];
-          const newRecord = newState[id];
-          if (!oldRecord || !newRecord) {
-            return null;
-          }
-
-          const diffed = diffObjects(oldRecord, newRecord);
-          if (Object.keys(diffed).length) {
-            return [id, [oldRecord, newRecord]];
-          }
-          return null;
-        })
-        .filter((e): e is [string, any] => !!e)
-    ),
-  };
-};
 
 export type DiscourseNodeShape = TLBaseShape<
   string,
@@ -773,6 +676,7 @@ class DiscourseNodeUtil extends TLBoxUtil<DiscourseNodeShape> {
 // EG: [[EVD]] - {content} - {Source}
 // {Source} is a referenced node
 type DiscourseReferencedNodeShape = TLBaseShape<string, TLArrowShapeProps>;
+// @ts-ignore
 class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
@@ -814,6 +718,7 @@ class DiscourseReferencedNodeUtil extends TLArrowUtil<DiscourseReferencedNodeSha
     );
   }
 }
+// @ts-ignore
 class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
   constructor(app: TldrawApp, type: string) {
     super(app, type);
@@ -883,8 +788,6 @@ class DiscourseRelationUtil extends TLArrowUtil<DiscourseRelationShape> {
 }
 
 const TldrawCanvas = ({ title }: Props) => {
-  const serializeRef = useRef(0);
-  const deserializeRef = useRef(0);
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
     discourseContext.relations = relations.reduce((acc, r) => {
@@ -1464,115 +1367,14 @@ const TldrawCanvas = ({ title }: Props) => {
       }),
     [allNodes, allRelationIds, allRelationsById, allAddReferencedNodeActions]
   );
-  const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
-  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
   const appRef = useRef<TldrawApp>();
   const lastInsertRef = useRef<Vec2dModel>();
-  const initialState = useMemo(() => {
-    const persisted = getSubTree({
-      parentUid: pageUid,
-      tree,
-      key: "State",
-    });
-    if (!persisted.uid) {
-      // we create a block so that the page is not garbage collected
-      createBlock({
-        node: {
-          text: "State",
-        },
-        parentUid: pageUid,
-      });
-    }
-    const instanceId = TLInstance.createCustomId(pageUid);
-    const userId = TLUser.createCustomId(getCurrentUserUid());
-    const props = getBlockProps(pageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
-    return { instanceId, userId, data };
-  }, [tree, pageUid]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [maximized, setMaximized] = useState(false);
-  const localStateIds: string[] = [];
-  const store = useMemo(() => {
-    const _store = customTldrawConfig.createStore({
-      initialData: initialState.data,
-      instanceId: initialState.instanceId,
-      userId: initialState.userId,
-    });
-    _store.listen((rec) => {
-      if (rec.source !== "user") return;
-      const validChanges = Object.keys(rec.changes.added)
-        .concat(Object.keys(rec.changes.removed))
-        .concat(Object.keys(rec.changes.updated))
-        .filter(
-          (k) =>
-            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
-        );
-      if (!validChanges.length) return;
-      clearTimeout(serializeRef.current);
-      serializeRef.current = window.setTimeout(async () => {
-        const state = _store.serialize();
-        const props = getBlockProps(pageUid) as Record<string, unknown>;
-        const rjsqb =
-          typeof props["roamjs-query-builder"] === "object"
-            ? props["roamjs-query-builder"]
-            : {};
-        await setInputSetting({
-          blockUid: pageUid,
-          key: "timestamp",
-          value: new Date().valueOf().toString(),
-        });
-        const newstateId = nanoid();
-        localStateIds.push(newstateId);
-        localStateIds.splice(0, localStateIds.length - 25);
-        window.roamAlphaAPI.updateBlock({
-          block: {
-            uid: pageUid,
-            props: {
-              ...props,
-              ["roamjs-query-builder"]: {
-                ...rjsqb,
-                stateId: newstateId,
-                tldraw: state,
-              },
-            },
-          },
-        });
-      }, THROTTLE);
-    });
-    return _store;
-  }, [initialState, serializeRef]);
-
-  useEffect(() => {
-    const pullWatchProps: Parameters<AddPullWatch> = [
-      "[:edit/user :block/props :block/string {:block/children ...}]",
-      `[:block/uid "${pageUid}"]`,
-      (_, after) => {
-        const props = normalizeProps(
-          (after?.[":block/props"] || {}) as json
-        ) as Record<string, json>;
-        const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-        const propsStateId = rjsqb?.stateId as string;
-        if (localStateIds.some((s) => s === propsStateId)) return;
-        const newState = rjsqb?.tldraw as Parameters<
-          typeof store.deserialize
-        >[0];
-        if (!newState) return;
-        clearTimeout(deserializeRef.current);
-        deserializeRef.current = window.setTimeout(() => {
-          store.mergeRemoteChanges(() => {
-            const currentState = store.serialize();
-            const diff = calculateDiff(newState, currentState);
-            store.applyDiff(diff);
-          });
-        }, THROTTLE);
-      },
-    ];
-    window.roamAlphaAPI.data.addPullWatch(...pullWatchProps);
-    return () => {
-      window.roamAlphaAPI.data.removePullWatch(...pullWatchProps);
-    };
-  }, [initialState, store]);
+  const { store, instanceId, userId } = useRoamStore({
+    config: customTldrawConfig,
+    title,
+  });
 
   // Handle actions (roamjs:query-builder:action)
   useEffect(() => {
@@ -1777,8 +1579,8 @@ const TldrawCanvas = ({ title }: Props) => {
       </style>
       <TldrawEditor
         baseUrl="https://samepage.network/assets/tldraw/"
-        instanceId={initialState.instanceId}
-        userId={initialState.userId}
+        instanceId={instanceId}
+        userId={userId}
         config={customTldrawConfig}
         store={store}
         onMount={(app) => {
