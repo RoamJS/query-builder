@@ -23,12 +23,12 @@ import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
 import {
   COLOR_ARRAY,
   DEFAULT_STYLE_PROPS,
-  DiscourseRelationShape,
   discourseContext,
 } from "../TldrawCanvas";
 import LabelDialog from "../TldrawCanvasLabelDialog";
 import { isPageUid } from "../../utils/isPageUid";
 import { loadImage } from "../../utils/loadImage";
+import { DiscourseRelationShape } from "./DiscourseRelations";
 
 // from @tldraw/editor/editor.css
 const COLOR_PALETTE: Record<string, string> = {

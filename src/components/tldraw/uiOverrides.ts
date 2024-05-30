@@ -13,11 +13,7 @@ import {
   SubMenu,
 } from "@tldraw/tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
-import {
-  AddReferencedNodeType,
-  COLOR_ARRAY,
-  discourseContext,
-} from "../TldrawCanvas";
+import { COLOR_ARRAY, discourseContext } from "../TldrawCanvas";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { openCanvasDrawer } from "../CanvasDrawer";
 import { OnloadArgs } from "roamjs-components/types";
@@ -25,6 +21,7 @@ import { getNewDiscourseNodeText } from "../../utils/formatUtils";
 import createDiscourseNode from "../../utils/createDiscourseNode";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import renderToast from "roamjs-components/components/Toast";
+import { AddReferencedNodeType } from "./DiscourseRelations";
 
 type TldrawAppRef = React.MutableRefObject<TldrawApp | undefined>;
 type CreateUiOverridesProps = {
