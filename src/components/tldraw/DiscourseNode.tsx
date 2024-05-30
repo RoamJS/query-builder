@@ -20,11 +20,7 @@ import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import createDiscourseNode from "../../utils/createDiscourseNode";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
-import {
-  COLOR_ARRAY,
-  DEFAULT_STYLE_PROPS,
-  discourseContext,
-} from "../TldrawCanvas";
+import { COLOR_ARRAY, DEFAULT_STYLE_PROPS, discourseContext } from "./Tldraw";
 import LabelDialog from "../TldrawCanvasLabelDialog";
 import { isPageUid } from "../../utils/isPageUid";
 import { loadImage } from "../../utils/loadImage";

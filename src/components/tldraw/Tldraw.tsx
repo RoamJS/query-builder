@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
-import isFlagEnabled from "../utils/isFlagEnabled";
+import isFlagEnabled from "../../utils/isFlagEnabled";
 import {
   App as TldrawApp,
   defineShape,
@@ -35,29 +35,31 @@ import { InputTextNode, OnloadArgs } from "roamjs-components/types";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
-import getDiscourseNodes, { DiscourseNode } from "../utils/getDiscourseNodes";
+import getDiscourseNodes, {
+  DiscourseNode,
+} from "../../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
-} from "../utils/getDiscourseRelations";
-import findDiscourseNode from "../utils/findDiscourseNode";
+} from "../../utils/getDiscourseRelations";
+import findDiscourseNode from "../../utils/findDiscourseNode";
 import renderToast from "roamjs-components/components/Toast";
-import triplesToBlocks from "../utils/triplesToBlocks";
+import triplesToBlocks from "../../utils/triplesToBlocks";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
-import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
+import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import { useRoamStore } from "./tldraw/useRoamStore";
-import { createUiOverrides } from "./tldraw/uiOverrides";
-import { DiscourseNodeShape, DiscourseNodeUtil } from "./tldraw/DiscourseNode";
+import { useRoamStore } from "./useRoamStore";
+import { createUiOverrides } from "./uiOverrides";
+import { DiscourseNodeShape, DiscourseNodeUtil } from "./DiscourseNode";
 import {
   AddReferencedNodeType,
   DiscourseReferencedNodeShape,
   DiscourseReferencedNodeUtil,
   DiscourseRelationShape,
   DiscourseRelationUtil,
-} from "./tldraw/DiscourseRelations";
-import { isPageUid } from "../utils/isPageUid";
+} from "./DiscourseRelations";
+import { isPageUid } from "../../utils/isPageUid";
 
 declare global {
   interface Window {

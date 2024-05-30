@@ -13,7 +13,7 @@ import {
   SubMenu,
 } from "@tldraw/tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
-import { COLOR_ARRAY, discourseContext } from "../TldrawCanvas";
+import { COLOR_ARRAY, discourseContext } from "./Tldraw";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { openCanvasDrawer } from "./CanvasDrawer";
 import { OnloadArgs } from "roamjs-components/types";

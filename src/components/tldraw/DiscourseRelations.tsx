@@ -5,7 +5,7 @@ import {
   TLArrowShapeProps,
   TLArrowUtil,
 } from "@tldraw/tldraw";
-import { COLOR_ARRAY, discourseContext } from "../TldrawCanvas";
+import { COLOR_ARRAY, discourseContext } from "./Tldraw";
 
 export type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
 type ReferenceFormatType = {
