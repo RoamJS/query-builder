@@ -46,7 +46,7 @@ import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
-import { openCanvasDrawer } from "./components/CanvasDrawer";
+import { openCanvasDrawer } from "./components/tldraw/CanvasDrawer";
 import isDiscourseNode from "./utils/isDiscourseNode";
 import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
