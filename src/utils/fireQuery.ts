@@ -13,6 +13,8 @@ import predefinedSelections, {
   PredefinedSelection,
 } from "./predefinedSelections";
 import { DEFAULT_RETURN_NODE } from "./parseQuery";
+import { DiscourseNode } from "./getDiscourseNodes";
+import { DiscourseRelation } from "./getDiscourseRelations";
 
 export type QueryArgs = {
   returnNode?: string;
@@ -20,11 +22,20 @@ export type QueryArgs = {
   selections: Selection[];
   inputs?: Record<string, string | number>;
 };
-
-type FireQueryArgs = QueryArgs & {
+type RelationInQuery = {
+  id: string;
+  text: string;
+  isComplement: boolean;
+};
+export type FireQueryArgs = QueryArgs & {
   isSamePageEnabled?: boolean;
   isCustomEnabled?: boolean;
   customNode?: string;
+  context?: {
+    relationsInQuery?: RelationInQuery[];
+    customNodes?: DiscourseNode[];
+    customRelations?: DiscourseRelation[];
+  };
 };
 
 type FireQuery = (query: FireQueryArgs) => Promise<QueryResult[]>;
@@ -326,7 +337,7 @@ const fireQuery: FireQuery = async (_args) => {
     if (getNodeEnv() === "development") {
       console.log("Query to Roam:");
       console.log(query);
-      if (inputs) console.log("Inputs:", ...inputs);
+      if (inputs.length) console.log("Inputs:", ...inputs);
     }
     return Promise.all(
       window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)

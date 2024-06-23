@@ -6,6 +6,7 @@ import {
   Tabs,
   Tab,
   Tooltip,
+  Checkbox,
 } from "@blueprintjs/core";
 import React, {
   useCallback,
@@ -20,6 +21,8 @@ import { Result } from "roamjs-components/types/query-builder";
 import nanoId from "nanoid";
 import getDiscourseContextResults from "../utils/getDiscourseContextResults";
 import ResultsView from "./ResultsView";
+import { OnloadArgs } from "roamjs-components/types";
+import Description from "roamjs-components/components/Description";
 
 export type DiscourseContextResults = Awaited<
   ReturnType<typeof getDiscourseContextResults>
@@ -28,6 +31,7 @@ export type DiscourseContextResults = Awaited<
 type Props = {
   uid: string;
   results?: DiscourseContextResults;
+  args?: OnloadArgs;
 };
 
 const ExtraColumnRow = (r: Result) => {
@@ -308,7 +312,7 @@ const ContextTab = ({
   );
 };
 
-export const ContextContent = ({ uid, results }: Props) => {
+export const ContextContent = ({ uid, results, args }: Props) => {
   const [rawQueryResults, setRawQueryResults] = useState(results || []);
   const queryResults = useMemo(
     () => rawQueryResults.filter((r) => !!Object.keys(r.results).length),
@@ -316,7 +320,7 @@ export const ContextContent = ({ uid, results }: Props) => {
   );
   const [loading, setLoading] = useState(true);
   const onRefresh = useCallback(() => {
-    getDiscourseContextResults({ uid })
+    getDiscourseContextResults({ uid, args })
       .then(setRawQueryResults)
       .finally(() => setLoading(false));
   }, [uid, results, setRawQueryResults, setLoading]);
@@ -362,13 +366,51 @@ export const ContextContent = ({ uid, results }: Props) => {
       </Tabs>
     </>
   ) : loading ? (
-    <div>Loading discourse relations...</div>
+    <Tabs selectedTabId={0} onChange={() => {}} vertical>
+      <Tab
+        id={0}
+        title="Loading ..."
+        disabled
+        panel={
+          <div>
+            <div className="bp3-skeleton h-36" />
+          </div>
+        }
+      />
+    </Tabs>
   ) : (
     <div className="ml-8">No discourse relations found.</div>
   );
 };
 
-const DiscourseContext = ({ uid }: Props) => {
+export const DiscourseContextBackendConfig: React.FC<{
+  args: OnloadArgs;
+}> = ({ args }) => {
+  const [useBackend, setUseBackend] = useState(
+    args.extensionAPI.settings.get("use-backend-samepage-discourse-context")
+  );
+  return (
+    <Checkbox
+      checked={!!useBackend}
+      onChange={(e) => {
+        const { checked } = e.target as HTMLInputElement;
+        args.extensionAPI.settings.set(
+          "use-backend-samepage-discourse-context",
+          checked
+        );
+        setUseBackend(checked);
+      }}
+      labelElement={
+        <>
+          Use SamePage Backend
+          <Description description="This setting is per user, not per graph." />
+        </>
+      }
+    />
+  );
+};
+
+const DiscourseContext = ({ uid, args }: Props) => {
   const [caretShown, setCaretShown] = useState(false);
   const [caretOpen, setCaretOpen] = useState(false);
   return (
@@ -393,7 +435,7 @@ const DiscourseContext = ({ uid }: Props) => {
         </div>
       </div>
       <div style={{ paddingLeft: 16 }}>
-        {caretOpen && <ContextContent uid={uid} />}
+        {caretOpen && <ContextContent uid={uid} args={args} />}
       </div>
     </>
   );
