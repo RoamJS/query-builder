@@ -29,7 +29,9 @@ import { render } from "./components/DiscourseNodeMenu";
 import { render as discourseOverlayRender } from "./components/DiscourseContextOverlay";
 import { render as previewRender } from "./components/LivePreview";
 import { render as renderReferenceContext } from "./components/ReferenceContext";
-import DiscourseContext from "./components/DiscourseContext";
+import DiscourseContext, {
+  DiscourseContextBackendConfig,
+} from "./components/DiscourseContext";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import isDiscourseNode from "./utils/isDiscourseNode";
@@ -519,6 +521,23 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                     onChange: onPageRefObserverChange(previewPageRefHandler),
                   },
                 } as Field<FlagField>,
+                // @ts-ignore
+                ...(window.samepage
+                  ? [
+                      {
+                        title: "Use Backend",
+                        description:
+                          "Select individual features to query via SamePage backend.  Note: These settings are per user, not per graph.",
+                        Panel: CustomPanel,
+                        options: {
+                          component: () =>
+                            React.createElement(DiscourseContextBackendConfig, {
+                              args,
+                            }),
+                        },
+                      } as Field<CustomField>,
+                    ]
+                  : []),
               ],
             },
             {
@@ -752,6 +771,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 React.createElement(DiscourseContext, {
                   uid,
                   results: [],
+                  args,
                 }),
                 p,
                 args

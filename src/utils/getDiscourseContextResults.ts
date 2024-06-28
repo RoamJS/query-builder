@@ -1,9 +1,12 @@
 // TODO POST MIGRATE - Merge into a single query
 import { Result } from "roamjs-components/types/query-builder";
 import findDiscourseNode from "./findDiscourseNode";
-import fireQuery from "./fireQuery";
-import getDiscourseNodes from "./getDiscourseNodes";
-import getDiscourseRelations from "./getDiscourseRelations";
+import fireQuery, { FireQueryArgs } from "./fireQuery";
+import getDiscourseNodes, { DiscourseNode } from "./getDiscourseNodes";
+import getDiscourseRelations, {
+  DiscourseRelation,
+} from "./getDiscourseRelations";
+import { OnloadArgs } from "roamjs-components/types";
 
 const resultCache: Record<string, Awaited<ReturnType<typeof fireQuery>>> = {};
 const CACHE_TIMEOUT = 1000 * 60 * 5;
@@ -13,14 +16,21 @@ const getDiscourseContextResults = async ({
   relations = getDiscourseRelations(),
   nodes = getDiscourseNodes(relations),
   ignoreCache,
-  isSamePageEnabled = false,
+  isSamePageEnabled: isSamePageEnabledExternal,
+  args,
 }: {
   uid: string;
   nodes?: ReturnType<typeof getDiscourseNodes>;
   relations?: ReturnType<typeof getDiscourseRelations>;
   ignoreCache?: true;
   isSamePageEnabled?: boolean;
+  args?: OnloadArgs;
 }) => {
+  const useSamePageFlag = !!args?.extensionAPI.settings.get(
+    "use-backend-samepage-discourse-context"
+  );
+  const isSamePageEnabled =
+    isSamePageEnabledExternal ?? useSamePageFlag ?? false;
   const discourseNode = findDiscourseNode(uid);
   if (!discourseNode) return [];
   const nodeType = discourseNode?.type;
@@ -28,7 +38,7 @@ const getDiscourseContextResults = async ({
     nodes.map(({ type, text }) => [type, text])
   );
   nodeTextByType["*"] = "Any";
-  const rawResults = await Promise.all(
+  const resultsWithRelation = await Promise.all(
     relations
       .flatMap((r) => {
         const queries = [];
@@ -46,11 +56,11 @@ const getDiscourseContextResults = async ({
         }
         return queries;
       })
-      .map(({ r, complement }) => {
-        const target = complement ? r.source : r.destination;
-        const label = complement ? r.complement : r.label;
+      .map(({ r, complement: isComplement }) => {
+        const target = isComplement ? r.source : r.destination;
+        const text = isComplement ? r.complement : r.label;
         const returnNode = nodeTextByType[target];
-        const cacheKey = `${uid}~${label}~${target}`;
+        const cacheKey = `${uid}~${text}~${target}`;
         const conditionUid = window.roamAlphaAPI.util.generateUID();
         const selections = [];
         if (r.triples.some((t) => t.some((a) => /context/i.test(a)))) {
@@ -66,7 +76,13 @@ const getDiscourseContextResults = async ({
             text: `node:${conditionUid}-Anchor`,
           });
         }
-        const resultsPromise =
+        const relation = {
+          id: r.id,
+          text,
+          target,
+          isComplement,
+        };
+        const rawResults =
           resultCache[cacheKey] && !ignoreCache
             ? Promise.resolve(resultCache[cacheKey])
             : fireQuery({
@@ -75,7 +91,7 @@ const getDiscourseContextResults = async ({
                   {
                     source: returnNode,
                     // NOTE! This MUST be the OPPOSITE of `label`
-                    relation: complement ? r.label : r.complement,
+                    relation: isComplement ? r.label : r.complement,
                     target: uid,
                     uid: conditionUid,
                     type: "clause",
@@ -83,6 +99,11 @@ const getDiscourseContextResults = async ({
                 ],
                 selections,
                 isSamePageEnabled,
+                context: {
+                  relationsInQuery: [relation],
+                  customNodes: nodes,
+                  customRelations: relations,
+                },
               }).then((results) => {
                 resultCache[cacheKey] = results;
                 setTimeout(() => {
@@ -90,11 +111,13 @@ const getDiscourseContextResults = async ({
                 }, CACHE_TIMEOUT);
                 return results;
               });
-        return resultsPromise.then((results) => ({
-          label,
-          complement,
-          target,
-          id: r.id,
+        return rawResults.then((results) => ({
+          relation: {
+            text,
+            isComplement,
+            target,
+            id: r.id,
+          },
           results,
         }));
       })
@@ -103,25 +126,25 @@ const getDiscourseContextResults = async ({
     return [] as const;
   });
   const groupedResults = Object.fromEntries(
-    rawResults.map((r) => [
-      r.label,
+    resultsWithRelation.map((r) => [
+      r.relation.text,
       {} as Record<
         string,
         Partial<Result & { target: string; complement: number; id: string }>
       >,
     ])
   );
-  rawResults.forEach((r) =>
+  resultsWithRelation.forEach((r) =>
     r.results
       .filter((a) => a.uid !== uid)
       .forEach(
         (res) =>
-         // TODO POST MIGRATE - set result to its own field
-          (groupedResults[r.label][res.uid] = {
+          // TODO POST MIGRATE - set result to its own field
+          (groupedResults[r.relation.text][res.uid] = {
             ...res,
-            target: nodeTextByType[r.target],
-            complement: r.complement ? 1 : 0,
-            id: r.id,
+            target: nodeTextByType[r.relation.target],
+            complement: r.relation.isComplement ? 1 : 0,
+            id: r.relation.id,
           })
       )
   );
