@@ -386,26 +386,20 @@ export const ContextContent = ({ uid, results, args }: Props) => {
 export const DiscourseContextBackendConfig: React.FC<{
   args: OnloadArgs;
 }> = ({ args }) => {
-  const [useBackend, setUseBackend] = useState(
-    args.extensionAPI.settings.get("use-backend-samepage-discourse-context")
+  const useBackend = args.extensionAPI.settings.get(
+    "use-backend-samepage-discourse-context"
   );
   return (
     <Checkbox
-      checked={!!useBackend}
+      defaultChecked={!!useBackend}
       onChange={(e) => {
         const { checked } = e.target as HTMLInputElement;
         args.extensionAPI.settings.set(
           "use-backend-samepage-discourse-context",
           checked
         );
-        setUseBackend(checked);
       }}
-      labelElement={
-        <>
-          Use SamePage Backend
-          <Description description="This setting is per user, not per graph." />
-        </>
-      }
+      labelElement={<>Discourse Context</>}
     />
   );
 };

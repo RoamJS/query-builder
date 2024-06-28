@@ -525,8 +525,9 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                 ...(window.samepage
                   ? [
                       {
-                        title: "Discourse Context",
-                        description: "Discourse Context config options",
+                        title: "Use Backend",
+                        description:
+                          "Select individual features to query via SamePage backend.  Note: These settings are per user, not per graph.",
                         Panel: CustomPanel,
                         options: {
                           component: () =>
