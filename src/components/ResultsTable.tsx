@@ -289,7 +289,7 @@ const ResultRow = ({
     <>
       <tr ref={trRef} data-uid={r.uid}>
         {columns.map(({ key, uid: columnUid }, i) => {
-          const uid = (r[`${key}-uid`] || r["uid"] || "").toString();
+          const uid = (r[`${key}-uid`] || "").toString();
           const val = r[key] || "";
           const { mode: view, value: viewValue } = viewsByColumn[key] || {};
           return (
