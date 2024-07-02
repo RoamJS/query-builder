@@ -16,7 +16,7 @@ import {
   createShapeId,
   isShape,
   TLEventMapHandler,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { useValue } from "signia-react";
 
 import React, { useState, useEffect, useRef } from "react";

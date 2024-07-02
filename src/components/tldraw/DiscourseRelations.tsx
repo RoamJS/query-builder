@@ -14,7 +14,7 @@ import {
   TLShapeId,
   VecModel,
   createShapeId,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { AddReferencedNodeType, discourseContext, isPageUid } from "./Tldraw";
 import React from "react";
 import { COLOR_ARRAY, DiscourseNodeShape } from "./DiscourseNode";

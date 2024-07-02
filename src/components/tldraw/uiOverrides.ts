@@ -11,7 +11,7 @@ import {
   Editor,
   menuItem,
   TLUiSubMenu,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
 import createDiscourseNode from "../../utils/createDiscourseNode";

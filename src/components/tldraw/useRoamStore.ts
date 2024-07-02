@@ -11,7 +11,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
-import { defaultShapeUtils } from "@tldraw/tldraw";
+import { defaultShapeUtils } from "tldraw";
 import { BaseDiscourseNodeUtil } from "./DiscourseNode";
 import { AddPullWatch } from "roamjs-components/types";
 import { createAllRelationShapeUtils } from "./DiscourseRelations";

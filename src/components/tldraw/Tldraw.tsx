@@ -82,10 +82,10 @@ import {
   getHashForString,
   TLAssetId,
   isGifAnimated,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { useValue } from "signia-react";
-import "@tldraw/tldraw/tldraw.css";
+import "tldraw/tldraw.css";
 
 // roamjs-components
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
