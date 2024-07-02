@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ResizableDrawer from "./ResizableDrawer";
+import ResizableDrawer from "../ResizableDrawer";
 import renderOverlay from "roamjs-components/util/renderOverlay";
-import { DiscourseNodeShape } from "./TldrawCanvas";
 import { Button, Collapse, Checkbox } from "@blueprintjs/core";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import getDiscourseNodes from "../utils/getDiscourseNodes";
+import getDiscourseNodes from "../../utils/getDiscourseNodes";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
-import getBlockProps from "../utils/getBlockProps";
+import getBlockProps from "../../utils/getBlockProps";
 import { TLBaseShape } from "@tldraw/tldraw";
+import { DiscourseNodeShape } from "./DiscourseNode";
 
 export type GroupedShapes = Record<string, DiscourseNodeShape[]>;
 
