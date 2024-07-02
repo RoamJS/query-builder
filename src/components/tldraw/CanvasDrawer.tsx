@@ -8,7 +8,7 @@ import getDiscourseNodes from "../../utils/getDiscourseNodes";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getBlockProps from "../../utils/getBlockProps";
 import { TLBaseShape } from "@tldraw/tldraw";
-import { DiscourseNodeShape } from "./DiscourseNode";
+import { DiscourseNodeShape } from "./DiscourseNodeUtil";
 
 export type GroupedShapes = Record<string, DiscourseNodeShape[]>;
 

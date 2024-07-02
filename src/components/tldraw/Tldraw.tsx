@@ -51,14 +51,14 @@ import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { useRoamStore } from "./useRoamStore";
 import { createUiOverrides } from "./uiOverrides";
-import { DiscourseNodeShape, DiscourseNodeUtil } from "./DiscourseNode";
+import { DiscourseNodeShape, DiscourseNodeUtil } from "./DiscourseNodeUtil";
 import {
   AddReferencedNodeType,
   DiscourseReferencedNodeShape,
   DiscourseReferencedNodeUtil,
   DiscourseRelationShape,
   DiscourseRelationUtil,
-} from "./DiscourseRelations";
+} from "./DiscourseRelationsUtil";
 import { isPageUid } from "../../utils/isPageUid";
 
 declare global {
