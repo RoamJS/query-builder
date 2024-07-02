@@ -21,7 +21,7 @@ import { getNewDiscourseNodeText } from "../../utils/formatUtils";
 import createDiscourseNode from "../../utils/createDiscourseNode";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import renderToast from "roamjs-components/components/Toast";
-import { AddReferencedNodeType } from "./DiscourseRelations";
+import { AddReferencedNodeType } from "./DiscourseRelationsUtil";
 
 type TldrawAppRef = React.MutableRefObject<TldrawApp | undefined>;
 type CreateUiOverridesProps = {

@@ -24,7 +24,7 @@ import { COLOR_ARRAY, DEFAULT_STYLE_PROPS, discourseContext } from "./Tldraw";
 import LabelDialog from "./LabelDialog";
 import { isPageUid } from "../../utils/isPageUid";
 import { loadImage } from "../../utils/loadImage";
-import { DiscourseRelationShape } from "./DiscourseRelations";
+import { DiscourseRelationShape } from "./DiscourseRelationsUtil";
 
 // from @tldraw/editor/editor.css
 const COLOR_PALETTE: Record<string, string> = {
