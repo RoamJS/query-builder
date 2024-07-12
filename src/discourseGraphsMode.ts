@@ -52,7 +52,7 @@ import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import createPage from "roamjs-components/writes/createPage";
 import INITIAL_NODE_VALUES from "./data/defaultDiscourseNodes";
 import DiscourseNodeCanvasSettings from "./components/DiscourseNodeCanvasSettings";
-import CanvasReferences from "./components/tldraw/CanvasReferences";
+// import CanvasReferences from "./components/tldraw/CanvasReferences";
 import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
@@ -779,13 +779,13 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
 
               const canvasP = document.createElement("div");
               parent.insertBefore(canvasP, insertBefore);
-              renderWithUnmount(
-                React.createElement(CanvasReferences, {
-                  uid,
-                }),
-                canvasP,
-                args
-              );
+              // renderWithUnmount(
+              // React.createElement(CanvasReferences, {
+              // uid,
+              // }),
+              // canvasP,
+              // args
+              // );
             }
           }
         },

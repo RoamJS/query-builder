@@ -36,9 +36,9 @@ import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTit
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 import findDiscourseNode from "../utils/findDiscourseNode";
 import { DEFAULT_CANVAS_PAGE_FORMAT } from "../index";
-import { createShapeId } from "@tldraw/tlschema";
-import { MAX_WIDTH } from "./tldraw/Tldraw";
-import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
+// import { createShapeId } from "@tldraw/tlschema";
+// import { MAX_WIDTH } from "./tldraw/Tldraw";
+// import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import { Column } from "../utils/types";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { getNodeEnv } from "roamjs-components/util/env";
@@ -49,7 +49,7 @@ import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
-import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
+// import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -232,11 +232,13 @@ const ExportDialog: ExportDialogComponent = ({
     const PADDING_BETWEEN_SHAPES = 20;
     const COMMON_BOUNDS_XOFFSET = 250;
     const MAX_COLUMNS = 5;
-    const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
+    // const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
+    const COLUMN_WIDTH = 100;
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
     const tldraw =
       (rjsqb?.["tldraw"] as Record<string, unknown>) ||
-      createInitialTldrawProps();
+      // createInitialTldrawProps();
+      {};
 
     const getPageKey = (obj: Record<string, unknown>): string => {
       for (const key in obj) {
@@ -314,13 +316,19 @@ const ExportDialog: ExportDialogComponent = ({
       const discourseNode = findDiscourseNode(r.uid);
       const nodeType = discourseNode ? discourseNode.type : "page-node";
       const extensionAPI = getExtensionAPI();
-      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-        nodeText: String(r[firstColumnKey]),
-        uid: r.uid,
-        nodeType,
-        extensionAPI,
-      });
-      const newShapeId = createShapeId();
+      const { h, w, imageUrl } = {
+        h: 100,
+        w: 100,
+        imageUrl: "",
+      };
+      // const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+      //   nodeText: String(r[firstColumnKey]),
+      //   uid: r.uid,
+      //   nodeType,
+      //   extensionAPI,
+      // });
+      // const newShapeId = createShapeId();
+      const newShapeId = nanoid();
       const newShape = {
         rotation: 0,
         isLocked: false,

@@ -32,7 +32,7 @@ import { render as queryRender } from "./components/QueryDrawer";
 import createPage from "roamjs-components/writes/createPage";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
-import { renderTldrawCanvas } from "./components/tldraw/Tldraw";
+import { renderTldrawCanvas } from "./components/tldraw/Tldraw-2-3-0";
 import { QBGlobalRefs } from "./utils/types";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import localStorageGet from "roamjs-components/util/localStorageGet";
@@ -46,7 +46,7 @@ import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
-import { openCanvasDrawer } from "./components/tldraw/CanvasDrawer";
+// import { openCanvasDrawer } from "./components/tldraw/CanvasDrawer";
 import isDiscourseNode from "./utils/isDiscourseNode";
 import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
@@ -152,15 +152,10 @@ export default runExtension(async (onloadArgs) => {
   width: 100%;
 }
 
-svg.rs-svg-container {
-  overflow: visible;
-}
-
 .roamjs-tldraw-node .rm-api-render--block .rm-block__controls,
 .rs-shape .rm-api-render--block .rm-block__ref-count {
   display: none;
 }
-
 
 .roamjs-kanban-container .roamjs-kanban-column {
   width: inherit;
@@ -607,10 +602,10 @@ svg.rs-svg-container {
     isDiscourseNode: isDiscourseNode,
   };
 
-  extensionAPI.ui.commandPalette.addCommand({
-    label: "Open Canvas Drawer",
-    callback: openCanvasDrawer,
-  });
+  // extensionAPI.ui.commandPalette.addCommand({
+  //   label: "Open Canvas Drawer",
+  //   callback: openCanvasDrawer,
+  // });
 
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Query Drawer",
@@ -623,6 +618,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          //@ts-ignore
           clearOnClick,
           onloadArgs,
         })
