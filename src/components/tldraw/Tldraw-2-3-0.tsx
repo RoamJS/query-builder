@@ -300,13 +300,11 @@ const TldrawCanvas = ({
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""}
       </style>
-      {/* <Tldraw components={components} /> */}
       <TldrawEditor
         // baseUrl="https://samepage.network/assets/tldraw/"
         // instanceId={initialState.instanceId}
         initialState="select"
         shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
-        bindingUtils={defaultBindingUtils}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
         components={defaultEditorComponents}
         store={store}
