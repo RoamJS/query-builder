@@ -30,6 +30,7 @@ import {
   useTools,
   VecModel,
   createShapeId,
+  TLPointerEventInfo,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -41,12 +42,16 @@ import getDiscourseRelations, {
 } from "../../utils/getDiscourseRelations";
 import { createUiComponents, createUiOverrides } from "./uiOverrides";
 import {
+  DiscourseNodeShape,
   createNodeShapeTools,
   createNodeShapeUtils,
 } from "./DiscourseNodeUtil";
 import { useRoamStore } from "./useRoamStore";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import findDiscourseNode from "../../utils/findDiscourseNode";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -197,6 +202,10 @@ const TldrawCanvas = ({
     };
   }, [appRef, allNodes]);
 
+  function renderToast(arg0: { id: string; intent: string; content: string }) {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
@@ -222,9 +231,9 @@ const TldrawCanvas = ({
         components={defaultEditorComponents}
         store={store}
         onMount={(app) => {
-          app.on("event", (e) => {
+          app.on("event", (event) => {
+            const e = event as TLPointerEventInfo;
             appRef.current = app;
-            discourseContext.lastAppEvent = e.name;
 
             // tldraw swallowing `onClick`
             if (e.type === "pointer" && e.name === "pointer_down") {
@@ -235,6 +244,46 @@ const TldrawCanvas = ({
                 typeof element.click === "function"
               ) {
                 element.click();
+              }
+            }
+
+            discourseContext.lastAppEvent = e.name;
+
+            // handle node clicked with modifiers
+            // navigate / open in sidebar
+            const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
+            if (!(e.name === "pointer_up" && validModifier)) return;
+            if (app.getSelectedShapes().length) return; // User is positioning selected shape
+            const shape = app.getShapeAtPoint(
+              app.inputs.currentPagePoint
+            ) as DiscourseNodeShape;
+            if (!shape) return;
+            const shapeUid = shape.props.uid;
+
+            if (!isLiveBlock(shapeUid)) {
+              if (!shape.props.title) return;
+              renderToast({
+                id: "tldraw-warning",
+                intent: "warning",
+                content: `Not a valid UID. Cannot Open.`,
+              });
+            }
+
+            if (e.shiftKey) openBlockInSidebar(shapeUid);
+
+            if (
+              e.ctrlKey
+              // || e.metaKey
+            ) {
+              const isPage = !!getPageTitleByPageUid(shapeUid);
+              if (isPage) {
+                window.roamAlphaAPI.ui.mainWindow.openPage({
+                  page: { uid: shapeUid },
+                });
+              } else {
+                window.roamAlphaAPI.ui.mainWindow.openBlock({
+                  block: { uid: shapeUid },
+                });
               }
             }
           });
