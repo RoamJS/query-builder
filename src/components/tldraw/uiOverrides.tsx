@@ -55,6 +55,7 @@ import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { COLOR_ARRAY } from "./DiscourseNodeUtil";
 import renderToast from "roamjs-components/components/Toast";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
+import { openCanvasDrawer } from "./CanvasDrawer";
 
 export const CustomContextMenu = ({
   extensionAPI,
@@ -158,7 +159,7 @@ export const CustomContextMenu = ({
   return (
     <DefaultContextMenu>
       <DefaultContextMenuContent />
-      {/* {!selectedShape && (
+      {!selectedShape && (
         <TldrawUiMenuGroup id="open-canvas-drawer-group">
           <TldrawUiMenuItem
             id="open-canvas-drawer"
@@ -167,7 +168,7 @@ export const CustomContextMenu = ({
             onSelect={openCanvasDrawer}
           />
         </TldrawUiMenuGroup>
-      )} */}
+      )}
       {(isTextSelected || isImageSelected) && (
         <TldrawUiMenuGroup id="convert-to-group">
           <TldrawUiMenuSubmenu id="convert-to-submenu" label="Convert To">

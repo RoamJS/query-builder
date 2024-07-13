@@ -5,7 +5,9 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
 import { OnloadArgs } from "roamjs-components/types";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../../utils/isFlagEnabled";
@@ -44,6 +46,8 @@ import {
   TLAsset,
   TLAssetId,
   getHashForString,
+  TLUiContextMenuProps,
+  TLShapeId,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -53,7 +57,11 @@ import getDiscourseNodes, {
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";
-import { createUiComponents, createUiOverrides } from "./uiOverrides";
+import {
+  CustomContextMenu,
+  createUiComponents,
+  createUiOverrides,
+} from "./uiOverrides";
 import {
   DiscourseNodeShape,
   createNodeShapeTools,
@@ -147,6 +155,9 @@ const TldrawCanvas = ({
     // selectTool,
   ];
 
+  const extensionAPI = useExtensionAPI();
+  if (!extensionAPI) return null;
+
   const uiOverrides = createUiOverrides({
     allNodes,
     // allRelationNames,
@@ -171,14 +182,39 @@ const TldrawCanvas = ({
 
   // Handle actions (roamjs:query-builder:action)
   useEffect(() => {
+    const handleMoveCameraToShapeAction = ({
+      shapeId,
+    }: {
+      shapeId: TLShapeId;
+    }) => {
+      const app = appRef.current;
+      if (!app) return;
+      const shape = app.getShape(shapeId);
+      if (!shape) {
+        return renderToast({
+          id: "tldraw-warning",
+          intent: "warning",
+          content: `Shape not found.`,
+        });
+      }
+      const x = shape?.x || 0;
+      const y = shape?.y || 0;
+      app.centerOnPoint({ x, y }, { animation: { duration: 200 } });
+      app.select(shapeId);
+    };
     const actionListener = ((
       e: CustomEvent<{
         action: string;
-        uid: string;
-        val: string;
+        uid?: string;
+        val?: string;
+        shapeId?: TLShapeId;
         onRefresh: () => void;
       }>
     ) => {
+      if (e.detail.action === "move-camera-to-shape") {
+        if (!e.detail.shapeId) return;
+        handleMoveCameraToShapeAction({ shapeId: e.detail.shapeId });
+      }
       if (!/canvas/i.test(e.detail.action)) return;
       const app = appRef.current;
       if (!app) return;
@@ -373,9 +409,7 @@ const TldrawCanvas = ({
         }}
       >
         <TldrawUi overrides={uiOverrides} components={customUiComponents}>
-          <ContextMenu>
-            <DefaultContextMenuContent />
-          </ContextMenu>
+          <CustomContextMenu extensionAPI={extensionAPI} allNodes={allNodes} />
         </TldrawUi>
       </TldrawEditor>
     </div>
