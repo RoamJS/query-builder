@@ -1,4 +1,10 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 import { OnloadArgs } from "roamjs-components/types";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
@@ -31,6 +37,13 @@ import {
   VecModel,
   createShapeId,
   TLPointerEventInfo,
+  Editor,
+  TLExternalContent,
+  MediaHelpers,
+  AssetRecordType,
+  TLAsset,
+  TLAssetId,
+  getHashForString,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -203,6 +216,76 @@ const TldrawCanvas = ({
     };
   }, [appRef, allNodes]);
 
+  // https://tldraw.dev/examples/data/assets/hosted-images
+  const ACCEPTED_IMG_TYPE = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/svg+xml",
+  ];
+  const isImage = (ext: string) => ACCEPTED_IMG_TYPE.includes(ext);
+  const handlePastedImages = useCallback((editor: Editor) => {
+    editor.registerExternalContentHandler(
+      "files",
+      async (content: TLExternalContent) => {
+        if (content.type !== "files") {
+          console.error("Expected files, received:", content.type);
+          return;
+        }
+        const file = content.files[0];
+
+        //@ts-ignore
+        const url = await window.roamAlphaAPI.file.upload({
+          file,
+          toast: {
+            hide: true,
+          },
+        });
+        const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
+        // TODO add video support
+        const isImageType = isImage(file.type);
+        if (!isImageType) {
+          console.error("Unsupported file type:", file.type);
+          return;
+        }
+        const size = await MediaHelpers.getImageSize(file);
+        const isAnimated = await MediaHelpers.isAnimated(file);
+        const assetId: TLAssetId = AssetRecordType.createId(
+          getHashForString(dataUrl)
+        );
+        const shapeType = isImageType ? "image" : "video";
+        const asset: TLAsset = AssetRecordType.create({
+          id: assetId,
+          type: shapeType,
+          typeName: "asset",
+          props: {
+            name: file.name,
+            src: dataUrl,
+            w: size.w,
+            h: size.h,
+            fileSize: file.size,
+            mimeType: file.type,
+            isAnimated,
+          },
+        });
+        editor.createAssets([asset]);
+        editor.createShape({
+          type: "image",
+          // Center the image in the editor
+          x: (window.innerWidth - size.w) / 2,
+          y: (window.innerHeight - size.h) / 2,
+          props: {
+            assetId,
+            w: size.w,
+            h: size.h,
+          },
+        });
+
+        return asset;
+      }
+    );
+  }, []);
+
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
@@ -229,6 +312,8 @@ const TldrawCanvas = ({
         store={store}
         onMount={(app) => {
           appRef.current = app;
+
+          handlePastedImages(app);
 
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (event) => {
