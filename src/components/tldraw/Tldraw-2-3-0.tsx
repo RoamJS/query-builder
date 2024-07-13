@@ -1,10 +1,11 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import ExtensionApiContextProvider from "roamjs-components/components/ExtensionApiContext";
 import { OnloadArgs } from "roamjs-components/types";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../../utils/isFlagEnabled";
 
 import {
+  Editor as TldrawApp,
   ContextMenu,
   DefaultContextMenuContent,
   DefaultToolbar,
@@ -27,6 +28,8 @@ import {
   useEditor,
   useIsToolSelected,
   useTools,
+  VecModel,
+  createShapeId,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -41,6 +44,9 @@ import {
   createNodeShapeTools,
   createNodeShapeUtils,
 } from "./DiscourseNodeUtil";
+import { useRoamStore } from "./useRoamStore";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import findDiscourseNode from "../../utils/findDiscourseNode";
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -56,6 +62,10 @@ export const discourseContext: DiscourseContextType = {
   lastAppEvent: "",
 };
 
+const DEFAULT_WIDTH = 160;
+const DEFAULT_HEIGHT = 64;
+export const MAX_WIDTH = "400px";
+
 export const isPageUid = (uid: string) =>
   !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
     ":node/title"
@@ -68,6 +78,8 @@ const TldrawCanvas = ({
   title: string;
   previewEnabled: boolean;
 }) => {
+  const appRef = useRef<TldrawApp>();
+  const lastInsertRef = useRef<VecModel>();
   const [maximized, setMaximized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +143,60 @@ const TldrawCanvas = ({
     allNodes,
   });
 
+  const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
+  const store = useRoamStore({
+    customShapeUtils,
+    pageUid,
+  });
+
+  // Handle actions (roamjs:query-builder:action)
+  useEffect(() => {
+    const actionListener = ((
+      e: CustomEvent<{
+        action: string;
+        uid: string;
+        val: string;
+        onRefresh: () => void;
+      }>
+    ) => {
+      if (!/canvas/i.test(e.detail.action)) return;
+      const app = appRef.current;
+      if (!app) return;
+      const { x, y } = app.getViewportScreenCenter();
+      const { w, h } = app.getViewportPageBounds();
+      const lastTime = lastInsertRef.current;
+      const position = lastTime
+        ? {
+            x: lastTime.x + w * 0.025,
+            y: lastTime.y + h * 0.05,
+          }
+        : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
+      const nodeType = findDiscourseNode(e.detail.uid, allNodes);
+      if (nodeType) {
+        app.createShapes([
+          {
+            type: nodeType.type,
+            id: createShapeId(),
+            props: {
+              uid: e.detail.uid,
+              title: e.detail.val,
+            },
+            ...position,
+          },
+        ]);
+        lastInsertRef.current = position;
+        e.detail.onRefresh();
+      }
+    }) as EventListener;
+    document.addEventListener("roamjs:query-builder:action", actionListener);
+    return () => {
+      document.removeEventListener(
+        "roamjs:query-builder:action",
+        actionListener
+      );
+    };
+  }, [appRef, allNodes]);
+
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
@@ -154,10 +220,10 @@ const TldrawCanvas = ({
         bindingUtils={defaultBindingUtils}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
         components={defaultEditorComponents}
-        // store={store}
+        store={store}
         onMount={(app) => {
           app.on("event", (e) => {
-appRef.current = app;
+            appRef.current = app;
             discourseContext.lastAppEvent = e.name;
 
             // tldraw swallowing `onClick`
