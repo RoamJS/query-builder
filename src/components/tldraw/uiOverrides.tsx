@@ -288,8 +288,7 @@ export const createUiOverrides = ({
   // extensionAPI,
   maximized,
   setMaximized,
-}: // appRef,
-// discourseContext,
+}: // discourseContext,
 {
   allNodes: DiscourseNode[];
   // allRelationNames: string[];
@@ -298,7 +297,6 @@ export const createUiOverrides = ({
   // extensionAPI?: OnloadArgs["extensionAPI"];
   maximized: boolean;
   setMaximized: (maximized: boolean) => void;
-  // appRef: React.MutableRefObject<Editor | undefined>;
   // discourseContext: DiscourseContextType;
 }): TLUiOverrides => ({
   tools(editor, tools) {
@@ -364,29 +362,6 @@ export const createUiOverrides = ({
     return tools;
   },
   actions(_app, actions) {
-    // const triggerContextMenuConvertTo = (
-    //   appRef: React.MutableRefObject<Editor | undefined>
-    // ) => {
-    //   const shape = appRef.current?.getOnlySelectedShape();
-    //   if (!shape) return;
-    //   const shapeEl = document.getElementById(shape.id);
-    //   const rect = shapeEl?.getBoundingClientRect();
-    //   const contextMenu = new MouseEvent("contextmenu", {
-    //     bubbles: true,
-    //     cancelable: true,
-    //     clientX: rect?.left,
-    //     clientY: rect?.top,
-    //   });
-    //   shapeEl?.dispatchEvent(contextMenu);
-    //   const menuItem = document.querySelector(
-    //     'button[data-wd="menu-item.convert-to"]'
-    //   ) as HTMLMenuElement;
-    //   if (menuItem) {
-    //     setTimeout(() => {
-    //       menuItem.click();
-    //     }, 100);
-    //   }
-    // };
     actions["toggle-full-screen"] = {
       id: "toggle-full-screen",
       label: "action.toggle-full-screen" as TLUiTranslationKey,
@@ -394,13 +369,6 @@ export const createUiOverrides = ({
       onSelect: () => setMaximized(!maximized),
       readonlyOk: true,
     };
-    // actions["convert-to"] = {
-    //   id: "convert-to",
-    //   label: "action.convert-to" as TLUiTranslationKey,
-    //   kbd: "?C",
-    //   onSelect: () => triggerContextMenuConvertTo(appRef),
-    //   readonlyOk: true,
-    // };
     return actions;
   },
 
