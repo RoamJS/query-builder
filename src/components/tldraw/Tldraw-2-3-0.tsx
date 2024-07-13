@@ -99,8 +99,9 @@ const TldrawCanvas = ({
 }) => {
   const appRef = useRef<TldrawApp>();
   const lastInsertRef = useRef<VecModel>();
-  const [maximized, setMaximized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [maximized, setMaximized] = useState(false);
 
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
@@ -152,8 +153,8 @@ const TldrawCanvas = ({
     // allAddRefNodeActions,
     // allAddRefNodeByAction,
     // extensionAPI,
-    // maximized,
-    // setMaximized,
+    maximized,
+    setMaximized,
     // appRef,
     // discourseContext,
   });
