@@ -231,9 +231,11 @@ const TldrawCanvas = ({
         components={defaultEditorComponents}
         store={store}
         onMount={(app) => {
+          appRef.current = app;
+
+          // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (event) => {
             const e = event as TLPointerEventInfo;
-            appRef.current = app;
 
             // tldraw swallowing `onClick`
             if (e.type === "pointer" && e.name === "pointer_down") {
