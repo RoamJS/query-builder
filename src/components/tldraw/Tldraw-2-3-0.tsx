@@ -157,7 +157,20 @@ const TldrawCanvas = ({
         // store={store}
         onMount={(app) => {
           app.on("event", (e) => {
+appRef.current = app;
             discourseContext.lastAppEvent = e.name;
+
+            // tldraw swallowing `onClick`
+            if (e.type === "pointer" && e.name === "pointer_down") {
+              const element = document.elementFromPoint(e.point.x, e.point.y);
+              if (
+                element != null &&
+                "click" in element &&
+                typeof element.click === "function"
+              ) {
+                element.click();
+              }
+            }
           });
         }}
       >
