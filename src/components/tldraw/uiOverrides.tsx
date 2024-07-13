@@ -28,6 +28,15 @@ import {
   DefaultContextMenu,
   DefaultContextMenuContent,
   TLUiComponents,
+  EditSubmenu,
+  ExportFileContentSubMenu,
+  ExtrasGroup,
+  PreferencesGroup,
+  ViewSubmenu,
+  TldrawUiMenuSubmenu,
+  ZoomTo100MenuItem,
+  ZoomToFitMenuItem,
+  ZoomToSelectionMenuItem,
 } from "tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
@@ -94,158 +103,171 @@ export const createUiComponents = ({
           {allAddRefNodeActions.map((action) => (
             <TldrawUiMenuItem {...tools[action]} />
           ))}
+          */}
           <TldrawUiMenuItem {...actions["toggle-full-screen"]} />
-          <TldrawUiMenuItem {...actions["convert-to"]} /> */}
+          <TldrawUiMenuItem {...actions["convert-to"]} />
           <DefaultKeyboardShortcutsDialogContent />
         </DefaultKeyboardShortcutsDialog>
       );
     },
-    // MainMenu: (props) => {
-    //   const actions = useActions();
-    //   return (
-    //     <DefaultMainMenu>
-    //       <div style={{ backgroundColor: "thistle" }}>
-    //         {/* TODO move this into proper submenus */}
-    //         <TldrawUiMenuGroup id="tempTODO">
-    //           <TldrawUiMenuItem {...actions["toggle-full-screen"]} />
-    //           <TldrawUiMenuItem {...actions["convert-to"]} />
-    //         </TldrawUiMenuGroup>
-    //       </div>
-    //       <DefaultMainMenuContent />
-    //     </DefaultMainMenu>
-    //   );
-    // },
-    // ContextMenu: (props) => {
-    //   return (
-    //     <DefaultContextMenu {...props}>
-    //       <TldrawUiMenuGroup id="tempTODO">
-    //         <TldrawUiMenuItem
-    //           id="TODO"
-    //           label="TODO - CONVERT TO"
-    //           icon="external-link"
-    //           readonlyOk
-    //           onSelect={() => {
-    //             console.log("implement this");
-    //             //   const shape = app.getOnlySelectedShape();
-    //             //   if (!shape) return schema;
-    //             //   const convertToDiscourseNode = async (
-    //             //     text: string,
-    //             //     type: string,
-    //             //     imageShapeUrl?: string
-    //             //   ) => {
-    //             //     if (!extensionAPI) {
-    //             //       // renderToast({
-    //             //       //   id: "tldraw-warning",
-    //             //       //   intent: "danger",
-    //             //       //   content: `Failed to convert to ${type}.  Please contact support`,
-    //             //       // });
-    //             //       return;
-    //             //     }
-    //             //     const nodeText =
-    //             //       type === "blck-node"
-    //             //         ? text
-    //             //         : await getNewDiscourseNodeText({
-    //             //             text,
-    //             //             nodeType: type,
-    //             //           });
-    //             //     const uid = await createDiscourseNode({
-    //             //       configPageUid: type,
-    //             //       text: nodeText,
-    //             //       imageUrl: imageShapeUrl,
-    //             //       extensionAPI,
-    //             //     });
-    //             //     app.deleteShapes([shape.id]);
-    //             //     const { x, y } = shape;
-    //             //     const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-    //             //       nodeText: nodeText,
-    //             //       extensionAPI,
-    //             //       nodeType: type,
-    //             //       uid,
-    //             //     });
-    //             //     app.createShapes([
-    //             //       {
-    //             //         type,
-    //             //         id: createShapeId(),
-    //             //         props: {
-    //             //           uid,
-    //             //           title: nodeText,
-    //             //           h,
-    //             //           w,
-    //             //           imageUrl,
-    //             //         },
-    //             //         x,
-    //             //         y,
-    //             //       },
-    //             //     ]);
-    //             //   };
-    //             //   const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
-    //             //     if (!shape.type) return null;
-    //             //     if (shape.type === "image") {
-    //             //       return async () => {
-    //             //         const { assetId } = (shape as TLImageShape).props;
-    //             //         if (!assetId) return;
-    //             //         const asset = app.getAsset(assetId);
-    //             //         if (!asset || !asset.props.src) return;
-    //             //         const file = await fetch(asset.props.src)
-    //             //           .then((r) => r.arrayBuffer())
-    //             //           .then((buf) => new File([buf], shape.id));
-    //             //         const src = await window.roamAlphaAPI.util.uploadFile({
-    //             //           file,
-    //             //         });
-    //             //         const text = nodeType === "blck-node" ? `![](${src})` : "";
-    //             //         convertToDiscourseNode(text, nodeType, src);
-    //             //       };
-    //             //     } else if (shape.type === "text") {
-    //             //       return () => {
-    //             //         const { text } = (shape as TLTextShape).props;
-    //             //         convertToDiscourseNode(text, nodeType);
-    //             //       };
-    //             //     }
-    //             //   };
+    MainMenu: (props) => {
+      const CustomViewMenu = () => {
+        const actions = useActions();
+        return (
+          <TldrawUiMenuSubmenu id="view" label="menu.view">
+            <TldrawUiMenuGroup id="view-actions">
+              <TldrawUiMenuItem {...actions["zoom-in"]} />
+              <TldrawUiMenuItem {...actions["zoom-out"]} />
+              <ZoomTo100MenuItem />
+              <ZoomToFitMenuItem />
+              <ZoomToSelectionMenuItem />
+              <TldrawUiMenuItem {...actions["toggle-full-screen"]} />
+            </TldrawUiMenuGroup>
+          </TldrawUiMenuSubmenu>
+        );
+      };
 
-    //             //   if (shape.type === "image" || shape.type === "text") {
-    //             //     const nodeMenuItems = allNodes.map((node) => {
-    //             //       return {
-    //             //         checked: false,
-    //             //         id: `convert-to-${node.type}`,
-    //             //         type: "item",
-    //             //         readonlyOk: true,
-    //             //         disabled: false,
-    //             //         actionItem: {
-    //             //           label: `action.convert-to-${node.type}` as TLUiTranslationKey,
-    //             //           id: `convert-to-${node.type}`,
-    //             //           onSelect: getOnSelectForShape(shape, node.type),
-    //             //           readonlyOk: true,
-    //             //           menuLabel: `Convert to ${node.text}` as TLUiTranslationKey,
-    //             //           title: `Convert to ${node.text}`,
-    //             //         },
-    //             //       } as TLUiMenuItem;
-    //             //     });
+      return (
+        <DefaultMainMenu>
+          <EditSubmenu />
+          <CustomViewMenu /> {/* Replaced <ViewSubmenu /> */}
+          <ExportFileContentSubMenu />
+          <ExtrasGroup />
+          <PreferencesGroup />
+        </DefaultMainMenu>
+      );
+    },
+    ContextMenu: (props) => {
+      return (
+        <DefaultContextMenu {...props}>
+          <TldrawUiMenuGroup id="tempTODO">
+            <TldrawUiMenuItem
+              id="TODO"
+              label="TODO - CONVERT TO"
+              icon="external-link"
+              readonlyOk
+              onSelect={() => {
+                console.log("implement this");
+                //   const shape = app.getOnlySelectedShape();
+                //   if (!shape) return schema;
+                //   const convertToDiscourseNode = async (
+                //     text: string,
+                //     type: string,
+                //     imageShapeUrl?: string
+                //   ) => {
+                //     if (!extensionAPI) {
+                //       // renderToast({
+                //       //   id: "tldraw-warning",
+                //       //   intent: "danger",
+                //       //   content: `Failed to convert to ${type}.  Please contact support`,
+                //       // });
+                //       return;
+                //     }
+                //     const nodeText =
+                //       type === "blck-node"
+                //         ? text
+                //         : await getNewDiscourseNodeText({
+                //             text,
+                //             nodeType: type,
+                //           });
+                //     const uid = await createDiscourseNode({
+                //       configPageUid: type,
+                //       text: nodeText,
+                //       imageUrl: imageShapeUrl,
+                //       extensionAPI,
+                //     });
+                //     app.deleteShapes([shape.id]);
+                //     const { x, y } = shape;
+                //     const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+                //       nodeText: nodeText,
+                //       extensionAPI,
+                //       nodeType: type,
+                //       uid,
+                //     });
+                //     app.createShapes([
+                //       {
+                //         type,
+                //         id: createShapeId(),
+                //         props: {
+                //           uid,
+                //           title: nodeText,
+                //           h,
+                //           w,
+                //           imageUrl,
+                //         },
+                //         x,
+                //         y,
+                //       },
+                //     ]);
+                //   };
+                //   const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
+                //     if (!shape.type) return null;
+                //     if (shape.type === "image") {
+                //       return async () => {
+                //         const { assetId } = (shape as TLImageShape).props;
+                //         if (!assetId) return;
+                //         const asset = app.getAsset(assetId);
+                //         if (!asset || !asset.props.src) return;
+                //         const file = await fetch(asset.props.src)
+                //           .then((r) => r.arrayBuffer())
+                //           .then((buf) => new File([buf], shape.id));
+                //         const src = await window.roamAlphaAPI.util.uploadFile({
+                //           file,
+                //         });
+                //         const text = nodeType === "blck-node" ? `![](${src})` : "";
+                //         convertToDiscourseNode(text, nodeType, src);
+                //       };
+                //     } else if (shape.type === "text") {
+                //       return () => {
+                //         const { text } = (shape as TLTextShape).props;
+                //         convertToDiscourseNode(text, nodeType);
+                //       };
+                //     }
+                //   };
 
-    //             //     // Page not yet supported
-    //             //     // requires page-node to have image flag option
-    //             //     const filteredItems =
-    //             //       shape.type === "image"
-    //             //         ? nodeMenuItems.filter((item) => item.id !== "convert-to-page-node")
-    //             //         : nodeMenuItems;
-    //           }}
-    //         />
-    //       </TldrawUiMenuGroup>
-    //       <DefaultContextMenuContent />
-    //     </DefaultContextMenu>
-    //   );
-    // },
+                //   if (shape.type === "image" || shape.type === "text") {
+                //     const nodeMenuItems = allNodes.map((node) => {
+                //       return {
+                //         checked: false,
+                //         id: `convert-to-${node.type}`,
+                //         type: "item",
+                //         readonlyOk: true,
+                //         disabled: false,
+                //         actionItem: {
+                //           label: `action.convert-to-${node.type}` as TLUiTranslationKey,
+                //           id: `convert-to-${node.type}`,
+                //           onSelect: getOnSelectForShape(shape, node.type),
+                //           readonlyOk: true,
+                //           menuLabel: `Convert to ${node.text}` as TLUiTranslationKey,
+                //           title: `Convert to ${node.text}`,
+                //         },
+                //       } as TLUiMenuItem;
+                //     });
+
+                //     // Page not yet supported
+                //     // requires page-node to have image flag option
+                //     const filteredItems =
+                //       shape.type === "image"
+                //         ? nodeMenuItems.filter((item) => item.id !== "convert-to-page-node")
+                //         : nodeMenuItems;
+              }}
+            />
+          </TldrawUiMenuGroup>
+          <DefaultContextMenuContent />
+        </DefaultContextMenu>
+      );
+    },
   };
 };
 export const createUiOverrides = ({
   allNodes,
-}: // allRelationNames,
-// allAddRefNodeActions,
-// allAddRefNodeByAction,
-// extensionAPI,
-// maximized,
-// setMaximized,
-// appRef,
+  // allRelationNames,
+  // allAddRefNodeActions,
+  // allAddRefNodeByAction,
+  // extensionAPI,
+  maximized,
+  setMaximized,
+}: // appRef,
 // discourseContext,
 {
   allNodes: DiscourseNode[];
@@ -253,8 +275,8 @@ export const createUiOverrides = ({
   // allAddRefNodeActions: string[];
   // allAddRefNodeByAction: AddReferencedNodeType;
   // extensionAPI?: OnloadArgs["extensionAPI"];
-  // maximized: boolean;
-  // setMaximized: (maximized: boolean) => void;
+  maximized: boolean;
+  setMaximized: (maximized: boolean) => void;
   // appRef: React.MutableRefObject<Editor | undefined>;
   // discourseContext: DiscourseContextType;
 }): TLUiOverrides => ({
@@ -320,46 +342,46 @@ export const createUiOverrides = ({
 
     return tools;
   },
-  // actions(_app, actions) {
-  //   const triggerContextMenuConvertTo = (
-  //     appRef: React.MutableRefObject<Editor | undefined>
-  //   ) => {
-  //     const shape = appRef.current?.getOnlySelectedShape();
-  //     if (!shape) return;
-  //     const shapeEl = document.getElementById(shape.id);
-  //     const rect = shapeEl?.getBoundingClientRect();
-  //     const contextMenu = new MouseEvent("contextmenu", {
-  //       bubbles: true,
-  //       cancelable: true,
-  //       clientX: rect?.left,
-  //       clientY: rect?.top,
-  //     });
-  //     shapeEl?.dispatchEvent(contextMenu);
-  //     const menuItem = document.querySelector(
-  //       'button[data-wd="menu-item.convert-to"]'
-  //     ) as HTMLMenuElement;
-  //     if (menuItem) {
-  //       setTimeout(() => {
-  //         menuItem.click();
-  //       }, 100);
-  //     }
-  //   };
-  //   actions["toggle-full-screen"] = {
-  //     id: "toggle-full-screen",
-  //     label: "action.toggle-full-screen" as TLUiTranslationKey,
-  //     kbd: "!3",
-  //     onSelect: () => setMaximized(!maximized),
-  //     readonlyOk: true,
-  //   };
-  //   actions["convert-to"] = {
-  //     id: "convert-to",
-  //     label: "action.convert-to" as TLUiTranslationKey,
-  //     kbd: "?C",
-  //     onSelect: () => triggerContextMenuConvertTo(appRef),
-  //     readonlyOk: true,
-  //   };
-  //   return actions;
-  // },
+  actions(_app, actions) {
+    // const triggerContextMenuConvertTo = (
+    //   appRef: React.MutableRefObject<Editor | undefined>
+    // ) => {
+    //   const shape = appRef.current?.getOnlySelectedShape();
+    //   if (!shape) return;
+    //   const shapeEl = document.getElementById(shape.id);
+    //   const rect = shapeEl?.getBoundingClientRect();
+    //   const contextMenu = new MouseEvent("contextmenu", {
+    //     bubbles: true,
+    //     cancelable: true,
+    //     clientX: rect?.left,
+    //     clientY: rect?.top,
+    //   });
+    //   shapeEl?.dispatchEvent(contextMenu);
+    //   const menuItem = document.querySelector(
+    //     'button[data-wd="menu-item.convert-to"]'
+    //   ) as HTMLMenuElement;
+    //   if (menuItem) {
+    //     setTimeout(() => {
+    //       menuItem.click();
+    //     }, 100);
+    //   }
+    // };
+    actions["toggle-full-screen"] = {
+      id: "toggle-full-screen",
+      label: "action.toggle-full-screen" as TLUiTranslationKey,
+      kbd: "!3",
+      onSelect: () => setMaximized(!maximized),
+      readonlyOk: true,
+    };
+    // actions["convert-to"] = {
+    //   id: "convert-to",
+    //   label: "action.convert-to" as TLUiTranslationKey,
+    //   kbd: "?C",
+    //   onSelect: () => triggerContextMenuConvertTo(appRef),
+    //   readonlyOk: true,
+    // };
+    return actions;
+  },
 
   translations: {
     en: {
@@ -372,7 +394,7 @@ export const createUiOverrides = ({
       // ...Object.fromEntries(
       //   allAddRefNodeActions.map((name) => [`shape.referenced.${name}`, name])
       // ),
-      // "action.toggle-full-screen": "Toggle Full Screen",
+      "action.toggle-full-screen": "Toggle Full Screen",
       // "action.convert-to": "Convert to",
       // ...Object.fromEntries(
       //   allNodes.map((node) => [
@@ -380,6 +402,7 @@ export const createUiOverrides = ({
       //     `${node.text}`,
       //   ])
       // ),
+      // TODO: copy as
     },
   },
 });
