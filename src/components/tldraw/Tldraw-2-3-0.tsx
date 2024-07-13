@@ -166,7 +166,6 @@ const TldrawCanvas = ({
     // extensionAPI,
     maximized,
     setMaximized,
-    // appRef,
     // discourseContext,
   });
 
