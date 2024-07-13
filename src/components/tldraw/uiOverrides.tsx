@@ -37,6 +37,10 @@ import {
   ZoomTo100MenuItem,
   ZoomToFitMenuItem,
   ZoomToSelectionMenuItem,
+  useEditor,
+  useValue,
+  TLUiContextMenuProps,
+  TLUiEventSource,
 } from "tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
@@ -49,7 +53,143 @@ import {
 } from "./Tldraw-2-3-0";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { COLOR_ARRAY } from "./DiscourseNodeUtil";
+import renderToast from "roamjs-components/components/Toast";
+import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 
+export const CustomContextMenu = ({
+  extensionAPI,
+  allNodes,
+}: {
+  extensionAPI: OnloadArgs["extensionAPI"];
+  allNodes: DiscourseNode[];
+}) => {
+  const editor = useEditor();
+  const selectedShape = useValue(
+    "selectedShape",
+    () => editor.getOnlySelectedShape(),
+    [editor]
+  );
+  const isTextSelected = selectedShape?.type === "text";
+  const isImageSelected = selectedShape?.type === "image";
+
+  const convertToDiscourseNode = async (
+    text: string,
+    type: string,
+    imageShapeUrl?: string
+  ) => {
+    if (!extensionAPI) {
+      renderToast({
+        id: "tldraw-warning",
+        intent: "danger",
+        content: `Failed to convert to ${type}.  Please contact support`,
+      });
+      return;
+    }
+    if (!selectedShape) {
+      renderToast({
+        id: "tldraw-warning",
+        intent: "warning",
+        content: `No shape selected.`,
+      });
+      return;
+    }
+    const nodeText =
+      type === "blck-node"
+        ? text
+        : await getNewDiscourseNodeText({
+            text,
+            nodeType: type,
+          });
+    const uid = await createDiscourseNode({
+      configPageUid: type,
+      text: nodeText,
+      imageUrl: imageShapeUrl,
+      extensionAPI,
+    });
+    editor.deleteShapes([selectedShape.id]);
+    const { x, y } = selectedShape;
+    const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+      nodeText: nodeText,
+      extensionAPI,
+      nodeType: type,
+      uid,
+    });
+    editor.createShapes([
+      {
+        type,
+        id: createShapeId(),
+        props: {
+          uid,
+          title: nodeText,
+          h,
+          w,
+          imageUrl,
+        },
+        x,
+        y,
+      },
+    ]);
+  };
+  const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
+    if (shape.type === "image") {
+      return async () => {
+        const { assetId } = (shape as TLImageShape).props;
+        if (!assetId) return;
+        const asset = editor.getAsset(assetId);
+        if (!asset || !asset.props.src) return;
+        const file = await fetch(asset.props.src)
+          .then((r) => r.arrayBuffer())
+          .then((buf) => new File([buf], shape.id));
+        const src = await window.roamAlphaAPI.util.uploadFile({
+          file,
+        });
+        const text = nodeType === "blck-node" ? `![](${src})` : "";
+        convertToDiscourseNode(text, nodeType, src);
+      };
+    } else if (shape.type === "text") {
+      return () => {
+        const { text } = (shape as TLTextShape).props;
+        convertToDiscourseNode(text, nodeType);
+      };
+    }
+    return () => {};
+  };
+
+  return (
+    <DefaultContextMenu>
+      <DefaultContextMenuContent />
+      {/* {!selectedShape && (
+        <TldrawUiMenuGroup id="open-canvas-drawer-group">
+          <TldrawUiMenuItem
+            id="open-canvas-drawer"
+            label="Open Canvas Drawer"
+            readonlyOk
+            onSelect={openCanvasDrawer}
+          />
+        </TldrawUiMenuGroup>
+      )} */}
+      {(isTextSelected || isImageSelected) && (
+        <TldrawUiMenuGroup id="convert-to-group">
+          <TldrawUiMenuSubmenu id="convert-to-submenu" label="Convert To">
+            {allNodes
+              // Page not yet supported: requires page-node to have image flag option
+              .filter((node) => !(isImageSelected && node.type === "page-node"))
+              .map((node) => {
+                return (
+                  <TldrawUiMenuItem
+                    id={`convert-to-${node.type}`}
+                    label={`Convert To ${node.text}`}
+                    readonlyOk
+                    onSelect={getOnSelectForShape(selectedShape, node.type)}
+                  />
+                );
+              })}
+          </TldrawUiMenuSubmenu>
+        </TldrawUiMenuGroup>
+      )}
+    </DefaultContextMenu>
+  );
+};
 export const createUiComponents = ({
   allNodes,
 }: // allRelationNames,
@@ -135,126 +275,6 @@ export const createUiComponents = ({
           <ExtrasGroup />
           <PreferencesGroup />
         </DefaultMainMenu>
-      );
-    },
-    ContextMenu: (props) => {
-      return (
-        <DefaultContextMenu {...props}>
-          <TldrawUiMenuGroup id="tempTODO">
-            <TldrawUiMenuItem
-              id="TODO"
-              label="TODO - CONVERT TO"
-              icon="external-link"
-              readonlyOk
-              onSelect={() => {
-                console.log("implement this");
-                //   const shape = app.getOnlySelectedShape();
-                //   if (!shape) return schema;
-                //   const convertToDiscourseNode = async (
-                //     text: string,
-                //     type: string,
-                //     imageShapeUrl?: string
-                //   ) => {
-                //     if (!extensionAPI) {
-                //       // renderToast({
-                //       //   id: "tldraw-warning",
-                //       //   intent: "danger",
-                //       //   content: `Failed to convert to ${type}.  Please contact support`,
-                //       // });
-                //       return;
-                //     }
-                //     const nodeText =
-                //       type === "blck-node"
-                //         ? text
-                //         : await getNewDiscourseNodeText({
-                //             text,
-                //             nodeType: type,
-                //           });
-                //     const uid = await createDiscourseNode({
-                //       configPageUid: type,
-                //       text: nodeText,
-                //       imageUrl: imageShapeUrl,
-                //       extensionAPI,
-                //     });
-                //     app.deleteShapes([shape.id]);
-                //     const { x, y } = shape;
-                //     const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-                //       nodeText: nodeText,
-                //       extensionAPI,
-                //       nodeType: type,
-                //       uid,
-                //     });
-                //     app.createShapes([
-                //       {
-                //         type,
-                //         id: createShapeId(),
-                //         props: {
-                //           uid,
-                //           title: nodeText,
-                //           h,
-                //           w,
-                //           imageUrl,
-                //         },
-                //         x,
-                //         y,
-                //       },
-                //     ]);
-                //   };
-                //   const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
-                //     if (!shape.type) return null;
-                //     if (shape.type === "image") {
-                //       return async () => {
-                //         const { assetId } = (shape as TLImageShape).props;
-                //         if (!assetId) return;
-                //         const asset = app.getAsset(assetId);
-                //         if (!asset || !asset.props.src) return;
-                //         const file = await fetch(asset.props.src)
-                //           .then((r) => r.arrayBuffer())
-                //           .then((buf) => new File([buf], shape.id));
-                //         const src = await window.roamAlphaAPI.util.uploadFile({
-                //           file,
-                //         });
-                //         const text = nodeType === "blck-node" ? `![](${src})` : "";
-                //         convertToDiscourseNode(text, nodeType, src);
-                //       };
-                //     } else if (shape.type === "text") {
-                //       return () => {
-                //         const { text } = (shape as TLTextShape).props;
-                //         convertToDiscourseNode(text, nodeType);
-                //       };
-                //     }
-                //   };
-
-                //   if (shape.type === "image" || shape.type === "text") {
-                //     const nodeMenuItems = allNodes.map((node) => {
-                //       return {
-                //         checked: false,
-                //         id: `convert-to-${node.type}`,
-                //         type: "item",
-                //         readonlyOk: true,
-                //         disabled: false,
-                //         actionItem: {
-                //           label: `action.convert-to-${node.type}` as TLUiTranslationKey,
-                //           id: `convert-to-${node.type}`,
-                //           onSelect: getOnSelectForShape(shape, node.type),
-                //           readonlyOk: true,
-                //           menuLabel: `Convert to ${node.text}` as TLUiTranslationKey,
-                //           title: `Convert to ${node.text}`,
-                //         },
-                //       } as TLUiMenuItem;
-                //     });
-
-                //     // Page not yet supported
-                //     // requires page-node to have image flag option
-                //     const filteredItems =
-                //       shape.type === "image"
-                //         ? nodeMenuItems.filter((item) => item.id !== "convert-to-page-node")
-                //         : nodeMenuItems;
-              }}
-            />
-          </TldrawUiMenuGroup>
-          <DefaultContextMenuContent />
-        </DefaultContextMenu>
       );
     },
   };
