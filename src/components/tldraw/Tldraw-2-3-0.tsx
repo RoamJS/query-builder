@@ -52,6 +52,7 @@ import findDiscourseNode from "../../utils/findDiscourseNode";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import renderToast from "roamjs-components/components/Toast";
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -201,10 +202,6 @@ const TldrawCanvas = ({
       );
     };
   }, [appRef, allNodes]);
-
-  function renderToast(arg0: { id: string; intent: string; content: string }) {
-    throw new Error("Function not implemented.");
-  }
 
   return (
     <div
