@@ -371,11 +371,7 @@ const TldrawCanvas = ({
           });
         }}
       >
-        <TldrawUi
-          overrides={uiOverrides}
-          components={customUiComponents}
-          // assetBaseUrl="https://samepage.network/assets/tldraw/"
-        >
+        <TldrawUi overrides={uiOverrides} components={customUiComponents}>
           <ContextMenu>
             <DefaultContextMenuContent />
           </ContextMenu>
