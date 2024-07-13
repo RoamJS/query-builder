@@ -38,6 +38,7 @@ import getDiscourseRelations, {
 import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw-2-3-0";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
+import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 // import { DiscourseRelationShape } from "./DiscourseRelationsUtil";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
@@ -552,13 +553,12 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       uid: string;
     }) => {
       if (!extensionAPI) return;
-      const { h, w, imageUrl } = { h: 0, w: 0, imageUrl: "" };
-      // const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-      //   nodeText: text,
-      //   uid,
-      //   nodeType: this.type,
-      //   extensionAPI,
-      // });
+      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+        nodeText: text,
+        uid,
+        nodeType: this.type,
+        extensionAPI,
+      });
       context.updateProps(shape.id, shape.type, {
         h,
         w,
