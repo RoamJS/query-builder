@@ -339,9 +339,9 @@ const TldrawCanvas = ({
       <TldrawEditor
         // baseUrl="https://samepage.network/assets/tldraw/"
         // instanceId={initialState.instanceId}
-        initialState="select"
         shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
+        initialState="select"
         components={defaultEditorComponents}
         store={store}
         onMount={(app) => {
@@ -416,7 +416,6 @@ const TldrawCanvas = ({
 };
 
 export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
-  console.log("renderTldrawCanvas");
   const children = document.querySelector<HTMLDivElement>(
     ".roam-article .rm-block-children"
   );
@@ -431,12 +430,7 @@ export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
     parent.style.height = "500px";
     renderWithUnmount(
       <ExtensionApiContextProvider {...onloadArgs}>
-        {
-          <TldrawCanvas
-            title={title}
-            previewEnabled={isFlagEnabled("preview")}
-          />
-        }
+        <TldrawCanvas title={title} previewEnabled={isFlagEnabled("preview")} />
       </ExtensionApiContextProvider>,
       parent
     );
