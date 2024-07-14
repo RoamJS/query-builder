@@ -369,6 +369,8 @@ export const createUiOverrides = ({
       onSelect: () => setMaximized(!maximized),
       readonlyOk: true,
     };
+    actions["export-as-svg"].kbd = "$!X";
+    actions["export-as-png"].kbd = "$!C";
     return actions;
   },
 
