@@ -34,12 +34,15 @@ export default `
   /* .tl-arrow-label__inner {
     min-width: initial;
   } */
-  /* kbd.tlui-kbd {
+
+  /* Keyboard Shortcuts */
+  kbd.tlui-kbd {
     background-color: initial;
     box-shadow: initial;
     border-radius: initial;
     padding: initial;
-  } */
+  }
+  
   /* #roamjs-tldraw-canvas-container
     .tl-shape
     .roamjs-tldraw-node
