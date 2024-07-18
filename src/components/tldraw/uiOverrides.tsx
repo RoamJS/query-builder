@@ -213,6 +213,12 @@ export const createUiComponents = ({
               isSelected={useIsToolSelected(tools[n.type])}
             />
           ))}
+          <TldrawUiMenuItem
+            key="relation"
+            {...tools["relation"]}
+            isSelected={useIsToolSelected(tools["relation"])}
+          />
+
           {/* {allRelationNames.map((name) => (
             <TldrawUiMenuItem
               key={name}
@@ -318,6 +324,16 @@ export const createUiOverrides = ({
         },
       };
     });
+    tools["relation"] = {
+      id: "relation",
+      icon: "arrow",
+      label: `shape.relation.relation` as TLUiTranslationKey,
+      kbd: "",
+      readonlyOk: true,
+      onSelect: () => {
+        editor.setCurrentTool("relation");
+      },
+    };
     tools["card"] = {
       id: "card",
       icon: "box",
@@ -389,6 +405,7 @@ export const createUiOverrides = ({
       ...Object.fromEntries(
         allNodes.map((node) => [`shape.node.${node.type}`, node.text])
       ),
+      "shape.relation.relation": "Relation",
       // ...Object.fromEntries(
       //   allRelationNames.map((name) => [`shape.relation.${name}`, name])
       // ),

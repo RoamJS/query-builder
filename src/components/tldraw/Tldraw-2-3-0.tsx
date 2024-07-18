@@ -48,6 +48,8 @@ import {
   getHashForString,
   TLUiContextMenuProps,
   TLShapeId,
+  BindingUtil,
+  TLAnyBindingUtilConstructor,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -74,6 +76,9 @@ import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import renderToast from "roamjs-components/components/Toast";
+import { BaseDiscourseRelationUtil } from "./DiscourseRelationShape/DiscourseRelationUtil";
+import { BaseDiscourseRelationTool } from "./DiscourseRelationShape/DiscourseRelationTool";
+import { RelationBindingUtil } from "./DiscourseRelationShape/DiscourseRelationBindings";
 
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
@@ -138,26 +143,35 @@ const TldrawCanvas = ({
     SelectionBackground: TldrawSelectionBackground,
     Handles: TldrawHandles,
   };
+  //
+  // UTILS
+  //
   const discourseNodeUtils = createNodeShapeUtils(allNodes);
-
+  const baseDiscourseRelationUtil = [BaseDiscourseRelationUtil];
   const customShapeUtils = [
     ...discourseNodeUtils,
     // ...discourseRelationUtils,
     // ...referencedNodeUtils,
+    ...baseDiscourseRelationUtil,
   ];
-
+  //
+  // TOOLS
+  //
   const discourseNodeTools = createNodeShapeTools(allNodes);
-
+  const baseDiscourseRelationTool = [BaseDiscourseRelationTool];
   const customTools = [
     ...discourseNodeTools,
     // ...discourseRelationTools,
     // ...referencedNodeTools,
     // selectTool,
+    ...baseDiscourseRelationTool,
   ];
 
   const extensionAPI = useExtensionAPI();
   if (!extensionAPI) return null;
-
+  //
+  // UI OVERRIDES
+  //
   const uiOverrides = createUiOverrides({
     allNodes,
     // allRelationNames,
@@ -168,10 +182,13 @@ const TldrawCanvas = ({
     setMaximized,
     // discourseContext,
   });
-
   const customUiComponents: TLUiComponents = createUiComponents({
     allNodes,
   });
+  //
+  // BINDINGS
+  //
+  const customBindingUtils = [RelationBindingUtil];
 
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
   const store = useRoamStore({
@@ -341,6 +358,7 @@ const TldrawCanvas = ({
         // instanceId={initialState.instanceId}
         shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
+        bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
         initialState="select"
         components={defaultEditorComponents}
         store={store}
