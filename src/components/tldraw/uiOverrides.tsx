@@ -318,6 +318,16 @@ export const createUiOverrides = ({
         },
       };
     });
+    tools["card"] = {
+      id: "card",
+      icon: "box",
+      label: "My Custom Shape",
+      kbd: "",
+      readonlyOk: true,
+      onSelect: () => {
+        editor.setCurrentTool("card");
+      },
+    };
     // allRelationNames.forEach((relation, index) => {
     //   tools[relation] = {
     //     id: relation,
