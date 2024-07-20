@@ -60,6 +60,8 @@ import {
 } from "./DiscourseRelationBindings";
 import { RelationShape } from "./DiscourseRelationUtil";
 
+const bindingType = "relation";
+
 let defaultPixels: { white: string; black: string } | null = null;
 let globalRenderIndex = 0;
 const WAY_TOO_BIG_ARROW_BEND_FACTOR = 10;
@@ -126,7 +128,7 @@ export function getArrowBindings(
 ): RelationBindings {
   const bindings = editor.getBindingsFromShape<RelationBinding>(
     shape,
-    "relation"
+    bindingType
   );
   return {
     start: bindings.find((b) => b.props.terminal === "start"),
@@ -349,7 +351,7 @@ function getBoundShapeInfoForTerminal(
   terminalName: "start" | "end"
 ): BoundShapeInfo | undefined {
   const binding = editor
-    .getBindingsFromShape<RelationBinding>(arrow, "relation")
+    .getBindingsFromShape<RelationBinding>(arrow, bindingType)
     .find((b) => b.props.terminal === terminalName);
   if (!binding) return;
 
@@ -1597,7 +1599,7 @@ export function removeArrowBinding(
   terminal: "start" | "end"
 ) {
   const existing = editor
-    .getBindingsFromShape<RelationBinding>(arrow, "relation")
+    .getBindingsFromShape<RelationBinding>(arrow, bindingType)
     .filter((b) => b.props.terminal === terminal);
 
   editor.deleteBindings(existing);
@@ -1612,7 +1614,7 @@ export function createOrUpdateArrowBinding(
   const targetId = typeof target === "string" ? target : target.id;
 
   const existingMany = editor
-    .getBindingsFromShape<RelationBinding>(arrowId, "relation")
+    .getBindingsFromShape<RelationBinding>(arrowId, bindingType)
     .filter((b) => b.props.terminal === props.terminal);
 
   // if we've somehow ended up with too many bindings, delete the extras
@@ -1629,7 +1631,7 @@ export function createOrUpdateArrowBinding(
     });
   } else {
     editor.createBinding({
-      type: "relation",
+      type: bindingType,
       fromId: arrowId,
       toId: targetId,
       props,

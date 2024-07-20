@@ -356,10 +356,10 @@ const TldrawCanvas = ({
       <TldrawEditor
         // baseUrl="https://samepage.network/assets/tldraw/"
         // instanceId={initialState.instanceId}
+        initialState="select"
         shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
         tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
         bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
-        initialState="select"
         components={defaultEditorComponents}
         store={store}
         onMount={(app) => {

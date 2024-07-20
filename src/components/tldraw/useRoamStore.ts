@@ -11,9 +11,10 @@ import createBlock from "roamjs-components/writes/createBlock";
 import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
-import { defaultShapeUtils } from "tldraw";
+import { defaultBindingUtils, defaultShapeUtils } from "tldraw";
 import { BaseDiscourseNodeUtil } from "./DiscourseNodeUtil";
 import { AddPullWatch } from "roamjs-components/types";
+import { RelationBindingUtil } from "./DiscourseRelationShape/DiscourseRelationBindings";
 // import { createAllRelationShapeUtils } from "./DiscourseRelationsUtil";
 
 const THROTTLE = 350;
@@ -54,6 +55,7 @@ export const useRoamStore = ({
     const _store = createTLStore({
       initialData,
       shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+      bindingUtils: [...defaultBindingUtils, RelationBindingUtil],
     });
     _store.listen((rec) => {
       if (rec.source !== "user") return;
