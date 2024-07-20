@@ -91,14 +91,14 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
       dash: "draw",
       size: "m",
       fill: "none",
-      color: "black",
-      labelColor: "black",
+      color: "red",
+      labelColor: "red",
       bend: 0,
       start: { x: 0, y: 0 },
       end: { x: 0, y: 0 },
       arrowheadStart: "none",
       arrowheadEnd: "arrow",
-      text: "",
+      text: "Relation",
       labelPosition: 0.5,
       font: "draw",
       scale: 1,
@@ -249,7 +249,13 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
       },
     });
 
-    if (!target) {
+    if (
+      !target ||
+      // TODO - this is a hack/fix
+      // the shape is targeting itself on initial drag
+      // find out why
+      target.id === shape.id
+    ) {
       // todo: maybe double check that this isn't equal to the other handle too?
       removeArrowBinding(this.editor, shape, handleId);
 

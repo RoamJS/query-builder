@@ -1,7 +1,3 @@
-// TODO - At binding.type: Expected one of "arrow", got "relation"
-//
-//
-//
 import {
   TLBaseBinding,
   TLArrowBindingProps,
@@ -27,7 +23,12 @@ import {
   approximately,
 } from "tldraw";
 import { RelationShape } from "./DiscourseRelationUtil";
-import { assert, getArrowBindings, getArrowInfo } from "./helpers";
+import {
+  assert,
+  getArrowBindings,
+  getArrowInfo,
+  removeArrowBinding,
+} from "./helpers";
 
 export type RelationBindings = {
   start: RelationBinding | undefined;
@@ -366,15 +367,4 @@ function intersectLineSegmentCircle(
   if (result.length === 0) return null; // no intersection
 
   return result;
-}
-function removeArrowBinding(
-  editor: Editor,
-  arrow: RelationShape,
-  terminal: "start" | "end"
-) {
-  const existing = editor
-    .getBindingsFromShape<RelationBinding>(arrow, "relation")
-    .filter((b) => b.props.terminal === terminal);
-
-  editor.deleteBindings(existing);
 }
