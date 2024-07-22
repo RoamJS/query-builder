@@ -176,29 +176,71 @@ Every [Query Block](#query-blocks) or [Query Page](#query-pages) is rooted with 
 
 ## SmartBlocks Integration
 
-This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in two arguments:
+This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` command will run an existing [Query Block](#query-blocks) or [Query Page](#query-pages) instance in your graph and return the results as separate blocks. The command takes in multiple arguments:
 
-1. The block reference, alias, or page title of the query instance.
-2. The format to output each result in. You can use placeholders, like `{text}` to insert the value from the result in. There's a placeholder available for each Selection label used in the query.
-3. (Optional) The number of results returned.
+1. Query reference - the block reference or [alias](#alias) of query
+2. [Output format](#output-format) - the format to output each result in.
+3. (Optional) Limit - the number of results returned.
+4. (Optional) [Input Variables](#input-variables) - variables to pass into the query
 
 ### Alias
 
-You can set the alias of a [Query Block](#query-blocks) in the top right corner of the UI.
+You can set the alias of a [Query Block](#query-blocks) in the top right corner of the UI. See example 2 below.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FBRQ-hhJpLe.jpg?alt=media&token=d0b9afb1-0189-4904-bab8-420e032f1da6)
 
-The end of the title of a [Query Page](#query-pages) works as well.
+The end of the title of a [Query Page](#query-pages) works as well. See example 3 below.
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F3VGMt6toTB.jpg?alt=media&token=51d851d3-0954-4300-9be4-2bcb13ed95d2)
 
+### Output Format
+
+#### Regular Output Format
+
+- Placeholders - you can use [SmartBlock Formatting placeholders](https://github.com/RoamJs/smartblocks/blob/main/docs/050-command-reference.md#formatting), like `{text}` to insert the value from the result in.
+- Selections - there's a placeholder available for each [Selection](#selections) label that you have defined in the query.
+- Selection `uid` - to get the `uid` of a selection, append `-uid` to the end of the selection label, eg `{someSelection-uid}`.
+- SmartBlock Commands - any SmartBlock Command will be applied to the resulting output. See example 3 below.
+
+#### Flexible Output Format
+
+The flexible output format allows you to define a multi-block output format.
+
+To use the flexible output format, you pass in the `block reference` that contains the output format. Each result from the `<%QUERYBUILDER%>` command will be output with this format.
+
+The same placeholders defined above for the regular output format are also available in the flexible output format, but you use `<%GET:placeholder%>` to get the value of a placeholder instead of `{placeholder}`.
+
+Example
+
+`<%QUERYBUILDER:myQuery,((ITe51brrn))%>`
+
+Where `((ITe51brrn))` looks like this:
+
+```
+- Title:: <%GET:text%>
+  - Description:: <%GET:description%>
+```
+
+### Input Variables
+
+Input Variables are a way to pass in values into your query, allowing for dynamic adjustments based on things like user input. This feature is particularly useful in scenarios where you want to reuse a single query template with different parameters.
+
+For example, in a task management setup, you might have a query that retrieves tasks for a specific client. Instead of creating multiple query instances for each client, you can create one query and use an input variable to specify the client name dynamically.
+
+To pass a value to the query builder instance, use this format: `variable=value`. See example 4 below.
+
+Then in the query builder instance, you can reference it by entering `:in variable` in supported conditions.
+
+Here is an example of this in action:
+
+<video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F5ZN7oVnQea.mp4?alt=media&token=bc094fad-f677-4e76-a6d1-eaaf572c5fb1"></video>
+
 ### Examples
 
-`<%QUERYBUILDER:6-qLCJsSb,{text}%>`
-
-`<%QUERYBUILDER:myQuery,{uid}%>`
-
-`<%QUERYBUILDER:queries/myQuery%>`
+1. `<%QUERYBUILDER:6-qLCJsSb,{text}%>`
+2. `<%QUERYBUILDER:myQuery,The Result is {text} - {description}%>`
+3. `<%QUERYBUILDER:queries/myQueryBlock,Random Block from {text}: <%RANDOMBLOCKFROM:{uid}%>%>`
+4. `<SET:clientName,<%INPUT:Which client?,Alice,Bob,Eve%>%><%QUERYBUILDER:tasks,(({uid})),client=clientName%>`
 
 ## Developer API
 
