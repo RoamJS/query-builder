@@ -180,8 +180,11 @@ This extension comes with its own SmartBlocks command! The `<%QUERYBUILDER%>` co
 
 1. Query reference - the block reference or [alias](#alias) of query
 2. [Output format](#output-format) - the format to output each result in.
-3. (Optional) Limit - the number of results returned.
-4. (Optional) [Input Variables](#input-variables) - variables to pass into the query
+
+And two optional arguments (the order of these arguments does not matter):
+
+- Limit - the number of results returned.
+- [Input Variables](#input-variables) - variables to pass into the query
 
 ### Alias
 
@@ -234,6 +237,8 @@ Then in the query builder instance, you can reference it by entering `:in variab
 Here is an example of this in action:
 
 <video src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F5ZN7oVnQea.mp4?alt=media&token=bc094fad-f677-4e76-a6d1-eaaf572c5fb1"></video>
+
+[Direct Video Link](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2F5ZN7oVnQea.mp4?alt=media&token=bc094fad-f677-4e76-a6d1-eaaf572c5fb1)
 
 ### Examples
 
