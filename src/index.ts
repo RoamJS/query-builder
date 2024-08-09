@@ -52,6 +52,7 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { render as nanopubRender } from "./components/nanopub/Nanopub";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -623,6 +624,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          // @ts-ignore
           clearOnClick,
           onloadArgs,
         })
@@ -719,6 +721,15 @@ svg.rs-svg-container {
       document.body.dispatchEvent(
         new CustomEvent("roamjs-query-builder:fire-query", { detail: uid })
       );
+    },
+  });
+
+  // NANOPUB
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Nanopub",
+    callback: () => {
+      console.log("Nanopub");
+      nanopubRender();
     },
   });
 

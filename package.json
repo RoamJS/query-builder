@@ -26,6 +26,7 @@
     "widgets"
   ],
   "dependencies": {
+    "@nanopub/sign": "^0.1.4",
     "@samepage/external": "^0.71.10",
     "@tldraw/tldraw": "^2.0.0-alpha.12",
     "contrast-color": "^1.0.1",
