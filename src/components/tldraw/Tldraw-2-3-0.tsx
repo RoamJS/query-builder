@@ -166,12 +166,12 @@ const TldrawCanvas = ({
   };
   const customUiComponents: TLUiComponents = createUiComponents({
     allNodes,
-    allRelationNames: allRelationIds, // TODO: allRelationNames
+    allRelationNames,
   });
 
   // UTILS
   const discourseNodeUtils = createNodeShapeUtils(allNodes);
-  const discourseRelationUtils = createAllRelationShapeUtils(allRelationIds);
+  const discourseRelationUtils = createAllRelationShapeUtils(allRelationNames);
   const customShapeUtils = [
     ...discourseNodeUtils,
     ...discourseRelationUtils,
@@ -180,7 +180,7 @@ const TldrawCanvas = ({
 
   // TOOLS
   const discourseNodeTools = createNodeShapeTools(allNodes);
-  const discourseRelationTools = createAllRelationShapeTools(allRelationIds); // TODO: allRelationNames
+  const discourseRelationTools = createAllRelationShapeTools(allRelationNames);
   const customTools = [
     ...discourseNodeTools,
     ...discourseRelationTools,
@@ -188,13 +188,13 @@ const TldrawCanvas = ({
   ];
 
   // BINDINGS
-  const relationBindings = createAllRelationBindings(allRelationIds);
+  const relationBindings = createAllRelationBindings(allRelationNames);
   const customBindingUtils = [...relationBindings];
 
   // UI OVERRIDES
   const uiOverrides = createUiOverrides({
     allNodes,
-    allRelationNames: allRelationIds, // TODO: allRelationNames
+    allRelationNames,
     // allAddRefNodeActions,
     // allAddRefNodeByAction,
     maximized,
