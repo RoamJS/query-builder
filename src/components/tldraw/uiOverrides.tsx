@@ -320,7 +320,7 @@ export const createUiOverrides = ({
       tools[name] = {
         id: name,
         icon: "tool-arrow",
-        label: `shape.relation.${name}` as TLUiTranslationKey,
+        label: name as TLUiTranslationKey,
         kbd: "",
         readonlyOk: true,
         onSelect: () => {
@@ -328,7 +328,13 @@ export const createUiOverrides = ({
         },
         //@ts-ignore - patch
         style: {
-          color: `${COLOR_ARRAY[index + 1]}`,
+          // TODO: get color from canvasSettings
+          color:
+            name === "Supports"
+              ? "green"
+              : name === "Opposes"
+              ? "red"
+              : `${COLOR_ARRAY[index + 1]}`,
         },
       };
     });
