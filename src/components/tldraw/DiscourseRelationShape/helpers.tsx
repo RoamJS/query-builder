@@ -90,8 +90,8 @@ export enum ARROW_HANDLES {
 interface ShapeFillProps {
   d: string;
   fill: TLDefaultFillStyle;
-  color: TLDefaultColorStyle;
-  theme: TLDefaultColorTheme;
+  color: string;
+  theme?: TLDefaultColorTheme;
   scale: number;
 }
 interface PatternDef {
@@ -531,7 +531,11 @@ function getBoundShapeRelationships(
   }
   return "safe";
 }
-function PatternFill({ d, color, theme }: ShapeFillProps) {
+function PatternFill({
+  d,
+  color,
+  theme = useDefaultColorTheme(),
+}: ShapeFillProps) {
   const editor = useEditor();
   const svgExport = useSvgExportContext();
   const zoomLevel = useValue("zoomLevel", () => editor.getZoomLevel(), [
@@ -542,13 +546,13 @@ function PatternFill({ d, color, theme }: ShapeFillProps) {
 
   return (
     <>
-      <path fill={theme[color].pattern} d={d} />
+      <path fill={color} d={d} />
       <path
         fill={
           svgExport
             ? `url(#${getHashPatternZoomName(1, theme.id)})`
             : teenyTiny
-            ? theme[color].semi
+            ? color
             : `url(#${getHashPatternZoomName(zoomLevel, theme.id)})`
         }
         d={d}
@@ -1811,12 +1815,14 @@ export function approximately(a: number, b: number, precision = 0.000001) {
 export const ArrowSvg = track(function ArrowSvg({
   shape,
   shouldDisplayHandles,
-}: {
+}: // color,
+{
   shape: RelationShape;
   shouldDisplayHandles: boolean;
+  // color: string;
 }) {
   const editor = useEditor();
-  const theme = useDefaultColorTheme();
+  // const theme = useDefaultColorTheme();
   const info = getArrowInfo(editor, shape);
   const bounds = Box.ZeroFix(editor.getShapeGeometry(shape).bounds);
   const bindings = getArrowBindings(editor, shape);
@@ -1950,7 +1956,7 @@ export const ArrowSvg = track(function ArrowSvg({
       </defs>
       <g
         fill="none"
-        stroke={theme[shape.props.color].solid}
+        stroke={shape.props.color}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -1974,7 +1980,7 @@ export const ArrowSvg = track(function ArrowSvg({
         </g>
         {as && maskStartArrowhead && shape.props.fill !== "none" && (
           <ShapeFill
-            theme={theme}
+            // theme={theme}
             d={as}
             color={shape.props.color}
             fill={shape.props.fill}
@@ -1983,7 +1989,7 @@ export const ArrowSvg = track(function ArrowSvg({
         )}
         {ae && maskEndArrowhead && shape.props.fill !== "none" && (
           <ShapeFill
-            theme={theme}
+            // theme={theme}
             d={ae}
             color={shape.props.color}
             fill={shape.props.fill}
@@ -1997,7 +2003,7 @@ export const ArrowSvg = track(function ArrowSvg({
   );
 });
 export const ShapeFill = React.memo(function ShapeFill({
-  theme,
+  // theme,
   d,
   color,
   fill,
@@ -2008,18 +2014,18 @@ export const ShapeFill = React.memo(function ShapeFill({
       return null;
     }
     case "solid": {
-      return <path fill={theme[color].semi} d={d} />;
+      return <path fill={color} d={d} />;
     }
     case "semi": {
-      return <path fill={theme.solid} d={d} />;
+      return <path fill={color} d={d} />;
     }
     case "fill": {
-      return <path fill={theme[color].fill} d={d} />;
+      return <path fill={color} d={d} />;
     }
     case "pattern": {
       return (
         <PatternFill
-          theme={theme}
+          // theme={theme}
           color={color}
           fill={fill}
           d={d}
