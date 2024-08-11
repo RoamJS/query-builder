@@ -1,6 +1,5 @@
 import { TLRecord, TLStore } from "@tldraw/tlschema";
 import nanoid from "nanoid";
-import { title } from "process";
 import { useRef, useMemo, useEffect } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
@@ -12,18 +11,18 @@ import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import { defaultBindingUtils, defaultShapeUtils } from "tldraw";
-import { BaseDiscourseNodeUtil } from "./DiscourseNodeUtil";
 import { AddPullWatch } from "roamjs-components/types";
-import { RelationBindingUtil } from "./DiscourseRelationShape/DiscourseRelationBindings";
 // import { createAllRelationShapeUtils } from "./DiscourseRelationsUtil";
 
 const THROTTLE = 350;
 
 export const useRoamStore = ({
   customShapeUtils,
+  customBindingUtils,
   pageUid,
 }: {
   customShapeUtils: any[];
+  customBindingUtils: any[];
   pageUid: string;
 }) => {
   const localStateIds = useRef<string[]>([]);
@@ -55,7 +54,7 @@ export const useRoamStore = ({
     const _store = createTLStore({
       initialData,
       shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-      bindingUtils: [...defaultBindingUtils, RelationBindingUtil],
+      bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
     });
     _store.listen((rec) => {
       if (rec.source !== "user") return;

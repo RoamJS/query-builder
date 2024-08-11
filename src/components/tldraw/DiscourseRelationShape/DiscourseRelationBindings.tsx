@@ -30,6 +30,14 @@ import {
   removeArrowBinding,
 } from "./helpers";
 
+export const createAllRelationBindings = (relationIds: string[]) => {
+  return relationIds.map((id) => {
+    return class RelationBindingUtil extends BaseRelationBindingUtil {
+      static override type = id;
+    };
+  });
+};
+
 export type RelationBindings = {
   start: RelationBinding | undefined;
   end: RelationBinding | undefined;
@@ -56,10 +64,8 @@ export type RelationInfo =
       length: number;
     };
 
-export type RelationBinding = TLBaseBinding<"relation", TLArrowBindingProps>;
-export class RelationBindingUtil extends BindingUtil<RelationBinding> {
-  static override type = "relation" as const;
-
+export type RelationBinding = TLBaseBinding<string, TLArrowBindingProps>;
+export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   static override props = arrowBindingProps;
   static override migrations = arrowBindingMigrations;
 
@@ -213,7 +219,7 @@ function reparentArrow(editor: Editor, arrowId: TLShapeId) {
     // all fighting for the same indexes. so lets find the next
     // non-arrow sibling...
     const nextHighestNonArrowSibling = higherSiblings.find(
-      (sibling) => sibling.type !== "relation"
+      (sibling) => sibling.type !== arrow.type
     );
 
     if (
@@ -238,7 +244,7 @@ function reparentArrow(editor: Editor, arrowId: TLShapeId) {
 
   if (finalIndex !== reparentedArrow.index) {
     editor.updateShapes<RelationShape>([
-      { id: arrowId, type: "relation", index: finalIndex },
+      { id: arrowId, type: arrow.type, index: finalIndex },
     ]);
   }
 }
@@ -285,7 +291,7 @@ export function updateArrowTerminal({
 
   const update = {
     id: arrow.id,
-    type: "relation",
+    type: arrow.type,
     props: {
       [terminal]: { x: point.x, y: point.y },
       bend: arrow.props.bend,

@@ -60,8 +60,6 @@ import {
 } from "./DiscourseRelationBindings";
 import { RelationShape } from "./DiscourseRelationUtil";
 
-const bindingType = "relation";
-
 let defaultPixels: { white: string; black: string } | null = null;
 let globalRenderIndex = 0;
 const WAY_TOO_BIG_ARROW_BEND_FACTOR = 10;
@@ -124,11 +122,11 @@ export function getArrowInfo(editor: Editor, shape: RelationShape | TLShapeId) {
 }
 export function getArrowBindings(
   editor: Editor,
-  shape: RelationShape
+  relation: RelationShape
 ): RelationBindings {
   const bindings = editor.getBindingsFromShape<RelationBinding>(
-    shape,
-    bindingType
+    relation,
+    relation.type // we expect relation.type to = binding.type
   );
   return {
     start: bindings.find((b) => b.props.terminal === "start"),
@@ -137,14 +135,14 @@ export function getArrowBindings(
 }
 function getStraightArrowInfo(
   editor: Editor,
-  shape: RelationShape,
+  relation: RelationShape,
   bindings: RelationBindings
 ): RelationInfo {
-  const { arrowheadStart, arrowheadEnd } = shape.props;
+  const { arrowheadStart, arrowheadEnd } = relation.props;
 
   const terminalsInArrowSpace = getArrowTerminalsInArrowSpace(
     editor,
-    shape,
+    relation,
     bindings
   );
 
@@ -159,12 +157,12 @@ function getStraightArrowInfo(
       start: {
         handle: a,
         point: a,
-        arrowhead: shape.props.arrowheadStart,
+        arrowhead: relation.props.arrowheadStart,
       },
       end: {
         handle: b,
         point: b,
-        arrowhead: shape.props.arrowheadEnd,
+        arrowhead: relation.props.arrowheadEnd,
       },
       middle: c,
       isValid: false,
@@ -176,10 +174,14 @@ function getStraightArrowInfo(
 
   // Update the arrowhead points using intersections with the bound shapes, if any.
 
-  const startShapeInfo = getBoundShapeInfoForTerminal(editor, shape, "start");
-  const endShapeInfo = getBoundShapeInfoForTerminal(editor, shape, "end");
+  const startShapeInfo = getBoundShapeInfoForTerminal(
+    editor,
+    relation,
+    "start"
+  );
+  const endShapeInfo = getBoundShapeInfoForTerminal(editor, relation, "end");
 
-  const arrowPageTransform = editor.getShapePageTransform(shape)!;
+  const arrowPageTransform = editor.getShapePageTransform(relation)!;
 
   // Update the position of the arrowhead's end point
   updateArrowheadPointWithBoundShape(
@@ -201,7 +203,7 @@ function getStraightArrowInfo(
   let offsetB = 0;
   let strokeOffsetA = 0;
   let strokeOffsetB = 0;
-  let minLength = MIN_ARROW_LENGTH * shape.props.scale;
+  let minLength = MIN_ARROW_LENGTH * relation.props.scale;
 
   const isSelfIntersection =
     startShapeInfo &&
@@ -231,7 +233,9 @@ function getStraightArrowInfo(
 
       if (startShapeInfo.isClosed) {
         a.setTo(
-          b.clone().add(uAB.clone().mul(MIN_ARROW_LENGTH * shape.props.scale))
+          b
+            .clone()
+            .add(uAB.clone().mul(MIN_ARROW_LENGTH * relation.props.scale))
         );
       }
     } else if (!endShapeInfo.didIntersect) {
@@ -240,7 +244,9 @@ function getStraightArrowInfo(
       // at the start shape intersection.
       if (endShapeInfo.isClosed) {
         b.setTo(
-          a.clone().sub(uAB.clone().mul(MIN_ARROW_LENGTH * shape.props.scale))
+          a
+            .clone()
+            .sub(uAB.clone().mul(MIN_ARROW_LENGTH * relation.props.scale))
         );
       }
     }
@@ -261,12 +267,12 @@ function getStraightArrowInfo(
       !startShapeInfo.isExact
     ) {
       strokeOffsetA =
-        STROKE_SIZES[shape.props.size] / 2 +
+        STROKE_SIZES[relation.props.size] / 2 +
         ("size" in startShapeInfo.shape.props
           ? STROKE_SIZES[startShapeInfo.shape.props.size] / 2
           : 0);
-      offsetA = (BOUND_ARROW_OFFSET + strokeOffsetA) * shape.props.scale;
-      minLength += strokeOffsetA * shape.props.scale;
+      offsetA = (BOUND_ARROW_OFFSET + strokeOffsetA) * relation.props.scale;
+      minLength += strokeOffsetA * relation.props.scale;
     }
 
     // If the arrow is bound non-exact to an end shape and the
@@ -278,12 +284,12 @@ function getStraightArrowInfo(
       !endShapeInfo.isExact
     ) {
       strokeOffsetB =
-        STROKE_SIZES[shape.props.size] / 2 +
+        STROKE_SIZES[relation.props.size] / 2 +
         ("size" in endShapeInfo.shape.props
           ? STROKE_SIZES[endShapeInfo.shape.props.size] / 2
           : 0);
-      offsetB = (BOUND_ARROW_OFFSET + strokeOffsetB) * shape.props.scale;
-      minLength += strokeOffsetB * shape.props.scale;
+      offsetB = (BOUND_ARROW_OFFSET + strokeOffsetB) * relation.props.scale;
+      minLength += strokeOffsetB * relation.props.scale;
     }
   }
 
@@ -318,7 +324,9 @@ function getStraightArrowInfo(
     if (startShapeInfo && endShapeInfo) {
       // If we have two bound shapes...then make the arrow a short arrow from
       // the start point towards where the end point should be.
-      b.setTo(Vec.Add(a, u.clone().mul(-MIN_ARROW_LENGTH * shape.props.scale)));
+      b.setTo(
+        Vec.Add(a, u.clone().mul(-MIN_ARROW_LENGTH * relation.props.scale))
+      );
     }
     c.setTo(Vec.Med(terminalsInArrowSpace.start, terminalsInArrowSpace.end));
   } else {
@@ -333,12 +341,12 @@ function getStraightArrowInfo(
     start: {
       handle: terminalsInArrowSpace.start,
       point: a,
-      arrowhead: shape.props.arrowheadStart,
+      arrowhead: relation.props.arrowheadStart,
     },
     end: {
       handle: terminalsInArrowSpace.end,
       point: b,
-      arrowhead: shape.props.arrowheadEnd,
+      arrowhead: relation.props.arrowheadEnd,
     },
     middle: c,
     isValid: length > 0,
@@ -347,11 +355,11 @@ function getStraightArrowInfo(
 }
 function getBoundShapeInfoForTerminal(
   editor: Editor,
-  arrow: RelationShape,
+  relation: RelationShape,
   terminalName: "start" | "end"
 ): BoundShapeInfo | undefined {
   const binding = editor
-    .getBindingsFromShape<RelationBinding>(arrow, bindingType)
+    .getBindingsFromShape<RelationBinding>(relation, relation.type) // we expect relation.type to = binding.type
     .find((b) => b.props.terminal === terminalName);
   if (!binding) return;
 
@@ -1595,26 +1603,26 @@ function HashPatternForExport() {
 }
 export function removeArrowBinding(
   editor: Editor,
-  arrow: RelationShape,
+  relation: RelationShape,
   terminal: "start" | "end"
 ) {
   const existing = editor
-    .getBindingsFromShape<RelationBinding>(arrow, bindingType)
+    .getBindingsFromShape<RelationBinding>(relation, relation.type) // we expect relation.type to = binding.type
     .filter((b) => b.props.terminal === terminal);
 
   editor.deleteBindings(existing);
 }
 export function createOrUpdateArrowBinding(
   editor: Editor,
-  arrow: RelationShape | TLShapeId,
+  relation: RelationShape,
   target: TLShape | TLShapeId,
   props: TLArrowBindingProps
 ) {
-  const arrowId = typeof arrow === "string" ? arrow : arrow.id;
+  const arrowId = typeof relation === "string" ? relation : relation.id;
   const targetId = typeof target === "string" ? target : target.id;
 
   const existingMany = editor
-    .getBindingsFromShape<RelationBinding>(arrowId, bindingType)
+    .getBindingsFromShape<RelationBinding>(arrowId, relation.type) // we expect relation.type to = binding.type
     .filter((b) => b.props.terminal === props.terminal);
 
   // if we've somehow ended up with too many bindings, delete the extras
@@ -1631,7 +1639,7 @@ export function createOrUpdateArrowBinding(
     });
   } else {
     editor.createBinding({
-      type: bindingType,
+      type: relation.type,
       fromId: arrowId,
       toId: targetId,
       props,
@@ -1670,18 +1678,18 @@ function objectMapEntries<Key extends string, Value>(object: {
 }
 export function updateArrowTerminal({
   editor,
-  arrow,
+  relation,
   terminal,
   unbind = false,
   useHandle = false,
 }: {
   editor: Editor;
-  arrow: RelationShape;
+  relation: RelationShape;
   terminal: "start" | "end";
   unbind?: boolean;
   useHandle?: boolean;
 }) {
-  const info = getArrowInfo(editor, arrow);
+  const info = getArrowInfo(editor, relation);
   if (!info) {
     throw new Error("expected arrow info");
   }
@@ -1691,11 +1699,11 @@ export function updateArrowTerminal({
   const point = terminal === "start" ? startPoint : endPoint;
 
   const update = {
-    id: arrow.id,
-    type: "relation",
+    id: relation.id,
+    type: relation.type,
     props: {
       [terminal]: { x: point.x, y: point.y },
-      bend: arrow.props.bend,
+      bend: relation.props.bend,
     },
   } satisfies TLShapePartial<RelationShape>;
 
@@ -1711,7 +1719,7 @@ export function updateArrowTerminal({
     const lineSegment = Vec.Sub(newStart, newEnd)
       .per()
       .uni()
-      .mul(info.handleArc.radius * 2 * Math.sign(arrow.props.bend));
+      .mul(info.handleArc.radius * 2 * Math.sign(relation.props.bend));
 
     // find the intersections with the old arrow arc:
     const intersections = intersectLineSegmentCircle(
@@ -1723,7 +1731,7 @@ export function updateArrowTerminal({
 
     assert(intersections?.length === 1);
     const bend =
-      Vec.Dist(newMidPoint, intersections[0]) * Math.sign(arrow.props.bend);
+      Vec.Dist(newMidPoint, intersections[0]) * Math.sign(relation.props.bend);
     // use `approximately` to avoid endless update loops
     if (!approximately(bend, update.props.bend)) {
       update.props.bend = bend;
@@ -1732,7 +1740,7 @@ export function updateArrowTerminal({
 
   editor.updateShape(update);
   if (unbind) {
-    removeArrowBinding(editor, arrow, terminal);
+    removeArrowBinding(editor, relation, terminal);
   }
 }
 function intersectLineSegmentCircle(

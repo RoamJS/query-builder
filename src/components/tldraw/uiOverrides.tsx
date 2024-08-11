@@ -45,7 +45,6 @@ import {
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
 import createDiscourseNode from "../../utils/createDiscourseNode";
-// import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import type { OnloadArgs } from "roamjs-components/types";
 import {
   // AddReferencedNodeType,
@@ -193,11 +192,11 @@ export const CustomContextMenu = ({
 };
 export const createUiComponents = ({
   allNodes,
-}: // allRelationNames,
-// allAddRefNodeActions,
-{
+  // allAddRefNodeActions,
+  allRelationNames,
+}: {
   allNodes: DiscourseNode[];
-  // allRelationNames: string[];
+  allRelationNames: string[];
   // allAddRefNodeActions: string[];
 }): TLUiComponents => {
   return {
@@ -213,20 +212,14 @@ export const createUiComponents = ({
               isSelected={useIsToolSelected(tools[n.type])}
             />
           ))}
-          <TldrawUiMenuItem
-            key="relation"
-            {...tools["relation"]}
-            isSelected={useIsToolSelected(tools["relation"])}
-          />
-
-          {/* {allRelationNames.map((name) => (
+          {allRelationNames.map((name) => (
             <TldrawUiMenuItem
               key={name}
               {...tools[name]}
               isSelected={useIsToolSelected(tools[name])}
             />
           ))}
-          {allAddRefNodeActions.map((action) => (
+          {/* {allAddRefNodeActions.map((action) => (
             <TldrawUiMenuItem
               key={action}
               {...tools[action]}
@@ -288,22 +281,20 @@ export const createUiComponents = ({
 };
 export const createUiOverrides = ({
   allNodes,
-  // allRelationNames,
+  allRelationNames,
   // allAddRefNodeActions,
   // allAddRefNodeByAction,
-  // extensionAPI,
+  // discourseContext,
   maximized,
   setMaximized,
-}: // discourseContext,
-{
+}: {
   allNodes: DiscourseNode[];
-  // allRelationNames: string[];
+  allRelationNames: string[];
   // allAddRefNodeActions: string[];
   // allAddRefNodeByAction: AddReferencedNodeType;
-  // extensionAPI?: OnloadArgs["extensionAPI"];
+  // discourseContext: DiscourseContextType;
   maximized: boolean;
   setMaximized: (maximized: boolean) => void;
-  // discourseContext: DiscourseContextType;
 }): TLUiOverrides => ({
   tools(editor, tools) {
     allNodes.forEach((node, index) => {
@@ -324,42 +315,23 @@ export const createUiOverrides = ({
         },
       };
     });
-    tools["relation"] = {
-      id: "relation",
-      icon: "arrow",
-      label: `shape.relation.relation` as TLUiTranslationKey,
-      kbd: "",
-      readonlyOk: true,
-      onSelect: () => {
-        editor.setCurrentTool("relation");
-      },
-    };
-    tools["card"] = {
-      id: "card",
-      icon: "box",
-      label: "My Custom Shape",
-      kbd: "",
-      readonlyOk: true,
-      onSelect: () => {
-        editor.setCurrentTool("card");
-      },
-    };
-    // allRelationNames.forEach((relation, index) => {
-    //   tools[relation] = {
-    //     id: relation,
-    //     icon: "tool-arrow",
-    //     label: `shape.relation.${relation}` as TLUiTranslationKey,
-    //     kbd: "",
-    //     readonlyOk: true,
-    //     onSelect: () => {
-    //       editor.setCurrentTool(relation);
-    //     },
-    //     //@ts-ignore - patch
-    //     style: {
-    //       color: `${COLOR_ARRAY[index + 1]}`,
-    //     },
-    //   };
-    // });
+
+    allRelationNames.forEach((name, index) => {
+      tools[name] = {
+        id: name,
+        icon: "tool-arrow",
+        label: `shape.relation.${name}` as TLUiTranslationKey,
+        kbd: "",
+        readonlyOk: true,
+        onSelect: () => {
+          editor.setCurrentTool(name);
+        },
+        //@ts-ignore - patch
+        style: {
+          color: `${COLOR_ARRAY[index + 1]}`,
+        },
+      };
+    });
     // Object.keys(allAddRefNodeByAction).forEach((name) => {
     //   const action = allAddRefNodeByAction[name];
     //   const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
@@ -405,7 +377,7 @@ export const createUiOverrides = ({
       ...Object.fromEntries(
         allNodes.map((node) => [`shape.node.${node.type}`, node.text])
       ),
-      "shape.relation.relation": "Relation",
+      // "shape.myShape.myShape": "Relation",
       // ...Object.fromEntries(
       //   allRelationNames.map((name) => [`shape.relation.${name}`, name])
       // ),
