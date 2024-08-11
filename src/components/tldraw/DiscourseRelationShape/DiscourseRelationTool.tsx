@@ -114,12 +114,22 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
           this.markId = `creating:${id}`;
           this.editor.mark(this.markId);
 
+          // TODO: default props aren't sticking
+          // they are being overridden by currently selected theme color
+          const color =
+            name === "Supports"
+              ? "green"
+              : name === "Opposes"
+              ? "red"
+              : "black";
+
           this.editor.createShape<RelationShape>({
             id,
             type: name,
             x: originPagePoint.x,
             y: originPagePoint.y,
             props: {
+              color,
               scale: this.editor.user.getIsDynamicResizeMode()
                 ? 1 / this.editor.getZoomLevel()
                 : 1,

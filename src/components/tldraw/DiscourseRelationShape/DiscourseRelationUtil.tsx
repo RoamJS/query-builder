@@ -63,12 +63,15 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
       static override type = id;
 
       override getDefaultProps(): RelationShape["props"] {
+        // TODO: get color from canvasSettings
+        const color =
+          id === "Supports" ? "green" : id === "Opposes" ? "red" : "black";
         return {
           dash: "draw",
           size: "m",
           fill: "none",
-          color: "red",
-          labelColor: "red",
+          color: color,
+          labelColor: color,
           bend: 0,
           start: { x: 0, y: 0 },
           end: { x: 0, y: 0 },
@@ -839,7 +842,11 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
 
     return (
       <g transform={`scale(${scaleFactor})`}>
-        <ArrowSvg shape={shape} shouldDisplayHandles={false} />
+        <ArrowSvg
+          shape={shape}
+          shouldDisplayHandles={false}
+          // color={shape.props.color}
+        />
         <SvgTextLabel
           fontSize={getArrowLabelFontSize(shape)}
           font={shape.props.font}
@@ -870,7 +877,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
 
   component(shape: RelationShape) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const theme = useDefaultColorTheme();
+    // const theme = useDefaultColorTheme();
     const onlySelectedShape = this.editor.getOnlySelectedShape();
     const shouldDisplayHandles =
       this.editor.isInAny(
@@ -897,6 +904,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
             shouldDisplayHandles={
               shouldDisplayHandles && onlySelectedShape?.id === shape.id
             }
+            // color={shape.props.color}
           />
         </SVGContainer>
         {showArrowLabel && (
@@ -910,7 +918,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
             align="middle"
             verticalAlign="middle"
             text={shape.props.text}
-            labelColor={theme[shape.props.labelColor].solid}
+            labelColor={shape.props.labelColor}
             textWidth={labelPosition.box.w}
             isSelected={isSelected}
             padding={0}
