@@ -30,6 +30,7 @@ import {
   TLOnTranslateHandler,
   TLOnTranslateStartHandler,
   WeakCache,
+  textShapeProps,
 } from "tldraw";
 import { RelationBindings } from "./DiscourseRelationBindings";
 import {
@@ -56,16 +57,37 @@ import {
   shapeAtTranslationStart,
   updateArrowTerminal,
 } from "./helpers";
+import { discourseContext } from "../Tldraw-2-3-0";
+import renderToast from "roamjs-components/components/Toast";
+
+const COLOR_ARRAY = Array.from(Object.values(textShapeProps.color)).reverse();
 
 export const createAllRelationShapeUtils = (relationIds: string[]) => {
   return relationIds.map((id) => {
     class DiscourseRelationUtil extends BaseDiscourseRelationUtil {
       static override type = id;
 
+      cancelAndWarn = (content: string) => {
+        renderToast({
+          id: "tldraw-warning",
+          intent: "warning",
+          content,
+        });
+        return;
+      };
+
       override getDefaultProps(): RelationShape["props"] {
         // TODO: get color from canvasSettings
-        const color =
-          id === "Supports" ? "green" : id === "Opposes" ? "red" : "black";
+
+        const relations = Object.values(discourseContext.relations);
+        // TODO - add canvas settings to relations config
+        const relationIndex = relations.findIndex((rs) =>
+          rs.some((r) => r.id === id)
+        );
+        const isValid = relationIndex >= 0 && relationIndex < relations.length;
+        const color = isValid ? COLOR_ARRAY[relationIndex + 1] : COLOR_ARRAY[0];
+        const text = isValid ? relations[relationIndex][0].label : "";
+
         return {
           dash: "draw",
           size: "m",
@@ -77,7 +99,7 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
           end: { x: 0, y: 0 },
           arrowheadStart: "none",
           arrowheadEnd: "arrow",
-          text: id,
+          text: text,
           labelPosition: 0.5,
           font: "draw",
           scale: 1,

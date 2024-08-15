@@ -3,15 +3,18 @@ import {
   TLEventHandlers,
   createShapeId,
   TLStateNodeConstructor,
+  TLPointerEventInfo,
 } from "tldraw";
 import { RelationShape } from "./DiscourseRelationUtil";
+import { discourseContext } from "../Tldraw-2-3-0";
+import renderToast from "roamjs-components/components/Toast";
 
 export const createAllRelationShapeTools = (relationNames: string[]) => {
   return relationNames.map((name) => {
     class RelationShapeTool extends StateNode {
       static override initial = "idle";
       static override id = name;
-      override shapeType = name;
+      // override shapeType = name;
       static override children = (): TLStateNodeConstructor[] => [
         this.Idle,
         this.Pointing,
@@ -22,28 +25,49 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
         shape?: RelationShape;
         markId = "";
 
+        cancelAndWarn = (content: string) => {
+          renderToast({
+            id: "tldraw-warning",
+            intent: "warning",
+            content,
+          });
+          this.cancel();
+        };
+
         override onEnter = () => {
           this.didTimeout = false;
 
           const target = this.editor.getShapeAtPoint(
-            this.editor.inputs.currentPagePoint,
-            {
-              filter: (targetShape) => {
-                return (
-                  !targetShape.isLocked &&
-                  this.editor.canBindShapes({
-                    fromShape: name,
-                    toShape: targetShape,
-                    binding: name,
-                  })
-                );
-              },
-              margin: 0,
-              hitInside: true,
-              renderingOnly: true,
-            }
+            this.editor.inputs.currentPagePoint
+            // {
+            //   filter: (targetShape) => {
+            //     return (
+            //       !targetShape.isLocked &&
+            //       this.editor.canBindShapes({
+            //         fromShape: name,
+            //         toShape: targetShape,
+            //         binding: name,
+            //       })
+            //     );
+            //   },
+            //   margin: 0,
+            //   hitInside: true,
+            //   renderingOnly: true,
+            // }
           );
 
+          const relation = discourseContext.relations[name].find(
+            (r) => r.source === target?.type
+          );
+          if (relation) {
+            this.shapeType = relation.id;
+          } else {
+            this.cancelAndWarn(
+              `Starting node must be one of ${discourseContext.relations[name]
+                .map((r) => discourseContext.nodes[r.source].text)
+                .join(", ")}`
+            );
+          }
           if (!target) {
             this.createArrowShape();
           } else {
@@ -116,6 +140,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
 
           // TODO: default props aren't sticking
           // they are being overridden by currently selected theme color
+          // TODO: add color selector to relations
           const color =
             name === "Supports"
               ? "green"
@@ -123,9 +148,14 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
               ? "red"
               : "black";
 
+          if (!this.shapeType) {
+            this.cancelAndWarn("Must start on a node");
+            return;
+          }
+
           this.editor.createShape<RelationShape>({
             id,
-            type: name,
+            type: this.shapeType,
             x: originPagePoint.x,
             y: originPagePoint.y,
             props: {
@@ -142,7 +172,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
           const handles = this.editor.getShapeHandles(shape);
           if (!handles) throw Error(`expected handles for arrow`);
 
-          const util = this.editor.getShapeUtil<RelationShape>(name);
+          const util = this.editor.getShapeUtil<RelationShape>(this.shapeType);
           const initial = this.shape;
           const startHandle = handles.find((h) => h.id === "start")!;
           const change = util.onHandleDrag?.(shape, {
@@ -169,8 +199,15 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
           if (!handles) throw Error(`expected handles for arrow`);
 
           // start update
+          if (!this.shapeType) {
+            this.cancelAndWarn("An error occured.  This shape has no type.");
+            return;
+          }
+
           {
-            const util = this.editor.getShapeUtil<RelationShape>(name);
+            const util = this.editor.getShapeUtil<RelationShape>(
+              this.shapeType
+            );
             const initial = this.shape;
             const startHandle = handles.find((h) => h.id === "start")!;
             const change = util.onHandleDrag?.(shape, {
@@ -186,7 +223,9 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
 
           // end update
           {
-            const util = this.editor.getShapeUtil<RelationShape>(name);
+            const util = this.editor.getShapeUtil<RelationShape>(
+              this.shapeType
+            );
             const initial = this.shape;
             const point = this.editor.getPointInShapeSpace(
               shape,

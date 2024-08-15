@@ -171,7 +171,7 @@ const TldrawCanvas = ({
 
   // UTILS
   const discourseNodeUtils = createNodeShapeUtils(allNodes);
-  const discourseRelationUtils = createAllRelationShapeUtils(allRelationNames);
+  const discourseRelationUtils = createAllRelationShapeUtils(allRelationIds);
   const customShapeUtils = [
     ...discourseNodeUtils,
     ...discourseRelationUtils,
@@ -188,7 +188,7 @@ const TldrawCanvas = ({
   ];
 
   // BINDINGS
-  const relationBindings = createAllRelationBindings(allRelationNames);
+  const relationBindings = createAllRelationBindings(allRelationIds);
   const customBindingUtils = [...relationBindings];
 
   // UI OVERRIDES
