@@ -58,7 +58,7 @@ import {
   RelationBinding,
   RelationInfo,
 } from "./DiscourseRelationBindings";
-import { RelationShape } from "./DiscourseRelationUtil";
+import { DiscourseRelationShape } from "./DiscourseRelationUtil";
 
 let defaultPixels: { white: string; black: string } | null = null;
 let globalRenderIndex = 0;
@@ -66,7 +66,7 @@ const WAY_TOO_BIG_ARROW_BEND_FACTOR = 10;
 const MIN_ARROW_BEND = 8;
 const MIN_ARROW_LENGTH = 10;
 const BOUND_ARROW_OFFSET = 10;
-const labelSizeCache = new WeakMap<RelationShape, Vec>();
+const labelSizeCache = new WeakMap<DiscourseRelationShape, Vec>();
 const LABEL_TO_ARROW_PADDING = 20;
 const ARROW_LABEL_PADDING = 4.25;
 const ARROW_LABEL_FONT_SIZES: Record<TLDefaultSizeStyle, number> = {
@@ -109,20 +109,23 @@ interface BoundShapeInfo<T extends TLShape = TLShape> {
 }
 const arrowInfoCache = createComputedCache(
   "relation info",
-  (editor: Editor, shape: RelationShape) => {
+  (editor: Editor, shape: DiscourseRelationShape) => {
     const bindings = getArrowBindings(editor, shape);
     return getIsArrowStraight(shape)
       ? getStraightArrowInfo(editor, shape, bindings)
       : getCurvedArrowInfo(editor, shape, bindings);
   }
 );
-export function getArrowInfo(editor: Editor, shape: RelationShape | TLShapeId) {
+export function getArrowInfo(
+  editor: Editor,
+  shape: DiscourseRelationShape | TLShapeId
+) {
   const id = typeof shape === "string" ? shape : shape.id;
   return arrowInfoCache.get(editor, id);
 }
 export function getArrowBindings(
   editor: Editor,
-  relation: RelationShape
+  relation: DiscourseRelationShape
 ): RelationBindings {
   const bindings = editor.getBindingsFromShape<RelationBinding>(
     relation,
@@ -135,7 +138,7 @@ export function getArrowBindings(
 }
 function getStraightArrowInfo(
   editor: Editor,
-  relation: RelationShape,
+  relation: DiscourseRelationShape,
   bindings: RelationBindings
 ): RelationInfo {
   const { arrowheadStart, arrowheadEnd } = relation.props;
@@ -355,7 +358,7 @@ function getStraightArrowInfo(
 }
 function getBoundShapeInfoForTerminal(
   editor: Editor,
-  relation: RelationShape,
+  relation: DiscourseRelationShape,
   terminalName: "start" | "end"
 ): BoundShapeInfo | undefined {
   const binding = editor
@@ -388,7 +391,7 @@ function getBoundShapeInfoForTerminal(
 }
 export function getArrowTerminalsInArrowSpace(
   editor: Editor,
-  shape: RelationShape,
+  shape: DiscourseRelationShape,
   bindings: RelationBindings
 ) {
   const arrowPageTransform = editor.getShapePageTransform(shape)!;
@@ -719,14 +722,14 @@ function getBarHead({ int, point }: RelationArrowPointsInfo) {
 
   return `M ${PL.x} ${PL.y} L ${PR.x} ${PR.y}`;
 }
-function getLength(editor: Editor, shape: RelationShape): number {
+function getLength(editor: Editor, shape: DiscourseRelationShape): number {
   const info = getArrowInfo(editor, shape)!;
 
   return info.isStraight
     ? Vec.Dist(info.start.handle, info.end.handle)
     : Math.abs(info.handleArc.length);
 }
-function getArrowLabelSize(editor: Editor, shape: RelationShape) {
+function getArrowLabelSize(editor: Editor, shape: DiscourseRelationShape) {
   const cachedSize = labelSizeCache.get(shape);
   if (cachedSize) return cachedSize;
 
@@ -801,7 +804,7 @@ function getArrowLabelSize(editor: Editor, shape: RelationShape) {
 }
 function getStraightArrowLabelRange(
   editor: Editor,
-  shape: RelationShape,
+  shape: DiscourseRelationShape,
   info: Extract<RelationInfo, { isStraight: true }>
 ): { start: number; end: number } {
   const labelSize = getArrowLabelSize(editor, shape);
@@ -860,7 +863,10 @@ export function getSolidCurvedArrowPath(
   } = info;
   return `M${start.point.x},${start.point.y} A${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${end.point.x},${end.point.y}`;
 }
-export function getArrowLabelPosition(editor: Editor, shape: RelationShape) {
+export function getArrowLabelPosition(
+  editor: Editor,
+  shape: DiscourseRelationShape
+) {
   let labelCenter;
   const debugGeom: Geometry2d[] = [];
   const info = getArrowInfo(editor, shape)!;
@@ -912,10 +918,10 @@ export function getArrowLabelPosition(editor: Editor, shape: RelationShape) {
 
   return { box: Box.FromCenter(labelCenter, labelSize), debugGeom };
 }
-export function getArrowLabelFontSize(shape: RelationShape) {
+export function getArrowLabelFontSize(shape: DiscourseRelationShape) {
   return ARROW_LABEL_FONT_SIZES[shape.props.size] * shape.props.scale;
 }
-function getLabelToArrowPadding(shape: RelationShape) {
+function getLabelToArrowPadding(shape: DiscourseRelationShape) {
   const strokeWidth = STROKE_SIZES[shape.props.size];
   const labelToArrowPadding =
     (LABEL_TO_ARROW_PADDING +
@@ -927,7 +933,7 @@ function getLabelToArrowPadding(shape: RelationShape) {
 }
 function getCurvedArrowLabelRange(
   editor: Editor,
-  shape: RelationShape,
+  shape: DiscourseRelationShape,
   info: Extract<RelationInfo, { isStraight: false }>
 ): { start: number; end: number; dbg?: Geometry2d[] } {
   const labelSize = getArrowLabelSize(editor, shape);
@@ -1607,7 +1613,7 @@ function HashPatternForExport() {
 }
 export function removeArrowBinding(
   editor: Editor,
-  relation: RelationShape,
+  relation: DiscourseRelationShape,
   terminal: "start" | "end"
 ) {
   const existing = editor
@@ -1618,7 +1624,7 @@ export function removeArrowBinding(
 }
 export function createOrUpdateArrowBinding(
   editor: Editor,
-  relation: RelationShape,
+  relation: DiscourseRelationShape,
   target: TLShape | TLShapeId,
   props: TLArrowBindingProps
 ) {
@@ -1651,7 +1657,7 @@ export function createOrUpdateArrowBinding(
   }
 }
 export const shapeAtTranslationStart = new WeakMap<
-  RelationShape,
+  DiscourseRelationShape,
   {
     pagePosition: Vec;
     terminalBindings: Record<
@@ -1688,7 +1694,7 @@ export function updateArrowTerminal({
   useHandle = false,
 }: {
   editor: Editor;
-  relation: RelationShape;
+  relation: DiscourseRelationShape;
   terminal: "start" | "end";
   unbind?: boolean;
   useHandle?: boolean;
@@ -1709,7 +1715,7 @@ export function updateArrowTerminal({
       [terminal]: { x: point.x, y: point.y },
       bend: relation.props.bend,
     },
-  } satisfies TLShapePartial<RelationShape>;
+  } satisfies TLShapePartial<DiscourseRelationShape>;
 
   // fix up the bend:
   if (!info.isStraight) {
@@ -1817,7 +1823,7 @@ export const ArrowSvg = track(function ArrowSvg({
   shouldDisplayHandles,
 }: // color,
 {
-  shape: RelationShape;
+  shape: DiscourseRelationShape;
   shouldDisplayHandles: boolean;
   // color: string;
 }) {
@@ -2035,12 +2041,12 @@ export const ShapeFill = React.memo(function ShapeFill({
     }
   }
 });
-function getIsArrowStraight(shape: RelationShape) {
+function getIsArrowStraight(shape: DiscourseRelationShape) {
   return Math.abs(shape.props.bend) < MIN_ARROW_BEND * shape.props.scale; // snap to +-8px
 }
 function getCurvedArrowInfo(
   editor: Editor,
-  shape: RelationShape,
+  shape: DiscourseRelationShape,
   bindings: RelationBindings
 ): RelationInfo {
   const { arrowheadEnd, arrowheadStart } = shape.props;

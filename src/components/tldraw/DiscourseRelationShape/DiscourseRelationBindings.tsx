@@ -22,7 +22,7 @@ import {
   Vec,
   approximately,
 } from "tldraw";
-import { RelationShape } from "./DiscourseRelationUtil";
+import { DiscourseRelationShape } from "./DiscourseRelationUtil";
 import {
   assert,
   getArrowBindings,
@@ -83,7 +83,7 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   }: BindingOnCreateOptions<RelationBinding>): void {
     arrowDidUpdate(
       this.editor,
-      this.editor.getShape(binding.fromId) as RelationShape
+      this.editor.getShape(binding.fromId) as DiscourseRelationShape
     );
   }
 
@@ -93,7 +93,7 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   }: BindingOnChangeOptions<RelationBinding>): void {
     arrowDidUpdate(
       this.editor,
-      this.editor.getShape(bindingAfter.fromId) as RelationShape
+      this.editor.getShape(bindingAfter.fromId) as DiscourseRelationShape
     );
   }
 
@@ -101,7 +101,7 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   override onAfterChangeFromShape({
     shapeAfter,
   }: BindingOnShapeChangeOptions<RelationBinding>): void {
-    arrowDidUpdate(this.editor, shapeAfter as RelationShape);
+    arrowDidUpdate(this.editor, shapeAfter as DiscourseRelationShape);
   }
 
   // when the shape an arrow is bound to changes
@@ -115,7 +115,7 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   override onBeforeIsolateFromShape({
     binding,
   }: BindingOnShapeIsolateOptions<RelationBinding>): void {
-    const arrow = this.editor.getShape<RelationShape>(binding.fromId);
+    const arrow = this.editor.getShape<DiscourseRelationShape>(binding.fromId);
     if (!arrow) return;
     // console.log("deleted arrow");
     // this.editor.deleteShape(arrow.id); // we don't want to keep the arrow
@@ -128,7 +128,7 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
   }
 }
 
-function arrowDidUpdate(editor: Editor, arrow: RelationShape) {
+function arrowDidUpdate(editor: Editor, arrow: DiscourseRelationShape) {
   const bindings = getArrowBindings(editor, arrow);
   // if the shape is an arrow and its bound shape is on another page
   // or was deleted, unbind it
@@ -149,7 +149,7 @@ function arrowDidUpdate(editor: Editor, arrow: RelationShape) {
   reparentArrow(editor, arrow.id);
 }
 function reparentArrow(editor: Editor, arrowId: TLShapeId) {
-  const arrow = editor.getShape<RelationShape>(arrowId);
+  const arrow = editor.getShape<DiscourseRelationShape>(arrowId);
   if (!arrow) return;
   const bindings = getArrowBindings(editor, arrow);
   const { start, end } = bindings;
@@ -181,7 +181,7 @@ function reparentArrow(editor: Editor, arrowId: TLShapeId) {
     editor.reparentShapes([arrowId], nextParentId);
   }
 
-  const reparentedArrow = editor.getShape<RelationShape>(arrowId);
+  const reparentedArrow = editor.getShape<DiscourseRelationShape>(arrowId);
   if (!reparentedArrow) throw Error("no reparented arrow");
 
   const startSibling = getShapeNearestSibling(
@@ -243,7 +243,7 @@ function reparentArrow(editor: Editor, arrowId: TLShapeId) {
   }
 
   if (finalIndex !== reparentedArrow.index) {
-    editor.updateShapes<RelationShape>([
+    editor.updateShapes<DiscourseRelationShape>([
       { id: arrowId, type: arrow.type, index: finalIndex },
     ]);
   }
@@ -275,7 +275,7 @@ export function updateArrowTerminal({
   useHandle = false,
 }: {
   editor: Editor;
-  arrow: RelationShape;
+  arrow: DiscourseRelationShape;
   terminal: "start" | "end";
   unbind?: boolean;
   useHandle?: boolean;
@@ -296,7 +296,7 @@ export function updateArrowTerminal({
       [terminal]: { x: point.x, y: point.y },
       bend: arrow.props.bend,
     },
-  } satisfies TLShapePartial<RelationShape>;
+  } satisfies TLShapePartial<DiscourseRelationShape>;
 
   // fix up the bend:
   if (!info.isStraight) {
