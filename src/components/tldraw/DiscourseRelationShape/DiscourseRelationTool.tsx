@@ -5,7 +5,7 @@ import {
   TLStateNodeConstructor,
   TLPointerEventInfo,
 } from "tldraw";
-import { RelationShape } from "./DiscourseRelationUtil";
+import { DiscourseRelationShape } from "./DiscourseRelationUtil";
 import { discourseContext } from "../Tldraw-2-3-0";
 import renderToast from "roamjs-components/components/Toast";
 
@@ -22,7 +22,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
 
       static Pointing = class extends StateNode {
         static override id = "pointing";
-        shape?: RelationShape;
+        shape?: DiscourseRelationShape;
         markId = "";
 
         cancelAndWarn = (content: string) => {
@@ -153,7 +153,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
             return;
           }
 
-          this.editor.createShape<RelationShape>({
+          this.editor.createShape<DiscourseRelationShape>({
             id,
             type: this.shapeType,
             x: originPagePoint.x,
@@ -166,13 +166,15 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
             },
           });
 
-          const shape = this.editor.getShape<RelationShape>(id);
+          const shape = this.editor.getShape<DiscourseRelationShape>(id);
           if (!shape) throw Error(`expected shape`);
 
           const handles = this.editor.getShapeHandles(shape);
           if (!handles) throw Error(`expected handles for arrow`);
 
-          const util = this.editor.getShapeUtil<RelationShape>(this.shapeType);
+          const util = this.editor.getShapeUtil<DiscourseRelationShape>(
+            this.shapeType
+          );
           const initial = this.shape;
           const startHandle = handles.find((h) => h.id === "start")!;
           const change = util.onHandleDrag?.(shape, {
@@ -205,7 +207,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
           }
 
           {
-            const util = this.editor.getShapeUtil<RelationShape>(
+            const util = this.editor.getShapeUtil<DiscourseRelationShape>(
               this.shapeType
             );
             const initial = this.shape;
@@ -223,7 +225,7 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
 
           // end update
           {
-            const util = this.editor.getShapeUtil<RelationShape>(
+            const util = this.editor.getShapeUtil<DiscourseRelationShape>(
               this.shapeType
             );
             const initial = this.shape;

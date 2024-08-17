@@ -76,7 +76,7 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
         return;
       };
 
-      override getDefaultProps(): RelationShape["props"] {
+      override getDefaultProps(): DiscourseRelationShape["props"] {
         // TODO: get color from canvasSettings
 
         const relations = Object.values(discourseContext.relations);
@@ -105,7 +105,7 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
           scale: 1,
         };
       }
-      override onHandleDrag: TLOnHandleDragHandler<RelationShape> = (
+      override onHandleDrag: TLOnHandleDragHandler<DiscourseRelationShape> = (
         shape,
         { handle, isPrecise }
       ) => {
@@ -135,7 +135,7 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
 
         // Start or end, pointing the arrow...
 
-        const update: TLShapePartial<RelationShape> = {
+        const update: TLShapePartial<DiscourseRelationShape> = {
           id: shape.id,
           type: id,
           props: {},
@@ -302,7 +302,7 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
 
         return update;
       };
-      override onTranslate?: TLOnTranslateHandler<RelationShape> = (
+      override onTranslate?: TLOnTranslateHandler<DiscourseRelationShape> = (
         initialShape,
         shape
       ) => {
@@ -374,31 +374,35 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
   });
 };
 
-type RelationShapeProps = RecordPropsType<typeof arrowShapeProps>;
-export type RelationShape = TLBaseShape<string, RelationShapeProps>;
+export type RelationShapeProps = RecordPropsType<typeof arrowShapeProps>;
+export type DiscourseRelationShape = TLBaseShape<string, RelationShapeProps>;
 
-export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
+export class BaseDiscourseRelationUtil extends ShapeUtil<DiscourseRelationShape> {
   static override props = arrowShapeProps;
 
   override canEdit = () => true;
   override canSnap = () => false;
-  override hideResizeHandles: TLShapeUtilFlag<RelationShape> = () => true;
-  override hideRotateHandle: TLShapeUtilFlag<RelationShape> = () => true;
-  override hideSelectionBoundsBg: TLShapeUtilFlag<RelationShape> = () => true;
-  override hideSelectionBoundsFg: TLShapeUtilFlag<RelationShape> = () => true;
+  override hideResizeHandles: TLShapeUtilFlag<DiscourseRelationShape> = () =>
+    true;
+  override hideRotateHandle: TLShapeUtilFlag<DiscourseRelationShape> = () =>
+    true;
+  override hideSelectionBoundsBg: TLShapeUtilFlag<DiscourseRelationShape> =
+    () => true;
+  override hideSelectionBoundsFg: TLShapeUtilFlag<DiscourseRelationShape> =
+    () => true;
 
   override canBind({
     toShapeType,
-  }: TLShapeUtilCanBindOpts<RelationShape>): boolean {
+  }: TLShapeUtilCanBindOpts<DiscourseRelationShape>): boolean {
     // bindings can go from arrows to shapes, but not from shapes to arrows
     return toShapeType !== "arrow";
   }
 
-  override canBeLaidOut: TLShapeUtilFlag<RelationShape> = () => {
+  override canBeLaidOut: TLShapeUtilFlag<DiscourseRelationShape> = () => {
     return false;
   };
 
-  override getDefaultProps(): RelationShape["props"] {
+  override getDefaultProps(): DiscourseRelationShape["props"] {
     return {
       dash: "draw",
       size: "m",
@@ -417,7 +421,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     };
   }
 
-  getGeometry(shape: RelationShape) {
+  getGeometry(shape: DiscourseRelationShape) {
     const info = getArrowInfo(this.editor, shape)!;
 
     const debugGeom: Geometry2d[] = [];
@@ -457,7 +461,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     });
   }
 
-  override getHandles(shape: RelationShape): TLHandle[] {
+  override getHandles(shape: DiscourseRelationShape): TLHandle[] {
     const info = getArrowInfo(this.editor, shape)!;
 
     return [
@@ -485,93 +489,95 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     ].filter(Boolean) as TLHandle[];
   }
 
-  override onTranslateStart: TLOnTranslateStartHandler<RelationShape> = (
-    shape
-  ) => {
-    const bindings = getArrowBindings(this.editor, shape);
+  override onTranslateStart: TLOnTranslateStartHandler<DiscourseRelationShape> =
+    (shape) => {
+      const bindings = getArrowBindings(this.editor, shape);
 
-    const terminalsInArrowSpace = getArrowTerminalsInArrowSpace(
-      this.editor,
-      shape,
-      bindings
-    );
-    const shapePageTransform = this.editor.getShapePageTransform(shape.id)!;
+      const terminalsInArrowSpace = getArrowTerminalsInArrowSpace(
+        this.editor,
+        shape,
+        bindings
+      );
+      const shapePageTransform = this.editor.getShapePageTransform(shape.id)!;
 
-    // If at least one bound shape is in the selection, do nothing;
-    // If no bound shapes are in the selection, unbind any bound shapes
+      // If at least one bound shape is in the selection, do nothing;
+      // If no bound shapes are in the selection, unbind any bound shapes
 
-    const selectedShapeIds = this.editor.getSelectedShapeIds();
+      const selectedShapeIds = this.editor.getSelectedShapeIds();
 
-    if (
-      (bindings.start &&
-        (selectedShapeIds.includes(bindings.start.toId) ||
-          this.editor.isAncestorSelected(bindings.start.toId))) ||
-      (bindings.end &&
-        (selectedShapeIds.includes(bindings.end.toId) ||
-          this.editor.isAncestorSelected(bindings.end.toId)))
-    ) {
+      if (
+        (bindings.start &&
+          (selectedShapeIds.includes(bindings.start.toId) ||
+            this.editor.isAncestorSelected(bindings.start.toId))) ||
+        (bindings.end &&
+          (selectedShapeIds.includes(bindings.end.toId) ||
+            this.editor.isAncestorSelected(bindings.end.toId)))
+      ) {
+        return;
+      }
+
+      // When we start translating shapes, record where their bindings were in page space so we
+      // can maintain them as we translate the arrow
+      shapeAtTranslationStart.set(shape, {
+        pagePosition: shapePageTransform.applyToPoint(shape),
+        terminalBindings: mapObjectMapValues(
+          terminalsInArrowSpace,
+          (terminalName, point) => {
+            const binding = bindings[terminalName];
+            if (!binding) return null;
+            return {
+              binding,
+              shapePosition: point,
+              pagePosition: shapePageTransform.applyToPoint(point),
+            };
+          }
+        ),
+      });
+
+      // update arrow terminal bindings eagerly to make sure the arrows unbind nicely when translating
+      if (bindings.start) {
+        updateArrowTerminal({
+          editor: this.editor,
+          relation: shape,
+          terminal: "start",
+          useHandle: true,
+        });
+        shape = this.editor.getShape(shape.id) as DiscourseRelationShape;
+      }
+      if (bindings.end) {
+        updateArrowTerminal({
+          editor: this.editor,
+          relation: shape,
+          terminal: "end",
+          useHandle: true,
+        });
+      }
+
+      for (const handleName of [
+        ARROW_HANDLES.START,
+        ARROW_HANDLES.END,
+      ] as const) {
+        const binding = bindings[handleName];
+        if (!binding) continue;
+
+        this.editor.updateBinding({
+          ...binding,
+          props: { ...binding.props, isPrecise: true },
+        });
+      }
+
       return;
-    }
-
-    // When we start translating shapes, record where their bindings were in page space so we
-    // can maintain them as we translate the arrow
-    shapeAtTranslationStart.set(shape, {
-      pagePosition: shapePageTransform.applyToPoint(shape),
-      terminalBindings: mapObjectMapValues(
-        terminalsInArrowSpace,
-        (terminalName, point) => {
-          const binding = bindings[terminalName];
-          if (!binding) return null;
-          return {
-            binding,
-            shapePosition: point,
-            pagePosition: shapePageTransform.applyToPoint(point),
-          };
-        }
-      ),
-    });
-
-    // update arrow terminal bindings eagerly to make sure the arrows unbind nicely when translating
-    if (bindings.start) {
-      updateArrowTerminal({
-        editor: this.editor,
-        relation: shape,
-        terminal: "start",
-        useHandle: true,
-      });
-      shape = this.editor.getShape(shape.id) as RelationShape;
-    }
-    if (bindings.end) {
-      updateArrowTerminal({
-        editor: this.editor,
-        relation: shape,
-        terminal: "end",
-        useHandle: true,
-      });
-    }
-
-    for (const handleName of [
-      ARROW_HANDLES.START,
-      ARROW_HANDLES.END,
-    ] as const) {
-      const binding = bindings[handleName];
-      if (!binding) continue;
-
-      this.editor.updateBinding({
-        ...binding,
-        props: { ...binding.props, isPrecise: true },
-      });
-    }
-
-    return;
-  };
+    };
 
   private readonly _resizeInitialBindings = new WeakCache<
-    RelationShape,
+    DiscourseRelationShape,
     RelationBindings
   >();
 
-  override onResize: TLOnResizeHandler<RelationShape> = (shape, info) => {
+  override onResize: TLOnResizeHandler<DiscourseRelationShape> = (
+    shape,
+    info
+  ) => {
     const { scaleX, scaleY } = info;
 
     const bindings = this._resizeInitialBindings.get(shape, () =>
@@ -583,7 +589,9 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
       bindings
     );
 
-    const { start, end } = structuredClone<RelationShape["props"]>(shape.props);
+    const { start, end } = structuredClone<DiscourseRelationShape["props"]>(
+      shape.props
+    );
     let { bend } = shape.props;
 
     // Rescale start handle if it's not bound to a shape
@@ -682,9 +690,9 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
   };
 
   override onDoubleClickHandle = (
-    shape: RelationShape,
+    shape: DiscourseRelationShape,
     handle: TLHandle
-  ): TLShapePartial<RelationShape> | void => {
+  ): TLShapePartial<DiscourseRelationShape> | void => {
     switch (handle.id) {
       case ARROW_HANDLES.START: {
         return {
@@ -711,7 +719,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     }
   };
 
-  indicator(shape: RelationShape) {
+  indicator(shape: DiscourseRelationShape) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const isEditing = useIsEditing(shape.id);
 
@@ -835,7 +843,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     );
   }
 
-  override onEditEnd: TLOnEditEndHandler<RelationShape> = (shape) => {
+  override onEditEnd: TLOnEditEndHandler<DiscourseRelationShape> = (shape) => {
     const {
       id,
       type,
@@ -843,7 +851,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     } = shape;
 
     if (text.trimEnd() !== shape.props.text) {
-      this.editor.updateShapes<RelationShape>([
+      this.editor.updateShapes<DiscourseRelationShape>([
         {
           id,
           type,
@@ -855,7 +863,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     }
   };
 
-  override toSvg(shape: RelationShape, ctx: SvgExportContext) {
+  override toSvg(shape: DiscourseRelationShape, ctx: SvgExportContext) {
     ctx.addExportDef(getFillDefForExport(shape.props.fill));
     if (shape.props.text)
       ctx.addExportDef(getFontDefForExport(shape.props.font));
@@ -897,7 +905,7 @@ export class BaseDiscourseRelationUtil extends ShapeUtil<RelationShape> {
     ];
   }
 
-  component(shape: RelationShape) {
+  component(shape: DiscourseRelationShape) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     // const theme = useDefaultColorTheme();
     const onlySelectedShape = this.editor.getOnlySelectedShape();
