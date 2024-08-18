@@ -181,44 +181,43 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     };
   }
 
-  // deleteRelationsInCanvas(
-  //   shape: DiscourseNodeShape,
-  //   {
-  //     allRecords = this.editor.store.allRecords(),
-  //     relationIds = getRelationIds(),
-  //   }: { allRecords?: TLRecord[]; relationIds?: Set<string> } = {}
-  // ) {
-  //   const toDelete = allRecords
-  //     .filter((r): r is DiscourseRelationShape => {
-  //       return r.typeName === "shape" && relationIds.has(r.type);
-  //     })
-  //     .filter((r) => {
-  //       const { start, end } = r.props;
-  //       return (
-  //         //@ts-ignore - TODO - bindings
-  //         (start.type === "binding" && start.boundShapeId === shape.id) ||
-  //         //@ts-ignore - TODO - bindings
-  //         (end.type === "binding" && end.boundShapeId === shape.id)
-  //       );
-  //     });
-  //   this.editor.deleteShapes(toDelete.map((r) => r.id));
-  // }
+  deleteRelationsInCanvas({
+    shape,
+    relationIds = getRelationIds(),
+  }: {
+    shape: DiscourseNodeShape;
+    relationIds?: Set<string>;
+  }) {
+    const editor = this.editor;
+    const bindingsToThisShape = Array.from(relationIds).flatMap((r) =>
+      editor.getBindingsToShape(shape.id, r)
+    );
+    const relationIdsAndType = bindingsToThisShape.map((b) => {
+      return { id: b.fromId, type: b.type };
+    });
+    const bindingsToDelete = relationIdsAndType.flatMap((r) => {
+      return editor.getBindingsFromShape(r.id, r.type);
+    });
 
-  async createExistingRelations(
-    shape: DiscourseNodeShape,
-    {
-      allRecords = this.editor.store.allRecords(),
-      relationIds = getRelationIds(),
-      finalUid = shape.props.uid,
-    }: {
-      allRecords?: TLRecord[];
-      relationIds?: Set<string>;
-      finalUid?: string;
-    } = {}
-  ) {
+    const relationIdsToDelete = relationIdsAndType.map((r) => r.id);
+    const bindingIdsToDelete = bindingsToDelete.map((b) => b.id);
+
+    editor.deleteShapes(relationIdsToDelete).deleteBindings(bindingIdsToDelete);
+  }
+
+  async createExistingRelations({
+    shape,
+    relationIds = getRelationIds(),
+    finalUid = shape.props.uid,
+  }: {
+    shape: DiscourseNodeShape;
+    relationIds?: Set<string>;
+    finalUid?: string;
+  }) {
     const editor = this.editor;
     const nodes = Object.values(discourseContext.nodes);
     const nodeIds = new Set(nodes.map((n) => n.type));
+    const allRecords = editor.store.allRecords();
     const nodesInCanvas = Object.fromEntries(
       allRecords
         .filter((r): r is DiscourseNodeShape => {
@@ -331,10 +330,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       );
     }
   };
-
-  // onBeforeDelete(shape: DiscourseNodeShape) {
-  //   this.deleteRelationsInCanvas(shape);
-  // }
 
   getColors() {
     const {
@@ -633,14 +628,10 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
               });
 
               // Update Shape Relations
-              const allRecords = editor.store.allRecords();
               const relationIds = getRelationIds();
-              // this.deleteRelationsInCanvas(shape, {
-              //   allRecords,
-              //   relationIds,
-              // });
-              await this.createExistingRelations(shape, {
-                allRecords,
+              this.deleteRelationsInCanvas({ shape, relationIds });
+              await this.createExistingRelations({
+                shape,
                 relationIds,
                 finalUid: uid,
               });

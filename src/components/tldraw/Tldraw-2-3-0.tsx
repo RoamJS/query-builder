@@ -391,7 +391,17 @@ const TldrawCanvas = ({
           app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
             const util = app.getShapeUtil(shape);
             if (util instanceof BaseDiscourseNodeUtil) {
-              util.createExistingRelations(shape as DiscourseNodeShape);
+              util.createExistingRelations({
+                shape: shape as DiscourseNodeShape,
+              });
+            }
+          });
+          app.sideEffects.registerBeforeDeleteHandler("shape", (shape) => {
+            const util = app.getShapeUtil(shape);
+            if (util instanceof BaseDiscourseNodeUtil) {
+              util.deleteRelationsInCanvas({
+                shape: shape as DiscourseNodeShape,
+              });
             }
           });
 
