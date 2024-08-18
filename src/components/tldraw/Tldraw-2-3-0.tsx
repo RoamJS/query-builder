@@ -65,6 +65,7 @@ import {
   createUiOverrides,
 } from "./uiOverrides";
 import {
+  BaseDiscourseNodeUtil,
   DiscourseNodeShape,
   createNodeShapeTools,
   createNodeShapeUtils,
@@ -386,6 +387,13 @@ const TldrawCanvas = ({
           appRef.current = app;
 
           handlePastedImages(app);
+
+          app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
+            const util = app.getShapeUtil(shape);
+            if (util instanceof BaseDiscourseNodeUtil) {
+              util.createExistingRelations(shape as DiscourseNodeShape);
+            }
+          });
 
           // TODO - this should move to one of DiscourseNodeTool's children classes instead
           app.on("event", (event) => {
