@@ -11,22 +11,30 @@ index b1dfaf8..dd449dd 100644
  
  /** @public */
 diff --git a/node_modules/tldraw/dist-esm/lib/ui/components/Toolbar/OverflowingToolbar.mjs b/node_modules/tldraw/dist-esm/lib/ui/components/Toolbar/OverflowingToolbar.mjs
-index 7a41748..510e96f 100644
+index 7a41748..e0f13e3 100644
 --- a/node_modules/tldraw/dist-esm/lib/ui/components/Toolbar/OverflowingToolbar.mjs
 +++ b/node_modules/tldraw/dist-esm/lib/ui/components/Toolbar/OverflowingToolbar.mjs
-@@ -15,10 +15,14 @@ import {
+@@ -15,10 +15,22 @@ import {
    TldrawUiDropdownMenuTrigger
  } from "../primitives/TldrawUiDropdownMenu.mjs";
  import { TldrawUiMenuContextProvider } from "../primitives/menus/TldrawUiMenuContext.mjs";
 +import { nanoid } from "nanoid";
++
++// query builder note
++// useSafeId() uses React 18's useId()
++// we only have access to 17.0.2
++const useStableId = () => {
++  const idRef = useRef()
++  if (idRef.current === undefined) {
++    idRef.current = nanoid()
++  }
++  return idRef.current
++}
  const IsInOverflowContext = createContext(false);
  function OverflowingToolbar({ children }) {
    const editor = useEditor();
 -  const id = useSafeId();
-+  // query builder note
-+  // useSafeId() uses React 18's useId()
-+  // we only have access to 17.0.2
-+  const id = nanoid();
++  const id = useStableId();
    const breakpoint = useBreakpoint();
    const msg = useTranslation();
    const overflowIndex = Math.min(8, 5 + breakpoint);
