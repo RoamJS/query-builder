@@ -52,7 +52,11 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import { render as nanopubRender } from "./components/nanopub/Nanopub";
+import {
+  render as nanopubRender,
+  NanoPubTitleButtons,
+} from "./components/nanopub/Nanopub";
+import { handleTitleAdditions } from "./utils/handleTitleAdditions";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -206,24 +210,11 @@ svg.rs-svg-container {
     const title = getPageTitleValueByHtmlElement(h1);
     if (!!extensionAPI.settings.get("show-page-metadata")) {
       const { displayName, date } = getPageMetadata(title);
-      const container = document.createElement("div");
-      const oldMarginBottom = getComputedStyle(h1).marginBottom;
-      container.style.marginTop = `${
-        4 - Number(oldMarginBottom.replace("px", "")) / 2
-      }px`;
-      container.style.marginBottom = oldMarginBottom;
       const label = document.createElement("i");
       label.innerText = `Created by ${
         displayName || "Anonymous"
       } on ${date.toLocaleString()}`;
-      container.appendChild(label);
-      if (h1.parentElement) {
-        if (h1.parentElement.lastChild === h1) {
-          h1.parentElement.appendChild(container);
-        } else {
-          h1.parentElement.insertBefore(container, h1.nextSibling);
-        }
-      }
+      handleTitleAdditions(h1, label);
     }
 
     if (title.startsWith("discourse-graph/nodes/")) {
@@ -261,6 +252,10 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else if (true) {
+      const uid = getPageUidByPageTitle(title);
+      if (uid.length === 9)
+        handleTitleAdditions(h1, NanoPubTitleButtons({ uid }));
     }
   };
   extensionAPI.settings.panel.create({
@@ -729,7 +724,8 @@ svg.rs-svg-container {
     label: "Nanopub",
     callback: () => {
       console.log("Nanopub");
-      nanopubRender();
+      const uid = getCurrentPageUid();
+      nanopubRender({ uid });
     },
   });
 
