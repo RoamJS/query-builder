@@ -57,6 +57,7 @@ import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
 import { DiscourseExportResult } from "./utils/getExportTypes";
+import NanopubConfigPanel from "./components/nanopub/NanopubConfigPanel";
 
 export const SETTING = "discourse-graphs";
 
@@ -249,6 +250,21 @@ export const renderDiscourseNodeTypeConfigPage = ({
             description: `Whether to color the node in the graph overview based on canvas color`,
             defaultValue: true,
           } as FieldPanel<FlagField>,
+          // @ts-ignore
+          {
+            title: "Nanopub",
+            description:
+              "Configure the Nanopub triple template for this node type",
+            Panel: CustomPanel,
+            options: {
+              component: (props) =>
+                React.createElement(NanopubConfigPanel, {
+                  ...props,
+                  node,
+                  onloadArgs,
+                }),
+            },
+          } as Field<CustomField>,
         ],
       });
 
