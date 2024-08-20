@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Dialog, Button } from "@blueprintjs/core";
 import init, { KeyPair, Nanopub, NpProfile, getNpServer } from "@nanopub/sign";
 import renderOverlay from "roamjs-components/util/renderOverlay";
@@ -13,6 +13,9 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 import { DiscourseContextResults } from "../DiscourseContext";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
 const SERVER_URL =
   getNodeEnv() === "development"
     ? "" // leave blank to publish to test server
@@ -25,7 +28,13 @@ const ORCID = "https://orcid.org/0000-0000-0000-0000";
 const NAME = "Test User";
 const RDF_STR = rdfString;
 
-export const NanoPubTitleButtons = ({ uid }: { uid: string }) => {
+export const NanoPubTitleButtons = ({
+  uid,
+  onloadArgs,
+}: {
+  uid: string;
+  onloadArgs: OnloadArgs;
+}) => {
   return (
     <div className="github-sync-container flex space-x-2">
       <Button
@@ -34,7 +43,7 @@ export const NanoPubTitleButtons = ({ uid }: { uid: string }) => {
         minimal
         outlined
         onClick={() => {
-          render({ uid });
+          render({ uid, onloadArgs });
         }}
       />
       {/* <Button
@@ -82,31 +91,58 @@ const DiscourseContextSection = ({
   );
 };
 
-const LabelValuePair = ({ label, value }: { label: string; value: string }) => (
-  <div className="sm:flex sm:space-x-4">
-    <div className="font-semibold sm:w-1/3">{label}:</div>
-    <div className="sm:w-2/3">{value}</div>
+const NanopubTriple = ({
+  subject,
+  object,
+  predicate,
+}: {
+  subject: string;
+  object: string;
+  predicate: string;
+}) => (
+  <div className="grid grid-cols-12 gap-4 border-0 border-b sm:border-b-0 py-2">
+    <div className="col-span-12 sm:col-span-2">{subject}</div>
+    <div className="col-span-12 sm:col-span-2">{predicate}</div>
+    <div className="col-span-12 sm:col-span-8">{object}</div>
   </div>
 );
 
-const NanopubDialog = ({ uid }: { uid: string }) => {
+const NanopubDialog = ({
+  uid,
+  onloadArgs,
+}: {
+  uid: string;
+  onloadArgs: any;
+}) => {
   const [isOpen, setIsOpen] = useState(true);
   const handleClose = () => setIsOpen(false);
-  const [discourseContext, setDiscourseContext] =
-    useState<DiscourseContextResults>([]);
+  // const [discourseContext, setDiscourseContext] =
+  //   useState<DiscourseContextResults>([]);
 
   const node = useMemo(() => getDiscourseNode(uid), [uid]);
-  const title = useMemo(() => getPageTitleByPageUid(uid), [uid]);
-  const name = useMemo(() => getCurrentUserDisplayName(), []);
-  const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
-  useEffect(() => {
-    const fetchDiscourseContext = async () => {
-      const results = await getDiscourseContextResults({ uid });
-      setDiscourseContext(results);
-    };
-    fetchDiscourseContext();
-  }, [uid]);
-  const ORCID = "0000-0000-0000-0000";
+  if (!node) return <> </>;
+  const templateTriples = node?.nanopub?.triples;
+  const updateObjectPlaceholders = (object: string) => {
+    const OCRID = onloadArgs.extensionAPI.settings.get("orcid") as string;
+    const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
+
+    return object
+      .replace(/\{nodeType\}/g, node.text)
+      .replace(/\{title\}/g, getPageTitleByPageUid(uid))
+      .replace(/\{name\}/g, getCurrentUserDisplayName())
+      .replace(/\{url\}/g, pageUrl)
+      .replace(/\{myORCID\}/g, OCRID)
+      .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
+      .replace(/\{body\}/g, ""); // TODO: Add body
+  };
+
+  // useEffect(() => {
+  //   const fetchDiscourseContext = async () => {
+  //     const results = await getDiscourseContextResults({ uid });
+  //     setDiscourseContext(results);
+  //   };
+  //   fetchDiscourseContext();
+  // }, [uid]);
 
   const handlePublishIntro = async () => {
     try {
@@ -144,13 +180,14 @@ const NanopubDialog = ({ uid }: { uid: string }) => {
       {node ? (
         <div className="bp3-dialog-body">
           <div className="space-y-4">
-            <LabelValuePair label="is a" value={node.text} />
-            <LabelValuePair label="has the label" value={title} />
-            <LabelValuePair label="has the description" value={`{body}`} />
-            <LabelValuePair label="has more info at" value={pageUrl} />
-            {/* <DiscourseContextSection discourseContext={discourseContext} /> */}
-            <LabelValuePair label="is attributed to" value={ORCID} />
-            <LabelValuePair label="is created by" value={name} />
+            {templateTriples?.map((triple) => (
+              <NanopubTriple
+                key={triple.uid}
+                subject={node.text}
+                predicate={triple.predicate}
+                object={updateObjectPlaceholders(triple.object)}
+              />
+            ))}
           </div>
         </div>
       ) : (
@@ -168,5 +205,5 @@ const NanopubDialog = ({ uid }: { uid: string }) => {
   );
 };
 
-export const render = ({ uid }: { uid: string }) =>
-  renderOverlay({ Overlay: NanopubDialog, props: { uid } });
+export const render = ({ uid, onloadArgs }: { uid: string; onloadArgs: any }) =>
+  renderOverlay({ Overlay: NanopubDialog, props: { uid, onloadArgs } });

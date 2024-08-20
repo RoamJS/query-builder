@@ -37,7 +37,7 @@ const defaultPredicates = [
   "is created by",
 ];
 
-type Triple = {
+export type NanopubTriple = {
   uid: string;
   predicate: string;
   object: string;
@@ -51,8 +51,8 @@ const TripleInput = React.memo(
     enabled,
     node,
   }: {
-    triple: Triple;
-    onChange: (field: keyof Triple, value: string) => void;
+    triple: NanopubTriple;
+    onChange: (field: keyof NanopubTriple, value: string) => void;
     onDelete: () => void;
     enabled: boolean;
     node: DiscourseNode;
@@ -138,7 +138,7 @@ const NanopubConfigPanel = ({
   const [triplesUid, setTriplesUid] = useState<string | null>(
     () => getSubTree({ tree, key: "triples" }).uid || null
   );
-  const [triples, setTriples] = useState<Triple[]>(() =>
+  const [triples, setTriples] = useState<NanopubTriple[]>(() =>
     triplesUid
       ? getBasicTreeByParentUid(triplesUid).map((t) => ({
           uid: t.uid,
@@ -196,7 +196,7 @@ const NanopubConfigPanel = ({
     setTriples([...triples, { uid: predicateUid, predicate: "", object: "" }]);
   };
   const updateTriple = useCallback(
-    (uid: string, field: keyof Triple, value: string) => {
+    (uid: string, field: keyof NanopubTriple, value: string) => {
       setTriples(
         triples.map((triple) =>
           triple.uid === uid ? { ...triple, [field]: value } : triple

@@ -254,8 +254,11 @@ svg.rs-svg-container {
       renderTldrawCanvas(title, onloadArgs);
     } else if (true) {
       const uid = getPageUidByPageTitle(title);
+
+      // dev hack for non-date names
+      // todo look into when discourse context is available, probably move it up here to get node type/details
       if (uid.length === 9)
-        handleTitleAdditions(h1, NanoPubTitleButtons({ uid }));
+        handleTitleAdditions(h1, NanoPubTitleButtons({ uid, onloadArgs }));
     }
   };
   extensionAPI.settings.panel.create({
