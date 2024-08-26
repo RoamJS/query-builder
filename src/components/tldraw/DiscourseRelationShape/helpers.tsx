@@ -58,7 +58,10 @@ import {
   RelationBinding,
   RelationInfo,
 } from "./DiscourseRelationBindings";
-import { DiscourseRelationShape } from "./DiscourseRelationUtil";
+import {
+  BaseDiscourseRelationUtil,
+  DiscourseRelationShape,
+} from "./DiscourseRelationUtil";
 
 let defaultPixels: { white: string; black: string } | null = null;
 let globalRenderIndex = 0;
@@ -1632,7 +1635,10 @@ export function createOrUpdateArrowBinding(
   const targetId = typeof target === "string" ? target : target.id;
 
   const existingMany = editor
-    .getBindingsFromShape<RelationBinding>(arrowId, relation.type) // we expect relation.type to = binding.type
+    .getBindingsFromShape<RelationBinding>(
+      arrowId,
+      relation.type // we expect relation.type to = binding.type
+    )
     .filter((b) => b.props.terminal === props.terminal);
 
   // if we've somehow ended up with too many bindings, delete the extras
@@ -1654,6 +1660,16 @@ export function createOrUpdateArrowBinding(
       toId: targetId,
       props,
     });
+    const util = editor.getShapeUtil<DiscourseRelationShape>({
+      id: relation.id,
+      type: relation.type,
+    });
+    if (util instanceof BaseDiscourseRelationUtil) {
+      util?.handleCreateRelationsInRoam({
+        arrow: relation,
+        targetId,
+      });
+    }
   }
 }
 export const shapeAtTranslationStart = new WeakMap<
