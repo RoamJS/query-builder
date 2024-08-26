@@ -50,6 +50,7 @@ import {
   TLShapeId,
   BindingUtil,
   TLAnyBindingUtilConstructor,
+  TLShape,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -153,6 +154,17 @@ const TldrawCanvas = ({
     );
     return allNodes;
   }, [allRelations]);
+  const isCustomArrowShape = (shape: TLShape) => {
+    // TODO: find a better way to identify custom arrow shapes
+    // possibly migrate to shape.type or shape.name
+    // or add as meta
+    const allRelationIdSet = new Set(allRelationIds);
+    // const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
+
+    return allRelationIdSet.has(shape.type);
+    // || allAddReferencedNodeActionsSet.has(shape.type)
+    // ;
+  };
 
   const extensionAPI = useExtensionAPI();
   if (!extensionAPI) return null;
@@ -387,6 +399,31 @@ const TldrawCanvas = ({
           appRef.current = app;
 
           handlePastedImages(app);
+
+          app.sideEffects.registerBeforeChangeHandler(
+            "shape",
+            (prevShape, nextShape) => {
+              // prevent accidental arrow reposition
+              // or should this be on DiscourseRelationUtil's onTranslate?
+              if (isCustomArrowShape(prevShape)) {
+                const bindings = app.getBindingsFromShape(
+                  prevShape,
+                  prevShape.type
+                );
+                const isTranslating = app.isIn("select.translating");
+                if (bindings.length && isTranslating) {
+                  app.setSelectedShapes([]);
+                  renderToast({
+                    id: "tldraw-warning",
+                    intent: "warning",
+                    content: "Cannot move relation.",
+                  });
+                  return prevShape;
+                }
+              }
+              return nextShape;
+            }
+          );
 
           app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
             const util = app.getShapeUtil(shape);
