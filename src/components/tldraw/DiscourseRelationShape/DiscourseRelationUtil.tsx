@@ -31,6 +31,7 @@ import {
   TLOnTranslateStartHandler,
   WeakCache,
   textShapeProps,
+  TLShapeId,
 } from "tldraw";
 import { RelationBindings } from "./DiscourseRelationBindings";
 import {
@@ -57,13 +58,25 @@ import {
   shapeAtTranslationStart,
   updateArrowTerminal,
 } from "./helpers";
-import { discourseContext } from "../Tldraw-2-3-0";
+import { discourseContext, isPageUid } from "../Tldraw-2-3-0";
 import renderToast from "roamjs-components/components/Toast";
+import getDiscourseRelations, {
+  DiscourseRelation,
+} from "../../../utils/getDiscourseRelations";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import { InputTextNode } from "roamjs-components/types";
+import createBlock from "roamjs-components/writes/createBlock";
+import createPage from "roamjs-components/writes/createPage";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import triplesToBlocks from "../../../utils/triplesToBlocks";
+import { DiscourseNodeShape } from "../DiscourseNodeUtil";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 
 const COLOR_ARRAY = Array.from(Object.values(textShapeProps.color)).reverse();
 
-export const createAllRelationShapeUtils = (relationIds: string[]) => {
-  return relationIds.map((id) => {
+export const createAllRelationShapeUtils = (allRelationIds: string[]) => {
+  return allRelationIds.map((id) => {
     class DiscourseRelationUtil extends BaseDiscourseRelationUtil {
       static override type = id;
 
@@ -188,9 +201,17 @@ export const createAllRelationShapeUtils = (relationIds: string[]) => {
           // find out why
           target.id === shape.id
         ) {
+          if (
+            currentBinding &&
+            otherBinding &&
+            currentBinding.toId !== otherBinding.toId
+          ) {
+            this.cancelAndWarn("Cannot remove handle.");
+            return update;
+          }
+
           // todo: maybe double check that this isn't equal to the other handle too?
           removeArrowBinding(this.editor, shape, handleId);
-
           update.props![handleId] = {
             x: handle.x,
             y: handle.y,
@@ -379,6 +400,110 @@ export type DiscourseRelationShape = TLBaseShape<string, RelationShapeProps>;
 
 export class BaseDiscourseRelationUtil extends ShapeUtil<DiscourseRelationShape> {
   static override props = arrowShapeProps;
+
+  handleCreateRelationsInRoam = ({
+    arrow,
+    targetId,
+  }: {
+    arrow: DiscourseRelationShape;
+    targetId: TLShapeId;
+  }) => {
+    const editor = this.editor;
+    const deleteAndWarn = (content: string) => {
+      renderToast({
+        id: "tldraw-warning",
+        intent: "warning",
+        content,
+      });
+      this.editor.deleteShapes([arrow.id]);
+    };
+    const target = editor.getShape(targetId);
+    const bindings = editor.getBindingsFromShape(arrow, arrow.type);
+    const sourceId = bindings.find((b) => b.toId !== targetId)?.toId;
+    if (!sourceId) return;
+    const source = editor.getShape(sourceId);
+    if (!target || !source) return;
+    const relations = Object.values(discourseContext.relations).flat();
+    const relation = relations.find((r) => r.id === arrow.type);
+    if (!relation) return;
+    const possibleTargets = discourseContext.relations[relation.label]
+      .filter((r) => r.source === relation.source)
+      .map((r) => r.destination);
+
+    if (!possibleTargets.includes(target.type)) {
+      return deleteAndWarn(
+        `Target node must be of type ${possibleTargets
+          .map((t) => discourseContext.nodes[t].text)
+          .join(", ")}`
+      );
+    }
+    if (arrow.type !== target.type) {
+      editor.updateShapes([
+        {
+          id: arrow.id,
+          type: target.type,
+        },
+      ]);
+    }
+    const { triples, label: relationLabel } = relation;
+    const isOriginal = arrow.props.text === relationLabel;
+    const newTriples = triples
+      .map((t) => {
+        if (/is a/i.test(t[1])) {
+          const targetNode =
+            (t[2] === "source" && isOriginal) ||
+            (t[2] === "destination" && !isOriginal)
+              ? source
+              : target;
+          const { title, uid } =
+            targetNode.props as DiscourseNodeShape["props"];
+          return [
+            t[0],
+            isPageUid(uid) ? "has title" : "with uid",
+            isPageUid(uid) ? title : uid,
+          ];
+        }
+        return t.slice(0);
+      })
+      .map(([source, relation, target]) => ({
+        source,
+        relation,
+        target,
+      }));
+    const parentUid = getCurrentPageUid();
+    const title = getPageTitleByPageUid(parentUid);
+    triplesToBlocks({
+      defaultPageTitle: `Auto generated from [[${title}]]`,
+      toPage: async (title: string, blocks: InputTextNode[]) => {
+        const parentUid =
+          getPageUidByPageTitle(title) ||
+          (await createPage({
+            title: title,
+          }));
+
+        await Promise.all(
+          blocks.map((node, order) =>
+            createBlock({ node, order, parentUid }).catch(() =>
+              console.error(
+                `Failed to create block: ${JSON.stringify(
+                  { node, order, parentUid },
+                  null,
+                  4
+                )}`
+              )
+            )
+          )
+        );
+        await openBlockInSidebar(parentUid);
+      },
+      nodeSpecificationsByLabel: Object.fromEntries(
+        Object.values(discourseContext.nodes).map((n) => [
+          n.text,
+          n.specification,
+        ])
+      ),
+    })(newTriples)();
+  };
 
   override canEdit = () => true;
   override canSnap = () => false;
