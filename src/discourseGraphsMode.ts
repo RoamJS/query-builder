@@ -57,7 +57,8 @@ import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
 import { DiscourseExportResult } from "./utils/getExportTypes";
-import NanopubConfigPanel from "./components/nanopub/NanopubConfigPanel";
+import NanopubConfigPanel from "./components/nanopub/NanopubNodeConfig";
+import NanopubMainConfig from "./components/nanopub/NanopubMainConfig";
 
 export const SETTING = "discourse-graphs";
 
@@ -554,6 +555,20 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                       } as Field<CustomField>,
                     ]
                   : []),
+                // @ts-ignore
+                {
+                  title: "Nanopub",
+                  description: "Nanopub settings",
+                  Panel: CustomPanel,
+                  options: {
+                    component: (props) =>
+                      React.createElement(NanopubMainConfig, {
+                        ...props,
+                        parentUid: pageUid,
+                        onloadArgs: args,
+                      }),
+                  },
+                } as Field<CustomField>,
               ],
             },
             {
