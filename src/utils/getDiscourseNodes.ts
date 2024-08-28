@@ -5,7 +5,7 @@ import getDiscourseRelations from "./getDiscourseRelations";
 import parseQuery from "./parseQuery";
 import { Condition } from "./types";
 import { RoamBasicNode } from "roamjs-components/types";
-import { NanopubTriple } from "../components/nanopub/NanopubConfigPanel";
+import { NanopubTriple } from "../components/nanopub/NanopubNodeConfig";
 
 // TODO - only text and type should be required
 export type DiscourseNode = {
@@ -20,7 +20,7 @@ export type DiscourseNode = {
   // @deprecated - use specification instead
   format: string;
   graphOverview?: boolean;
-  nanopub: {
+  nanopub?: {
     enabled: boolean;
     triples: NanopubTriple[];
   };

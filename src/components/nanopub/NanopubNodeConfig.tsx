@@ -19,6 +19,8 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { defaultNanopubTemplate } from "../../data/defaultNanopubTemplates";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { OnloadArgs } from "roamjs-components/types";
+import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSingleChildValue";
+import getFirstChildTextByBlockUid from "roamjs-components/queries/getFirstChildTextByBlockUid";
 
 const placeholders = {
   nodeType: "Type of Discourse Node",
@@ -147,7 +149,24 @@ const NanopubConfigPanel = ({
         }))
       : []
   );
-  const initialOrcid = onloadArgs.extensionAPI.settings.get("orcid") as string;
+  const nodeTypeUid = useMemo(
+    () => tree.find((t) => t.text === "nodeType")?.uid,
+    [tree]
+  );
+  const defaultNodeType = useMemo(() => {
+    if (!nodeTypeUid) return "";
+    return getFirstChildTextByBlockUid(nodeTypeUid);
+  }, [nodeTypeUid]);
+
+  const { value: nodeTypeValue, onChange } = useSingleChildValue({
+    uid: nodeTypeUid,
+    defaultValue: defaultNodeType,
+    title: "nodeType",
+    parentUid: uid,
+    order: 0,
+    transform: (s) => s,
+    toStr: (s) => s,
+  });
 
   const isDefaultTemplate = useMemo(() => {
     if (triples.length !== defaultNanopubTemplate.length) return false;
@@ -263,14 +282,11 @@ const NanopubConfigPanel = ({
           }}
           className="mb-4"
         />
-        <FormGroup inline={true} label="ORCID">
+        <FormGroup inline={true} label="Node Type">
           <InputGroup
-            placeholder="0000-0000-0000-0000"
-            defaultValue={initialOrcid}
-            onChange={(e) => {
-              console.log("orcid", e.target.value);
-              onloadArgs.extensionAPI.settings.set("orcid", e.target.value);
-            }}
+            placeholder="Enter URL to node type definition"
+            value={nodeTypeValue}
+            onChange={(e) => onChange(e.target.value)}
             className="mb-4"
             disabled={!enablePublishing}
           />
