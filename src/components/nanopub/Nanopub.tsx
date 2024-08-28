@@ -16,6 +16,7 @@ import { DiscourseContextResults } from "../DiscourseContext";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
+import ContributorManager from "./ContributorManager";
 const SERVER_URL =
   getNodeEnv() === "development"
     ? "" // leave blank to publish to test server
@@ -180,6 +181,7 @@ const NanopubDialog = ({
       {node ? (
         <div className="bp3-dialog-body">
           <div className="space-y-4">
+            <ContributorManager pageUid={uid} />
             {templateTriples?.map((triple) => (
               <NanopubTriple
                 key={triple.uid}
