@@ -39,6 +39,92 @@ const defaultPredicates = [
   "is created by",
 ];
 
+// TODO: combine with above
+const predicateURIs = {
+  "is a": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+  "has the label": "http://www.w3.org/2000/01/rdf-schema#label",
+  "has the description": "http://purl.org/dc/terms/description",
+  "has more info at": "http://xmlns.com/foaf/0.1/page",
+  "is attributed to": "http://purl.org/dc/terms/creator",
+  "is created by": "http://purl.org/dc/terms/creator",
+};
+type RDFStructure = {
+  "@context": Record<string, string>;
+  "@id": string;
+  "@graph": {
+    "@id": string;
+    "@type": string;
+    "np:hasPublicationInfo": {
+      "@id": string;
+      "@graph": Array<{
+        "@id": string;
+        [key: string]: any; // Flexible for additional properties
+      }>;
+    };
+  };
+};
+
+const baseRdf: RDFStructure = {
+  "@context": {
+    rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+    dc: "http://purl.org/dc/terms/",
+    np: "http://www.nanopub.org/nschema#",
+    foaf: "http://xmlns.com/foaf/0.1/",
+    xsd: "http://www.w3.org/2001/XMLSchema#",
+  },
+  "@id": "#Head",
+  "@graph": {
+    "@id": "#",
+    "@type": "np:Nanopublication",
+    "np:hasAssertion": {
+      "@id": "#assertion",
+      "@graph": [],
+    },
+    "np:hasProvenance": {
+      "@id": "#provenance",
+      "@graph": [],
+    },
+    "np:hasPublicationInfo": {
+      "@id": "#pubinfo",
+      "@graph": [],
+    },
+  },
+};
+
+const generateRdfString = (triples: NanopubTriple[]): string => {
+  const rdf = { ...baseRdf };
+
+  rdf["@graph"]["np:hasAssertion"]["@graph"] = triples
+    .filter((triple) => triple.type === "assertion")
+    .map((triple) => ({
+      "@id": "#assertion",
+      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
+        "@id": triple.object,
+      },
+    }));
+
+  rdf["@graph"]["np:hasProvenance"]["@graph"] = triples
+    .filter((triple) => triple.type === "provenance")
+    .map((triple) => ({
+      "@id": "#provenance",
+      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
+        "@value": triple.object,
+      },
+    }));
+
+  rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = triples
+    .filter((triple) => triple.type === "publicationInfo")
+    .map((triple) => ({
+      "@id": "#pubinfo",
+      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
+        "@value": triple.object,
+      },
+    }));
+
+  return JSON.stringify(rdf, null, 2); // Return the stringified RDF with pretty print
+};
+
 export type NanopubTriple = {
   uid: string;
   predicate: string;
