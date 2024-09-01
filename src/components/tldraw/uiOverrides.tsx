@@ -55,6 +55,7 @@ import { COLOR_ARRAY } from "./DiscourseNodeUtil";
 import renderToast from "roamjs-components/components/Toast";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import { openCanvasDrawer } from "./CanvasDrawer";
+import { AddReferencedNodeType } from "./DiscourseRelationShape/DiscourseRelationTool";
 
 export const CustomContextMenu = ({
   extensionAPI,
@@ -192,12 +193,12 @@ export const CustomContextMenu = ({
 };
 export const createUiComponents = ({
   allNodes,
-  // allAddRefNodeActions,
+  allAddReferencedNodeActions,
   allRelationNames,
 }: {
   allNodes: DiscourseNode[];
   allRelationNames: string[];
-  // allAddRefNodeActions: string[];
+  allAddReferencedNodeActions: string[];
 }): TLUiComponents => {
   return {
     Toolbar: (props) => {
@@ -219,13 +220,13 @@ export const createUiComponents = ({
               isSelected={useIsToolSelected(tools[name])}
             />
           ))}
-          {/* {allAddRefNodeActions.map((action) => (
+          {allAddReferencedNodeActions.map((action) => (
             <TldrawUiMenuItem
               key={action}
               {...tools[action]}
               isSelected={useIsToolSelected(tools[action])}
             />
-          ))} */}
+          ))}
         </DefaultToolbar>
       );
     },
@@ -282,17 +283,15 @@ export const createUiComponents = ({
 export const createUiOverrides = ({
   allNodes,
   allRelationNames,
-  // allAddRefNodeActions,
-  // allAddRefNodeByAction,
-  // discourseContext,
+  allAddReferencedNodeByAction,
+  discourseContext,
   maximized,
   setMaximized,
 }: {
   allNodes: DiscourseNode[];
   allRelationNames: string[];
-  // allAddRefNodeActions: string[];
-  // allAddRefNodeByAction: AddReferencedNodeType;
-  // discourseContext: DiscourseContextType;
+  allAddReferencedNodeByAction: AddReferencedNodeType;
+  discourseContext: DiscourseContextType;
   maximized: boolean;
   setMaximized: (maximized: boolean) => void;
 }): TLUiOverrides => ({
@@ -338,30 +337,30 @@ export const createUiOverrides = ({
         },
       };
     });
-    // Object.keys(allAddRefNodeByAction).forEach((name) => {
-    //   const action = allAddRefNodeByAction[name];
-    //   const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
-    //     text: discourseContext.nodes[key].text,
-    //     color: discourseContext.nodes[key].canvasSettings.color,
-    //   }));
-    //   const color =
-    //     nodeColorArray.find((n) => n.text === action[0].sourceName)?.color ||
-    //     "";
-    //   tools[name] = {
-    //     id: name,
-    //     icon: "tool-arrow",
-    //     label: `shape.referenced.${name}` as TLUiTranslationKey,
-    //     kbd: "",
-    //     readonlyOk: true,
-    //     onSelect: () => {
-    //       editor.setCurrentTool(`${name}`);
-    //     },
-    //     //@ts-ignore - patch
-    //     style: {
-    //       color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
-    //     },
-    //   };
-    // });
+    Object.keys(allAddReferencedNodeByAction).forEach((name) => {
+      const action = allAddReferencedNodeByAction[name];
+      const nodeColorArray = Object.keys(discourseContext.nodes).map((key) => ({
+        text: discourseContext.nodes[key].text,
+        color: discourseContext.nodes[key].canvasSettings.color,
+      }));
+      const color =
+        nodeColorArray.find((n) => n.text === action[0].sourceName)?.color ||
+        "";
+      tools[name] = {
+        id: name,
+        icon: "tool-arrow",
+        label: name as TLUiTranslationKey,
+        kbd: "",
+        readonlyOk: true,
+        onSelect: () => {
+          editor.setCurrentTool(`${name}`);
+        },
+        //@ts-ignore - patch
+        style: {
+          color: formatHexColor(color) ?? `var(--palette-${COLOR_ARRAY[0]})`,
+        },
+      };
+    });
 
     return tools;
   },

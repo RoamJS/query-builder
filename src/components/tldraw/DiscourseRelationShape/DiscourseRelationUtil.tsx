@@ -69,16 +69,533 @@ import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import triplesToBlocks from "../../../utils/triplesToBlocks";
-import { DiscourseNodeShape } from "../DiscourseNodeUtil";
+import {
+  BaseDiscourseNodeUtil,
+  DiscourseNodeShape,
+} from "../DiscourseNodeUtil";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { AddReferencedNodeType } from "./DiscourseRelationTool";
 
 const COLOR_ARRAY = Array.from(Object.values(textShapeProps.color)).reverse();
+
+export const createAllReferencedNodeUtils = (
+  allAddReferencedNodeByAction: AddReferencedNodeType
+) => {
+  return Object.keys(allAddReferencedNodeByAction).map((action) => {
+    class ReferencedNodeUtil extends BaseDiscourseRelationUtil {
+      static override type = action;
+
+      isDiscourseNodeShape(shape: any): shape is DiscourseNodeShape {
+        const shapeUtil = this.editor.getShapeUtil(shape.type);
+        return shapeUtil instanceof BaseDiscourseNodeUtil;
+      }
+
+      handleCreateRelationsInRoam = async ({
+        arrow,
+        targetId,
+      }: {
+        arrow: DiscourseRelationShape;
+        targetId: TLShapeId;
+      }) => {
+        const editor = this.editor;
+        const deleteAndWarn = (content: string) => {
+          renderToast({
+            id: "tldraw-warning",
+            intent: "warning",
+            content,
+          });
+          this.editor.deleteShapes([arrow.id]);
+        };
+
+        const target = editor.getShape(targetId);
+        const bindings = editor.getBindingsFromShape(arrow, arrow.type);
+        const sourceId = bindings.find((b) => b.toId !== targetId)?.toId;
+        if (!sourceId) return;
+        const source = editor.getShape(sourceId);
+        if (!target || !source) return;
+
+        const possibleTargets = allAddReferencedNodeByAction[arrow.type].map(
+          (action) => action.destinationType
+        );
+        if (!possibleTargets.includes(target.type)) {
+          return deleteAndWarn(
+            `Target node must be of type ${possibleTargets
+              .map((t) => discourseContext.nodes[t].text)
+              .join(", ")}`
+          );
+        }
+
+        // type check
+        if (
+          !this.isDiscourseNodeShape(target) ||
+          !this.isDiscourseNodeShape(source)
+        ) {
+          return deleteAndWarn(
+            "Invalid shape type. Expected a DiscourseNodeShape."
+          );
+        }
+
+        // source and target are expected to be pages
+        // TODO: support blocks
+        const targetTitle = target.props.title;
+        const sourceTitle = source.props.title;
+        const isTargetTitleCurrent =
+          getPageTitleByPageUid(target.props.uid).trim() === targetTitle.trim();
+        const isSourceTitleCurrent =
+          getPageTitleByPageUid(source.props.uid).trim() === sourceTitle.trim();
+        if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
+          return deleteAndWarn(
+            "Either the source or target node has been renamed. Please update the nodes and try again."
+          );
+        }
+
+        // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
+        // replace when migrating from format to specification
+        let newTitle: string;
+        if (targetTitle.endsWith(" - ")) {
+          newTitle = `${targetTitle}[[${sourceTitle}]]`;
+        } else if (targetTitle.endsWith(" -")) {
+          newTitle = `${targetTitle} [[${sourceTitle}]]`;
+        } else {
+          newTitle = `${targetTitle} - [[${sourceTitle}]]`;
+        }
+
+        await window.roamAlphaAPI.data.page.update({
+          page: {
+            uid: target.props.uid,
+            title: newTitle,
+          },
+        });
+        editor.updateShapes([
+          {
+            id: target.id,
+            type: target.type,
+            props: {
+              title: newTitle,
+            },
+          },
+        ]);
+
+        renderToast({
+          id: "tldraw-success",
+          intent: "success",
+          content: `Updated node title.`,
+        });
+      };
+
+      cancelAndWarn = (content: string) => {
+        renderToast({
+          id: "tldraw-warning",
+          intent: "warning",
+          content,
+        });
+        return;
+      };
+
+      override getDefaultProps(): DiscourseRelationShape["props"] {
+        return {
+          dash: "draw",
+          size: "m",
+          fill: "none",
+          color: COLOR_ARRAY[0],
+          labelColor: COLOR_ARRAY[1],
+          bend: 0,
+          start: { x: 0, y: 0 },
+          end: { x: 0, y: 0 },
+          arrowheadStart: "none",
+          arrowheadEnd: "arrow",
+          text: "for",
+          labelPosition: 0.5,
+          font: "draw",
+          scale: 1,
+        };
+      }
+      override onHandleDrag: TLOnHandleDragHandler<DiscourseRelationShape> = (
+        shape,
+        { handle, isPrecise }
+      ) => {
+        const handleId = handle.id as ARROW_HANDLES;
+        const bindings = getArrowBindings(this.editor, shape);
+
+        if (handleId === ARROW_HANDLES.MIDDLE) {
+          // Bending the arrow...
+          const { start, end } = getArrowTerminalsInArrowSpace(
+            this.editor,
+            shape,
+            bindings
+          );
+
+          const delta = Vec.Sub(end, start);
+          const v = Vec.Per(delta);
+
+          const med = Vec.Med(end, start);
+          const A = Vec.Sub(med, v);
+          const B = Vec.Add(med, v);
+
+          const point = Vec.NearestPointOnLineSegment(A, B, handle, false);
+          let bend = Vec.Dist(point, med);
+          if (Vec.Clockwise(point, end, med)) bend *= -1;
+          return { id: shape.id, type: shape.type, props: { bend } };
+        }
+
+        // Start or end, pointing the arrow...
+
+        const update: TLShapePartial<DiscourseRelationShape> = {
+          id: shape.id,
+          type: action,
+          props: {},
+        };
+
+        const currentBinding = bindings[handleId];
+
+        const otherHandleId =
+          handleId === ARROW_HANDLES.START
+            ? ARROW_HANDLES.END
+            : ARROW_HANDLES.START;
+        const otherBinding = bindings[otherHandleId];
+
+        if (this.editor.inputs.ctrlKey) {
+          // todo: maybe double check that this isn't equal to the other handle too?
+          // Skip binding
+          removeArrowBinding(this.editor, shape, handleId);
+
+          update.props![handleId] = {
+            x: handle.x,
+            y: handle.y,
+          };
+          return update;
+        }
+
+        const point = this.editor
+          .getShapePageTransform(shape.id)!
+          .applyToPoint(handle);
+
+        const target = this.editor.getShapeAtPoint(point, {
+          hitInside: true,
+          hitFrameInside: true,
+          margin: 0,
+          filter: (targetShape) => {
+            return (
+              !targetShape.isLocked &&
+              this.editor.canBindShapes({
+                fromShape: shape,
+                toShape: targetShape,
+                binding: action,
+              })
+            );
+          },
+        });
+
+        if (
+          !target ||
+          // TODO - this is a hack/fix
+          // the shape is targeting itself on initial drag
+          // find out why
+          target.id === shape.id
+        ) {
+          if (
+            currentBinding &&
+            otherBinding &&
+            currentBinding.toId !== otherBinding.toId
+          ) {
+            this.cancelAndWarn("Cannot remove handle.");
+            return update;
+          }
+
+          // todo: maybe double check that this isn't equal to the other handle too?
+          removeArrowBinding(this.editor, shape, handleId);
+          update.props![handleId] = {
+            x: handle.x,
+            y: handle.y,
+          };
+          return update;
+        }
+
+        // we've got a target! the handle is being dragged over a shape, bind to it
+
+        const targetGeometry = this.editor.getShapeGeometry(target);
+        const targetBounds = Box.ZeroFix(targetGeometry.bounds);
+        const pageTransform = this.editor.getShapePageTransform(update.id)!;
+        const pointInPageSpace = pageTransform.applyToPoint(handle);
+        const pointInTargetSpace = this.editor.getPointInShapeSpace(
+          target,
+          pointInPageSpace
+        );
+
+        let precise = isPrecise;
+
+        if (!precise) {
+          // If we're switching to a new bound shape, then precise only if moving slowly
+          if (
+            !currentBinding ||
+            (currentBinding && target.id !== currentBinding.toId)
+          ) {
+            precise = this.editor.inputs.pointerVelocity.len() < 0.5;
+          }
+        }
+
+        if (!isPrecise) {
+          if (!targetGeometry.isClosed) {
+            precise = true;
+          }
+
+          // Double check that we're not going to be doing an imprecise snap on
+          // the same shape twice, as this would result in a zero length line
+          if (
+            otherBinding &&
+            target.id === otherBinding.toId &&
+            otherBinding.props.isPrecise
+          ) {
+            precise = true;
+          }
+        }
+
+        const normalizedAnchor = {
+          x: (pointInTargetSpace.x - targetBounds.minX) / targetBounds.width,
+          y: (pointInTargetSpace.y - targetBounds.minY) / targetBounds.height,
+        };
+
+        if (precise) {
+          // Turn off precision if we're within a certain distance to the center of the shape.
+          // Funky math but we want the snap distance to be 4 at the minimum and either
+          // 16 or 15% of the smaller dimension of the target shape, whichever is smaller
+          if (
+            Vec.Dist(pointInTargetSpace, targetBounds.center) <
+            Math.max(
+              4,
+              Math.min(
+                Math.min(targetBounds.width, targetBounds.height) * 0.15,
+                16
+              )
+            ) /
+              this.editor.getZoomLevel()
+          ) {
+            normalizedAnchor.x = 0.5;
+            normalizedAnchor.y = 0.5;
+          }
+        }
+
+        const b = {
+          terminal: handleId,
+          normalizedAnchor,
+          isPrecise: precise,
+          isExact: this.editor.inputs.altKey,
+        };
+
+        createOrUpdateArrowBinding(this.editor, shape, target.id, b);
+
+        this.editor.setHintingShapes([target.id]);
+
+        const newBindings = getArrowBindings(this.editor, shape);
+        if (
+          newBindings.start &&
+          newBindings.end &&
+          newBindings.start.toId === newBindings.end.toId
+        ) {
+          if (
+            Vec.Equals(
+              newBindings.start.props.normalizedAnchor,
+              newBindings.end.props.normalizedAnchor
+            )
+          ) {
+            createOrUpdateArrowBinding(
+              this.editor,
+              shape,
+              newBindings.end.toId,
+              {
+                ...newBindings.end.props,
+                normalizedAnchor: {
+                  x: newBindings.end.props.normalizedAnchor.x + 0.05,
+                  y: newBindings.end.props.normalizedAnchor.y,
+                },
+              }
+            );
+          }
+        }
+
+        return update;
+      };
+      override onTranslate?: TLOnTranslateHandler<DiscourseRelationShape> = (
+        initialShape,
+        shape
+      ) => {
+        const atTranslationStart = shapeAtTranslationStart.get(initialShape);
+        if (!atTranslationStart) return;
+
+        const shapePageTransform = this.editor.getShapePageTransform(shape.id)!;
+        const pageDelta = Vec.Sub(
+          shapePageTransform.applyToPoint(shape),
+          atTranslationStart.pagePosition
+        );
+
+        for (const terminalBinding of Object.values(
+          atTranslationStart.terminalBindings
+        )) {
+          if (!terminalBinding) continue;
+
+          const newPagePoint = Vec.Add(
+            terminalBinding.pagePosition,
+            Vec.Mul(pageDelta, 0.5)
+          );
+          const newTarget = this.editor.getShapeAtPoint(newPagePoint, {
+            hitInside: true,
+            hitFrameInside: true,
+            margin: 0,
+            filter: (targetShape) => {
+              return (
+                !targetShape.isLocked &&
+                this.editor.canBindShapes({
+                  fromShape: shape,
+                  toShape: targetShape,
+                  binding: action,
+                })
+              );
+            },
+          });
+
+          if (newTarget?.id === terminalBinding.binding.toId) {
+            const targetBounds = Box.ZeroFix(
+              this.editor.getShapeGeometry(newTarget).bounds
+            );
+            const pointInTargetSpace = this.editor.getPointInShapeSpace(
+              newTarget,
+              newPagePoint
+            );
+            const normalizedAnchor = {
+              x:
+                (pointInTargetSpace.x - targetBounds.minX) / targetBounds.width,
+              y:
+                (pointInTargetSpace.y - targetBounds.minY) /
+                targetBounds.height,
+            };
+            createOrUpdateArrowBinding(this.editor, shape, newTarget.id, {
+              ...terminalBinding.binding.props,
+              normalizedAnchor,
+              isPrecise: true,
+            });
+          } else {
+            removeArrowBinding(
+              this.editor,
+              shape,
+              terminalBinding.binding.props.terminal
+            );
+          }
+        }
+      };
+    }
+    return ReferencedNodeUtil;
+  });
+};
 
 export const createAllRelationShapeUtils = (allRelationIds: string[]) => {
   return allRelationIds.map((id) => {
     class DiscourseRelationUtil extends BaseDiscourseRelationUtil {
       static override type = id;
+
+      handleCreateRelationsInRoam = ({
+        arrow,
+        targetId,
+      }: {
+        arrow: DiscourseRelationShape;
+        targetId: TLShapeId;
+      }) => {
+        const editor = this.editor;
+        const deleteAndWarn = (content: string) => {
+          renderToast({
+            id: "tldraw-warning",
+            intent: "warning",
+            content,
+          });
+          this.editor.deleteShapes([arrow.id]);
+        };
+        const target = editor.getShape(targetId);
+        const bindings = editor.getBindingsFromShape(arrow, arrow.type);
+        const sourceId = bindings.find((b) => b.toId !== targetId)?.toId;
+        if (!sourceId) return;
+        const source = editor.getShape(sourceId);
+        if (!target || !source) return;
+        const relations = Object.values(discourseContext.relations).flat();
+        const relation = relations.find((r) => r.id === arrow.type);
+        if (!relation) return;
+        const possibleTargets = discourseContext.relations[relation.label]
+          .filter((r) => r.source === relation.source)
+          .map((r) => r.destination);
+
+        if (!possibleTargets.includes(target.type)) {
+          return deleteAndWarn(
+            `Target node must be of type ${possibleTargets
+              .map((t) => discourseContext.nodes[t].text)
+              .join(", ")}`
+          );
+        }
+        if (arrow.type !== target.type) {
+          editor.updateShapes([
+            {
+              id: arrow.id,
+              type: target.type,
+            },
+          ]);
+        }
+        const { triples, label: relationLabel } = relation;
+        const isOriginal = arrow.props.text === relationLabel;
+        const newTriples = triples
+          .map((t) => {
+            if (/is a/i.test(t[1])) {
+              const targetNode =
+                (t[2] === "source" && isOriginal) ||
+                (t[2] === "destination" && !isOriginal)
+                  ? source
+                  : target;
+              const { title, uid } =
+                targetNode.props as DiscourseNodeShape["props"];
+              return [
+                t[0],
+                isPageUid(uid) ? "has title" : "with uid",
+                isPageUid(uid) ? title : uid,
+              ];
+            }
+            return t.slice(0);
+          })
+          .map(([source, relation, target]) => ({
+            source,
+            relation,
+            target,
+          }));
+        const parentUid = getCurrentPageUid();
+        const title = getPageTitleByPageUid(parentUid);
+        triplesToBlocks({
+          defaultPageTitle: `Auto generated from [[${title}]]`,
+          toPage: async (title: string, blocks: InputTextNode[]) => {
+            const parentUid =
+              getPageUidByPageTitle(title) ||
+              (await createPage({
+                title: title,
+              }));
+
+            await Promise.all(
+              blocks.map((node, order) =>
+                createBlock({ node, order, parentUid }).catch(() =>
+                  console.error(
+                    `Failed to create block: ${JSON.stringify(
+                      { node, order, parentUid },
+                      null,
+                      4
+                    )}`
+                  )
+                )
+              )
+            );
+            await openBlockInSidebar(parentUid);
+          },
+          nodeSpecificationsByLabel: Object.fromEntries(
+            Object.values(discourseContext.nodes).map((n) => [
+              n.text,
+              n.specification,
+            ])
+          ),
+        })(newTriples)();
+      };
 
       cancelAndWarn = (content: string) => {
         renderToast({
@@ -400,110 +917,6 @@ export type DiscourseRelationShape = TLBaseShape<string, RelationShapeProps>;
 
 export class BaseDiscourseRelationUtil extends ShapeUtil<DiscourseRelationShape> {
   static override props = arrowShapeProps;
-
-  handleCreateRelationsInRoam = ({
-    arrow,
-    targetId,
-  }: {
-    arrow: DiscourseRelationShape;
-    targetId: TLShapeId;
-  }) => {
-    const editor = this.editor;
-    const deleteAndWarn = (content: string) => {
-      renderToast({
-        id: "tldraw-warning",
-        intent: "warning",
-        content,
-      });
-      this.editor.deleteShapes([arrow.id]);
-    };
-    const target = editor.getShape(targetId);
-    const bindings = editor.getBindingsFromShape(arrow, arrow.type);
-    const sourceId = bindings.find((b) => b.toId !== targetId)?.toId;
-    if (!sourceId) return;
-    const source = editor.getShape(sourceId);
-    if (!target || !source) return;
-    const relations = Object.values(discourseContext.relations).flat();
-    const relation = relations.find((r) => r.id === arrow.type);
-    if (!relation) return;
-    const possibleTargets = discourseContext.relations[relation.label]
-      .filter((r) => r.source === relation.source)
-      .map((r) => r.destination);
-
-    if (!possibleTargets.includes(target.type)) {
-      return deleteAndWarn(
-        `Target node must be of type ${possibleTargets
-          .map((t) => discourseContext.nodes[t].text)
-          .join(", ")}`
-      );
-    }
-    if (arrow.type !== target.type) {
-      editor.updateShapes([
-        {
-          id: arrow.id,
-          type: target.type,
-        },
-      ]);
-    }
-    const { triples, label: relationLabel } = relation;
-    const isOriginal = arrow.props.text === relationLabel;
-    const newTriples = triples
-      .map((t) => {
-        if (/is a/i.test(t[1])) {
-          const targetNode =
-            (t[2] === "source" && isOriginal) ||
-            (t[2] === "destination" && !isOriginal)
-              ? source
-              : target;
-          const { title, uid } =
-            targetNode.props as DiscourseNodeShape["props"];
-          return [
-            t[0],
-            isPageUid(uid) ? "has title" : "with uid",
-            isPageUid(uid) ? title : uid,
-          ];
-        }
-        return t.slice(0);
-      })
-      .map(([source, relation, target]) => ({
-        source,
-        relation,
-        target,
-      }));
-    const parentUid = getCurrentPageUid();
-    const title = getPageTitleByPageUid(parentUid);
-    triplesToBlocks({
-      defaultPageTitle: `Auto generated from [[${title}]]`,
-      toPage: async (title: string, blocks: InputTextNode[]) => {
-        const parentUid =
-          getPageUidByPageTitle(title) ||
-          (await createPage({
-            title: title,
-          }));
-
-        await Promise.all(
-          blocks.map((node, order) =>
-            createBlock({ node, order, parentUid }).catch(() =>
-              console.error(
-                `Failed to create block: ${JSON.stringify(
-                  { node, order, parentUid },
-                  null,
-                  4
-                )}`
-              )
-            )
-          )
-        );
-        await openBlockInSidebar(parentUid);
-      },
-      nodeSpecificationsByLabel: Object.fromEntries(
-        Object.values(discourseContext.nodes).map((n) => [
-          n.text,
-          n.specification,
-        ])
-      ),
-    })(newTriples)();
-  };
 
   override canEdit = () => true;
   override canSnap = () => false;

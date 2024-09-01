@@ -78,9 +78,19 @@ import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import renderToast from "roamjs-components/components/Toast";
-import { createAllRelationShapeUtils } from "./DiscourseRelationShape/DiscourseRelationUtil";
-import { createAllRelationShapeTools } from "./DiscourseRelationShape/DiscourseRelationTool";
-import { createAllRelationBindings } from "./DiscourseRelationShape/DiscourseRelationBindings";
+import {
+  createAllReferencedNodeUtils,
+  createAllRelationShapeUtils,
+} from "./DiscourseRelationShape/DiscourseRelationUtil";
+import {
+  AddReferencedNodeType,
+  createAllReferencedNodeTools,
+  createAllRelationShapeTools,
+} from "./DiscourseRelationShape/DiscourseRelationTool";
+import {
+  createAllReferencedNodeBindings,
+  createAllRelationBindings,
+} from "./DiscourseRelationShape/DiscourseRelationBindings";
 
 declare global {
   interface Window {
@@ -154,6 +164,39 @@ const TldrawCanvas = ({
     );
     return allNodes;
   }, [allRelations]);
+
+  const allAddReferencedNodeByAction = useMemo(() => {
+    const obj: AddReferencedNodeType = {};
+
+    // TODO: support multiple referenced node
+    // with migration from format to specification
+    allNodes.forEach((n) => {
+      const referencedNodes = [...n.format.matchAll(/{([\w\d-]+)}/g)].filter(
+        (match) => match[1] !== "content"
+      );
+
+      if (referencedNodes.length > 0) {
+        const sourceName = referencedNodes[0][1];
+        const sourceType = allNodes.find((node) => node.text === sourceName)
+          ?.type as string;
+
+        if (!obj[`Add ${sourceName}`]) obj[`Add ${sourceName}`] = [];
+
+        obj[`Add ${sourceName}`].push({
+          format: n.format,
+          sourceName,
+          sourceType,
+          destinationType: n.type,
+          destinationName: n.text,
+        });
+      }
+    });
+
+    return obj;
+  }, [allNodes]);
+  const allAddReferencedNodeActions = useMemo(() => {
+    return Object.keys(allAddReferencedNodeByAction);
+  }, [allAddReferencedNodeByAction]);
   const isCustomArrowShape = (shape: TLShape) => {
     // TODO: find a better way to identify custom arrow shapes
     // possibly migrate to shape.type or shape.name
@@ -180,39 +223,48 @@ const TldrawCanvas = ({
   const customUiComponents: TLUiComponents = createUiComponents({
     allNodes,
     allRelationNames,
+    allAddReferencedNodeActions,
   });
 
   // UTILS
   const discourseNodeUtils = createNodeShapeUtils(allNodes);
   const discourseRelationUtils = createAllRelationShapeUtils(allRelationIds);
+  const referencedNodeUtils = createAllReferencedNodeUtils(
+    allAddReferencedNodeByAction
+  );
   const customShapeUtils = [
     ...discourseNodeUtils,
     ...discourseRelationUtils,
-    // ...referencedNodeUtils,
+    ...referencedNodeUtils,
   ];
 
   // TOOLS
   const discourseNodeTools = createNodeShapeTools(allNodes);
   const discourseRelationTools = createAllRelationShapeTools(allRelationNames);
+  const referencedNodeTools = createAllReferencedNodeTools(
+    allAddReferencedNodeByAction
+  );
   const customTools = [
     ...discourseNodeTools,
     ...discourseRelationTools,
-    // ...referencedNodeTools,
+    ...referencedNodeTools,
   ];
 
   // BINDINGS
   const relationBindings = createAllRelationBindings(allRelationIds);
-  const customBindingUtils = [...relationBindings];
+  const referencedNodeBindings = createAllReferencedNodeBindings(
+    allAddReferencedNodeByAction
+  );
+  const customBindingUtils = [...relationBindings, ...referencedNodeBindings];
 
   // UI OVERRIDES
   const uiOverrides = createUiOverrides({
     allNodes,
     allRelationNames,
-    // allAddRefNodeActions,
-    // allAddRefNodeByAction,
+    allAddReferencedNodeByAction,
     maximized,
     setMaximized,
-    // discourseContext,
+    discourseContext,
   });
 
   // STORE
