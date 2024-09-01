@@ -29,7 +29,17 @@ import {
   getArrowInfo,
   removeArrowBinding,
 } from "./helpers";
+import { AddReferencedNodeType } from "./DiscourseRelationTool";
 
+export const createAllReferencedNodeBindings = (
+  allAddReferencedNodeByAction: AddReferencedNodeType
+) => {
+  return Object.keys(allAddReferencedNodeByAction).map((action) => {
+    return class ReferencedNodeBindingUtil extends BaseRelationBindingUtil {
+      static override type = action;
+    };
+  });
+};
 export const createAllRelationBindings = (relationIds: string[]) => {
   return relationIds.map((id) => {
     return class RelationBindingUtil extends BaseRelationBindingUtil {
