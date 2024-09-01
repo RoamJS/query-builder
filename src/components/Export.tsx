@@ -49,7 +49,10 @@ import { ExportGithub } from "./ExportGithub";
 import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
-// import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
+import { createShapeId, IndexKey, TLParentId } from "tldraw";
+import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
+import { DiscourseNodeShape } from "./tldraw/DiscourseNodeUtil";
+import { MAX_WIDTH } from "./tldraw/Tldraw-2-3-0";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -232,27 +235,41 @@ const ExportDialog: ExportDialogComponent = ({
     const PADDING_BETWEEN_SHAPES = 20;
     const COMMON_BOUNDS_XOFFSET = 250;
     const MAX_COLUMNS = 5;
-    // const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
-    const COLUMN_WIDTH = 100;
+    const COLUMN_WIDTH = Number(MAX_WIDTH.replace("px", ""));
     const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const tldraw =
-      (rjsqb?.["tldraw"] as Record<string, unknown>) ||
-      // createInitialTldrawProps();
-      {};
+    const tldraw = (rjsqb?.["tldraw"] as Record<string, unknown>) || {
+      "document:document": {
+        gridSize: 10,
+        name: "",
+        meta: {},
+        id: "document:document",
+        typeName: "document",
+      },
+      "page:page": {
+        meta: {},
+        id: "page:page",
+        name: "Page 1",
+        index: "a1",
+        typeName: "page",
+      },
+    };
 
-    const getPageKey = (obj: Record<string, unknown>): string => {
+    const getPageKey = (
+      obj: Record<string, unknown>
+    ): TLParentId | undefined => {
       for (const key in obj) {
         if (
           obj[key] &&
           typeof obj[key] === "object" &&
           (obj[key] as any)["typeName"] === "page"
         ) {
-          return key;
+          return key as TLParentId;
         }
       }
-      return "";
+      return undefined;
     };
     const pageKey = getPageKey(tldraw);
+    if (!pageKey) return console.log("no page key");
 
     type TLdrawProps = {
       [key: string]: any;
@@ -316,20 +333,15 @@ const ExportDialog: ExportDialogComponent = ({
       const discourseNode = findDiscourseNode(r.uid);
       const nodeType = discourseNode ? discourseNode.type : "page-node";
       const extensionAPI = getExtensionAPI();
-      const { h, w, imageUrl } = {
-        h: 100,
-        w: 100,
-        imageUrl: "",
-      };
-      // const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-      //   nodeText: String(r[firstColumnKey]),
-      //   uid: r.uid,
-      //   nodeType,
-      //   extensionAPI,
-      // });
-      // const newShapeId = createShapeId();
-      const newShapeId = nanoid();
-      const newShape = {
+      const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+        nodeText: String(r[firstColumnKey]),
+        uid: r.uid,
+        nodeType,
+        extensionAPI,
+      });
+      const newShapeId = createShapeId();
+      const newShape: DiscourseNodeShape = {
+        index: "a1" as IndexKey, // TODO does this need to be unique?
         rotation: 0,
         isLocked: false,
         type: nodeType,
@@ -337,7 +349,7 @@ const ExportDialog: ExportDialogComponent = ({
           w,
           h,
           uid: r.uid,
-          title: r[firstColumnKey],
+          title: String(r[firstColumnKey]),
           imageUrl,
         },
         parentId: pageKey,
@@ -345,6 +357,8 @@ const ExportDialog: ExportDialogComponent = ({
         id: newShapeId,
         typeName: "shape",
         x: commonBounds.right + nextShapeX,
+        meta: {},
+        opacity: 1,
       };
 
       nextShapeX += COLUMN_WIDTH + PADDING_BETWEEN_SHAPES;
