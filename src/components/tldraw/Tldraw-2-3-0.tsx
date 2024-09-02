@@ -11,6 +11,7 @@ import ExtensionApiContextProvider, {
 import { OnloadArgs } from "roamjs-components/types";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../../utils/isFlagEnabled";
+import { Dialog, Button, Classes, Menu, MenuItem } from "@blueprintjs/core";
 
 import {
   Editor as TldrawApp,
@@ -51,6 +52,7 @@ import {
   BindingUtil,
   TLAnyBindingUtilConstructor,
   TLShape,
+  useValue,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -64,6 +66,7 @@ import {
   CustomContextMenu,
   createUiComponents,
   createUiOverrides,
+  getOnSelectForShape,
 } from "./uiOverrides";
 import {
   BaseDiscourseNodeUtil,
@@ -91,6 +94,7 @@ import {
   createAllReferencedNodeBindings,
   createAllRelationBindings,
 } from "./DiscourseRelationShape/DiscourseRelationBindings";
+import ConvertToDialog from "./ConvertToDialog";
 
 declare global {
   interface Window {
@@ -127,11 +131,12 @@ const TldrawCanvas = ({
   title: string;
   previewEnabled: boolean;
 }) => {
-  const appRef = useRef<TldrawApp>();
+  const appRef = useRef<TldrawApp | null>(null);
   const lastInsertRef = useRef<VecModel>();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [maximized, setMaximized] = useState(false);
+  const [isConvertToDialogOpen, setConvertToDialogOpen] = useState(false);
 
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
@@ -264,6 +269,7 @@ const TldrawCanvas = ({
     allAddReferencedNodeByAction,
     maximized,
     setMaximized,
+    setConvertToDialogOpen,
     discourseContext,
   });
 
@@ -432,6 +438,13 @@ const TldrawCanvas = ({
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
           : ""}
       </style>
+      <ConvertToDialog
+        allNodes={allNodes}
+        extensionAPI={extensionAPI}
+        isOpen={isConvertToDialogOpen}
+        onClose={() => setConvertToDialogOpen(false)}
+        editor={appRef.current}
+      />
       <TldrawEditor
         // baseUrl="https://samepage.network/assets/tldraw/"
         // instanceId={initialState.instanceId}

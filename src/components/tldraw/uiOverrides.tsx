@@ -56,6 +56,124 @@ import renderToast from "roamjs-components/components/Toast";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import { openCanvasDrawer } from "./CanvasDrawer";
 import { AddReferencedNodeType } from "./DiscourseRelationShape/DiscourseRelationTool";
+import { Dialog, Button } from "@blueprintjs/core";
+
+const convertToDiscourseNode = async ({
+  text,
+  type,
+  imageShapeUrl,
+  extensionAPI,
+  editor,
+  selectedShape,
+}: {
+  text: string;
+  type: string;
+  imageShapeUrl?: string;
+  extensionAPI: OnloadArgs["extensionAPI"];
+  editor: Editor;
+  selectedShape: TLShape | null;
+}) => {
+  if (!extensionAPI) {
+    renderToast({
+      id: "tldraw-warning",
+      intent: "danger",
+      content: `Failed to convert to ${type}.  Please contact support`,
+    });
+    return;
+  }
+  if (!selectedShape) {
+    renderToast({
+      id: "tldraw-warning",
+      intent: "warning",
+      content: `No shape selected.`,
+    });
+    return;
+  }
+  const nodeText =
+    type === "blck-node"
+      ? text
+      : await getNewDiscourseNodeText({
+          text,
+          nodeType: type,
+        });
+  const uid = await createDiscourseNode({
+    configPageUid: type,
+    text: nodeText,
+    imageUrl: imageShapeUrl,
+    extensionAPI,
+  });
+  editor.deleteShapes([selectedShape.id]);
+  const { x, y } = selectedShape;
+  const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
+    nodeText: nodeText,
+    extensionAPI,
+    nodeType: type,
+    uid,
+  });
+  editor.createShapes([
+    {
+      type,
+      id: createShapeId(),
+      props: {
+        uid,
+        title: nodeText,
+        h,
+        w,
+        imageUrl,
+      },
+      x,
+      y,
+    },
+  ]);
+};
+
+export const getOnSelectForShape = ({
+  shape,
+  nodeType,
+  editor,
+  extensionAPI,
+}: {
+  shape: TLShape;
+  nodeType: string;
+  editor: Editor;
+  extensionAPI: OnloadArgs["extensionAPI"];
+}) => {
+  if (shape.type === "image") {
+    return async () => {
+      const { assetId } = (shape as TLImageShape).props;
+      if (!assetId) return;
+      const asset = editor.getAsset(assetId);
+      if (!asset || !asset.props.src) return;
+      const file = await fetch(asset.props.src)
+        .then((r) => r.arrayBuffer())
+        .then((buf) => new File([buf], shape.id));
+      const src = await window.roamAlphaAPI.util.uploadFile({
+        file,
+      });
+      const text = nodeType === "blck-node" ? `![](${src})` : "";
+      convertToDiscourseNode({
+        text,
+        type: nodeType,
+        imageShapeUrl: src,
+        editor,
+        selectedShape: shape,
+        extensionAPI,
+      });
+    };
+  } else if (shape.type === "text") {
+    return () => {
+      const { text } = (shape as TLTextShape).props;
+      convertToDiscourseNode({
+        text,
+        type: nodeType,
+        editor,
+        selectedShape: shape,
+        extensionAPI,
+      });
+    };
+  }
+  return () => {};
+};
 
 export const CustomContextMenu = ({
   extensionAPI,
@@ -72,89 +190,6 @@ export const CustomContextMenu = ({
   );
   const isTextSelected = selectedShape?.type === "text";
   const isImageSelected = selectedShape?.type === "image";
-
-  const convertToDiscourseNode = async (
-    text: string,
-    type: string,
-    imageShapeUrl?: string
-  ) => {
-    if (!extensionAPI) {
-      renderToast({
-        id: "tldraw-warning",
-        intent: "danger",
-        content: `Failed to convert to ${type}.  Please contact support`,
-      });
-      return;
-    }
-    if (!selectedShape) {
-      renderToast({
-        id: "tldraw-warning",
-        intent: "warning",
-        content: `No shape selected.`,
-      });
-      return;
-    }
-    const nodeText =
-      type === "blck-node"
-        ? text
-        : await getNewDiscourseNodeText({
-            text,
-            nodeType: type,
-          });
-    const uid = await createDiscourseNode({
-      configPageUid: type,
-      text: nodeText,
-      imageUrl: imageShapeUrl,
-      extensionAPI,
-    });
-    editor.deleteShapes([selectedShape.id]);
-    const { x, y } = selectedShape;
-    const { h, w, imageUrl } = await calcCanvasNodeSizeAndImg({
-      nodeText: nodeText,
-      extensionAPI,
-      nodeType: type,
-      uid,
-    });
-    editor.createShapes([
-      {
-        type,
-        id: createShapeId(),
-        props: {
-          uid,
-          title: nodeText,
-          h,
-          w,
-          imageUrl,
-        },
-        x,
-        y,
-      },
-    ]);
-  };
-  const getOnSelectForShape = (shape: TLShape, nodeType: string) => {
-    if (shape.type === "image") {
-      return async () => {
-        const { assetId } = (shape as TLImageShape).props;
-        if (!assetId) return;
-        const asset = editor.getAsset(assetId);
-        if (!asset || !asset.props.src) return;
-        const file = await fetch(asset.props.src)
-          .then((r) => r.arrayBuffer())
-          .then((buf) => new File([buf], shape.id));
-        const src = await window.roamAlphaAPI.util.uploadFile({
-          file,
-        });
-        const text = nodeType === "blck-node" ? `![](${src})` : "";
-        convertToDiscourseNode(text, nodeType, src);
-      };
-    } else if (shape.type === "text") {
-      return () => {
-        const { text } = (shape as TLTextShape).props;
-        convertToDiscourseNode(text, nodeType);
-      };
-    }
-    return () => {};
-  };
 
   return (
     <DefaultContextMenu>
@@ -181,7 +216,12 @@ export const CustomContextMenu = ({
                     id={`convert-to-${node.type}`}
                     label={`Convert To ${node.text}`}
                     readonlyOk
-                    onSelect={getOnSelectForShape(selectedShape, node.type)}
+                    onSelect={getOnSelectForShape({
+                      shape: selectedShape,
+                      nodeType: node.type,
+                      editor,
+                      extensionAPI,
+                    })}
                   />
                 );
               })}
@@ -287,6 +327,7 @@ export const createUiOverrides = ({
   discourseContext,
   maximized,
   setMaximized,
+  setConvertToDialogOpen,
 }: {
   allNodes: DiscourseNode[];
   allRelationNames: string[];
@@ -294,6 +335,7 @@ export const createUiOverrides = ({
   discourseContext: DiscourseContextType;
   maximized: boolean;
   setMaximized: (maximized: boolean) => void;
+  setConvertToDialogOpen: (open: boolean) => void;
 }): TLUiOverrides => ({
   tools(editor, tools) {
     allNodes.forEach((node, index) => {
@@ -364,7 +406,14 @@ export const createUiOverrides = ({
 
     return tools;
   },
-  actions(_app, actions) {
+  actions(editor, actions) {
+    actions["convert-to"] = {
+      id: "convert-to",
+      label: "action.convert-to" as TLUiTranslationKey,
+      kbd: "?C",
+      onSelect: () => setConvertToDialogOpen(true),
+      readonlyOk: true,
+    };
     actions["toggle-full-screen"] = {
       id: "toggle-full-screen",
       label: "action.toggle-full-screen" as TLUiTranslationKey,
