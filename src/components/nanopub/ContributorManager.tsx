@@ -47,7 +47,6 @@ const ContributorManager = ({ pageUid }: { pageUid: string }) => {
   const initialContributors = nanopub?.contributors || [];
   const [contributors, setContributors] =
     useState<Contributor[]>(initialContributors);
-  // const [isEditing, setIsEditing] = useState(false);
 
   const userDisplayNames = useMemo(() => {
     const queryResults = window.roamAlphaAPI.data.fast.q(
@@ -105,29 +104,19 @@ const ContributorManager = ({ pageUid }: { pageUid: string }) => {
             userDisplayNames={userDisplayNames}
           />
         ))}
-        <div className="flex space-x-2">
-          <Button
-            // disabled={!isEditing}
-            intent={Intent.PRIMARY}
-            icon="add"
-            onClick={() =>
-              setContributors([
-                ...contributors,
-                { id: nanoid(), name: "", roles: [] },
-              ])
-            }
-          >
-            Add Contributor
-          </Button>
-          {/* <Button
-            intent={Intent.PRIMARY}
-            icon={isEditing ? "tick" : "edit"}
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? "Done" : "Edit Contributors"}
-          </Button> */}
-        </div>
       </div>
+      <Button
+        intent={Intent.PRIMARY}
+        icon="add"
+        onClick={() =>
+          setContributors([
+            ...contributors,
+            { id: nanoid(), name: "", roles: [] },
+          ])
+        }
+      >
+        Add Contributor
+      </Button>
     </div>
   );
 };
@@ -187,15 +176,15 @@ const ContributorRow = ({
         options={userDisplayNames}
       />
       <MultiSelect
-        popoverProps={{
-          minimal: true,
-          portalClassName: "nanopub-popover",
-        }}
         fill={true}
         items={creditRoles}
         selectedItems={contributor.roles}
         onItemSelect={(item) => setContributorRoles(item, contributor)}
         tagRenderer={(item) => item}
+        popoverProps={{ minimal: true }}
+        itemListRenderer={({ items, renderItem }) => {
+          return <div className="rounded p-1">{items.map(renderItem)}</div>;
+        }}
         itemRenderer={(item, { modifiers, handleClick }) => {
           if (contributor.roles?.includes(item)) return null;
           if (!modifiers.matchesPredicate) return null;
@@ -206,6 +195,7 @@ const ContributorRow = ({
               onClick={handleClick}
               text={item}
               key={item}
+              className="block w-full"
             />
           );
         }}

@@ -30,48 +30,57 @@ const placeholders = {
   myORCID: "Your ORCID identifier",
   createdBy: "Creator of the page",
 };
-const defaultPredicates = [
-  "is a",
-  "has the label",
-  "has the description",
-  "has more info at",
-  "is attributed to",
-  "is created by",
-];
 
-// TODO: combine with above
-const predicateURIs = {
+export const defaultPredicates = {
   "is a": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
   "has the label": "http://www.w3.org/2000/01/rdf-schema#label",
   "has the description": "http://purl.org/dc/terms/description",
   "has more info at": "http://xmlns.com/foaf/0.1/page",
-  "is attributed to": "http://purl.org/dc/terms/creator",
+  "is attributed to": "http://www.w3.org/ns/prov#wasAttributedTo",
   "is created by": "http://purl.org/dc/terms/creator",
+} as const;
+
+export type PredicateKey = keyof typeof defaultPredicates;
+
+type TripleType = "assertion" | "provenance" | "publicationInfo";
+
+export type NanopubTripleType = {
+  uid: string;
+  predicate: PredicateKey | "";
+  object: string;
+  type: TripleType;
 };
+
+type GraphNode = {
+  "@id": string;
+  "@graph": Array<{
+    "@id": string;
+    [key: string]: any;
+  }>;
+};
+
 type RDFStructure = {
   "@context": Record<string, string>;
   "@id": string;
   "@graph": {
     "@id": string;
     "@type": string;
-    "np:hasPublicationInfo": {
-      "@id": string;
-      "@graph": Array<{
-        "@id": string;
-        [key: string]: any; // Flexible for additional properties
-      }>;
-    };
+    "np:hasPublicationInfo": GraphNode;
+    "np:hasAssertion": GraphNode;
+    "np:hasProvenance": GraphNode;
   };
 };
 
-const baseRdf: RDFStructure = {
+export const baseRdf: RDFStructure = {
   "@context": {
+    "@base": "http://purl.org/nanopub/temp/mynanopub#",
     rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     rdfs: "http://www.w3.org/2000/01/rdf-schema#",
     dc: "http://purl.org/dc/terms/",
     np: "http://www.nanopub.org/nschema#",
     foaf: "http://xmlns.com/foaf/0.1/",
     xsd: "http://www.w3.org/2001/XMLSchema#",
+    credit: "https://credit.niso.org/contributor-roles/",
   },
   "@id": "#Head",
   "@graph": {
@@ -92,45 +101,6 @@ const baseRdf: RDFStructure = {
   },
 };
 
-const generateRdfString = (triples: NanopubTriple[]): string => {
-  const rdf = { ...baseRdf };
-
-  rdf["@graph"]["np:hasAssertion"]["@graph"] = triples
-    .filter((triple) => triple.type === "assertion")
-    .map((triple) => ({
-      "@id": "#assertion",
-      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
-        "@id": triple.object,
-      },
-    }));
-
-  rdf["@graph"]["np:hasProvenance"]["@graph"] = triples
-    .filter((triple) => triple.type === "provenance")
-    .map((triple) => ({
-      "@id": "#provenance",
-      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
-        "@value": triple.object,
-      },
-    }));
-
-  rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = triples
-    .filter((triple) => triple.type === "publicationInfo")
-    .map((triple) => ({
-      "@id": "#pubinfo",
-      [predicateURIs[triple.predicate as keyof typeof predicateURIs]]: {
-        "@value": triple.object,
-      },
-    }));
-
-  return JSON.stringify(rdf, null, 2); // Return the stringified RDF with pretty print
-};
-
-export type NanopubTriple = {
-  uid: string;
-  predicate: string;
-  object: string;
-};
-
 const TripleInput = React.memo(
   ({
     triple,
@@ -139,8 +109,8 @@ const TripleInput = React.memo(
     enabled,
     node,
   }: {
-    triple: NanopubTriple;
-    onChange: (field: keyof NanopubTriple, value: string) => void;
+    triple: NanopubTripleType;
+    onChange: (field: keyof NanopubTripleType, value: string) => void;
     onDelete: () => void;
     enabled: boolean;
     node: DiscourseNode;
@@ -192,7 +162,7 @@ const TripleInput = React.memo(
           onBlur={(v) => handlePredicateUpdate(v, false)}
           id={`${uid}-predicate`}
           disabled={!enabled}
-          options={defaultPredicates}
+          options={Object.keys(defaultPredicates)}
         />
         <AutocompleteInput
           placeholder="Object"
@@ -226,12 +196,13 @@ const NanopubConfigPanel = ({
   const [triplesUid, setTriplesUid] = useState<string | null>(
     () => getSubTree({ tree, key: "triples" }).uid || null
   );
-  const [triples, setTriples] = useState<NanopubTriple[]>(() =>
+  const [triples, setTriples] = useState<NanopubTripleType[]>(() =>
     triplesUid
       ? getBasicTreeByParentUid(triplesUid).map((t) => ({
           uid: t.uid,
-          predicate: t.text,
+          predicate: t.text as PredicateKey,
           object: t.children[0]?.text || "",
+          type: "assertion",
         }))
       : []
   );
@@ -298,10 +269,13 @@ const NanopubConfigPanel = ({
       parentUid: predicateUid,
     });
 
-    setTriples([...triples, { uid: predicateUid, predicate: "", object: "" }]);
+    setTriples([
+      ...triples,
+      { uid: predicateUid, predicate: "", object: "", type: "assertion" },
+    ]);
   };
   const updateTriple = useCallback(
-    (uid: string, field: keyof NanopubTriple, value: string) => {
+    (uid: string, field: keyof NanopubTripleType, value: string) => {
       setTriples(
         triples.map((triple) =>
           triple.uid === uid ? { ...triple, [field]: value } : triple
@@ -350,8 +324,9 @@ const NanopubConfigPanel = ({
     setTriples(
       defaultTriples.map((triple) => ({
         uid: triple.predicateUid,
-        predicate: triple.predicate,
+        predicate: triple.predicate as PredicateKey,
         object: triple.object,
+        type: "assertion",
       }))
     );
     setIsWarningDialogOpen(false);

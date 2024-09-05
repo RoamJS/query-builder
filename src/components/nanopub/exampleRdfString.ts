@@ -1,4 +1,4 @@
-const rdfString = {
+const exampleRdfString = {
   "@context": {
     "@base": "http://purl.org/nanopub/temp/mynanopub#",
     np: "http://www.nanopub.org/nschema#",
@@ -52,4 +52,4 @@ const rdfString = {
   },
 };
 
-export default rdfString;
+export default exampleRdfString;
