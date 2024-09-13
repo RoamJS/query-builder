@@ -249,6 +249,24 @@ const NanopubDialog = ({
         }))
     );
 
+    // Add timestamp to publication info
+    rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
+      "@id": "#",
+      "dct:created": {
+        "@value": new Date().toISOString(),
+        "@type": "xsd:dateTime",
+      },
+    });
+
+    // Alias predicates
+    Object.entries(defaultPredicates).map(([key, value]) => {
+      rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
+        "@id": value,
+        "rdfs:label": key,
+      });
+    });
+
+    // DEV TODO REMOVE
     rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
       "@id": "#",
       "@type": "npx:ExampleNanopub",
