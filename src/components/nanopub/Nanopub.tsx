@@ -185,6 +185,9 @@ const NanopubDialog = ({
   const discourseNode = useMemo(() => getDiscourseNode(uid), [uid]);
   if (!discourseNode) return <> </>;
   const templateTriples = discourseNode?.nanopub?.triples;
+  const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
+    []
+  );
 
   const updateObjectPlaceholders = async (object: string) => {
     const pageTitle = getPageTitleByPageUid(uid);
@@ -448,6 +451,7 @@ const NanopubDialog = ({
           },
         },
       });
+      setSelectedTabId("nanopub-details");
     } catch (e) {
       const error = e as Error;
       console.error("Error publishing the Nanopub:", error);
@@ -531,28 +535,13 @@ const NanopubDialog = ({
     // nodeText,
     // handleClose,
     contributors,
+    resolvedTriples,
   }: {
     // nodeText: string;
     // handleClose: () => void;
     contributors: Contributor[];
+    resolvedTriples: NanopubTripleType[];
   }) => {
-    const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
-      []
-    );
-
-    useEffect(() => {
-      const resolveTriples = async () => {
-        const resolved = await Promise.all(
-          templateTriples?.map(async (triple) => {
-            const updatedObject = await updateObjectPlaceholders(triple.object);
-            return { ...triple, object: updatedObject };
-          }) || []
-        );
-        setResolvedTriples(resolved);
-      };
-      resolveTriples();
-    }, [templateTriples]);
-
     return (
       <>
         <div className="mb-4">
@@ -631,6 +620,19 @@ const NanopubDialog = ({
   useEffect(() => {
     generateAndSetRDF();
   }, []);
+  // Resolve triple placeholders
+  useEffect(() => {
+    const resolveTriples = async () => {
+      const resolved = await Promise.all(
+        templateTriples?.map(async (triple) => {
+          const updatedObject = await updateObjectPlaceholders(triple.object);
+          return { ...triple, object: updatedObject };
+        }) || []
+      );
+      setResolvedTriples(resolved);
+    };
+    resolveTriples();
+  }, [templateTriples]);
 
   return (
     <Dialog
@@ -674,6 +676,7 @@ const NanopubDialog = ({
                     // nodeText={discourseNode.text}
                     // handleClose={handleClose}
                     contributors={contributors}
+                    resolvedTriples={resolvedTriples}
                   />
                 }
               />

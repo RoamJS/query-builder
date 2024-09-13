@@ -144,7 +144,7 @@ const ContributorRow = memo(
               )
             );
           },
-          timeout ? 500 : 0
+          timeout ? 250 : 0
         );
       },
       [contributor.id, setContributors]
