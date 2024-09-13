@@ -39,6 +39,10 @@ import {
 } from "./NanopubNodeConfig";
 import { defaultNanopubTemplate } from "../../data/defaultNanopubTemplates";
 import getBlockProps from "../../utils/getBlockProps";
+import getExportTypes from "../../utils/getExportTypes";
+import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import { Result } from "roamjs-components/types/query-builder";
 
 type NanopubPage = {
   contributors: Contributor[];
@@ -107,6 +111,30 @@ const NanopubTriple = ({
   </div>
 );
 
+const getPageContent = async ({
+  pageTitle,
+  uid,
+}: {
+  pageTitle: string;
+  uid: string;
+}): Promise<string> => {
+  const exportTypes = getExportTypes({
+    exportId: "nanopub",
+    results: [{ text: pageTitle, uid }],
+    isExportDiscourseGraph: false,
+  });
+  const markdownExport = exportTypes.find((type) => type.name === "Markdown");
+  if (!markdownExport) return "";
+  const result = await markdownExport.callback({
+    isSamePageEnabled: false,
+    includeDiscourseContext: false,
+    filename: "",
+    isExportDiscourseGraph: false,
+  });
+  const { content } = result[0];
+  return content;
+};
+
 const NanopubDialog = ({
   uid,
   onloadArgs,
@@ -122,24 +150,25 @@ const NanopubDialog = ({
   if (!discourseNode) return <> </>;
   const templateTriples = discourseNode?.nanopub?.triples;
 
-  const updateObjectPlaceholders = (object: string) => {
+  const updateObjectPlaceholders = async (object: string) => {
+    const pageTitle = getPageTitleByPageUid(uid);
     const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
 
     return object
       .replace(/\{nodeType\}/g, discourseNode.text)
-      .replace(/\{title\}/g, getPageTitleByPageUid(uid))
+      .replace(/\{title\}/g, pageTitle)
       .replace(/\{name\}/g, getCurrentUserDisplayName())
       .replace(/\{url\}/g, pageUrl)
       .replace(/\{myORCID\}/g, ORCID)
       .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
-      .replace(/\{body\}/g, ""); // TODO: Add body
+      .replace(/\{body\}/g, await getPageContent({ pageTitle, uid }));
   };
 
-  const generateRdfString = ({
+  const generateRdfString = async ({
     triples,
   }: {
     triples: NanopubTripleType[];
-  }): string => {
+  }): Promise<string> => {
     const rdf = { ...baseRdf };
 
     // TEMP TODO REMOVE
@@ -151,32 +180,38 @@ const NanopubDialog = ({
       return templateTriple ? { ...triple, type: templateTriple.type } : triple;
     });
 
-    rdf["@graph"]["np:hasAssertion"]["@graph"] = updatedTriples
-      .filter((triple) => triple.type === "assertion")
-      .map((triple) => ({
-        "@id": "#",
-        [defaultPredicates[triple.predicate as PredicateKey]]: {
-          "@value": updateObjectPlaceholders(triple.object),
-        },
-      }));
+    rdf["@graph"]["np:hasAssertion"]["@graph"] = await Promise.all(
+      updatedTriples
+        .filter((triple) => triple.type === "assertion")
+        .map(async (triple) => ({
+          "@id": "#",
+          [defaultPredicates[triple.predicate as PredicateKey]]: {
+            "@value": await updateObjectPlaceholders(triple.object),
+          },
+        }))
+    );
 
-    rdf["@graph"]["np:hasProvenance"]["@graph"] = updatedTriples
-      .filter((triple) => triple.type === "provenance")
-      .map((triple) => ({
-        "@id": "#assertion",
-        [defaultPredicates[triple.predicate as PredicateKey]]: {
-          "@value": updateObjectPlaceholders(triple.object),
-        },
-      }));
+    rdf["@graph"]["np:hasProvenance"]["@graph"] = await Promise.all(
+      updatedTriples
+        .filter((triple) => triple.type === "provenance")
+        .map(async (triple) => ({
+          "@id": "#assertion",
+          [defaultPredicates[triple.predicate as PredicateKey]]: {
+            "@value": await updateObjectPlaceholders(triple.object),
+          },
+        }))
+    );
 
-    rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = updatedTriples
-      .filter((triple) => triple.type === "publicationInfo")
-      .map((triple) => ({
-        "@id": "#pubinfo",
-        [defaultPredicates[triple.predicate as PredicateKey]]: {
-          "@value": updateObjectPlaceholders(triple.object),
-        },
-      }));
+    rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = await Promise.all(
+      updatedTriples
+        .filter((triple) => triple.type === "publicationInfo")
+        .map(async (triple) => ({
+          "@id": "#pubinfo",
+          [defaultPredicates[triple.predicate as PredicateKey]]: {
+            "@value": await updateObjectPlaceholders(triple.object),
+          },
+        }))
+    );
 
     rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
       "@id": "#",
@@ -352,9 +387,12 @@ const NanopubDialog = ({
           className="font-mono text-sm"
         />
         <Button
-          onClick={() =>
-            setRdfString(generateRdfString({ triples: templateTriples || [] }))
-          }
+          onClick={async () => {
+            const rdfString = await generateRdfString({
+              triples: templateTriples || [],
+            });
+            setRdfString(rdfString);
+          }}
           intent={"primary"}
         >
           Generate
