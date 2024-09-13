@@ -1,5 +1,16 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Dialog, Button, H5, TextArea, Tabs, Tab } from "@blueprintjs/core";
+import {
+  Dialog,
+  Button,
+  H5,
+  TextArea,
+  Tabs,
+  Tab,
+  TabId,
+  Label,
+  Tag,
+  Text,
+} from "@blueprintjs/core";
 // web.js:1014 Uncaught (in promise) TypeError: Failed to construct 'URL': Invalid URL
 //     at __wbg_init (web.js:1014:17)
 //     at Nanopub.tsx:200:7
@@ -43,9 +54,11 @@ import getExportTypes from "../../utils/getExportTypes";
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Result } from "roamjs-components/types/query-builder";
+import updateBlock from "roamjs-components/writes/updateBlock";
 
-type NanopubPage = {
+export type NanopubPage = {
   contributors: Contributor[];
+  published?: string;
 };
 export type Contributor = {
   id: string;
@@ -105,9 +118,21 @@ const NanopubTriple = ({
   predicate: string;
 }) => (
   <div className="grid grid-cols-12 gap-4 border-0 border-b sm:border-b-0 py-2">
-    <div className="col-span-12 sm:col-span-2">{subject}</div>
-    <div className="col-span-12 sm:col-span-2">{predicate}</div>
-    <div className="col-span-12 sm:col-span-8">{object}</div>
+    <Text
+      className="col-span-12 sm:col-span-2 truncate"
+      title={subject}
+      children={subject}
+    />
+    <Text
+      className="col-span-12 sm:col-span-2 truncate"
+      title={predicate}
+      children={predicate}
+    />
+    <Text
+      className="col-span-12 sm:col-span-8 truncate"
+      title={object}
+      children={object}
+    />
   </div>
 );
 
@@ -145,6 +170,17 @@ const NanopubDialog = ({
   const [isOpen, setIsOpen] = useState(true);
   const handleClose = () => setIsOpen(false);
   const [rdfString, setRdfString] = useState("");
+  const props = useMemo(
+    () => getBlockProps(uid) as Record<string, unknown>,
+    [uid]
+  );
+  const nanopub = props["nanopub"] as NanopubPage;
+  const initialContributors = nanopub?.contributors || [];
+  const propsUrl = nanopub?.published;
+  const [contributors, setContributors] =
+    useState<Contributor[]>(initialContributors);
+  const [publishedURL, setPublishedURL] = useState(propsUrl);
+  const [selectedTabId, setSelectedTabId] = useState<TabId>("nanopub-details");
 
   const discourseNode = useMemo(() => getDiscourseNode(uid), [uid]);
   if (!discourseNode) return <> </>;
@@ -252,7 +288,6 @@ const NanopubDialog = ({
   const [checkedOutput, setCheckedOutput] = useState("");
   const [signedOutput, setSignedOutput] = useState("");
   const [publishedOutput, setPublishedOutput] = useState("");
-  const [publishedURL, setPublishedURL] = useState("");
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
 
   // DEV
@@ -323,6 +358,19 @@ const NanopubDialog = ({
         <div className="dev flex space-x-2">
           <Button
             onClick={() => {
+              window.roamAlphaAPI.updateBlock({
+                block: {
+                  uid,
+                  props: {},
+                },
+              });
+            }}
+            intent="primary"
+          >
+            Clear Props
+          </Button>
+          <Button
+            onClick={() => {
               if (!templateTriples) return console.log("No triples");
               console.log(generateRdfString({ triples: templateTriples }));
             }}
@@ -349,6 +397,7 @@ const NanopubDialog = ({
       </div>
     );
   };
+  // END DEV
 
   const ORCID = useMemo(() => {
     console.log("getORCID");
@@ -363,13 +412,24 @@ const NanopubDialog = ({
     const NAME = getCurrentUserDisplayName();
     const profile = new NpProfile(PRIVATE_KEY, ORCID, NAME, "");
     const np = new Nanopub(LIVERDF);
-    console.log(LIVERDF);
     try {
       const published = await np.publish(profile, serverUrl);
+      const url = published.info().published;
       console.log("Published info dict:", published.info());
       setPublishedOutput(JSON.stringify(published.info(), null, 2));
       setRdfOutput(published.rdf());
-      setPublishedURL(published.info().published);
+      setPublishedURL(url);
+      const props = getBlockProps(uid) as Record<string, unknown>;
+      const nanopub = props["nanopub"] as NanopubPage;
+      window.roamAlphaAPI.updateBlock({
+        block: {
+          uid,
+          props: {
+            ...props,
+            nanopub: { ...nanopub, published: url },
+          },
+        },
+      });
     } catch (e) {
       const error = e as Error;
       console.error("Error publishing the Nanopub:", error);
@@ -377,14 +437,151 @@ const NanopubDialog = ({
     }
   };
 
+  const generateAndSetRDF = useCallback(async () => {
+    const rdfString = await generateRdfString({
+      triples: templateTriples || [],
+    });
+    setRdfString(rdfString);
+  }, [templateTriples]);
+
+  // Tabs
+  const NanopubDetails = () => {
+    return (
+      <div className="flex flex-col space-y-6">
+        <div>
+          <Label>Status</Label>
+          <span>
+            {publishedURL ? (
+              <Tag intent="success">Published</Tag>
+            ) : (
+              <Tag>Not Published</Tag>
+            )}
+          </span>
+        </div>
+        <div>
+          <Label>URL</Label>
+          <span>
+            {publishedURL ? (
+              <a href={publishedURL} target="_blank" rel="noopener noreferrer">
+                {publishedURL}
+              </a>
+            ) : (
+              "N/A"
+            )}
+          </span>
+        </div>
+      </div>
+    );
+  };
+  const NanopubTemplate = ({
+    node,
+    handleClose,
+  }: {
+    node: string;
+    handleClose: () => void;
+  }) => {
+    return (
+      <>
+        <div>
+          {templateTriples?.map((triple) => (
+            <NanopubTriple
+              key={triple.uid}
+              subject={discourseNode?.text || ""}
+              predicate={triple.predicate}
+              object={triple.object}
+            />
+          ))}
+        </div>
+        <div className="mt-4">
+          <Button
+            text="View Template"
+            icon="link"
+            onClick={() => {
+              window.roamAlphaAPI.ui.mainWindow.openPage({
+                page: {
+                  title: `discourse-graph/nodes/${node}`,
+                },
+              });
+              handleClose();
+            }}
+          />
+        </div>
+      </>
+    );
+  };
+  const PreviewNanopub = ({
+    // nodeText,
+    // handleClose,
+    contributors,
+  }: {
+    // nodeText: string;
+    // handleClose: () => void;
+    contributors: Contributor[];
+  }) => {
+    const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
+      []
+    );
+
+    useEffect(() => {
+      const resolveTriples = async () => {
+        const resolved = await Promise.all(
+          templateTriples?.map(async (triple) => {
+            const updatedObject = await updateObjectPlaceholders(triple.object);
+            return { ...triple, object: updatedObject };
+          }) || []
+        );
+        setResolvedTriples(resolved);
+      };
+      resolveTriples();
+    }, [templateTriples]);
+
+    return (
+      <>
+        <div className="mb-4">
+          {resolvedTriples?.map((triple) => {
+            return (
+              <NanopubTriple
+                key={triple.uid}
+                subject={discourseNode?.text || ""}
+                predicate={triple.predicate}
+                object={triple.object}
+              />
+            );
+          })}
+          {contributors.map((contributor) => {
+            return (
+              <NanopubTriple
+                key={contributor.id}
+                subject={contributor.name}
+                predicate="hasRole"
+                object={contributor.roles.join(", ")}
+              />
+            );
+          })}
+        </div>
+        {/* <Button
+          text="Change Template"
+          icon="link"
+          onClick={() => {
+            window.roamAlphaAPI.ui.mainWindow.openPage({
+              page: {
+                title: `discourse-graph/nodes/${nodeText}`,
+              },
+            });
+            handleClose();
+          }}
+        /> */}
+      </>
+    );
+  };
   const TripleString = () => {
     return (
       <div className="mt-4">
         <TextArea
           value={rdfString}
           fill
-          rows={10}
-          className="font-mono text-sm"
+          rows={30}
+          className="font-mono text-sm overflow-y-auto mb-4"
         />
         <Button
           onClick={async () => {
@@ -395,27 +592,13 @@ const NanopubDialog = ({
           }}
           intent={"primary"}
         >
-          Generate
+          Refresh
         </Button>
       </div>
     );
   };
 
-  const NanopubDetails = () => {
-    return (
-      <>
-        {templateTriples?.map((triple) => (
-          <NanopubTriple
-            key={triple.uid}
-            subject={discourseNode?.text || ""}
-            predicate={triple.predicate}
-            object={triple.object}
-          />
-        ))}
-      </>
-    );
-  };
-
+  // Init WASM
   useEffect(() => {
     try {
       // @ts-ignore
@@ -426,6 +609,10 @@ const NanopubDialog = ({
       console.error("Error initializing WASM:", error);
     }
   }, []);
+  // Generate Initial RDF String
+  useEffect(() => {
+    generateAndSetRDF();
+  }, []);
 
   return (
     <Dialog
@@ -435,28 +622,57 @@ const NanopubDialog = ({
       autoFocus={false}
       enforceFocus={false}
       className="w-full sm:w-full md:w-3/4 lg:w-full lg:max-w-5xl"
-      style={{ height: "75vh" }}
+      style={{ minHeight: "50vh" }}
     >
       {discourseNode ? (
         <div className="bp3-dialog-body">
           <div className="space-y-4">
-            <ContributorManager pageUid={uid} />
-            <Tabs>
+            <Tabs
+              selectedTabId={selectedTabId}
+              onChange={(id) => setSelectedTabId(id)}
+            >
               <Tab
                 id="nanopub-details"
-                title="Nanopub Details"
+                title="Details"
                 panel={<NanopubDetails />}
               />
               <Tab
-                id="triple-string"
-                title="Triple String"
-                panel={<TripleString />}
+                id="nanopub-contributors"
+                title="Contributors"
+                panel={
+                  <ContributorManager
+                    pageUid={uid}
+                    props={props}
+                    contributors={contributors}
+                    setContributors={setContributors}
+                  />
+                }
               />
               <Tab
-                id="dev-details"
-                title="Dev Details"
-                panel={<DevDetails />}
+                id="nanopub-preview"
+                title="Preview"
+                panel={
+                  <PreviewNanopub
+                    // nodeText={discourseNode.text}
+                    // handleClose={handleClose}
+                    contributors={contributors}
+                  />
+                }
               />
+              <Tab
+                id="nanopub-template"
+                title="Template"
+                panel={
+                  <NanopubTemplate
+                    node={discourseNode.text}
+                    handleClose={handleClose}
+                  />
+                }
+              />
+
+              <Tab id="triple-string" title="RDF" panel={<TripleString />} />
+
+              <Tab id="dev-details" title="Dev" panel={<DevDetails />} />
             </Tabs>
           </div>
         </div>
@@ -465,8 +681,19 @@ const NanopubDialog = ({
       )}
       <div className="bp3-dialog-footer">
         <div className="bp3-dialog-footer-actions">
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={publishNanopub} intent={"primary"}>
+          <Button onClick={handleClose}>Close</Button>
+          <Button
+            onClick={() => setSelectedTabId("nanopub-preview")}
+            hidden={!!publishedURL}
+          >
+            Preview
+          </Button>
+          <Button
+            onClick={publishNanopub}
+            intent={"primary"}
+            disabled={selectedTabId !== "nanopub-preview"}
+            hidden={!!publishedURL}
+          >
             Publish
           </Button>
         </div>
