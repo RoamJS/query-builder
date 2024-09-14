@@ -16,6 +16,11 @@ import {
   createShapeId,
   isShape,
   TLEventMapHandler,
+  SvgExportContext,
+  TLDefaultHorizontalAlignStyle,
+  BoxModel,
+  TLDefaultVerticalAlignStyle,
+  Box,
 } from "tldraw";
 // import { useValue } from "signia-react";
 
@@ -358,99 +363,216 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
   // toSvg changed to return ReactElement  instead of SVGGElement
   // https://github.com/tldraw/tldraw/pull/3117
   // the code below is untested
-  // async toSvg(shape: DiscourseNodeShape) {
-  //   const { backgroundColor, textColor } = this.getColors();
+  toSvg(shape: DiscourseNodeShape): JSX.Element {
+    // packages\tldraw\src\lib\shapes\shared\createTextJsxFromSpans.tsx
+    function correctSpacesToNbsp(input: string) {
+      return input.replace(/\s/g, "\xa0");
+    }
+    function createTextJsxFromSpans(
+      spans: { text: string; box: BoxModel }[],
+      opts: {
+        fontSize: number;
+        fontFamily: string;
+        textAlign: TLDefaultHorizontalAlignStyle;
+        verticalTextAlign: TLDefaultVerticalAlignStyle;
+        fontWeight: string;
+        fontStyle: string;
+        width: number;
+        height: number;
+        stroke?: string;
+        strokeWidth?: number;
+        fill?: string;
+        padding?: number;
+        offsetX?: number;
+        offsetY?: number;
+      }
+    ) {
+      const { padding = 0 } = opts;
+      if (spans.length === 0) return null;
 
-  //   // Calculate text dimensions and positioning
-  //   const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
-  //   const textWidth = measureCanvasNodeText({
-  //     ...DEFAULT_STYLE_PROPS,
-  //     maxWidth: shape.props.w - padding * 2 + "px",
-  //     text: shape.props.title,
-  //   }).w;
+      const bounds = Box.From(spans[0].box);
+      for (const { box } of spans) {
+        bounds.union(box);
+      }
 
-  //   const textOpts = {
-  //     overflow: "wrap" as const,
-  //     width: textWidth,
-  //     height: shape.props.h,
-  //     padding: 0,
-  //     fontSize: DEFAULT_STYLE_PROPS.fontSize,
-  //     fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
-  //     fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
-  //     fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
-  //     lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
-  //     textAlign: "start" as const,
-  //   };
-  //   const textSpans = this.editor.textMeasure.measureTextSpans(
-  //     shape.props.title,
-  //     textOpts
-  //   );
+      const offsetX = padding + (opts.offsetX ?? 0);
+      const offsetY =
+        (opts.offsetY ?? 0) +
+        opts.fontSize / 2 +
+        (opts.verticalTextAlign === "start"
+          ? padding
+          : opts.verticalTextAlign === "end"
+          ? opts.height - padding - bounds.height
+          : (Math.ceil(opts.height) - bounds.height) / 2);
 
-  //   const lineHeight =
-  //     DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
+      // Create text span elements for each word
+      let currentLineTop = null;
+      const children = [];
+      let numberOfLines = 0;
+      for (const { text, box } of spans) {
+        // if we broke a line, add a line break span. This helps tools like
+        // figma import our exported svg correctly
+        const didBreakLine = currentLineTop !== null && box.y > currentLineTop;
+        if (didBreakLine) {
+          children.push(
+            <tspan
+              key={children.length}
+              alignmentBaseline="mathematical"
+              x={offsetX}
+              y={box.y + offsetY}
+            >
+              {"\n"}
+            </tspan>
+          );
+        }
 
-  //   let textYOffset = 0;
-  //   let imageElement = null;
+        children.push(
+          <tspan
+            key={children.length}
+            alignmentBaseline="mathematical"
+            x={box.x + offsetX}
+            y={box.y + offsetY}
+            // N.B. This property, while discouraged ("intended for Document Type Definition (DTD) designers")
+            // is necessary for ensuring correct mixed RTL/LTR behavior when exporting SVGs.
+            unicodeBidi="plaintext"
+          >
+            {correctSpacesToNbsp(text)}
+          </tspan>
+        );
 
-  //   // https://github.com/tldraw/tldraw/blob/8a1b014b02a1960d1e6dde63722f9f221a33e10c/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L44
-  //   async function getDataURIFromURL(url: string): Promise<string> {
-  //     const response = await fetch(url);
-  //     const blob = await response.blob();
-  //     return new Promise((resolve, reject) => {
-  //       const reader = new FileReader();
-  //       reader.onloadend = () => resolve(reader.result as string);
-  //       reader.onerror = reject;
-  //       reader.readAsDataURL(blob);
-  //     });
-  //   }
+        currentLineTop = box.y;
+        numberOfLines++;
+      }
 
-  //   if (shape.props.imageUrl) {
-  //     const src = await getDataURIFromURL(shape.props.imageUrl);
-  //     const { width: imageWidth, height: imageHeight } = await loadImage(src);
-  //     const aspectRatio = imageWidth / imageHeight || 1;
-  //     const svgImageHeight = shape.props.w / aspectRatio;
+      return {
+        textElement: (
+          <text
+            fontSize={opts.fontSize}
+            fontFamily={opts.fontFamily}
+            fontStyle={opts.fontFamily}
+            fontWeight={opts.fontWeight}
+            dominantBaseline="mathematical"
+            alignmentBaseline="mathematical"
+            stroke={opts.stroke}
+            strokeWidth={opts.strokeWidth}
+            fill={opts.fill}
+          >
+            {children}
+          </text>
+        ),
+        numberOfLines,
+      };
+    }
 
-  //     textYOffset =
-  //       svgImageHeight +
-  //       (shape.props.h - svgImageHeight) / 2 -
-  //       (lineHeight * textSpans.length) / 2;
+    const { backgroundColor, textColor } = this.getColors();
+    const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
+    const lineHeight =
+      DEFAULT_STYLE_PROPS.lineHeight * DEFAULT_STYLE_PROPS.fontSize;
 
-  //     imageElement = (
-  //       <image href={src} width={shape.props.w} height={svgImageHeight} />
-  //     );
-  //   }
+    const opts = {
+      fontSize: DEFAULT_STYLE_PROPS.fontSize,
+      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+    };
+    // Measure text dimensions and get text lines using TextManager
+    const textMeasurement = this.editor.textMeasure.measureText(
+      shape.props.title,
+      {
+        ...opts,
+        maxWidth: shape.props.w - padding * 2,
+        padding: "0px",
+        disableOverflowWrapBreaking: false,
+      }
+    );
 
-  //   return (
-  //     <g>
-  //       <rect
-  //         width={shape.props.w}
-  //         height={shape.props.h}
-  //         fill={backgroundColor}
-  //         opacity="1"
-  //         rx="16"
-  //         ry="16"
-  //       />
-  //       {imageElement}
-  //       <text
-  //         fontFamily={SVG_FONT_FAMILY}
-  //         fontSize={`${DEFAULT_STYLE_PROPS.fontSize}px`}
-  //         fontWeight={DEFAULT_STYLE_PROPS.fontWeight}
-  //         fill={textColor}
-  //         stroke="none"
-  //       >
-  //         {textSpans.map((word, index) => (
-  //           <tspan
-  //             key={index}
-  //             x={word.box.x + padding}
-  //             y={word.box.y + padding + textYOffset}
-  //           >
-  //             {word.text}
-  //           </tspan>
-  //         ))}
-  //       </text>
-  //     </g>
-  //   );
-  // }
+    const spans = this.editor.textMeasure.measureTextSpans(shape.props.title, {
+      ...opts,
+      width: shape.props.w - padding * 2,
+      padding: padding,
+      textAlign: "start",
+      overflow: "truncate-clip",
+      height: shape.props.h,
+    });
+
+    const { textElement, numberOfLines } =
+      createTextJsxFromSpans(spans, {
+        ...opts,
+        height: shape.props.h,
+        width: shape.props.w,
+        textAlign: "start",
+        verticalTextAlign: "start",
+      }) ?? {};
+    if (!textElement || !numberOfLines) return <></>;
+    console.log(shape.props.title, numberOfLines);
+
+    const textWidth = textMeasurement.w;
+    const textX = (shape.props.w - textWidth) / 2;
+
+    let imageElement = null;
+    let textYOffset =
+      (shape.props.h - lineHeight * numberOfLines) / 2 + padding / 2;
+
+    if (shape.props.imageUrl) {
+      // Load image dimensions synchronously
+      const { imageWidth, imageHeight } = (() => {
+        const img = new Image();
+        img.src = shape.props.imageUrl || "";
+
+        if (img.complete) {
+          return {
+            imageWidth: img.naturalWidth,
+            imageHeight: img.naturalHeight,
+          };
+        } else {
+          // Image not loaded yet; use default dimensions or aspect ratio
+          const defaultAspectRatio = 1; // Assuming square image as default
+          return {
+            imageWidth: shape.props.w,
+            imageHeight: shape.props.w / defaultAspectRatio,
+          };
+        }
+      })();
+
+      const aspectRatio = imageWidth / imageHeight || 1;
+      const svgImageHeight = shape.props.w / aspectRatio;
+
+      // Adjust text Y offset to position below the image
+      textYOffset =
+        svgImageHeight +
+        (shape.props.h - svgImageHeight) / 2 -
+        (lineHeight * numberOfLines) / 2;
+
+      imageElement = (
+        <image
+          href={shape.props.imageUrl}
+          width={shape.props.w}
+          height={svgImageHeight}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      );
+    } else {
+      // Position the text vertically in the center of the shape
+      textYOffset =
+        (shape.props.h - lineHeight * numberOfLines) / 2 + padding / 2;
+    }
+
+    return (
+      <g>
+        <rect
+          width={shape.props.w}
+          height={shape.props.h}
+          fill={backgroundColor}
+          opacity={shape.opacity}
+          rx={16}
+          ry={16}
+        />
+        {imageElement}
+        {textElement}
+      </g>
+    );
+  }
 
   override onResize: TLOnResizeHandler<DiscourseNodeShape> = (shape, info) => {
     return resizeBox(shape, info);
