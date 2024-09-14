@@ -10,6 +10,8 @@ import {
   Label,
   Tag,
   Text,
+  FormGroup,
+  InputGroup,
 } from "@blueprintjs/core";
 // web.js:1014 Uncaught (in promise) TypeError: Failed to construct 'URL': Invalid URL
 //     at __wbg_init (web.js:1014:17)
@@ -310,6 +312,7 @@ const NanopubDialog = ({
   const [signedOutput, setSignedOutput] = useState("");
   const [publishedOutput, setPublishedOutput] = useState("");
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
+  const [addDevUrl, setAddDevUrl] = useState("");
 
   // DEV
   const generateKeyPair = () => {
@@ -415,6 +418,33 @@ const NanopubDialog = ({
             Publish Test Server
           </Button>
         </div>
+        <FormGroup label="Add Publish URL">
+          <InputGroup
+            value={addDevUrl}
+            onChange={(e) => setAddDevUrl(e.target.value)}
+            className="mb-4"
+          />
+          <Button
+            onClick={() => {
+              const props = getBlockProps(uid) as Record<string, unknown>;
+              const nanopub = props["nanopub"] as NanopubPage;
+              window.roamAlphaAPI.updateBlock({
+                block: {
+                  uid,
+                  props: {
+                    ...props,
+                    nanopub: { ...nanopub, published: addDevUrl },
+                  },
+                },
+              });
+              setPublishedURL(addDevUrl);
+              setSelectedTabId("nanopub-details");
+            }}
+            intent={"primary"}
+          >
+            Add URL
+          </Button>
+        </FormGroup>
       </div>
     );
   };
