@@ -161,6 +161,7 @@ const DiscourseContextOverlay = ({ tag, id }: { tag: string; id: string }) => {
   }, [refresh, getInfo]);
   return (
     <Popover
+      autoFocus={false}
       content={
         <div
           className="roamjs-discourse-context-popover"

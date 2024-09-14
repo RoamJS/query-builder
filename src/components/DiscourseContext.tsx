@@ -325,7 +325,7 @@ export const ContextContent = ({ uid, results, args }: Props) => {
       .finally(() => setLoading(false));
   }, [uid, results, setRawQueryResults, setLoading]);
   useEffect(() => {
-    if (!results) {
+    if (!queryResults.length) {
       onRefresh();
     }
   }, [onRefresh, results]);
