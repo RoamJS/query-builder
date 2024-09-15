@@ -41,6 +41,7 @@ import {
   useValue,
   TLUiContextMenuProps,
   TLUiEventSource,
+  useToasts,
 } from "tldraw";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { getNewDiscourseNodeText } from "../../utils/formatUtils";
@@ -407,6 +408,7 @@ export const createUiOverrides = ({
     return tools;
   },
   actions(editor, actions) {
+    const { addToast } = useToasts();
     actions["convert-to"] = {
       id: "convert-to",
       label: "action.convert-to" as TLUiTranslationKey,
@@ -421,11 +423,32 @@ export const createUiOverrides = ({
       onSelect: () => setMaximized(!maximized),
       readonlyOk: true,
     };
-    actions["export-as-svg"].kbd = "$!X";
-    actions["export-as-png"].kbd = "$!C";
+
+    const originalCopyAsSvgAction = actions["copy-as-svg"];
+    const originalCopyAsPngAction = actions["copy-as-png"];
+
+    actions["copy-as-svg"] = {
+      ...originalCopyAsSvgAction,
+      kbd: "$!X",
+      onSelect: (source) => {
+        originalCopyAsSvgAction.onSelect(source);
+        addToast({
+          title: "Copied as SVG",
+        });
+      },
+    };
+    actions["copy-as-png"] = {
+      ...originalCopyAsPngAction,
+      kbd: "$!C",
+      onSelect: (source) => {
+        originalCopyAsPngAction.onSelect(source);
+        addToast({
+          title: "Copied as PNG",
+        });
+      },
+    };
     return actions;
   },
-
   translations: {
     en: {
       ...Object.fromEntries(
