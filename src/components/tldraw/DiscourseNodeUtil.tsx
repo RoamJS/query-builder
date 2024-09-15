@@ -21,6 +21,7 @@ import {
   BoxModel,
   TLDefaultVerticalAlignStyle,
   Box,
+  TLDefaultFontStyle,
 } from "tldraw";
 // import { useValue } from "signia-react";
 
@@ -44,6 +45,7 @@ import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw-2-3-0";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
+import { SvgTextLabel } from "./DiscourseRelationShape/helpers";
 // import { DiscourseRelationShape } from "./DiscourseRelationsUtil";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
@@ -361,125 +363,12 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
 
   toSvg(shape: DiscourseNodeShape): JSX.Element {
     // packages\tldraw\src\lib\shapes\shared\createTextJsxFromSpans.tsx
-    function correctSpacesToNbsp(input: string) {
-      return input.replace(/\s/g, "\xa0");
-    }
-    function createTextJsxFromSpans(
-      spans: { text: string; box: BoxModel }[],
-      opts: {
-        fontSize: number;
-        fontFamily: string;
-        textAlign: TLDefaultHorizontalAlignStyle;
-        verticalTextAlign: TLDefaultVerticalAlignStyle;
-        fontWeight: string;
-        fontStyle: string;
-        width: number;
-        height: number;
-        stroke?: string;
-        strokeWidth?: number;
-        fill?: string;
-        padding?: number;
-        offsetX?: number;
-        offsetY?: number;
-      }
-    ) {
-      const { padding = 0 } = opts;
-      if (spans.length === 0) return null;
-
-      const bounds = Box.From(spans[0].box);
-      for (const { box } of spans) {
-        bounds.union(box);
-      }
-
-      const offsetX = padding + (opts.offsetX ?? 0);
-      const offsetY =
-        (opts.offsetY ?? 0) +
-        opts.fontSize / 2 +
-        (opts.verticalTextAlign === "start"
-          ? padding
-          : opts.verticalTextAlign === "end"
-          ? opts.height - padding - bounds.height
-          : (Math.ceil(opts.height) - bounds.height) / 2);
-
-      // Create text span elements for each word
-      let currentLineTop = null;
-      const children = [];
-      for (const { text, box } of spans) {
-        // if we broke a line, add a line break span. This helps tools like
-        // figma import our exported svg correctly
-        const didBreakLine = currentLineTop !== null && box.y > currentLineTop;
-        if (didBreakLine) {
-          children.push(
-            <tspan
-              key={children.length}
-              alignmentBaseline="mathematical"
-              x={offsetX}
-              y={box.y + offsetY}
-            >
-              {"\n"}
-            </tspan>
-          );
-        }
-
-        children.push(
-          <tspan
-            key={children.length}
-            alignmentBaseline="mathematical"
-            x={box.x + offsetX}
-            y={box.y + offsetY}
-            // N.B. This property, while discouraged ("intended for Document Type Definition (DTD) designers")
-            // is necessary for ensuring correct mixed RTL/LTR behavior when exporting SVGs.
-            unicodeBidi="plaintext"
-          >
-            {correctSpacesToNbsp(text)}
-          </tspan>
-        );
-
-        currentLineTop = box.y;
-      }
-      debugger;
-      return (
-        <text
-          fontSize={opts.fontSize}
-          fontFamily={opts.fontFamily}
-          fontStyle={opts.fontFamily}
-          fontWeight={opts.fontWeight}
-          dominantBaseline="mathematical"
-          alignmentBaseline="mathematical"
-          stroke={opts.stroke}
-          strokeWidth={opts.strokeWidth}
-          fill={opts.fill}
-        >
-          {children}
-        </text>
-      );
-    }
 
     const { backgroundColor, textColor } = this.getColors();
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const props = shape.props;
     const bounds = new Box(0, 0, props.w, props.h);
 
-    const opts = {
-      fontSize: DEFAULT_STYLE_PROPS.fontSize,
-      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
-      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
-      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
-      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
-      textAlign: "middle" as const,
-      verticalTextAlign: "middle" as const,
-      width: Math.ceil(bounds.width),
-      height: Math.ceil(bounds.height),
-      padding,
-      overflow: "wrap" as const,
-      offsetX: 0,
-      offsetY: 0,
-      fill: textColor,
-    };
-
-    const spans = this.editor.textMeasure.measureTextSpans(props.title, opts);
-    const textElement = createTextJsxFromSpans(spans, opts);
-    debugger;
     let imageElement = null;
     // let textYOffset =
     // (props.h - lineHeight * numberOfLines) / 2 + padding / 2;
@@ -539,7 +428,18 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
           ry={16}
         />
         {imageElement}
-        {textElement}
+        <SvgTextLabel
+          font={DEFAULT_STYLE_PROPS.fontFamily as TLDefaultFontStyle}
+          fontSize={DEFAULT_STYLE_PROPS.fontSize}
+          align="middle"
+          verticalAlign="middle"
+          text={props.title}
+          labelColor={textColor}
+          bounds={bounds}
+          padding={padding}
+          stroke={false}
+        />
+        ;
       </g>
     );
   }
