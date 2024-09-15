@@ -372,7 +372,7 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     const opts = {
       fontSize: DEFAULT_STYLE_PROPS.fontSize,
       fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
-      textAlign: "middle" as TLDefaultHorizontalAlignStyle,
+      textAlign: "start" as TLDefaultHorizontalAlignStyle,
       verticalTextAlign: "middle" as TLDefaultVerticalAlignStyle,
       width,
       height,
