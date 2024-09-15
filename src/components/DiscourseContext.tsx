@@ -327,8 +327,10 @@ export const ContextContent = ({ uid, results, args }: Props) => {
   useEffect(() => {
     if (!results) {
       onRefresh();
+    } else {
+      setLoading(false);
     }
-  }, [onRefresh, results]);
+  }, [onRefresh, results, setLoading]);
   const [tabId, setTabId] = useState(0);
   const [groupByTarget, setGroupByTarget] = useState(false);
   return queryResults.length ? (
