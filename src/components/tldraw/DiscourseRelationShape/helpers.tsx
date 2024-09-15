@@ -1201,7 +1201,7 @@ function getLegacyOffsetX(
     }
   }
 }
-function createTextJsxFromSpans(
+export function createTextJsxFromSpans(
   editor: Editor,
   spans: { text: string; box: BoxModel }[],
   opts: {

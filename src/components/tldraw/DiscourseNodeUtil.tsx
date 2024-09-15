@@ -22,6 +22,7 @@ import {
   TLDefaultVerticalAlignStyle,
   Box,
   TLDefaultFontStyle,
+  FileHelpers,
 } from "tldraw";
 // import { useValue } from "signia-react";
 
@@ -45,7 +46,7 @@ import ContrastColor from "contrast-color";
 import { discourseContext } from "./Tldraw-2-3-0";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
-import { SvgTextLabel } from "./DiscourseRelationShape/helpers";
+import { createTextJsxFromSpans } from "./DiscourseRelationShape/helpers";
 // import { DiscourseRelationShape } from "./DiscourseRelationsUtil";
 
 // TODO REPLACE WITH TLDRAW DEFAULTS
@@ -361,85 +362,76 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     return { backgroundColor, textColor };
   }
 
-  toSvg(shape: DiscourseNodeShape): JSX.Element {
-    // packages\tldraw\src\lib\shapes\shared\createTextJsxFromSpans.tsx
-
+  async toSvg(shape: DiscourseNodeShape): Promise<JSX.Element> {
     const { backgroundColor, textColor } = this.getColors();
     const padding = Number(DEFAULT_STYLE_PROPS.padding.replace("px", ""));
     const props = shape.props;
     const bounds = new Box(0, 0, props.w, props.h);
+    const width = Math.ceil(bounds.width);
+    const height = Math.ceil(bounds.height);
+    const opts = {
+      fontSize: DEFAULT_STYLE_PROPS.fontSize,
+      fontFamily: DEFAULT_STYLE_PROPS.fontFamily,
+      textAlign: "middle" as TLDefaultHorizontalAlignStyle,
+      verticalTextAlign: "middle" as TLDefaultVerticalAlignStyle,
+      width,
+      height,
+      padding,
+      lineHeight: DEFAULT_STYLE_PROPS.lineHeight,
+      overflow: "wrap" as const,
+      fontWeight: DEFAULT_STYLE_PROPS.fontWeight,
+      fontStyle: DEFAULT_STYLE_PROPS.fontStyle,
+      fill: textColor,
+      text: props.title,
+      stroke: "none",
+      bounds,
+    };
 
+    let offsetY;
     let imageElement = null;
-    // let textYOffset =
-    // (props.h - lineHeight * numberOfLines) / 2 + padding / 2;
+    if (props.imageUrl) {
+      // https://github.com/tldraw/tldraw/blob/v2.3.0/packages/tldraw/src/lib/shapes/image/ImageShapeUtil.tsx#L31
+      async function getDataURIFromURL(url: string): Promise<string> {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return FileHelpers.blobToDataUrl(blob);
+      }
+      const src = await getDataURIFromURL(props.imageUrl);
+      const { width: imageWidth, height: imageHeight } = await loadImage(src);
+      const aspectRatio = imageWidth / imageHeight;
+      const svgImageHeight = props.w / aspectRatio;
 
-    // if (props.imageUrl) {
-    // // Load image dimensions synchronously
-    // const { imageWidth, imageHeight } = (() => {
-    //   const img = new Image();
-    //   img.src = props.imageUrl || "";
+      offsetY = svgImageHeight / 2;
+      imageElement = (
+        <image
+          xlinkHref={src}
+          x="0"
+          y="0"
+          width={width}
+          height={svgImageHeight}
+          preserveAspectRatio="xMidYMid slice"
+        />
+      );
+    }
 
-    //   if (img.complete) {
-    //     return {
-    //       imageWidth: img.naturalWidth,
-    //       imageHeight: img.naturalHeight,
-    //     };
-    //   } else {
-    //     // Image not loaded yet; use default dimensions or aspect ratio
-    //     const defaultAspectRatio = 1; // Assuming square image as default
-    //     return {
-    //       imageWidth: props.w,
-    //       imageHeight: props.w / defaultAspectRatio,
-    //     };
-    //   }
-    // })();
-
-    // const aspectRatio = imageWidth / imageHeight || 1;
-    // const svgImageHeight = props.w / aspectRatio;
-
-    // Adjust text Y offset to position below the image
-    // textYOffset =
-    //   svgImageHeight +
-    //   (props.h - svgImageHeight) / 2 -
-    //   (lineHeight * numberOfLines) / 2;
-
-    //   imageElement = (
-    //     <image
-    //       href={props.imageUrl}
-    //       width={props.w}
-    //       height={svgImageHeight}
-    //       preserveAspectRatio="xMidYMid meet"
-    //     />
-    //   );
-    // } else {
-    // Position the text vertically in the center of the shape
-    // textYOffset =
-    //   (props.h - lineHeight * numberOfLines) / 2 + padding / 2;
-    // }
+    const spans = this.editor.textMeasure.measureTextSpans(props.title, opts);
+    const jsx = createTextJsxFromSpans(this.editor, spans, {
+      ...opts,
+      offsetY,
+    });
 
     return (
       <g>
         <rect
-          width={shape.props.w}
-          height={shape.props.h}
+          width={width}
+          height={height}
           fill={backgroundColor}
           opacity={shape.opacity}
           rx={16}
           ry={16}
         />
         {imageElement}
-        <SvgTextLabel
-          font={DEFAULT_STYLE_PROPS.fontFamily as TLDefaultFontStyle}
-          fontSize={DEFAULT_STYLE_PROPS.fontSize}
-          align="middle"
-          verticalAlign="middle"
-          text={props.title}
-          labelColor={textColor}
-          bounds={bounds}
-          padding={padding}
-          stroke={false}
-        />
-        ;
+        {jsx}
       </g>
     );
   }
