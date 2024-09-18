@@ -172,6 +172,7 @@ const NanopubDialog = ({
   const [isOpen, setIsOpen] = useState(true);
   const handleClose = () => setIsOpen(false);
   const [rdfString, setRdfString] = useState("");
+  const [error, setError] = useState<string>("");
   const props = useMemo(
     () => getBlockProps(uid) as Record<string, unknown>,
     [uid]
@@ -458,6 +459,10 @@ const NanopubDialog = ({
   }, [onloadArgs]);
 
   const publishNanopub = async ({ isDev = "" }: { isDev?: string }) => {
+    if (!ORCID) {
+      setError("No ORCID found.  Please set your ORCID in the main settings.");
+      return;
+    }
     const LIVERDF = rdfString;
     const serverUrl = isDev ? "" : getNpServer(false);
     const NAME = getCurrentUserDisplayName();
@@ -675,80 +680,86 @@ const NanopubDialog = ({
       style={{ minHeight: "50vh" }}
     >
       {discourseNode ? (
-        <div className="bp3-dialog-body">
-          <div className="space-y-4">
-            <Tabs
-              selectedTabId={selectedTabId}
-              onChange={(id) => setSelectedTabId(id)}
-            >
-              <Tab
-                id="nanopub-details"
-                title="Details"
-                panel={<NanopubDetails />}
-              />
-              <Tab
-                id="nanopub-contributors"
-                title="Contributors"
-                panel={
-                  <ContributorManager
-                    pageUid={uid}
-                    props={props}
-                    contributors={contributors}
-                    setContributors={setContributors}
-                  />
-                }
-              />
-              <Tab
-                id="nanopub-preview"
-                title="Preview"
-                panel={
-                  <PreviewNanopub
-                    // nodeText={discourseNode.text}
-                    // handleClose={handleClose}
-                    contributors={contributors}
-                    resolvedTriples={resolvedTriples}
-                  />
-                }
-              />
-              <Tab
-                id="nanopub-template"
-                title="Template"
-                panel={
-                  <NanopubTemplate
-                    node={discourseNode.text}
-                    handleClose={handleClose}
-                  />
-                }
-              />
+        <>
+          <div className="bp3-dialog-body">
+            <div className="space-y-4">
+              <Tabs
+                selectedTabId={selectedTabId}
+                onChange={(id) => setSelectedTabId(id)}
+              >
+                <Tab
+                  id="nanopub-details"
+                  title="Details"
+                  panel={<NanopubDetails />}
+                />
+                <Tab
+                  id="nanopub-contributors"
+                  title="Contributors"
+                  panel={
+                    <ContributorManager
+                      pageUid={uid}
+                      props={props}
+                      contributors={contributors}
+                      setContributors={setContributors}
+                    />
+                  }
+                />
+                <Tab
+                  id="nanopub-preview"
+                  title="Preview"
+                  panel={
+                    <PreviewNanopub
+                      // nodeText={discourseNode.text}
+                      // handleClose={handleClose}
+                      contributors={contributors}
+                      resolvedTriples={resolvedTriples}
+                    />
+                  }
+                />
+                <Tab
+                  id="nanopub-template"
+                  title="Template"
+                  panel={
+                    <NanopubTemplate
+                      node={discourseNode.text}
+                      handleClose={handleClose}
+                    />
+                  }
+                />
 
-              <Tab id="triple-string" title="RDF" panel={<TripleString />} />
+                <Tab id="triple-string" title="RDF" panel={<TripleString />} />
 
-              <Tab id="dev-details" title="Dev" panel={<DevDetails />} />
-            </Tabs>
+                <Tab id="dev-details" title="Dev" panel={<DevDetails />} />
+              </Tabs>
+            </div>
+            {error && <p className="text-red-500 text-right">{error}</p>}
           </div>
-        </div>
+          <div className="bp3-dialog-footer">
+            <div className="bp3-dialog-footer-actions">
+              <Button onClick={handleClose}>Close</Button>
+              <Button
+                onClick={() => setSelectedTabId("nanopub-preview")}
+                hidden={!!publishedURL}
+              >
+                Preview
+              </Button>
+              <Button
+                onClick={publishNanopub}
+                intent={"primary"}
+                disabled={selectedTabId !== "nanopub-preview"}
+                hidden={!!publishedURL}
+              >
+                Publish
+              </Button>
+            </div>
+          </div>
+        </>
       ) : (
-        <p>No node found</p>
-      )}
-      <div className="bp3-dialog-footer">
-        <div className="bp3-dialog-footer-actions">
+        <div className="bp3-dialog-body">
+          <p>No node found</p>
           <Button onClick={handleClose}>Close</Button>
-          <Button
-            onClick={() => setSelectedTabId("nanopub-preview")}
-            hidden={!!publishedURL}
-          >
-            Preview
-          </Button>
-          <Button
-            onClick={publishNanopub}
-            intent={"primary"}
-            disabled={selectedTabId !== "nanopub-preview"}
-            hidden={!!publishedURL}
-          >
-            Publish
-          </Button>
         </div>
-      </div>
+      )}
     </Dialog>
   );
 };
