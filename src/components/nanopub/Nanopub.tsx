@@ -39,7 +39,7 @@ import { DiscourseContextResults } from "../DiscourseContext";
 import ExtensionApiContextProvider, {
   useExtensionAPI,
 } from "roamjs-components/components/ExtensionApiContext";
-import ContributorManager from "./ContributorManager";
+import ContributorManager, { creditRoles } from "./ContributorManager";
 import testDiscourseGraphRdfSring, {
   testDiscourseGraphRdfSringWorking,
   testing,
@@ -278,31 +278,35 @@ const NanopubDialog = ({
       "@type": "npx:ExampleNanopub",
     });
 
+    // Add contributors to provenance
     const props = getBlockProps(uid) as Record<string, unknown>;
     const nanopub = props["nanopub"] as NanopubPage;
     const contributors = nanopub?.contributors || [];
-    // Add contributors to provenance
     if (contributors.length > 0) {
       const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
 
       contributors.forEach((contributor) => {
         if (contributor.roles.length > 0) {
           contributor.roles.forEach((role) => {
-            const creditRole = `credit:${role
-              .toLowerCase()
-              // TODO remove these and replace with creditRoles object
-              .replace(/\s+|–|—|&/g, "-") // Replace spaces, em/en dashes, and & with hyphens
-              .replace(/-+/g, "-") // Replace multiple consecutive hyphens with a single hyphen
-              .replace(/(^-|-$)/g, "")}`; // Remove leading or trailing hyphens
+            const roleUri = creditRoles.find((r) => r.label === role)?.uri;
+            if (!roleUri) return;
             const newAssertion = {
               "@id": "#assertion",
-              [creditRole]: contributor.name,
+              [`credit:${roleUri}`]: contributor.name,
             };
             provenanceGraph.push(newAssertion);
           });
         }
       });
     }
+
+    // Alias contributor roles
+    creditRoles.forEach((role) => {
+      rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
+        "@id": `credit:${role.uri}`,
+        "rdfs:label": role.verb,
+      });
+    });
 
     return JSON.stringify(rdf, null, 2);
   };
@@ -463,11 +467,13 @@ const NanopubDialog = ({
       setError("No ORCID found.  Please set your ORCID in the main settings.");
       return;
     }
-    const LIVERDF = rdfString;
+    const rdfString = await generateRdfString({
+      triples: templateTriples || [],
+    });
     const serverUrl = isDev ? "" : getNpServer(false);
     const NAME = getCurrentUserDisplayName();
     const profile = new NpProfile(PRIVATE_KEY, ORCID, NAME, "");
-    const np = new Nanopub(LIVERDF);
+    const np = new Nanopub(rdfString);
     try {
       const published = await np.publish(profile, serverUrl);
       const url = published.info().published;
@@ -590,16 +596,20 @@ const NanopubDialog = ({
               />
             );
           })}
-          {contributors.map((contributor) => {
-            return (
-              <NanopubTriple
-                key={contributor.id}
-                subject={contributor.name}
-                predicate="hasRole"
-                object={contributor.roles.join(", ")}
-              />
-            );
-          })}
+          {contributors.flatMap((contributor) =>
+            contributor.roles.map((role) => {
+              const creditRole = creditRoles.find((r) => r.label === role);
+              if (!creditRole) return;
+              return (
+                <NanopubTriple
+                  key={`${contributor.id}-${creditRole.uri}`}
+                  subject={discourseNode?.text || ""}
+                  predicate={creditRole.verb}
+                  object={contributor.name}
+                />
+              );
+            })
+          )}
         </div>
         {/* <Button
           text="Change Template"

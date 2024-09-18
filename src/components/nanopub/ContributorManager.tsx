@@ -15,21 +15,83 @@ import nanoid from "nanoid";
 import { Contributor, NanopubPage } from "./Nanopub";
 
 // https://credit.niso.org/ taxonomy roles
-const creditRoles = [
-  "Conceptualization",
-  "Data curation",
-  "Formal analysis",
-  "Funding acquisition",
-  "Investigation",
-  "Methodology",
-  "Project administration",
-  "Software",
-  "Resources",
-  "Supervision",
-  "Validation",
-  "Visualization",
-  "Writing – original draft",
-  "Writing – review & editing",
+
+export type CreditRole = {
+  label: string;
+  uri: string;
+  verb: string;
+};
+export const creditRoles: CreditRole[] = [
+  {
+    uri: "conceptualization",
+    label: "Conceptualization",
+    verb: "Conceptualized by",
+  },
+  {
+    uri: "data-curation",
+    label: "Data curation",
+    verb: "Data curated by",
+  },
+  {
+    uri: "formal-analysis",
+    label: "Formal analysis",
+    verb: "Formal analysis performed by",
+  },
+  {
+    uri: "funding-acquisition",
+    label: "Funding acquisition",
+    verb: "Funding acquired by",
+  },
+  {
+    uri: "investigation",
+    label: "Investigation",
+    verb: "Investigated by",
+  },
+  {
+    uri: "methodology",
+    label: "Methodology",
+    verb: "Methodology developed by",
+  },
+  {
+    uri: "project-administration",
+    label: "Project administration",
+    verb: "Project administered by",
+  },
+  {
+    uri: "software",
+    label: "Software",
+    verb: "Software developed by",
+  },
+  {
+    uri: "resources",
+    label: "Resources",
+    verb: "Resources provided by",
+  },
+  {
+    uri: "supervision",
+    label: "Supervision",
+    verb: "Supervised by",
+  },
+  {
+    uri: "validation",
+    label: "Validation",
+    verb: "Validated by",
+  },
+  {
+    uri: "visualization",
+    label: "Visualization",
+    verb: "Visualization created by",
+  },
+  {
+    uri: "writing-original-draft",
+    label: "Writing – original draft",
+    verb: "Original draft written by",
+  },
+  {
+    uri: "writing-review-editing",
+    label: "Writing – review & editing",
+    verb: "Reviewed and edited by",
+  },
 ];
 
 const ContributorManager = ({
@@ -182,11 +244,11 @@ const ContributorRow = memo(
           value={contributor.name}
           setValue={setContributorName}
           options={userDisplayNames}
-          onBlur={() => setContributorName(contributor.name, false)}
+          onBlur={(e) => setContributorName(e, false)}
         />
         <MultiSelect
           fill={true}
-          items={creditRoles}
+          items={creditRoles.map((role) => role.label)}
           selectedItems={contributor.roles}
           onItemSelect={(item) => setContributorRoles(item, contributor)}
           tagRenderer={(item) => item}
