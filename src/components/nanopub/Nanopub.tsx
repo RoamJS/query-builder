@@ -246,7 +246,7 @@ const NanopubDialog = ({
 
     rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = await Promise.all(
       triples
-        .filter((triple) => triple.type === "publicationInfo")
+        .filter((triple) => triple.type === "publication info")
         .map(async (triple) => ({
           "@id": "#pubinfo",
           [defaultPredicates[triple.predicate as PredicateKey]]: {
@@ -543,16 +543,27 @@ const NanopubDialog = ({
     node: string;
     handleClose: () => void;
   }) => {
+    const uniqueTypes = Array.from(
+      new Set(templateTriples?.map((triple) => triple.type) || [])
+    );
+
     return (
       <>
         <div>
-          {templateTriples?.map((triple) => (
-            <NanopubTriple
-              key={triple.uid}
-              subject={discourseNode?.text || ""}
-              predicate={triple.predicate}
-              object={triple.object}
-            />
+          {uniqueTypes.map((type) => (
+            <div key={type}>
+              <h3 className="text-lg font-semibold capitalize mb-2">{type}</h3>
+              {templateTriples
+                ?.filter((triple) => triple.type === type)
+                .map((triple) => (
+                  <NanopubTriple
+                    key={triple.uid}
+                    subject={discourseNode?.text || ""}
+                    predicate={triple.predicate}
+                    object={triple.object}
+                  />
+                ))}
+            </div>
           ))}
         </div>
         <div className="mt-4">
@@ -583,19 +594,27 @@ const NanopubDialog = ({
     contributors: Contributor[];
     resolvedTriples: NanopubTripleType[];
   }) => {
+    const uniqueTypes = Array.from(
+      new Set(resolvedTriples?.map((triple) => triple.type) || [])
+    );
     return (
       <>
         <div className="mb-4">
-          {resolvedTriples?.map((triple) => {
-            return (
-              <NanopubTriple
-                key={triple.uid}
-                subject={discourseNode?.text || ""}
-                predicate={triple.predicate}
-                object={triple.object}
-              />
-            );
-          })}
+          {uniqueTypes.map((type) => (
+            <div key={type}>
+              <h3 className="text-lg font-semibold capitalize mb-2">{type}</h3>
+              {resolvedTriples
+                ?.filter((triple) => triple.type === type)
+                .map((triple) => (
+                  <NanopubTriple
+                    key={triple.uid}
+                    subject={discourseNode?.text || ""}
+                    predicate={triple.predicate}
+                    object={triple.object}
+                  />
+                ))}
+            </div>
+          ))}
           {contributors.flatMap((contributor) =>
             contributor.roles.map((role) => {
               const creditRole = creditRoles.find((r) => r.label === role);

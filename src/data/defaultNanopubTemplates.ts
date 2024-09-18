@@ -27,6 +27,6 @@ export const defaultNanopubTemplate = [
   {
     predicate: "is created by",
     object: "{createdBy}",
-    type: "publicationInfo",
+    type: "publication info",
   },
 ];

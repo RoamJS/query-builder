@@ -42,7 +42,7 @@ export const defaultPredicates = {
 
 export type PredicateKey = keyof typeof defaultPredicates;
 
-export type TripleType = "assertion" | "provenance" | "publicationInfo";
+export type TripleType = "assertion" | "provenance" | "publication info";
 
 export type NanopubTripleType = {
   uid: string;
@@ -208,7 +208,7 @@ const NanopubConfigPanel = ({
     () => getSubTree({ tree: children, key: "provenance" }).uid || null
   );
   const [publicationInfoUid, setPublicationInfoUid] = useState<string | null>(
-    () => getSubTree({ tree: children, key: "publicationInfo" }).uid || null
+    () => getSubTree({ tree: children, key: "publication info" }).uid || null
   );
   const [triples, setTriples] = useState<NanopubTripleType[]>(() =>
     triplesTree.children.length
@@ -290,9 +290,9 @@ const NanopubConfigPanel = ({
     } else if (type === "provenance") {
       typeUid = provenanceUid || (await createTypeBlock("provenance"));
       if (!provenanceUid) setProvenanceUid(typeUid);
-    } else if (type === "publicationInfo") {
+    } else if (type === "publication info") {
       typeUid =
-        publicationInfoUid || (await createTypeBlock("publicationInfo"));
+        publicationInfoUid || (await createTypeBlock("publication info"));
       if (!publicationInfoUid) setPublicationInfoUid(typeUid);
     } else {
       return console.error("Invalid triple type");
@@ -384,10 +384,10 @@ const NanopubConfigPanel = ({
               })),
           },
           {
-            text: "publicationInfo",
+            text: "publication info",
             uid: publicationInfoUid,
             children: defaultAssertionTriples
-              .filter((triple) => triple.type === "publicationInfo")
+              .filter((triple) => triple.type === "publication info")
               .map((triple) => ({
                 text: triple.predicate,
                 uid: triple.predicateUid,
@@ -421,7 +421,7 @@ const NanopubConfigPanel = ({
   const assertions = triples.filter((triple) => triple.type === "assertion");
   const provenances = triples.filter((triple) => triple.type === "provenance");
   const publicationInfos = triples.filter(
-    (triple) => triple.type === "publicationInfo"
+    (triple) => triple.type === "publication info"
   );
   return (
     <div>
@@ -503,7 +503,7 @@ const NanopubConfigPanel = ({
           />
         </div>
         <div className="space-y-4">
-          {publicationInfos.length ? <H6>Publication Info</H6> : null}
+          {publicationInfos.length ? <H6>Publication info</H6> : null}
           {publicationInfos.map((triple) => (
             <TripleInput
               node={node}
@@ -519,7 +519,7 @@ const NanopubConfigPanel = ({
           <Button
             icon="plus"
             text="Add Publication Info"
-            onClick={() => addTriple("publicationInfo")}
+            onClick={() => addTriple("publication info")}
             className="block"
             disabled={!enablePublishing}
           />
