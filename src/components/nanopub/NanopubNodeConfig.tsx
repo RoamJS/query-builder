@@ -147,7 +147,9 @@ const TripleInput = React.memo(
         // onChange(field, value);
         timeoutRef.current = window.setTimeout(
           () => {
-            updateBlock({ text: value, uid: getFirstChildUidByBlockUid(uid) });
+            const objectUid = getFirstChildUidByBlockUid(uid);
+            if (!objectUid) return;
+            updateBlock({ text: value, uid: objectUid });
           },
           timeout ? 1000 : 0
         );
@@ -192,7 +194,7 @@ const NanopubConfigPanel = ({
   onloadArgs: OnloadArgs;
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(uid), [uid]);
-  const [enablePublishing, setEnablePublishing] = useState(
+  const [isEnabled, setIsEnabled] = useState(
     () => !!getSubTree({ tree, key: "enabled" }).uid
   );
   const triplesTree = useMemo(
@@ -229,7 +231,7 @@ const NanopubConfigPanel = ({
       : []
   );
   const nodeTypeUid = useMemo(
-    () => tree.find((t) => t.text === "nodeType")?.uid,
+    () => tree.find((t) => t.text === "node-type")?.uid,
     [tree]
   );
   const defaultNodeType = useMemo(() => {
@@ -237,10 +239,10 @@ const NanopubConfigPanel = ({
     return getFirstChildTextByBlockUid(nodeTypeUid);
   }, [nodeTypeUid]);
 
-  const { value: nodeTypeValue, onChange } = useSingleChildValue({
+  const { value: nodeTypeValue, onChange: setNodeType } = useSingleChildValue({
     uid: nodeTypeUid,
     defaultValue: defaultNodeType,
-    title: "nodeType",
+    title: "node-type",
     parentUid: uid,
     order: 0,
     transform: (s) => s,
@@ -248,9 +250,9 @@ const NanopubConfigPanel = ({
   });
 
   const isDefaultTemplate = useMemo(() => {
-    if (triples.length !== defaultNanopubTemplate.length) return false;
+    if (triples.length !== defaultNanopubTemplate.triples.length) return false;
     return triples.every((triple, index) => {
-      const defaultTriple = defaultNanopubTemplate[index];
+      const defaultTriple = defaultNanopubTemplate.triples[index];
       return (
         triple.predicate === defaultTriple.predicate &&
         triple.object === defaultTriple.object
@@ -259,9 +261,9 @@ const NanopubConfigPanel = ({
   }, [triples]);
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
 
-  const setIsEnabled = useCallback(
+  const handleIsEnabled = useCallback(
     (b: boolean) => {
-      setEnablePublishing(b);
+      setIsEnabled(b);
       return b
         ? createBlock({
             parentUid: uid,
@@ -356,16 +358,22 @@ const NanopubConfigPanel = ({
   const setDefaultTemplate = async () => {
     if (triplesUid) deleteBlock(triplesUid);
 
-    const defaultAssertionTriples = defaultNanopubTemplate.map((triple) => ({
-      predicate: triple.predicate,
-      predicateUid: window.roamAlphaAPI.util.generateUID(),
-      object: triple.object,
-      objectUid: window.roamAlphaAPI.util.generateUID(),
-      type: triple.type,
+    const template = defaultNanopubTemplate;
+    // set uids
+    template.triples = template.triples.map((triple) => ({
+      ...triple,
+      uid: window.roamAlphaAPI.util.generateUID(),
     }));
+    // set node type
+    const nodeText = node.text.toLowerCase();
+    template.nodeType = nodeTypes[nodeText as keyof typeof nodeTypes] || "";
+
     const assertionUid = window.roamAlphaAPI.util.generateUID();
     const provenanceUid = window.roamAlphaAPI.util.generateUID();
     const publicationInfoUid = window.roamAlphaAPI.util.generateUID();
+
+    const triples = template.triples;
+
     const newTriplesUid = await createBlock({
       parentUid: uid,
       node: {
@@ -374,15 +382,14 @@ const NanopubConfigPanel = ({
           {
             text: "assertion",
             uid: assertionUid,
-            children: defaultAssertionTriples
+            children: triples
               .filter((triple) => triple.type === "assertion")
               .map((triple) => ({
                 text: triple.predicate,
-                uid: triple.predicateUid,
+                uid: triple.uid,
                 children: [
                   {
                     text: triple.object,
-                    uid: triple.objectUid,
                   },
                 ],
               })),
@@ -390,15 +397,14 @@ const NanopubConfigPanel = ({
           {
             text: "provenance",
             uid: provenanceUid,
-            children: defaultAssertionTriples
+            children: triples
               .filter((triple) => triple.type === "provenance")
               .map((triple) => ({
                 text: triple.predicate,
-                uid: triple.predicateUid,
+                uid: triple.uid,
                 children: [
                   {
                     text: triple.object,
-                    uid: triple.objectUid,
                   },
                 ],
               })),
@@ -406,15 +412,14 @@ const NanopubConfigPanel = ({
           {
             text: "publication info",
             uid: publicationInfoUid,
-            children: defaultAssertionTriples
+            children: triples
               .filter((triple) => triple.type === "publication info")
               .map((triple) => ({
                 text: triple.predicate,
-                uid: triple.predicateUid,
+                uid: triple.uid,
                 children: [
                   {
                     text: triple.object,
-                    uid: triple.objectUid,
                   },
                 ],
               })),
@@ -430,8 +435,8 @@ const NanopubConfigPanel = ({
     setRequireContributors(defaultNanopubTemplate.requireContributors);
     setNodeType(defaultNanopubTemplate.nodeType);
     setTriples(
-      defaultAssertionTriples.map((triple) => ({
-        uid: triple.predicateUid,
+      triples.map((triple) => ({
+        uid: triple.uid,
         predicate: triple.predicate as PredicateKey,
         object: triple.object,
         type: triple.type as TripleType,
@@ -449,11 +454,11 @@ const NanopubConfigPanel = ({
     <div>
       <div className="space-y-8">
         <Switch
-          checked={enablePublishing}
+          checked={isEnabled}
           label="Enable Nanopub Publishing"
           onChange={() => {
-            setIsEnabled(!enablePublishing);
-            if (!enablePublishing && !triples.length) setDefaultTemplate();
+            handleIsEnabled(!isEnabled);
+            if (!isEnabled && !triples.length) setDefaultTemplate();
           }}
         />
         <Switch
@@ -468,15 +473,15 @@ const NanopubConfigPanel = ({
           <InputGroup
             placeholder="Enter URL to node type definition"
             value={nodeTypeValue}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={!enablePublishing}
+            onChange={(e) => setNodeType(e.target.value)}
+            disabled={!isEnabled}
           />
         </FormGroup>
-
         <div className="space-y-4 relative">
           <Button
             icon="add"
             text="Use Default Template"
+            disabled={!isEnabled}
             className={`absolute top-0 right-0 ${
               isDefaultTemplate ? "hidden" : ""
             }`}
@@ -499,7 +504,7 @@ const NanopubConfigPanel = ({
                 updateTriple(triple.uid, field, value)
               }
               onDelete={() => removeTriple(triple.uid)}
-              enabled={enablePublishing}
+              enabled={isEnabled}
             />
           ))}
           <Button
@@ -507,7 +512,7 @@ const NanopubConfigPanel = ({
             text="Add Assertion"
             onClick={() => addTriple("assertion")}
             className="block"
-            disabled={!enablePublishing}
+            disabled={!isEnabled}
           />
         </div>
         <div className="space-y-4">
@@ -521,7 +526,7 @@ const NanopubConfigPanel = ({
                 updateTriple(triple.uid, field, value)
               }
               onDelete={() => removeTriple(triple.uid)}
-              enabled={enablePublishing}
+              enabled={isEnabled}
             />
           ))}
           <Button
@@ -529,7 +534,7 @@ const NanopubConfigPanel = ({
             text="Add Provenance"
             onClick={() => addTriple("provenance")}
             className="block"
-            disabled={!enablePublishing}
+            disabled={!isEnabled}
           />
         </div>
         <div className="space-y-4">
@@ -543,7 +548,7 @@ const NanopubConfigPanel = ({
                 updateTriple(triple.uid, field, value)
               }
               onDelete={() => removeTriple(triple.uid)}
-              enabled={enablePublishing}
+              enabled={isEnabled}
             />
           ))}
           <Button
@@ -551,7 +556,7 @@ const NanopubConfigPanel = ({
             text="Add Publication Info"
             onClick={() => addTriple("publication info")}
             className="block"
-            disabled={!enablePublishing}
+            disabled={!isEnabled}
           />
         </div>
 
