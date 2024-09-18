@@ -28,6 +28,7 @@ export type DiscourseNode = {
     enabled: boolean;
     nodeType: string; // defined node URI
     triples: NanopubTripleType[];
+    requireContributors: boolean;
   };
 };
 
@@ -48,7 +49,12 @@ const DEFAULT_NODES: DiscourseNode[] = [
     ],
     canvasSettings: { color: "#000000" },
     backedBy: "default",
-    nanopub: { enabled: false, nodeType: "", triples: [] },
+    nanopub: {
+      enabled: false,
+      nodeType: "",
+      triples: [],
+      requireContributors: false,
+    },
   },
   {
     text: "Block",
@@ -66,26 +72,42 @@ const DEFAULT_NODES: DiscourseNode[] = [
     ],
     canvasSettings: { color: "#505050" },
     backedBy: "default",
-    nanopub: { enabled: false, nodeType: "", triples: [] },
+    nanopub: {
+      enabled: false,
+      nodeType: "",
+      triples: [],
+      requireContributors: false,
+    },
   },
 ];
 
-const parseNanopub = (nanopubNode: RoamBasicNode) => {
+export type NanopubConfig = {
+  enabled: boolean;
+  nodeType: string;
+  triples: NanopubTripleType[];
+  requireContributors: boolean;
+};
+const parseNanopub = (nanopubNode: RoamBasicNode): NanopubConfig => {
   const triplesNode = getSubTree({
     tree: nanopubNode.children,
     key: "triples",
   });
-  const isEnabled = !!getSubTree({
+  const enabled = !!getSubTree({
     tree: nanopubNode.children,
     key: "enabled",
   }).uid;
   const nodeType = getSubTree({
     tree: nanopubNode.children,
-    key: "nodeType",
+    key: "node-type",
   }).children[0]?.text;
+  const requireContributors = !!getSubTree({
+    tree: nanopubNode.children,
+    key: "require-contributors",
+  }).uid;
   return {
-    enabled: isEnabled,
-    nodeType: nodeType,
+    enabled,
+    nodeType,
+    requireContributors,
     triples: triplesNode.children
       .map((tripleType) =>
         tripleType.children.map((t) => ({
@@ -154,7 +176,12 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
           })),
           backedBy: "relation",
           canvasSettings: {},
-          nanopub: { enabled: false, nodeType: "", triples: [] },
+          nanopub: {
+            enabled: false,
+            nodeType: "",
+            triples: [],
+            requireContributors: false,
+          },
         }))
     );
   const configuredNodeTexts = new Set(configuredNodes.map((n) => n.text));

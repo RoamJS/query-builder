@@ -16,7 +16,10 @@ import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import getSubTree from "roamjs-components/util/getSubTree";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
-import { defaultNanopubTemplate } from "../../data/defaultNanopubTemplates";
+import {
+  defaultNanopubTemplate,
+  nodeTypes,
+} from "../../data/defaultNanopubTemplates";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { OnloadArgs } from "roamjs-components/types";
 import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSingleChildValue";
@@ -196,6 +199,9 @@ const NanopubConfigPanel = ({
     () => getSubTree({ tree, key: "triples" }),
     [tree]
   );
+  const [requireContributors, setRequireContributors] = useState(
+    () => !!getSubTree({ tree, key: "require-contributors" }).uid
+  );
 
   const [triplesUid, setTriplesUid] = useState<string | null>(
     triplesTree.uid || null
@@ -262,6 +268,20 @@ const NanopubConfigPanel = ({
             node: { text: "enabled" },
           })
         : deleteBlock(getSubTree({ parentUid: uid, key: "enabled" }).uid);
+    },
+    [uid]
+  );
+  const handleRequireContributors = useCallback(
+    (b: boolean) => {
+      setRequireContributors(b);
+      return b
+        ? createBlock({
+            parentUid: uid,
+            node: { text: "require-contributors" },
+          })
+        : deleteBlock(
+            getSubTree({ parentUid: uid, key: "require-contributors" }).uid
+          );
     },
     [uid]
   );
@@ -407,6 +427,8 @@ const NanopubConfigPanel = ({
     setAssertionUid(assertionUid);
     setProvenanceUid(provenanceUid);
     setPublicationInfoUid(publicationInfoUid);
+    setRequireContributors(defaultNanopubTemplate.requireContributors);
+    setNodeType(defaultNanopubTemplate.nodeType);
     setTriples(
       defaultAssertionTriples.map((triple) => ({
         uid: triple.predicateUid,
@@ -433,6 +455,14 @@ const NanopubConfigPanel = ({
             setIsEnabled(!enablePublishing);
             if (!enablePublishing && !triples.length) setDefaultTemplate();
           }}
+        />
+        <Switch
+          label="Require Contributor Information"
+          checked={requireContributors}
+          onChange={() => {
+            handleRequireContributors(!requireContributors);
+          }}
+          disabled={!isEnabled}
         />
         <FormGroup inline={true} label="Node Type">
           <InputGroup

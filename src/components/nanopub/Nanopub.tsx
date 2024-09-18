@@ -196,7 +196,8 @@ const NanopubDialog = ({
     const node = nodes.find((n) => matchDiscourseNode({ ...n, uid }));
     setDiscourseNode(node || null);
   }, []);
-  const templateTriples = discourseNode?.nanopub?.triples;
+  const nanopubConfig = discourseNode?.nanopub;
+  const templateTriples = nanopubConfig?.triples;
   const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
     []
   );
@@ -206,7 +207,7 @@ const NanopubDialog = ({
     const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
 
     return object
-      .replace(/\{nodeType\}/g, discourseNode?.nanopub?.nodeType || "")
+      .replace(/\{nodeType\}/g, nanopubConfig?.nodeType || "")
       .replace(/\{title\}/g, pageTitle)
       .replace(/\{name\}/g, getCurrentUserDisplayName())
       .replace(/\{url\}/g, pageUrl)
@@ -279,25 +280,27 @@ const NanopubDialog = ({
     });
 
     // Add contributors to provenance
-    const props = getBlockProps(uid) as Record<string, unknown>;
-    const nanopub = props["nanopub"] as NanopubPage;
-    const contributors = nanopub?.contributors || [];
-    if (contributors.length > 0) {
-      const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
+    if (nanopubConfig?.requireContributors) {
+      const props = getBlockProps(uid) as Record<string, unknown>;
+      const nanopub = props["nanopub"] as NanopubPage;
+      const contributors = nanopub?.contributors || [];
+      if (contributors.length > 0) {
+        const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
 
-      contributors.forEach((contributor) => {
-        if (contributor.roles.length > 0) {
-          contributor.roles.forEach((role) => {
-            const roleUri = creditRoles.find((r) => r.label === role)?.uri;
-            if (!roleUri) return;
-            const newAssertion = {
-              "@id": "#assertion",
-              [`credit:${roleUri}`]: contributor.name,
-            };
-            provenanceGraph.push(newAssertion);
-          });
-        }
-      });
+        contributors.forEach((contributor) => {
+          if (contributor.roles.length > 0) {
+            contributor.roles.forEach((role) => {
+              const roleUri = creditRoles.find((r) => r.label === role)?.uri;
+              if (!roleUri) return;
+              const newAssertion = {
+                "@id": "#assertion",
+                [`credit:${roleUri}`]: contributor.name,
+              };
+              provenanceGraph.push(newAssertion);
+            });
+          }
+        });
+      }
     }
 
     // Alias contributor roles
@@ -615,20 +618,21 @@ const NanopubDialog = ({
                 ))}
             </div>
           ))}
-          {contributors.flatMap((contributor) =>
-            contributor.roles.map((role) => {
-              const creditRole = creditRoles.find((r) => r.label === role);
-              if (!creditRole) return;
-              return (
-                <NanopubTriple
-                  key={`${contributor.id}-${creditRole.uri}`}
-                  subject={discourseNode?.text || ""}
-                  predicate={creditRole.verb}
-                  object={contributor.name}
-                />
-              );
-            })
-          )}
+          {nanopubConfig?.requireContributors &&
+            contributors.flatMap((contributor) =>
+              contributor.roles.map((role) => {
+                const creditRole = creditRoles.find((r) => r.label === role);
+                if (!creditRole) return;
+                return (
+                  <NanopubTriple
+                    key={`${contributor.id}-${creditRole.uri}`}
+                    subject={discourseNode?.text || ""}
+                    predicate={creditRole.verb}
+                    object={contributor.name}
+                  />
+                );
+              })
+            )}
         </div>
         {/* <Button
           text="Change Template"
@@ -727,9 +731,12 @@ const NanopubDialog = ({
                   panel={
                     <ContributorManager
                       pageUid={uid}
-                      props={props}
+                      pageProps={props}
                       contributors={contributors}
                       setContributors={setContributors}
+                      node={discourseNode.text}
+                      handleClose={handleClose}
+                      requireContributors={nanopubConfig?.requireContributors}
                     />
                   }
                 />

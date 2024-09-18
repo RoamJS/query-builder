@@ -96,14 +96,20 @@ export const creditRoles: CreditRole[] = [
 
 const ContributorManager = ({
   pageUid,
-  props,
+  pageProps: props,
+  node,
   contributors,
   setContributors,
+  requireContributors = false,
+  handleClose,
 }: {
   pageUid: string;
-  props: Record<string, unknown>;
+  pageProps: Record<string, unknown>;
+  node: string;
   contributors: Contributor[];
   setContributors: React.Dispatch<React.SetStateAction<Contributor[]>>;
+  requireContributors?: boolean;
+  handleClose: () => void;
 }) => {
   const debounceRef = useRef(0);
   const nanopubProps = props["nanopub"] as NanopubPage;
@@ -147,11 +153,6 @@ const ContributorManager = ({
 
   return (
     <div className="space-y-4">
-      <style>
-        {`
- 
-      `}
-      </style>
       <div className="space-y-2">
         {contributors.map((contributor, index) => (
           <ContributorRow
@@ -175,6 +176,26 @@ const ContributorManager = ({
       >
         Add Contributor
       </Button>
+      <div className={`${requireContributors ? "hidden" : ""}`}>
+        <p className="text-warning">
+          Warning: Contributes will not be added automatically to the template.
+        </p>
+        <p className="text-warning">
+          Edit the template to add contributors to the nanopublication.
+        </p>
+        <Button
+          text="View Template"
+          icon="link"
+          onClick={() => {
+            window.roamAlphaAPI.ui.mainWindow.openPage({
+              page: {
+                title: `discourse-graph/nodes/${node}`,
+              },
+            });
+            handleClose();
+          }}
+        />
+      </div>
     </div>
   );
 };
