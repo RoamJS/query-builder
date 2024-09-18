@@ -57,6 +57,9 @@ import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParen
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import { Result } from "roamjs-components/types/query-builder";
 import updateBlock from "roamjs-components/writes/updateBlock";
+import getDiscourseNodes, {
+  DiscourseNode,
+} from "../../utils/getDiscourseNodes";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -184,9 +187,15 @@ const NanopubDialog = ({
     useState<Contributor[]>(initialContributors);
   const [publishedURL, setPublishedURL] = useState(propsUrl);
   const [selectedTabId, setSelectedTabId] = useState<TabId>("nanopub-details");
-
-  const discourseNode = useMemo(() => getDiscourseNode(uid), [uid]);
-  if (!discourseNode) return <> </>;
+  const [discourseNode, setDiscourseNode] = useState<DiscourseNode | null>(
+    null
+  );
+  useEffect(() => {
+    // const node = getDiscourseNode(uid); TODO, provide no-cache option
+    const nodes = getDiscourseNodes();
+    const node = nodes.find((n) => matchDiscourseNode({ ...n, uid }));
+    setDiscourseNode(node || null);
+  }, []);
   const templateTriples = discourseNode?.nanopub?.triples;
   const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
     []
