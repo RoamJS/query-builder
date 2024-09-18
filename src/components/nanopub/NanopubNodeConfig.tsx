@@ -42,7 +42,7 @@ export const defaultPredicates = {
 
 export type PredicateKey = keyof typeof defaultPredicates;
 
-type TripleType = "assertion" | "provenance" | "publicationInfo";
+export type TripleType = "assertion" | "provenance" | "publicationInfo";
 
 export type NanopubTripleType = {
   uid: string;
@@ -192,18 +192,34 @@ const NanopubConfigPanel = ({
   const [enablePublishing, setEnablePublishing] = useState(
     () => !!getSubTree({ tree, key: "enabled" }).uid
   );
+  const triplesTree = useMemo(
+    () => getSubTree({ tree, key: "triples" }),
+    [tree]
+  );
 
   const [triplesUid, setTriplesUid] = useState<string | null>(
-    () => getSubTree({ tree, key: "triples" }).uid || null
+    triplesTree.uid || null
+  );
+  const children = triplesTree.children;
+  const [assertionUid, setAssertionUid] = useState<string | null>(
+    () => getSubTree({ tree: children, key: "assertion" }).uid || null
+  );
+  const [provenanceUid, setProvenanceUid] = useState<string | null>(
+    () => getSubTree({ tree: children, key: "provenance" }).uid || null
+  );
+  const [publicationInfoUid, setPublicationInfoUid] = useState<string | null>(
+    () => getSubTree({ tree: children, key: "publicationInfo" }).uid || null
   );
   const [triples, setTriples] = useState<NanopubTripleType[]>(() =>
-    triplesUid
-      ? getBasicTreeByParentUid(triplesUid).map((t) => ({
-          uid: t.uid,
-          predicate: t.text as PredicateKey,
-          object: t.children[0]?.text || "",
-          type: "assertion",
-        }))
+    triplesTree.children.length
+      ? triplesTree.children.flatMap((tripleType) =>
+          tripleType.children.map((triple) => ({
+            uid: triple.uid,
+            predicate: triple.text as PredicateKey,
+            object: triple.children[0]?.text || "",
+            type: tripleType.text as TripleType,
+          }))
+        )
       : []
   );
   const nodeTypeUid = useMemo(
@@ -250,7 +266,7 @@ const NanopubConfigPanel = ({
     [uid]
   );
 
-  const addTriple = async () => {
+  const addTriple = async (type: TripleType) => {
     const effectiveTriplesUid = triplesUid
       ? triplesUid
       : await createBlock({
@@ -258,9 +274,33 @@ const NanopubConfigPanel = ({
           node: { text: "triples" },
         });
 
+    const createTypeBlock = async (type: TripleType) => {
+      return await createBlock({
+        node: { text: type },
+        parentUid: effectiveTriplesUid,
+      });
+    };
+    let typeUid: string;
+
+    // lots of unlikely error handling here
+    // should we just create the type blocks on load/enable and expect user no not delete them?
+    if (type === "assertion") {
+      typeUid = assertionUid || (await createTypeBlock("assertion"));
+      if (!assertionUid) setAssertionUid(typeUid);
+    } else if (type === "provenance") {
+      typeUid = provenanceUid || (await createTypeBlock("provenance"));
+      if (!provenanceUid) setProvenanceUid(typeUid);
+    } else if (type === "publicationInfo") {
+      typeUid =
+        publicationInfoUid || (await createTypeBlock("publicationInfo"));
+      if (!publicationInfoUid) setPublicationInfoUid(typeUid);
+    } else {
+      return console.error("Invalid triple type");
+    }
+
     const predicateUid = await createBlock({
       node: { text: "" },
-      parentUid: effectiveTriplesUid,
+      parentUid: typeUid,
       order: "last",
     });
 
@@ -271,7 +311,7 @@ const NanopubConfigPanel = ({
 
     setTriples([
       ...triples,
-      { uid: predicateUid, predicate: "", object: "", type: "assertion" },
+      { uid: predicateUid, predicate: "", object: "", type },
     ]);
   };
   const updateTriple = useCallback(
@@ -293,98 +333,198 @@ const NanopubConfigPanel = ({
     [triples]
   );
 
-  const handleConfirmUseDefault = async () => {
+  const setDefaultTemplate = async () => {
     if (triplesUid) deleteBlock(triplesUid);
 
-    const defaultTriples = defaultNanopubTemplate.map((triple) => ({
+    const defaultAssertionTriples = defaultNanopubTemplate.map((triple) => ({
       predicate: triple.predicate,
       predicateUid: window.roamAlphaAPI.util.generateUID(),
       object: triple.object,
       objectUid: window.roamAlphaAPI.util.generateUID(),
+      type: triple.type,
     }));
-
+    const assertionUid = window.roamAlphaAPI.util.generateUID();
+    const provenanceUid = window.roamAlphaAPI.util.generateUID();
+    const publicationInfoUid = window.roamAlphaAPI.util.generateUID();
     const newTriplesUid = await createBlock({
       parentUid: uid,
       node: {
         text: "triples",
-        children: defaultTriples.map((triple) => ({
-          text: triple.predicate,
-          uid: triple.predicateUid,
-          children: [
-            {
-              text: triple.object,
-              uid: triple.objectUid,
-            },
-          ],
-        })),
+        children: [
+          {
+            text: "assertion",
+            uid: assertionUid,
+            children: defaultAssertionTriples
+              .filter((triple) => triple.type === "assertion")
+              .map((triple) => ({
+                text: triple.predicate,
+                uid: triple.predicateUid,
+                children: [
+                  {
+                    text: triple.object,
+                    uid: triple.objectUid,
+                  },
+                ],
+              })),
+          },
+          {
+            text: "provenance",
+            uid: provenanceUid,
+            children: defaultAssertionTriples
+              .filter((triple) => triple.type === "provenance")
+              .map((triple) => ({
+                text: triple.predicate,
+                uid: triple.predicateUid,
+                children: [
+                  {
+                    text: triple.object,
+                    uid: triple.objectUid,
+                  },
+                ],
+              })),
+          },
+          {
+            text: "publicationInfo",
+            uid: publicationInfoUid,
+            children: defaultAssertionTriples
+              .filter((triple) => triple.type === "publicationInfo")
+              .map((triple) => ({
+                text: triple.predicate,
+                uid: triple.predicateUid,
+                children: [
+                  {
+                    text: triple.object,
+                    uid: triple.objectUid,
+                  },
+                ],
+              })),
+          },
+        ],
       },
     });
 
     setTriplesUid(newTriplesUid);
+    setAssertionUid(assertionUid);
+    setProvenanceUid(provenanceUid);
+    setPublicationInfoUid(publicationInfoUid);
     setTriples(
-      defaultTriples.map((triple) => ({
+      defaultAssertionTriples.map((triple) => ({
         uid: triple.predicateUid,
         predicate: triple.predicate as PredicateKey,
         object: triple.object,
-        type: "assertion",
+        type: triple.type as TripleType,
       }))
     );
     setIsWarningDialogOpen(false);
   };
 
+  const assertions = triples.filter((triple) => triple.type === "assertion");
+  const provenances = triples.filter((triple) => triple.type === "provenance");
+  const publicationInfos = triples.filter(
+    (triple) => triple.type === "publicationInfo"
+  );
   return (
-    <>
-      <div className="space-y-4">
+    <div>
+      <div className="space-y-8">
         <Switch
           checked={enablePublishing}
           label="Enable Nanopub Publishing"
           onChange={() => {
             setIsEnabled(!enablePublishing);
+            if (!enablePublishing && !triples.length) setDefaultTemplate();
           }}
-          className="mb-4"
         />
         <FormGroup inline={true} label="Node Type">
           <InputGroup
             placeholder="Enter URL to node type definition"
             value={nodeTypeValue}
             onChange={(e) => onChange(e.target.value)}
-            className="mb-4"
             disabled={!enablePublishing}
           />
         </FormGroup>
 
-        <H6>Template</H6>
-        {triples.map((triple) => (
-          <TripleInput
-            node={node}
-            key={triple.uid}
-            triple={triple}
-            onChange={(field, value) => updateTriple(triple.uid, field, value)}
-            onDelete={() => removeTriple(triple.uid)}
-            enabled={enablePublishing}
+        <div className="space-y-4 relative">
+          <Button
+            icon="add"
+            text="Use Default Template"
+            className={`absolute top-0 right-0 ${
+              isDefaultTemplate ? "hidden" : ""
+            }`}
+            onClick={() => {
+              if (triples.length > 0) {
+                setIsWarningDialogOpen(true);
+              } else {
+                setDefaultTemplate();
+              }
+            }}
           />
-        ))}
+          <Label>Template</Label>
+          {assertions.length ? <H6>Assertion</H6> : null}
+          {assertions.map((triple) => (
+            <TripleInput
+              node={node}
+              key={triple.uid}
+              triple={triple}
+              onChange={(field, value) =>
+                updateTriple(triple.uid, field, value)
+              }
+              onDelete={() => removeTriple(triple.uid)}
+              enabled={enablePublishing}
+            />
+          ))}
+          <Button
+            icon="plus"
+            text="Add Assertion"
+            onClick={() => addTriple("assertion")}
+            className="block"
+            disabled={!enablePublishing}
+          />
+        </div>
+        <div className="space-y-4">
+          {provenances.length ? <H6>Provenance</H6> : null}
+          {provenances.map((triple) => (
+            <TripleInput
+              node={node}
+              key={triple.uid}
+              triple={triple}
+              onChange={(field, value) =>
+                updateTriple(triple.uid, field, value)
+              }
+              onDelete={() => removeTriple(triple.uid)}
+              enabled={enablePublishing}
+            />
+          ))}
+          <Button
+            icon="plus"
+            text="Add Provenance"
+            onClick={() => addTriple("provenance")}
+            className="block"
+            disabled={!enablePublishing}
+          />
+        </div>
+        <div className="space-y-4">
+          {publicationInfos.length ? <H6>Publication Info</H6> : null}
+          {publicationInfos.map((triple) => (
+            <TripleInput
+              node={node}
+              key={triple.uid}
+              triple={triple}
+              onChange={(field, value) =>
+                updateTriple(triple.uid, field, value)
+              }
+              onDelete={() => removeTriple(triple.uid)}
+              enabled={enablePublishing}
+            />
+          ))}
+          <Button
+            icon="plus"
+            text="Add Publication Info"
+            onClick={() => addTriple("publicationInfo")}
+            className="block"
+            disabled={!enablePublishing}
+          />
+        </div>
 
-        <Button
-          icon="plus"
-          text="Add Triple"
-          onClick={addTriple}
-          className="mt-2 mr-2"
-          disabled={!enablePublishing}
-        />
-        <Button
-          icon="add"
-          text="Use Default Template"
-          className={isDefaultTemplate ? "hidden" : ""}
-          onClick={() => {
-            if (triples.length > 0) {
-              setIsWarningDialogOpen(true);
-            } else {
-              handleConfirmUseDefault();
-            }
-          }}
-          disabled={!enablePublishing}
-        />
         <div className="mt-4">
           <Label>Available Placeholders</Label>
           <ul className="list-disc pl-5">
@@ -417,13 +557,13 @@ const NanopubConfigPanel = ({
             >
               Cancel
             </Button>
-            <Button intent={"primary"} onClick={handleConfirmUseDefault}>
+            <Button intent={"primary"} onClick={setDefaultTemplate}>
               Confirm
             </Button>
           </div>
         </div>
       </Dialog>
-    </>
+    </div>
   );
 };
 

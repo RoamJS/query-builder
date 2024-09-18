@@ -5,7 +5,11 @@ import getDiscourseRelations from "./getDiscourseRelations";
 import parseQuery from "./parseQuery";
 import { Condition } from "./types";
 import { RoamBasicNode } from "roamjs-components/types";
-import { NanopubTripleType } from "../components/nanopub/NanopubNodeConfig";
+import {
+  NanopubTripleType,
+  PredicateKey,
+  TripleType,
+} from "../components/nanopub/NanopubNodeConfig";
 
 // TODO - only text and type should be required
 export type DiscourseNode = {
@@ -22,6 +26,7 @@ export type DiscourseNode = {
   graphOverview?: boolean;
   nanopub?: {
     enabled: boolean;
+    nodeType: string; // defined node URI
     triples: NanopubTripleType[];
   };
 };
@@ -43,7 +48,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
     ],
     canvasSettings: { color: "#000000" },
     backedBy: "default",
-    nanopub: { enabled: false, triples: [] },
+    nanopub: { enabled: false, nodeType: "", triples: [] },
   },
   {
     text: "Block",
@@ -61,7 +66,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
     ],
     canvasSettings: { color: "#505050" },
     backedBy: "default",
-    nanopub: { enabled: false, triples: [] },
+    nanopub: { enabled: false, nodeType: "", triples: [] },
   },
 ];
 
@@ -70,18 +75,29 @@ const parseNanopub = (nanopubNode: RoamBasicNode) => {
     tree: nanopubNode.children,
     key: "triples",
   });
+  const isEnabled = !!getSubTree({
+    tree: nanopubNode.children,
+    key: "enabled",
+  }).uid;
+  const nodeType = getSubTree({
+    tree: nanopubNode.children,
+    key: "nodeType",
+  }).children[0]?.text;
   return {
-    enabled: nanopubNode.text === "Enabled",
-    triples: triplesNode.children.map((c) => {
-      return {
-        uid: c.uid,
-        predicate: c?.text,
-        object: c.children[0]?.text,
-      };
-    }),
+    enabled: isEnabled,
+    nodeType: nodeType,
+    triples: triplesNode.children
+      .map((tripleType) =>
+        tripleType.children.map((t) => ({
+          uid: t.uid,
+          predicate: t?.text as PredicateKey,
+          object: t.children[0]?.text,
+          type: tripleType.text as TripleType,
+        }))
+      )
+      .flat(),
   };
 };
-
 const getDiscourseNodes = (relations = getDiscourseRelations()) => {
   const configuredNodes = Object.entries(discourseConfigRef.nodes)
     .map(([type, { text, children }]): DiscourseNode => {
@@ -138,7 +154,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
           })),
           backedBy: "relation",
           canvasSettings: {},
-          nanopub: { enabled: false, triples: [] },
+          nanopub: { enabled: false, nodeType: "", triples: [] },
         }))
     );
   const configuredNodeTexts = new Set(configuredNodes.map((n) => n.text));

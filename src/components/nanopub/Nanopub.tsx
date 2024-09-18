@@ -197,7 +197,7 @@ const NanopubDialog = ({
     const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
 
     return object
-      .replace(/\{nodeType\}/g, discourseNode.text)
+      .replace(/\{nodeType\}/g, discourseNode?.nanopub?.nodeType || "")
       .replace(/\{title\}/g, pageTitle)
       .replace(/\{name\}/g, getCurrentUserDisplayName())
       .replace(/\{url\}/g, pageUrl)
@@ -213,17 +213,8 @@ const NanopubDialog = ({
   }): Promise<string> => {
     const rdf = { ...baseRdf };
 
-    // TEMP TODO REMOVE
-    // Update triples type based on defaultNanopubTemplate
-    const updatedTriples = triples.map((triple) => {
-      const templateTriple = defaultNanopubTemplate.find(
-        (t) => t.predicate === triple.predicate
-      );
-      return templateTriple ? { ...triple, type: templateTriple.type } : triple;
-    });
-
     rdf["@graph"]["np:hasAssertion"]["@graph"] = await Promise.all(
-      updatedTriples
+      triples
         .filter((triple) => triple.type === "assertion")
         .map(async (triple) => ({
           "@id": "#",
@@ -234,7 +225,7 @@ const NanopubDialog = ({
     );
 
     rdf["@graph"]["np:hasProvenance"]["@graph"] = await Promise.all(
-      updatedTriples
+      triples
         .filter((triple) => triple.type === "provenance")
         .map(async (triple) => ({
           "@id": "#assertion",
@@ -245,7 +236,7 @@ const NanopubDialog = ({
     );
 
     rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = await Promise.all(
-      updatedTriples
+      triples
         .filter((triple) => triple.type === "publicationInfo")
         .map(async (triple) => ({
           "@id": "#pubinfo",
