@@ -10,11 +10,36 @@ import createBlock from "roamjs-components/writes/createBlock";
 import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
 import { createTLStore } from "@tldraw/editor";
 import { SerializedStore, StoreSnapshot } from "@tldraw/store";
-import { defaultBindingUtils, defaultShapeUtils } from "tldraw";
+import {
+  defaultBindingUtils,
+  defaultShapeUtils,
+  loadSnapshot,
+  TLStoreSnapshot,
+} from "tldraw";
 import { AddPullWatch } from "roamjs-components/types";
+import { LEGACY_SCHEMA, LEGACYSTORETEST } from "../../data/legacyTldrawSchema";
 // import { createAllRelationShapeUtils } from "./DiscourseRelationsUtil";
 
 const THROTTLE = 350;
+
+const isTLStoreSnapshot = (value: unknown): value is TLStoreSnapshot => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "store" in value &&
+    "schema" in value
+  );
+};
+
+const filterUserRecords = (data: SerializedStore<TLRecord>) => {
+  return Object.fromEntries(
+    Object.entries(data).filter(([key]) => {
+      return !/^(user_presence|camera|instance|instance_page_state|user|user_document):/.test(
+        key
+      );
+    })
+  );
+};
 
 export const useRoamStore = ({
   customShapeUtils,
@@ -45,17 +70,79 @@ export const useRoamStore = ({
       });
     }
     const props = getBlockProps(pageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const data = rjsqb?.tldraw as SerializedStore<TLRecord>;
-    return data;
+    const rjsqb =
+      typeof props["roamjs-query-builder"] === "object"
+        ? (props["roamjs-query-builder"] as Record<string, unknown>)
+        : {};
+    if (isTLStoreSnapshot(rjsqb.tldraw)) {
+      return rjsqb.tldraw as TLStoreSnapshot;
+    }
+
+    // Upgrade old format to new format
+    if (rjsqb?.tldraw) {
+      const oldStore = rjsqb.tldraw as SerializedStore<TLRecord>;
+      // const oldStore = LEGACYSTORETEST;
+
+      try {
+        const newStore = createTLStore({
+          shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+          bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
+        });
+        // getMigrationsSince either
+        // - errors if cannot migrate
+        // - returns empty array if no migrations are needed
+        // - returns array of migrations if migrations are needed
+        try {
+          const migrations = newStore.schema.getMigrationsSince(LEGACY_SCHEMA);
+          console.log("migrations", migrations);
+        } catch (error) {
+          console.error("Failed to get migrations since:", error);
+          return null;
+        }
+
+        // save old store and update to new format
+        const filteredData = filterUserRecords(oldStore);
+        loadSnapshot(newStore, { store: filteredData, schema: LEGACY_SCHEMA });
+        const snapshot = newStore.getStoreSnapshot();
+
+        window.roamAlphaAPI.updateBlock({
+          block: {
+            uid: pageUid,
+            props: {
+              ...props,
+              ["roamjs-query-builder"]: {
+                ...rjsqb,
+                stateId: nanoid(),
+                tldraw: snapshot,
+                legacyTldraw: {
+                  date: new Date().valueOf().toString(),
+                  store: oldStore,
+                },
+              },
+            },
+          },
+        });
+        return snapshot;
+      } catch (error) {
+        console.error("Failed to get migrations since:", error);
+        return null;
+      }
+    }
   }, [tree, pageUid]);
 
   const store = useMemo(() => {
-    const _store = createTLStore({
-      initialData,
-      shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-      bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
-    });
+    let _store;
+    try {
+      _store = createTLStore({
+        initialData: initialData?.store,
+        shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+        bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
+      });
+    } catch (error) {
+      console.error("Failed to create store:", error);
+      return null;
+    }
+
     _store.listen((rec) => {
       if (rec.source !== "user") return;
       const validChanges = Object.keys(rec.changes.added)
@@ -72,8 +159,15 @@ export const useRoamStore = ({
         const props = getBlockProps(pageUid) as Record<string, unknown>;
         const rjsqb =
           typeof props["roamjs-query-builder"] === "object"
-            ? props["roamjs-query-builder"]
+            ? (props["roamjs-query-builder"] as Record<string, unknown>)
             : {};
+        const propSchema = isTLStoreSnapshot(rjsqb.tldraw)
+          ? rjsqb.tldraw.schema
+          : {};
+        const schema =
+          Object.keys(propSchema).length === 0
+            ? _store.schema.serialize()
+            : propSchema;
         await setInputSetting({
           blockUid: pageUid,
           key: "timestamp",
@@ -90,7 +184,7 @@ export const useRoamStore = ({
               ["roamjs-query-builder"]: {
                 ...rjsqb,
                 stateId: newstateId,
-                tldraw: state,
+                tldraw: { store: state, schema },
               },
             },
           },
@@ -199,6 +293,7 @@ export const useRoamStore = ({
         if (!newState) return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
+          if (!store) return;
           store.mergeRemoteChanges(() => {
             const currentState = store.getSnapshot();
             const diff = calculateDiff(newState, currentState);
