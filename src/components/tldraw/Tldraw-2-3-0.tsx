@@ -445,130 +445,145 @@ const TldrawCanvas = ({
         onClose={() => setConvertToDialogOpen(false)}
         editor={appRef.current}
       />
-      <TldrawEditor
-        // baseUrl="https://samepage.network/assets/tldraw/"
-        // instanceId={initialState.instanceId}
-        initialState="select"
-        shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
-        tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
-        bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
-        components={defaultEditorComponents}
-        store={store}
-        onMount={(app) => {
-          if (process.env.NODE_ENV !== "production") {
-            if (!window.tldrawApps) window.tldrawApps = {};
-            const { tldrawApps } = window;
-            tldrawApps[title] = app;
-          }
+      {store ? (
+        <TldrawEditor
+          // baseUrl="https://samepage.network/assets/tldraw/"
+          // instanceId={initialState.instanceId}
+          initialState="select"
+          shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
+          tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
+          bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
+          components={defaultEditorComponents}
+          store={store}
+          onMount={(app) => {
+            if (process.env.NODE_ENV !== "production") {
+              if (!window.tldrawApps) window.tldrawApps = {};
+              const { tldrawApps } = window;
+              tldrawApps[title] = app;
+            }
 
-          appRef.current = app;
+            appRef.current = app;
 
-          handlePastedImages(app);
+            handlePastedImages(app);
 
-          app.sideEffects.registerBeforeChangeHandler(
-            "shape",
-            (prevShape, nextShape) => {
-              // prevent accidental arrow reposition
-              // or should this be on DiscourseRelationUtil's onTranslate?
-              if (isCustomArrowShape(prevShape)) {
-                const bindings = app.getBindingsFromShape(
-                  prevShape,
-                  prevShape.type
-                );
-                const isTranslating = app.isIn("select.translating");
-                if (bindings.length && isTranslating) {
-                  app.setSelectedShapes([]);
-                  renderToast({
-                    id: "tldraw-warning",
-                    intent: "warning",
-                    content: "Cannot move relation.",
-                  });
-                  return prevShape;
+            app.sideEffects.registerBeforeChangeHandler(
+              "shape",
+              (prevShape, nextShape) => {
+                // prevent accidental arrow reposition
+                // or should this be on DiscourseRelationUtil's onTranslate?
+                if (isCustomArrowShape(prevShape)) {
+                  const bindings = app.getBindingsFromShape(
+                    prevShape,
+                    prevShape.type
+                  );
+                  const isTranslating = app.isIn("select.translating");
+                  if (bindings.length && isTranslating) {
+                    app.setSelectedShapes([]);
+                    renderToast({
+                      id: "tldraw-warning",
+                      intent: "warning",
+                      content: "Cannot move relation.",
+                    });
+                    return prevShape;
+                  }
+                }
+                return nextShape;
+              }
+            );
+
+            app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
+              const util = app.getShapeUtil(shape);
+              if (util instanceof BaseDiscourseNodeUtil) {
+                util.createExistingRelations({
+                  shape: shape as DiscourseNodeShape,
+                });
+              }
+            });
+            app.sideEffects.registerBeforeDeleteHandler("shape", (shape) => {
+              const util = app.getShapeUtil(shape);
+              if (util instanceof BaseDiscourseNodeUtil) {
+                util.deleteRelationsInCanvas({
+                  shape: shape as DiscourseNodeShape,
+                });
+              }
+            });
+
+            // TODO - this should move to one of DiscourseNodeTool's children classes instead
+            app.on("event", (event) => {
+              const e = event as TLPointerEventInfo;
+
+              // tldraw swallowing `onClick`
+              if (e.type === "pointer" && e.name === "pointer_down") {
+                const element = document.elementFromPoint(e.point.x, e.point.y);
+                if (
+                  element != null &&
+                  "click" in element &&
+                  typeof element.click === "function"
+                ) {
+                  element.click();
                 }
               }
-              return nextShape;
-            }
-          );
 
-          app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
-            const util = app.getShapeUtil(shape);
-            if (util instanceof BaseDiscourseNodeUtil) {
-              util.createExistingRelations({
-                shape: shape as DiscourseNodeShape,
-              });
-            }
-          });
-          app.sideEffects.registerBeforeDeleteHandler("shape", (shape) => {
-            const util = app.getShapeUtil(shape);
-            if (util instanceof BaseDiscourseNodeUtil) {
-              util.deleteRelationsInCanvas({
-                shape: shape as DiscourseNodeShape,
-              });
-            }
-          });
+              discourseContext.lastAppEvent = e.name;
 
-          // TODO - this should move to one of DiscourseNodeTool's children classes instead
-          app.on("event", (event) => {
-            const e = event as TLPointerEventInfo;
+              // handle node clicked with modifiers
+              // navigate / open in sidebar
+              const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
+              if (!(e.name === "pointer_up" && validModifier)) return;
+              if (app.getSelectedShapes().length) return; // User is positioning selected shape
+              const shape = app.getShapeAtPoint(
+                app.inputs.currentPagePoint
+              ) as DiscourseNodeShape;
+              if (!shape) return;
+              const shapeUid = shape.props.uid;
 
-            // tldraw swallowing `onClick`
-            if (e.type === "pointer" && e.name === "pointer_down") {
-              const element = document.elementFromPoint(e.point.x, e.point.y);
+              if (!isLiveBlock(shapeUid)) {
+                if (!shape.props.title) return;
+                renderToast({
+                  id: "tldraw-warning",
+                  intent: "warning",
+                  content: `Not a valid UID. Cannot Open.`,
+                });
+              }
+
+              if (e.shiftKey) openBlockInSidebar(shapeUid);
+
               if (
-                element != null &&
-                "click" in element &&
-                typeof element.click === "function"
+                e.ctrlKey
+                // || e.metaKey
               ) {
-                element.click();
+                const isPage = !!getPageTitleByPageUid(shapeUid);
+                if (isPage) {
+                  window.roamAlphaAPI.ui.mainWindow.openPage({
+                    page: { uid: shapeUid },
+                  });
+                } else {
+                  window.roamAlphaAPI.ui.mainWindow.openBlock({
+                    block: { uid: shapeUid },
+                  });
+                }
               }
-            }
-
-            discourseContext.lastAppEvent = e.name;
-
-            // handle node clicked with modifiers
-            // navigate / open in sidebar
-            const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
-            if (!(e.name === "pointer_up" && validModifier)) return;
-            if (app.getSelectedShapes().length) return; // User is positioning selected shape
-            const shape = app.getShapeAtPoint(
-              app.inputs.currentPagePoint
-            ) as DiscourseNodeShape;
-            if (!shape) return;
-            const shapeUid = shape.props.uid;
-
-            if (!isLiveBlock(shapeUid)) {
-              if (!shape.props.title) return;
-              renderToast({
-                id: "tldraw-warning",
-                intent: "warning",
-                content: `Not a valid UID. Cannot Open.`,
-              });
-            }
-
-            if (e.shiftKey) openBlockInSidebar(shapeUid);
-
-            if (
-              e.ctrlKey
-              // || e.metaKey
-            ) {
-              const isPage = !!getPageTitleByPageUid(shapeUid);
-              if (isPage) {
-                window.roamAlphaAPI.ui.mainWindow.openPage({
-                  page: { uid: shapeUid },
-                });
-              } else {
-                window.roamAlphaAPI.ui.mainWindow.openBlock({
-                  block: { uid: shapeUid },
-                });
-              }
-            }
-          });
-        }}
-      >
-        <TldrawUi overrides={uiOverrides} components={customUiComponents}>
-          <CustomContextMenu extensionAPI={extensionAPI} allNodes={allNodes} />
-        </TldrawUi>
-      </TldrawEditor>
+            });
+          }}
+        >
+          <TldrawUi overrides={uiOverrides} components={customUiComponents}>
+            <CustomContextMenu
+              extensionAPI={extensionAPI}
+              allNodes={allNodes}
+            />
+          </TldrawUi>
+        </TldrawEditor>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">Error Loading Store</h2>
+            <p className="text-gray-600 mb-4">
+              There was a problem loading the Tldraw store. Please try again
+              later.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
