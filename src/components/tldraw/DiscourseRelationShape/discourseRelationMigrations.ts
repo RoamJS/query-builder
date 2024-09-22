@@ -10,23 +10,26 @@ import { RelationBinding } from "./DiscourseRelationBindings";
 
 const SEQUENCE_ID_BASE = "com.roam-research.query-builder";
 
-export const createRelationShapeMigrations = ({
+export const createArrowShapeMigrations = ({
   allRelationIds,
+  allAddReferencedNodeActions,
 }: {
   allRelationIds: string[];
+  allAddReferencedNodeActions: string[];
 }) => {
-  return allRelationIds.map((relationId) => {
-    const versions = createMigrationIds(`${SEQUENCE_ID_BASE}.${relationId}`, {
+  const allShapeIds = [...allRelationIds, ...allAddReferencedNodeActions];
+  return allShapeIds.map((shapeId) => {
+    const versions = createMigrationIds(`${SEQUENCE_ID_BASE}.${shapeId}`, {
       "2.3.0": 1,
       ExtractBindings: 2,
     });
     return createMigrationSequence({
-      sequenceId: `${SEQUENCE_ID_BASE}.${relationId}`,
+      sequenceId: `${SEQUENCE_ID_BASE}.${shapeId}`,
       sequence: [
         {
           id: versions["2.3.0"],
           scope: "record",
-          filter: (r: any) => r.type === relationId && r.typeName === "shape",
+          filter: (r: any) => r.type === shapeId && r.typeName === "shape",
           up: (arrow: any) => {
             arrow.props.start = { x: 0, y: 0 };
             arrow.props.end = { x: 0, y: 0 };
@@ -66,7 +69,8 @@ export const createRelationShapeMigrations = ({
               (r: any): r is OldArrow =>
                 r.typeName === "shape" &&
                 "type" in r &&
-                allRelationIds.includes(r.type)
+                (allRelationIds.includes(r.type) ||
+                  allAddReferencedNodeActions.includes(r.type))
             );
 
             for (const a of arrows) {
