@@ -275,7 +275,7 @@ const TldrawCanvas = ({
 
   // STORE
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
-  const store = useRoamStore({
+  const { store, needsUpgrade, performUpgrade, error } = useRoamStore({
     customShapeUtils,
     customBindingUtils,
     pageUid,
@@ -445,7 +445,35 @@ const TldrawCanvas = ({
         onClose={() => setConvertToDialogOpen(false)}
         editor={appRef.current}
       />
-      {store ? (
+      {needsUpgrade ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">Upgrade Required</h2>
+            <p className="text-gray-600 mb-4">
+              Your tldraw canvas is using an old format. Click below to upgrade.
+            </p>
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={performUpgrade}
+            >
+              Upgrade Canvas
+            </button>
+          </div>
+        </div>
+      ) : !store ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">
+              {error ? "Error Loading Canvas" : "Loading Canvas"}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {error
+                ? "There was a problem loading the Tldraw canvas. Please try again later."
+                : "Loading Canvas"}
+            </p>
+          </div>
+        </div>
+      ) : (
         <TldrawEditor
           // baseUrl="https://samepage.network/assets/tldraw/"
           // instanceId={initialState.instanceId}
@@ -573,16 +601,6 @@ const TldrawCanvas = ({
             />
           </TldrawUi>
         </TldrawEditor>
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold mb-2">Error Loading Store</h2>
-            <p className="text-gray-600 mb-4">
-              There was a problem loading the Tldraw store. Please try again
-              later.
-            </p>
-          </div>
-        </div>
       )}
     </div>
   );
