@@ -1,6 +1,6 @@
 import { TLRecord, TLStore } from "@tldraw/tlschema";
 import nanoid from "nanoid";
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useState } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
@@ -14,6 +14,7 @@ import {
   defaultBindingUtils,
   defaultShapeUtils,
   loadSnapshot,
+  MigrationSequence,
   TLStoreSnapshot,
 } from "tldraw";
 import { AddPullWatch } from "roamjs-components/types";
@@ -45,23 +46,35 @@ export const useRoamStore = ({
   customShapeUtils,
   customBindingUtils,
   pageUid,
+  migrations,
 }: {
   customShapeUtils: any[];
   customBindingUtils: any[];
   pageUid: string;
+  migrations: MigrationSequence[];
 }) => {
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+  const [oldData, setOldData] = useState<SerializedStore<TLRecord> | null>(
+    null
+  );
+  const [initialSnapshot, setInitialSnapshot] =
+    useState<TLStoreSnapshot | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const localStateIds = useRef<string[]>([]);
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
   const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
-  const initialData = useMemo(() => {
+
+  // Handle initial data
+  useEffect(() => {
     const persisted = getSubTree({
       parentUid: pageUid,
       tree,
       key: "State",
     });
     if (!persisted.uid) {
-      // we create a block so that the page is not garbage collected
       createBlock({
         node: {
           text: "State",
@@ -75,66 +88,26 @@ export const useRoamStore = ({
         ? (props["roamjs-query-builder"] as Record<string, unknown>)
         : {};
     if (isTLStoreSnapshot(rjsqb.tldraw)) {
-      return rjsqb.tldraw as TLStoreSnapshot;
-    }
-
-    // Upgrade old format to new format
-    if (rjsqb?.tldraw) {
+      setInitialSnapshot(rjsqb.tldraw as TLStoreSnapshot);
+      setLoading(false);
+    } else if (rjsqb?.tldraw) {
       const oldStore = rjsqb.tldraw as SerializedStore<TLRecord>;
-      // const oldStore = LEGACYSTORETEST;
-
-      try {
-        const newStore = createTLStore({
-          shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
-          bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
-        });
-        // getMigrationsSince either
-        // - errors if cannot migrate
-        // - returns empty array if no migrations are needed
-        // - returns array of migrations if migrations are needed
-        try {
-          const migrations = newStore.schema.getMigrationsSince(LEGACY_SCHEMA);
-          console.log("migrations", migrations);
-        } catch (error) {
-          console.error("Failed to get migrations since:", error);
-          return null;
-        }
-
-        // save old store and update to new format
-        const filteredData = filterUserRecords(oldStore);
-        loadSnapshot(newStore, { store: filteredData, schema: LEGACY_SCHEMA });
-        const snapshot = newStore.getStoreSnapshot();
-
-        window.roamAlphaAPI.updateBlock({
-          block: {
-            uid: pageUid,
-            props: {
-              ...props,
-              ["roamjs-query-builder"]: {
-                ...rjsqb,
-                stateId: nanoid(),
-                tldraw: snapshot,
-                legacyTldraw: {
-                  date: new Date().valueOf().toString(),
-                  store: oldStore,
-                },
-              },
-            },
-          },
-        });
-        return snapshot;
-      } catch (error) {
-        console.error("Failed to get migrations since:", error);
-        return null;
-      }
+      setNeedsUpgrade(true);
+      setOldData(oldStore);
+      setLoading(false);
+    } else {
+      // Create a new store
+      setInitialSnapshot(null);
+      setLoading(false);
     }
   }, [tree, pageUid]);
-
   const store = useMemo(() => {
+    if (needsUpgrade || error || loading) return null;
     let _store;
     try {
       _store = createTLStore({
-        initialData: initialData?.store,
+        initialData: initialSnapshot?.store,
+        migrations: migrations,
         shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
         bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
       });
@@ -192,13 +165,57 @@ export const useRoamStore = ({
       }, THROTTLE);
     });
     return _store;
-  }, [initialData, serializeRef]);
+  }, [initialSnapshot, serializeRef, needsUpgrade, error, loading]);
 
   const personalRecordTypes = new Set([
     "camera",
     "instance",
     "instance_page_state",
   ]);
+
+  const performUpgrade = async () => {
+    if (!oldData) return;
+    try {
+      const newStore = createTLStore({
+        migrations: migrations,
+        shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+        bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
+      });
+      const filteredData = filterUserRecords(oldData);
+      loadSnapshot(newStore, { store: filteredData, schema: LEGACY_SCHEMA });
+      const snapshot = newStore.getStoreSnapshot();
+      const props = getBlockProps(pageUid) as Record<string, unknown>;
+      const rjsqb =
+        typeof props["roamjs-query-builder"] === "object"
+          ? (props["roamjs-query-builder"] as Record<string, unknown>)
+          : {};
+      window.roamAlphaAPI.updateBlock({
+        block: {
+          uid: pageUid,
+          props: {
+            ...props,
+            ["roamjs-query-builder"]: {
+              ...rjsqb,
+              stateId: nanoid(),
+              tldraw: snapshot,
+              legacyTldraw: {
+                date: new Date().valueOf().toString(),
+                store: oldData,
+              },
+            },
+          },
+        },
+      });
+      setInitialSnapshot(snapshot);
+      setNeedsUpgrade(false);
+      setOldData(null);
+    } catch (error) {
+      setNeedsUpgrade(false);
+      setInitialSnapshot(null);
+      setError(error as Error);
+      console.error("Failed to perform upgrade:", error);
+    }
+  };
 
   const pruneState = (state: StoreSnapshot<TLRecord>) =>
     Object.fromEntries(
@@ -278,6 +295,7 @@ export const useRoamStore = ({
     };
   };
 
+  // Remote Changes
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
       "[:edit/user :block/props :block/string {:block/children ...}]",
@@ -308,5 +326,5 @@ export const useRoamStore = ({
     };
   }, [pageUid, store]);
 
-  return store;
+  return { error, store, needsUpgrade, performUpgrade };
 };
