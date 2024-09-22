@@ -95,6 +95,7 @@ import {
   createAllRelationBindings,
 } from "./DiscourseRelationShape/DiscourseRelationBindings";
 import ConvertToDialog from "./ConvertToDialog";
+import { createRelationShapeMigrations } from "./DiscourseRelationShape/discourseRelationMigrations";
 
 declare global {
   interface Window {
@@ -275,7 +276,13 @@ const TldrawCanvas = ({
 
   // STORE
   const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
+  const relationMigrations = useMemo(
+    () => createRelationShapeMigrations({ allRelationIds }),
+    [allRelationIds]
+  );
+  const migrations = [...relationMigrations];
   const { store, needsUpgrade, performUpgrade, error } = useRoamStore({
+    migrations,
     customShapeUtils,
     customBindingUtils,
     pageUid,
