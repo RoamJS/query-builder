@@ -191,10 +191,8 @@ const NanopubDialog = ({
     null
   );
   useEffect(() => {
-    // const node = getDiscourseNode(uid); TODO, provide no-cache option
-    const nodes = getDiscourseNodes();
-    const node = nodes.find((n) => matchDiscourseNode({ ...n, uid }));
-    setDiscourseNode(node || null);
+    const node = getDiscourseNode({ uid, cache: false });
+    setDiscourseNode(node);
   }, []);
   const nanopubConfig = discourseNode?.nanopub;
   const templateTriples = nanopubConfig?.triples;
