@@ -57,6 +57,8 @@ import {
   NanoPubTitleButtons,
 } from "./components/nanopub/Nanopub";
 import { handleTitleAdditions } from "./utils/handleTitleAdditions";
+import findDiscourseNode from "./utils/findDiscourseNode";
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -208,6 +210,8 @@ svg.rs-svg-container {
   };
   const h1ObserverCallback = (h1: HTMLHeadingElement) => {
     const title = getPageTitleValueByHtmlElement(h1);
+    const uid = getPageUidByPageTitle(title);
+
     if (!!extensionAPI.settings.get("show-page-metadata")) {
       const { displayName, date } = getPageMetadata(title);
       const label = document.createElement("i");
@@ -227,7 +231,6 @@ svg.rs-svg-container {
         )
         .some((r) => r.test(title))
     ) {
-      const uid = getPageUidByPageTitle(title);
       const attribute = `data-roamjs-${uid}`;
       const containerParent = h1.parentElement?.parentElement;
       if (containerParent && !containerParent.hasAttribute(attribute)) {
@@ -252,12 +255,10 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
-    } else if (true) {
-      const uid = getPageUidByPageTitle(title);
-
-      // dev hack for non-date names
-      // todo look into when discourse context is available, probably move it up here to get node type/details
-      if (uid.length === 9)
+    } else if (!DAILY_NOTE_PAGE_TITLE_REGEX.test(title)) {
+      const node = findDiscourseNode(uid);
+      const nanopubEnabled = node ? node.nanopub?.enabled : false;
+      if (nanopubEnabled)
         handleTitleAdditions(h1, NanoPubTitleButtons({ uid, onloadArgs }));
     }
   };
