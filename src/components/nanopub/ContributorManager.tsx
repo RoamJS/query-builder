@@ -1,16 +1,8 @@
-import React, {
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect,
-  memo,
-} from "react";
-import { Button, H5, TagInput, Intent } from "@blueprintjs/core";
+import React, { useCallback, useMemo, useRef, useEffect, memo } from "react";
+import { Button, Intent } from "@blueprintjs/core";
 import { MultiSelect } from "@blueprintjs/select";
 import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import { PullBlock } from "roamjs-components/types";
-import getBlockProps from "../../utils/getBlockProps";
 import nanoid from "nanoid";
 import { Contributor, NanopubPage } from "./Nanopub";
 

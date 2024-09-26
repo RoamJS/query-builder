@@ -432,7 +432,7 @@ const NanopubConfigPanel = ({
     setAssertionUid(assertionUid);
     setProvenanceUid(provenanceUid);
     setPublicationInfoUid(publicationInfoUid);
-    setRequireContributors(template.requireContributors);
+    handleRequireContributors(template.requireContributors);
     setNodeType(template.nodeType);
     setTriples(
       triples.map((triple) => ({

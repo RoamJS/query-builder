@@ -8,14 +8,6 @@ type NanopubMainConfigProps = {
 };
 
 const NanopubMainConfig = ({ onloadArgs }: NanopubMainConfigProps) => {
-  //   const { value, onChange } = useSingleChildValue({
-  //     defaultValue: onloadArgs.extensionAPI.settings.get("orcid") as string,
-  //     title,
-  //     parentUid,
-  //     order: 0,
-  //     transform: (s) => s,
-  //     toStr: (s) => s,
-  //   });
   return (
     <Label>
       ORCID

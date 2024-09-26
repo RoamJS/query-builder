@@ -52,10 +52,7 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import {
-  render as nanopubRender,
-  NanoPubTitleButtons,
-} from "./components/nanopub/Nanopub";
+import { NanoPubTitleButtons } from "./components/nanopub/Nanopub";
 import { handleTitleAdditions } from "./utils/handleTitleAdditions";
 import findDiscourseNode from "./utils/findDiscourseNode";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
@@ -255,7 +252,7 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
-    } else if (!DAILY_NOTE_PAGE_TITLE_REGEX.test(title)) {
+    } else {
       const node = findDiscourseNode(uid);
       const nanopubEnabled = node ? node.nanopub?.enabled : false;
       if (nanopubEnabled)
@@ -720,16 +717,6 @@ svg.rs-svg-container {
       document.body.dispatchEvent(
         new CustomEvent("roamjs-query-builder:fire-query", { detail: uid })
       );
-    },
-  });
-
-  // NANOPUB
-  extensionAPI.ui.commandPalette.addCommand({
-    label: "Nanopub",
-    callback: () => {
-      console.log("Nanopub");
-      const uid = getCurrentPageUid();
-      nanopubRender({ uid });
     },
   });
 
