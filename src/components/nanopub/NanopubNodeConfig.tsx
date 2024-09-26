@@ -358,7 +358,7 @@ const NanopubConfigPanel = ({
   const setDefaultTemplate = async () => {
     if (triplesUid) deleteBlock(triplesUid);
 
-    const template = defaultNanopubTemplate;
+    const template = structuredClone(defaultNanopubTemplate);
     // set uids
     template.triples = template.triples.map((triple) => ({
       ...triple,
@@ -432,8 +432,8 @@ const NanopubConfigPanel = ({
     setAssertionUid(assertionUid);
     setProvenanceUid(provenanceUid);
     setPublicationInfoUid(publicationInfoUid);
-    setRequireContributors(defaultNanopubTemplate.requireContributors);
-    setNodeType(defaultNanopubTemplate.nodeType);
+    setRequireContributors(template.requireContributors);
+    setNodeType(template.nodeType);
     setTriples(
       triples.map((triple) => ({
         uid: triple.uid,
@@ -469,7 +469,7 @@ const NanopubConfigPanel = ({
           }}
           disabled={!isEnabled}
         />
-        <FormGroup inline={true} label="Node Type">
+        <FormGroup inline={true} label="Node Type" contentClassName="flex-grow">
           <InputGroup
             placeholder="Enter URL to node type definition"
             value={nodeTypeValue}
