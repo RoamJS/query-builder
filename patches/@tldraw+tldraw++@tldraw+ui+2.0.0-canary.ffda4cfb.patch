@@ -43,22 +43,3 @@ index 8c9610d..03a9b7c 100644
      },
      item.id
    );
-diff --git a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/hooks/useClipboardEvents.mjs b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/hooks/useClipboardEvents.mjs
-index d6b373d..af74af9 100644
---- a/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/hooks/useClipboardEvents.mjs
-+++ b/node_modules/@tldraw/tldraw/node_modules/@tldraw/ui/dist/esm/lib/hooks/useClipboardEvents.mjs
-@@ -216,6 +216,14 @@ const handleHtmlString = async (app, html, point) => {
-   }
- };
- const handleTextString = async (app, text, point) => {
-+
-+  const MAX_TEXT_SIZE = 500 * 1024; // 500 KB in bytes
-+  if (text.length > MAX_TEXT_SIZE) {
-+      console.warn('Text is too large to paste:', text.length, 'bytes');
-+      pasteText(app, "Text is too large to paste", point);
-+      return;
-+    }
-+
-   const s = text.trim();
-   const tldrawContent = text.match(/<tldraw[^>]*>(.*)<\/tldraw>/)?.[1];
-   if (tldrawContent) {
