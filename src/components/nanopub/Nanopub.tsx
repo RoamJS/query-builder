@@ -765,7 +765,7 @@ const NanopubDialog = ({
                 disabled={selectedTabId !== "nanopub-preview"}
                 hidden={!!publishedURL}
               >
-                Publish
+                Publish Example Nanopub
               </Button>
             </div>
           </div>
