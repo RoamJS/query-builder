@@ -38,6 +38,7 @@ import {
 import getBlockProps from "../../utils/getBlockProps";
 import getExportTypes from "../../utils/getExportTypes";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
+import apiPost from "roamjs-components/util/apiPost";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -477,6 +478,28 @@ const NanopubDialog = ({
       const error = e as Error;
       console.error("Error publishing the Nanopub:", error);
       setPublishedOutput(JSON.stringify({ error: error.message }, null, 2));
+      apiPost({
+        domain: "https://api.samepage.network",
+        path: "errors",
+        data: {
+          method: "extension-error",
+          type: "Nanopub Publish Failed",
+          message: error.message,
+          stack: error.stack,
+          version: process.env.VERSION,
+          data: {
+            templateTriples,
+            contributors,
+            rdfString,
+            orcidUrl,
+          },
+          notebookUuid: JSON.stringify({
+            owner: "RoamJS",
+            app: "query-builder",
+            workspace: window.roamAlphaAPI.graph.name,
+          }),
+        },
+      }).catch(() => {});
     }
   };
 
