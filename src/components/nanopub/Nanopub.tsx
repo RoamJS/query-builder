@@ -171,7 +171,7 @@ const NanopubDialog = ({
       .replace(/\{title\}/g, pageTitle)
       .replace(/\{name\}/g, getCurrentUserDisplayName())
       .replace(/\{url\}/g, pageUrl)
-      .replace(/\{myORCID\}/g, ORCID)
+      .replace(/\{myORCID\}/g, orcidUrl)
       .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
       .replace(/\{body\}/g, await getPageContent({ pageTitle, uid }));
   };
@@ -418,8 +418,7 @@ const NanopubDialog = ({
   };
   // END DEV
 
-  const ORCID = useMemo(() => {
-    console.log("getORCID");
+  const orcidUrl = useMemo(() => {
     const hasORCID = onloadArgs.extensionAPI.settings.get("orcid") as string;
     const ORCID = hasORCID ? `https://orcid.org/${hasORCID}` : "";
     return ORCID;
@@ -430,14 +429,14 @@ const NanopubDialog = ({
       (triple) => triple.object === "{myORCID}"
     );
     if (requiresORCID) {
-      if (!ORCID) {
+      if (!orcidUrl) {
         setError(
           "This template requires your ORCID. Please set your ORCID in the main settings."
         );
         return;
       }
-      const orcidRegex = /^\d{4}-\d{4}-\d{4}-\d{4}$/;
-      if (!orcidRegex.test(ORCID)) {
+      const orcidRegex = /^https:\/\/orcid\.org\/\d{4}-\d{4}-\d{4}-\d{4}$/;
+      if (!orcidRegex.test(orcidUrl)) {
         setError("ORCID must be in the format 0000-0000-0000-0000");
         return;
       }
@@ -452,8 +451,8 @@ const NanopubDialog = ({
       triples: templateTriples || [],
     });
     const serverUrl = isDev ? "" : getNpServer(false);
-    const NAME = getCurrentUserDisplayName();
-    const profile = new NpProfile(PRIVATE_KEY, ORCID, NAME, "");
+    const currentUser = getCurrentUserDisplayName();
+    const profile = new NpProfile(PRIVATE_KEY, orcidUrl, currentUser, "");
     const np = new Nanopub(rdfString);
     try {
       const published = await np.publish(profile, serverUrl);
