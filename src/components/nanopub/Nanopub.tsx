@@ -464,8 +464,26 @@ const NanopubDialog = ({
   }, [onloadArgs]);
 
   const publishNanopub = async ({ isDev = "" }: { isDev?: string }) => {
-    if (!ORCID) {
-      setError("No ORCID found.  Please set your ORCID in the main settings.");
+    const requiresORCID = templateTriples?.some(
+      (triple) => triple.object === "{myORCID}"
+    );
+    if (requiresORCID) {
+      if (!ORCID) {
+        setError(
+          "This template requires your ORCID. Please set your ORCID in the main settings."
+        );
+        return;
+      }
+      const orcidRegex = /^\d{4}-\d{4}-\d{4}-\d{4}$/;
+      if (!orcidRegex.test(ORCID)) {
+        setError("ORCID must be in the format 0000-0000-0000-0000");
+        return;
+      }
+    }
+    if (nanopubConfig?.requireContributors && contributors.length === 0) {
+      setError(
+        "This template requires contributors. Please add contributors to the nanopub."
+      );
       return;
     }
     const rdfString = await generateRdfString({
@@ -716,7 +734,10 @@ const NanopubDialog = ({
             <div className="space-y-4">
               <Tabs
                 selectedTabId={selectedTabId}
-                onChange={(id) => setSelectedTabId(id)}
+                onChange={(id) => {
+                  setError("");
+                  setSelectedTabId(id);
+                }}
               >
                 <Tab
                   id="nanopub-details"
