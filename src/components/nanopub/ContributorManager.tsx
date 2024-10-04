@@ -113,11 +113,15 @@ const ContributorManager = ({
     ) as [PullBlock, PullBlock][];
 
     return queryResults
-      .map(([p, r]) =>
-        r[":node/title"]?.startsWith("Anonymous") && p
-          ? (p[":user/email"] as string) || ""
-          : r[":node/title"] || ""
-      )
+      .map(([p, r]) => {
+        const title = r?.[":node/title"];
+        const email = p?.[":user/email"] as string | undefined;
+
+        if (title && title.startsWith("Anonymous") && email) {
+          return email;
+        }
+        return title || email || "";
+      })
       .filter(Boolean)
       .filter((name) => name !== "Anonymous");
   }, []);
