@@ -8,6 +8,8 @@ import {
   Dialog,
   Classes,
   FormGroup,
+  Tooltip,
+  Icon,
 } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -26,12 +28,32 @@ import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSi
 import getFirstChildTextByBlockUid from "roamjs-components/queries/getFirstChildTextByBlockUid";
 
 const placeholders = {
-  nodeType: "Type of Discourse Node",
-  title: "Page Title",
-  body: "Page Body",
-  url: "Current page URL",
-  myORCID: "Your ORCID identifier",
-  createdBy: "Creator of the page",
+  nodeType: {
+    text: "Type of Discourse Node",
+    tooltip: "Defined in these settings",
+  },
+  // update this when cutover to specification
+  // https://github.com/RoamJS/query-builder/issues/189
+  title: {
+    text: "Page Title",
+    tooltip: "This will extract the {content} from the Format specification",
+  },
+  body: {
+    text: "Page Body",
+    tooltip: "The main content of the current Roam page",
+  },
+  url: {
+    text: "Current page URL",
+    tooltip: "The URL of the current Roam page",
+  },
+  myORCID: {
+    text: "Your ORCID identifier",
+    tooltip: "Defined in [[roam/js/discourse-graph]]",
+  },
+  createdBy: {
+    text: "Creator of the page",
+    tooltip: "The user who created the current Roam page",
+  },
 };
 
 export const defaultPredicates = {
@@ -565,7 +587,16 @@ const NanopubConfigPanel = ({
           <ul className="list-disc pl-5">
             {Object.entries(placeholders).map(([key, value]) => (
               <li key={key}>
-                <code>{`{${key}}`}</code>: {value}
+                <div className="flex space-x-2">
+                  <code>{`{${key}}`}</code>:<span>{value.text}</span>
+                  <Tooltip content={value.tooltip}>
+                    <Icon
+                      icon={"info-sign"}
+                      iconSize={12}
+                      className="opacity-80"
+                    />
+                  </Tooltip>
+                </div>
               </li>
             ))}
           </ul>
