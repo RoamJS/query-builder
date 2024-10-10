@@ -36,9 +36,12 @@ import {
   PredicateKey,
 } from "./NanopubNodeConfig";
 import getBlockProps from "../../utils/getBlockProps";
-import getExportTypes from "../../utils/getExportTypes";
+import getExportTypes, {
+  extractContentFromFormat,
+} from "../../utils/getExportTypes";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import apiPost from "roamjs-components/util/apiPost";
+import { getExportSettings } from "../../utils/getExportSettings";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -123,6 +126,9 @@ const getPageContent = async ({
     includeDiscourseContext: false,
     filename: "",
     isExportDiscourseGraph: false,
+    settings: {
+      frontmatter: [],
+    },
   });
   const { content } = result[0];
   return content;
@@ -167,9 +173,15 @@ const NanopubDialog = ({
     const pageTitle = getPageTitleByPageUid(uid);
     const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
 
+    // use exportSettings?  or just enforce simplifiedTitle?
+    // const { simplifiedFilename } = getExportSettings();
+    // const title = simplifiedFilename
+    //   ? extractContentFromFormat({ title: pageTitle })
+    //   : pageTitle;
+
     return object
       .replace(/\{nodeType\}/g, nanopubConfig?.nodeType || "")
-      .replace(/\{title\}/g, pageTitle)
+      .replace(/\{title\}/g, extractContentFromFormat({ title: pageTitle }))
       .replace(/\{name\}/g, getCurrentUserDisplayName())
       .replace(/\{url\}/g, pageUrl)
       .replace(/\{myORCID\}/g, orcidUrl)
