@@ -842,6 +842,7 @@ svg.rs-svg-container {
         "roamjs:query-builder:action",
         pageActionListener
       );
+      removeTitleAdditions();
     },
   };
 });

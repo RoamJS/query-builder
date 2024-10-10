@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
+const addedElements: Set<HTMLElement> = new Set();
+
 export const handleTitleAdditions = (
   h1: HTMLHeadingElement,
   element: React.ReactNode
@@ -27,13 +29,29 @@ export const handleTitleAdditions = (
         h1.parentElement.insertBefore(container, h1.nextSibling);
       }
     }
+    addedElements.add(container);
   }
 
+  let addedElement: HTMLElement;
   if (React.isValidElement(element)) {
     const renderContainer = document.createElement("div");
     container.appendChild(renderContainer);
     ReactDOM.render(element, renderContainer);
+    addedElement = renderContainer;
   } else {
-    container.appendChild(element as HTMLElement);
+    addedElement = element as HTMLElement;
+    container.appendChild(addedElement);
   }
+
+  addedElements.add(addedElement);
+};
+
+export const removeTitleAdditions = () => {
+  addedElements.forEach((element) => {
+    if (element.parentElement) {
+      ReactDOM.unmountComponentAtNode(element);
+      element.remove();
+    }
+  });
+  addedElements.clear();
 };
