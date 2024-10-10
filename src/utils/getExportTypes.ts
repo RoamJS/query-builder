@@ -11,7 +11,7 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import XRegExp from "xregexp";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import getDiscourseNodes from "./getDiscourseNodes";
+import getDiscourseNodes, { DiscourseNode } from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
 import matchDiscourseNode from "./matchDiscourseNode";
 import getDiscourseRelations from "./getDiscourseRelations";
@@ -24,6 +24,7 @@ import {
   findReferencedNodeInText,
   getReferencedNodeInFormat,
 } from "./formatUtils";
+import { getExportSettings } from "./getExportSettings";
 
 export const updateExportProgress = (detail: {
   progress: number;
@@ -51,12 +52,12 @@ const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   parents: (n[":block/parents"] || []).map((p) => p[":db/id"] || 0),
 });
 
-const getContentFromNodes = ({
+export const extractContentFromFormat = ({
   title,
-  allNodes,
+  allNodes = getDiscourseNodes(),
 }: {
   title: string;
-  allNodes: ReturnType<typeof getDiscourseNodes>;
+  allNodes?: DiscourseNode[];
 }) => {
   const nodeFormat = allNodes.find((a) =>
     matchDiscourseNode({ title, ...a })
@@ -88,7 +89,7 @@ const getFilename = ({
   extension?: string;
 }) => {
   const baseName = simplifiedFilename
-    ? getContentFromNodes({ title, allNodes })
+    ? extractContentFromFormat({ title, allNodes })
     : title;
   const name = `${
     removeSpecialCharacters
@@ -273,6 +274,9 @@ const handleFrontmatter = ({
   rest: Record<string, unknown>;
   result: Result;
 }) => {
+  if (frontmatter === null || frontmatter.length === 0) {
+    return "";
+  }
   const yaml = frontmatter.length
     ? frontmatter
     : [
@@ -432,67 +436,15 @@ const getExportTypes = ({
       return { grammar, nodes, relations };
     });
   };
-  const getExportSettings = () => {
-    const configTree = getBasicTreeByParentUid(
-      getPageUidByPageTitle("roam/js/discourse-graph")
-    );
-    const exportTree = getSubTree({
-      tree: configTree,
-      key: "export",
-    });
-    const maxFilenameLength = getSettingIntFromTree({
-      tree: exportTree.children,
-      key: "max filename length",
-      defaultValue: 64,
-    });
-    const linkType = getSettingValueFromTree({
-      tree: exportTree.children,
-      key: "link type",
-      defaultValue: "alias",
-    });
-    const removeSpecialCharacters = !!getSubTree({
-      tree: exportTree.children,
-      key: "remove special characters",
-    }).uid;
-    const simplifiedFilename = !!getSubTree({
-      tree: exportTree.children,
-      key: "simplified filename",
-    }).uid;
-    const frontmatter = getSubTree({
-      tree: exportTree.children,
-      key: "frontmatter",
-    }).children.map((t) => t.text);
-    const optsRefs = !!getSubTree({
-      tree: exportTree.children,
-      key: "resolve block references",
-    }).uid;
-    const optsEmbeds = !!getSubTree({
-      tree: exportTree.children,
-      key: "resolve block embeds",
-    }).uid;
-    const appendRefNodeContext = !!getSubTree({
-      tree: exportTree.children,
-      key: "append referenced node",
-    }).uid;
-    return {
-      frontmatter,
-      optsRefs,
-      optsEmbeds,
-      simplifiedFilename,
-      maxFilenameLength,
-      removeSpecialCharacters,
-      linkType,
-      appendRefNodeContext,
-    };
-  };
-
   return [
     {
       name: "Markdown",
       callback: async ({
         isSamePageEnabled,
         includeDiscourseContext = false,
+        settings: overrideSettings = {},
       }) => {
+        const defaultSettings = getExportSettings();
         const {
           frontmatter,
           optsRefs,
@@ -502,7 +454,7 @@ const getExportTypes = ({
           removeSpecialCharacters,
           linkType,
           appendRefNodeContext,
-        } = getExportSettings();
+        } = { ...defaultSettings, ...overrideSettings };
         const allPages = await getPageData(
           isSamePageEnabled,
           isExportDiscourseGraph
