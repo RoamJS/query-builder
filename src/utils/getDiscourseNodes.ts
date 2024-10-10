@@ -24,12 +24,7 @@ export type DiscourseNode = {
   // @deprecated - use specification instead
   format: string;
   graphOverview?: boolean;
-  nanopub?: {
-    enabled: boolean;
-    nodeType: string; // defined node URI
-    triples: NanopubTripleType[];
-    requireContributors: boolean;
-  };
+  nanopub?: NanopubConfig;
 };
 
 const DEFAULT_NODES: DiscourseNode[] = [
@@ -54,6 +49,8 @@ const DEFAULT_NODES: DiscourseNode[] = [
       nodeType: "",
       triples: [],
       requireContributors: false,
+      useCustomBody: false,
+      customBodyUid: "",
     },
   },
   {
@@ -77,15 +74,19 @@ const DEFAULT_NODES: DiscourseNode[] = [
       nodeType: "",
       triples: [],
       requireContributors: false,
+      useCustomBody: false,
+      customBodyUid: "",
     },
   },
 ];
 
 export type NanopubConfig = {
   enabled: boolean;
-  nodeType: string;
+  nodeType: string; // defined node URI
   triples: NanopubTripleType[];
   requireContributors: boolean;
+  useCustomBody: boolean;
+  customBodyUid: string;
 };
 const parseNanopub = (nanopubNode: RoamBasicNode): NanopubConfig => {
   const triplesNode = getSubTree({
@@ -104,10 +105,21 @@ const parseNanopub = (nanopubNode: RoamBasicNode): NanopubConfig => {
     tree: nanopubNode.children,
     key: "require-contributors",
   }).uid;
+  const useCustomBody = !!getSubTree({
+    tree: nanopubNode.children,
+    key: "use-custom-body",
+  }).uid;
+  const customBodyUid = getSubTree({
+    tree: nanopubNode.children,
+    key: "custom-body-definition",
+  }).uid;
+
   return {
     enabled,
     nodeType,
     requireContributors,
+    useCustomBody,
+    customBodyUid,
     triples: triplesNode.children
       .map((tripleType) =>
         tripleType.children.map((t) => ({
@@ -181,6 +193,8 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
             nodeType: "",
             triples: [],
             requireContributors: false,
+            useCustomBody: false,
+            customBodyUid: "",
           },
         }))
     );

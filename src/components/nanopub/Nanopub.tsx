@@ -43,6 +43,7 @@ import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import apiPost from "roamjs-components/util/apiPost";
 import { getExportSettings } from "../../utils/getExportSettings";
 import { getNodeEnv } from "roamjs-components/util/env";
+import runQuery from "../../utils/runQuery";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -115,12 +116,11 @@ const getPageContent = async ({
   pageTitle: string;
   uid: string;
 }): Promise<string> => {
-  const exportTypes = getExportTypes({
+  const markdownExport = getExportTypes({
     exportId: "nanopub",
     results: [{ text: pageTitle, uid }],
     isExportDiscourseGraph: false,
-  });
-  const markdownExport = exportTypes.find((type) => type.name === "Markdown");
+  }).find((type) => type.name === "Markdown");
   if (!markdownExport) return "";
   const result = await markdownExport.callback({
     isSamePageEnabled: false,
@@ -142,6 +142,7 @@ const NanopubDialog = ({
   uid: string;
   onloadArgs: any;
 }) => {
+  const extensionAPI = onloadArgs.extensionAPI;
   const [isOpen, setIsOpen] = useState(true);
   const handleClose = () => setIsOpen(false);
   const [rdfString, setRdfString] = useState("");
@@ -174,6 +175,16 @@ const NanopubDialog = ({
     const pageTitle = getPageTitleByPageUid(uid);
     const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
 
+    let pageUid = uid;
+    if (nanopubConfig?.useCustomBody) {
+      const results = await runQuery({
+        extensionAPI,
+        parentUid: nanopubConfig?.customBodyUid,
+        inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
+      });
+
+      uid = results.results[0]?.uid;
+    }
     // use exportSettings?  or just enforce simplifiedTitle?
     // const { simplifiedFilename } = getExportSettings();
     // const title = simplifiedFilename
@@ -316,7 +327,7 @@ const NanopubDialog = ({
     try {
       console.log("signNanopub");
       console.log(PRIVATE_KEY);
-      const ORCID = onloadArgs.extensionAPI.settings.get("orcid") as string;
+      const ORCID = extensionAPI.settings.get("orcid") as string;
       const NAME = getCurrentUserDisplayName();
       console.log(ORCID);
       console.log(NAME);
@@ -434,7 +445,7 @@ const NanopubDialog = ({
   // END DEV
 
   const orcidUrl = useMemo(() => {
-    const hasORCID = onloadArgs.extensionAPI.settings.get("orcid") as string;
+    const hasORCID = extensionAPI.settings.get("orcid") as string;
     const ORCID = hasORCID ? `https://orcid.org/${hasORCID}` : "";
     return ORCID;
   }, [onloadArgs]);

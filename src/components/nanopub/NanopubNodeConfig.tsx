@@ -10,6 +10,7 @@ import {
   FormGroup,
   Tooltip,
   Icon,
+  Card,
 } from "@blueprintjs/core";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -23,9 +24,9 @@ import {
   nodeTypes,
 } from "../../data/defaultNanopubTemplates";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
-import { OnloadArgs } from "roamjs-components/types";
 import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSingleChildValue";
 import getFirstChildTextByBlockUid from "roamjs-components/queries/getFirstChildTextByBlockUid";
+import NanopubBodySpecification from "./NanopubBodySpecification";
 
 const placeholders = {
   nodeType: {
@@ -209,11 +210,9 @@ const TripleInput = React.memo(
 const NanopubConfigPanel = ({
   uid,
   node,
-  onloadArgs,
 }: {
   uid: string;
   node: DiscourseNode;
-  onloadArgs: OnloadArgs;
 }) => {
   const tree = useMemo(() => getBasicTreeByParentUid(uid), [uid]);
   const [isEnabled, setIsEnabled] = useState(
@@ -282,6 +281,14 @@ const NanopubConfigPanel = ({
     });
   }, [triples]);
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
+  const [isUseCustomBody, setIsUseCustomBody] = useState(
+    () => !!getSubTree({ tree, key: "use-custom-body" }).uid
+  );
+  const customBodyDefinitionUid = useMemo(
+    () =>
+      getSubTree({ tree, parentUid: uid, key: "custom-body-definition" }).uid,
+    [tree, uid]
+  );
 
   const handleIsEnabled = useCallback(
     (b: boolean) => {
@@ -309,7 +316,20 @@ const NanopubConfigPanel = ({
     },
     [uid]
   );
-
+  const handleUseCustomBodyDefinition = useCallback(
+    (b: boolean) => {
+      setIsUseCustomBody(b);
+      return b
+        ? createBlock({
+            parentUid: uid,
+            node: { text: "use-custom-body" },
+          })
+        : deleteBlock(
+            getSubTree({ parentUid: uid, key: "use-custom-body" }).uid
+          );
+    },
+    [uid]
+  );
   const addTriple = async (type: TripleType) => {
     const effectiveTriplesUid = triplesUid
       ? triplesUid
@@ -473,7 +493,7 @@ const NanopubConfigPanel = ({
     (triple) => triple.type === "publication info"
   );
   return (
-    <div>
+    <>
       <div className="space-y-8">
         <Switch
           checked={isEnabled}
@@ -491,6 +511,18 @@ const NanopubConfigPanel = ({
           }}
           disabled={!isEnabled}
         />
+        <Switch
+          label="Use Custom {body} definition"
+          checked={isUseCustomBody}
+          onChange={() => {
+            handleUseCustomBodyDefinition(!isUseCustomBody);
+          }}
+          disabled={!isEnabled}
+        />
+        <NanopubBodySpecification
+          hidden={!isUseCustomBody}
+          parentUid={customBodyDefinitionUid}
+        />
         <FormGroup inline={true} label="Node Type" contentClassName="flex-grow">
           <InputGroup
             placeholder="Enter URL to node type definition"
@@ -499,7 +531,9 @@ const NanopubConfigPanel = ({
             disabled={!isEnabled}
           />
         </FormGroup>
-        <div className="space-y-4 relative">
+
+        {/* TEMPLATE */}
+        <div className="relative">
           <Button
             icon="add"
             text="Use Default Template"
@@ -516,72 +550,77 @@ const NanopubConfigPanel = ({
             }}
           />
           <Label>Template</Label>
-          {assertions.length ? <H6>Assertion</H6> : null}
-          {assertions.map((triple) => (
-            <TripleInput
-              node={node}
-              key={triple.uid}
-              triple={triple}
-              onChange={(field, value) =>
-                updateTriple(triple.uid, field, value)
-              }
-              onDelete={() => removeTriple(triple.uid)}
-              enabled={isEnabled}
-            />
-          ))}
-          <Button
-            icon="plus"
-            text="Add Assertion"
-            onClick={() => addTriple("assertion")}
-            className="block"
-            disabled={!isEnabled}
-          />
-        </div>
-        <div className="space-y-4">
-          {provenances.length ? <H6>Provenance</H6> : null}
-          {provenances.map((triple) => (
-            <TripleInput
-              node={node}
-              key={triple.uid}
-              triple={triple}
-              onChange={(field, value) =>
-                updateTriple(triple.uid, field, value)
-              }
-              onDelete={() => removeTriple(triple.uid)}
-              enabled={isEnabled}
-            />
-          ))}
-          <Button
-            icon="plus"
-            text="Add Provenance"
-            onClick={() => addTriple("provenance")}
-            className="block"
-            disabled={!isEnabled}
-          />
-        </div>
-        <div className="space-y-4">
-          {publicationInfos.length ? <H6>Publication info</H6> : null}
-          {publicationInfos.map((triple) => (
-            <TripleInput
-              node={node}
-              key={triple.uid}
-              triple={triple}
-              onChange={(field, value) =>
-                updateTriple(triple.uid, field, value)
-              }
-              onDelete={() => removeTriple(triple.uid)}
-              enabled={isEnabled}
-            />
-          ))}
-          <Button
-            icon="plus"
-            text="Add Publication Info"
-            onClick={() => addTriple("publication info")}
-            className="block"
-            disabled={!isEnabled}
-          />
+          <Card className="space-y-4">
+            <div className="space-y-4">
+              {assertions.length ? <H6>Assertion</H6> : null}
+              {assertions.map((triple) => (
+                <TripleInput
+                  node={node}
+                  key={triple.uid}
+                  triple={triple}
+                  onChange={(field, value) =>
+                    updateTriple(triple.uid, field, value)
+                  }
+                  onDelete={() => removeTriple(triple.uid)}
+                  enabled={isEnabled}
+                />
+              ))}
+              <Button
+                icon="plus"
+                text="Add Assertion"
+                onClick={() => addTriple("assertion")}
+                className="block"
+                disabled={!isEnabled}
+              />
+            </div>
+            <div className="space-y-4">
+              {provenances.length ? <H6>Provenance</H6> : null}
+              {provenances.map((triple) => (
+                <TripleInput
+                  node={node}
+                  key={triple.uid}
+                  triple={triple}
+                  onChange={(field, value) =>
+                    updateTriple(triple.uid, field, value)
+                  }
+                  onDelete={() => removeTriple(triple.uid)}
+                  enabled={isEnabled}
+                />
+              ))}
+              <Button
+                icon="plus"
+                text="Add Provenance"
+                onClick={() => addTriple("provenance")}
+                className="block"
+                disabled={!isEnabled}
+              />
+            </div>
+            <div className="space-y-4">
+              {publicationInfos.length ? <H6>Publication info</H6> : null}
+              {publicationInfos.map((triple) => (
+                <TripleInput
+                  node={node}
+                  key={triple.uid}
+                  triple={triple}
+                  onChange={(field, value) =>
+                    updateTriple(triple.uid, field, value)
+                  }
+                  onDelete={() => removeTriple(triple.uid)}
+                  enabled={isEnabled}
+                />
+              ))}
+              <Button
+                icon="plus"
+                text="Add Publication Info"
+                onClick={() => addTriple("publication info")}
+                className="block"
+                disabled={!isEnabled}
+              />
+            </div>
+          </Card>
         </div>
 
+        {/* AVAILABLE PLACEHOLDERS */}
         <div className="mt-4">
           <Label>Available Placeholders</Label>
           <ul className="list-disc pl-5">
@@ -603,7 +642,7 @@ const NanopubConfigPanel = ({
         </div>
       </div>
 
-      {/* Default Template Warning Dialog */}
+      {/* DEFAULT TEMPLATE WARNING DIALOG */}
       <Dialog
         isOpen={isWarningDialogOpen}
         title="Confirm Action"
@@ -629,7 +668,7 @@ const NanopubConfigPanel = ({
           </div>
         </div>
       </Dialog>
-    </div>
+    </>
   );
 };
 
