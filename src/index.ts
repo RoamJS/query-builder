@@ -41,7 +41,7 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
-import getBlockProps, { json } from "./utils/getBlockProps";
+import getBlockProps, { json, normalizeProps } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
@@ -52,10 +52,14 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-import { NanoPubTitleButtons } from "./components/nanopub/Nanopub";
-import { handleTitleAdditions } from "./utils/handleTitleAdditions";
+import { NanopubPage, NanoPubTitleButtons } from "./components/nanopub/Nanopub";
+import {
+  handleTitleAdditions,
+  removeTitleAdditions,
+} from "./utils/handleTitleAdditions";
 import findDiscourseNode from "./utils/findDiscourseNode";
 import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import { renderSelectDialog } from "./components/SettingsDialog";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -603,6 +607,57 @@ svg.rs-svg-container {
       ).map((b) => ({ uid: b[0][":block/uid"] || "" })),
     isDiscourseNode: isDiscourseNode,
   };
+
+  const getNanopubPages = (): {
+    uid: string;
+    nanopub: NanopubPage;
+    title: string;
+  }[] => {
+    const results = window.roamAlphaAPI.data.fast.q(`
+      [:find (pull ?e [:block/uid :block/props :node/title])
+       :where
+       [?e :node/title]
+       [?e :block/props ?props]
+       [(get ?props :nanopub) ?nanopub]
+       [(get ?nanopub :contributors) ?contributors]
+       [(count ?contributors) ?count]
+       [(> ?count 0)]]
+    `) as [PullBlock][];
+
+    return results.map(([page]) => {
+      const props = page[":block/props"] as Record<string, any>;
+      const normProps = normalizeProps(props) as Record<string, unknown>;
+      return {
+        uid: page[":block/uid"] as string,
+        nanopub: normProps?.nanopub as NanopubPage,
+        title: page[":node/title"] as string,
+      };
+    });
+  };
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Nodes that have defined Contributors",
+    callback: () => {
+      const nodes = getNanopubPages();
+      renderSelectDialog({
+        width: "80vw",
+        isOpen: true,
+        onClose: () => {},
+        title: "Nodes that have defined Contributors",
+        items: nodes.map((node) => {
+          const numContributors = node.nanopub.contributors.length;
+          return {
+            id: node.uid,
+            text: `(${numContributors}) ${node.title} `,
+            onClick: () => {
+              window.roamAlphaAPI.ui.mainWindow.openPage({
+                page: { uid: node.uid },
+              });
+            },
+          };
+        }),
+      });
+    },
+  });
 
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
