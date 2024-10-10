@@ -718,11 +718,11 @@ const NanopubDialog = ({
     <Dialog
       isOpen={isOpen}
       onClose={handleClose}
-      title="Nanopub Publication"
+      // title="Nanopub Publication"
       autoFocus={false}
       enforceFocus={false}
-      className="w-full sm:w-full md:w-3/4 lg:w-full lg:max-w-5xl"
-      style={{ minHeight: "50vh" }}
+      className="w-full sm:w-full md:w-3/4 lg:w-full lg:max-w-7xl bg-white"
+      style={{ height: "80vh" }}
     >
       {discourseNode ? (
         <>
