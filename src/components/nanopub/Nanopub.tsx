@@ -42,6 +42,7 @@ import getExportTypes, {
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import apiPost from "roamjs-components/util/apiPost";
 import { getExportSettings } from "../../utils/getExportSettings";
+import { getNodeEnv } from "roamjs-components/util/env";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -296,6 +297,7 @@ const NanopubDialog = ({
   const [addDevUrl, setAddDevUrl] = useState("");
 
   // DEV
+  const isDev = getNodeEnv() === "development";
   const generateKeyPair = () => {
     const keypair = new KeyPair().toJs();
     setKeyPair(keypair);
@@ -768,6 +770,7 @@ const NanopubDialog = ({
                   }
                 />
                 <Tab
+                  hidden={!isDev}
                   id="nanopub-template"
                   title="Template"
                   panel={
@@ -777,10 +780,18 @@ const NanopubDialog = ({
                     />
                   }
                 />
-
-                <Tab id="triple-string" title="RDF" panel={<TripleString />} />
-
-                <Tab id="dev-details" title="Dev" panel={<DevDetails />} />
+                <Tab
+                  hidden={!isDev}
+                  id="triple-string"
+                  title="RDF"
+                  panel={<TripleString />}
+                />
+                <Tab
+                  hidden={!isDev}
+                  id="dev-details"
+                  title="Dev"
+                  panel={<DevDetails />}
+                />
               </Tabs>
             </div>
             {error && <p className="text-red-500 text-right">{error}</p>}
