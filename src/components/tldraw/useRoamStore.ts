@@ -159,7 +159,9 @@ export const useRoamStore = ({
         .concat(Object.keys(rec.changes.updated))
         .filter(
           (k) =>
-            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
+            !/^(user_presence|camera|instance|instance_page_state|pointer):/.test(
+              k
+            )
         );
       if (!validChanges.length) return;
       clearTimeout(serializeRef.current);
@@ -278,7 +280,7 @@ export const useRoamStore = ({
     }
   };
 
-  const pruneState = (state: StoreSnapshot<TLRecord>) =>
+  const pruneState = (state: SerializedStore<TLRecord>) =>
     Object.fromEntries(
       Object.entries(state).filter(
         ([_, record]) => !personalRecordTypes.has(record.typeName)
@@ -320,8 +322,8 @@ export const useRoamStore = ({
     );
   };
   const calculateDiff = (
-    _newState: StoreSnapshot<TLRecord>,
-    _oldState: StoreSnapshot<TLRecord>
+    _newState: SerializedStore<TLRecord>,
+    _oldState: SerializedStore<TLRecord>
   ) => {
     const newState = pruneState(_newState);
     const oldState = pruneState(_oldState);
@@ -375,7 +377,7 @@ export const useRoamStore = ({
           if (!store) return;
           store.mergeRemoteChanges(() => {
             const currentState = store.getSnapshot();
-            const diff = calculateDiff(newState, currentState);
+            const diff = calculateDiff(newState.store, currentState.store);
             store.applyDiff(diff);
           });
         }, THROTTLE);
