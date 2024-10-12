@@ -22,6 +22,7 @@ import {
 } from "tldraw";
 import { AddPullWatch } from "roamjs-components/types";
 import { LEGACY_SCHEMA, LEGACYSTORETEST } from "../../data/legacyTldrawSchema";
+import apiPost from "roamjs-components/util/apiPost";
 // import { createAllRelationShapeUtils } from "./DiscourseRelationsUtil";
 
 const THROTTLE = 350;
@@ -249,11 +250,31 @@ export const useRoamStore = ({
       setInitialSnapshot(snapshot);
       setNeedsUpgrade(false);
       setOldData(null);
-    } catch (error) {
+    } catch (e) {
+      const error = e as Error;
       setNeedsUpgrade(false);
       setInitialSnapshot(null);
       setError(error as Error);
-      console.error("Failed to perform upgrade:", error);
+      apiPost({
+        domain: "https://api.samepage.network",
+        path: "errors",
+        data: {
+          method: "extension-error",
+          type: "Failed to perform Canvas upgrade",
+          data: {
+            oldData,
+          },
+          message: error.message,
+          stack: error.stack,
+          version: process.env.VERSION,
+          notebookUuid: JSON.stringify({
+            owner: "RoamJS",
+            app: "query-builder",
+            workspace: window.roamAlphaAPI.graph.name,
+          }),
+        },
+      }).catch(() => {});
+      console.error("Failed to perform Canvas upgrade", error);
     }
   };
 
