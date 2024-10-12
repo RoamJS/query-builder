@@ -53,6 +53,7 @@ import {
   TLAnyBindingUtilConstructor,
   TLShape,
   useValue,
+  TLUiToast,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -96,6 +97,8 @@ import {
 } from "./DiscourseRelationShape/DiscourseRelationBindings";
 import ConvertToDialog from "./ConvertToDialog";
 import { createArrowShapeMigrations } from "./DiscourseRelationShape/discourseRelationMigrations";
+import ToastListener, { dispatchToastEvent } from "./ToastListener";
+import { debounceImmediate } from "../../utils/debounceImmediate";
 
 declare global {
   interface Window {
@@ -226,6 +229,10 @@ const TldrawCanvas = ({
     SelectionBackground: TldrawSelectionBackground,
     Handles: TldrawHandles,
   };
+  const editorComponents: TLEditorComponents = {
+    ...defaultEditorComponents,
+    OnTheCanvas: ToastListener,
+  };
   const customUiComponents: TLUiComponents = createUiComponents({
     allNodes,
     allRelationNames,
@@ -303,10 +310,10 @@ const TldrawCanvas = ({
       if (!app) return;
       const shape = app.getShape(shapeId);
       if (!shape) {
-        return renderToast({
+        return dispatchToastEvent({
           id: "tldraw-warning",
-          intent: "warning",
-          content: `Shape not found.`,
+          title: `Shape not found.`,
+          severity: "warning",
         });
       }
       const x = shape?.x || 0;
@@ -499,7 +506,7 @@ const TldrawCanvas = ({
           shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
           tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
           bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
-          components={defaultEditorComponents}
+          components={editorComponents}
           store={store}
           onMount={(app) => {
             if (process.env.NODE_ENV !== "production") {
@@ -511,6 +518,18 @@ const TldrawCanvas = ({
             appRef.current = app;
 
             handlePastedImages(app);
+
+            const showToastDebounced = debounceImmediate(() => {
+              document.dispatchEvent(
+                new CustomEvent<TLUiToast>("show-toast", {
+                  detail: {
+                    id: "tldraw-toast-cannot-move-relation",
+                    title: "Cannot move relation.",
+                    severity: "warning",
+                  },
+                })
+              );
+            }, 1000);
 
             app.sideEffects.registerBeforeChangeHandler(
               "shape",
@@ -525,11 +544,7 @@ const TldrawCanvas = ({
                   const isTranslating = app.isIn("select.translating");
                   if (bindings.length && isTranslating) {
                     app.setSelectedShapes([]);
-                    renderToast({
-                      id: "tldraw-warning",
-                      intent: "warning",
-                      content: "Cannot move relation.",
-                    });
+                    showToastDebounced();
                     return prevShape;
                   }
                 }
@@ -585,10 +600,10 @@ const TldrawCanvas = ({
 
               if (!isLiveBlock(shapeUid)) {
                 if (!shape.props.title) return;
-                renderToast({
+                dispatchToastEvent({
                   id: "tldraw-warning",
-                  intent: "warning",
-                  content: `Not a valid UID. Cannot Open.`,
+                  title: `Not a valid UID. Cannot Open.`,
+                  severity: "warning",
                 });
               }
 

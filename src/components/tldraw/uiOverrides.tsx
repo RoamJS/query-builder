@@ -53,11 +53,11 @@ import {
 } from "./Tldraw-2-3-0";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { COLOR_ARRAY } from "./DiscourseNodeUtil";
-import renderToast from "roamjs-components/components/Toast";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import { openCanvasDrawer } from "./CanvasDrawer";
 import { AddReferencedNodeType } from "./DiscourseRelationShape/DiscourseRelationTool";
 import { Dialog, Button } from "@blueprintjs/core";
+import { dispatchToastEvent } from "./ToastListener";
 
 const convertToDiscourseNode = async ({
   text,
@@ -75,18 +75,18 @@ const convertToDiscourseNode = async ({
   selectedShape: TLShape | null;
 }) => {
   if (!extensionAPI) {
-    renderToast({
+    dispatchToastEvent({
       id: "tldraw-warning",
-      intent: "danger",
-      content: `Failed to convert to ${type}.  Please contact support`,
+      title: `Failed to convert to ${type}.  Please contact support`,
+      severity: "error",
     });
     return;
   }
   if (!selectedShape) {
-    renderToast({
+    dispatchToastEvent({
       id: "tldraw-warning",
-      intent: "warning",
-      content: `No shape selected.`,
+      title: `No shape selected.`,
+      severity: "warning",
     });
     return;
   }
