@@ -7,7 +7,7 @@ import {
 } from "tldraw";
 import { DiscourseRelationShape } from "./DiscourseRelationUtil";
 import { discourseContext } from "../Tldraw-2-3-0";
-import renderToast from "roamjs-components/components/Toast";
+import { dispatchToastEvent } from "../ToastListener";
 
 export type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;
 type ReferenceFormatType = {
@@ -36,10 +36,10 @@ export const createAllReferencedNodeTools = (
         markId = "";
 
         cancelAndWarn = (content: string) => {
-          renderToast({
-            id: "tldraw-warning",
-            intent: "warning",
-            content,
+          dispatchToastEvent({
+            id: `tldraw-cancel-and-warn-${content}`,
+            title: content,
+            severity: "warning",
           });
           this.cancel();
         };
@@ -315,11 +315,11 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
         shape?: DiscourseRelationShape;
         markId = "";
 
-        cancelAndWarn = (content: string) => {
-          renderToast({
-            id: "tldraw-warning",
-            intent: "warning",
-            content,
+        cancelAndWarn = (title: string) => {
+          dispatchToastEvent({
+            id: `tldraw-cancel-and-warn-${title}`,
+            title,
+            severity: "warning",
           });
           this.cancel();
         };

@@ -32,6 +32,8 @@ import {
   WeakCache,
   textShapeProps,
   TLShapeId,
+  debounce,
+  TLUiToast,
 } from "tldraw";
 import { RelationBindings } from "./DiscourseRelationBindings";
 import {
@@ -59,7 +61,6 @@ import {
   updateArrowTerminal,
 } from "./helpers";
 import { discourseContext, isPageUid } from "../Tldraw-2-3-0";
-import renderToast from "roamjs-components/components/Toast";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../../utils/getDiscourseRelations";
@@ -76,6 +77,7 @@ import {
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import { AddReferencedNodeType } from "./DiscourseRelationTool";
+import { dispatchToastEvent } from "../ToastListener";
 
 const COLOR_ARRAY = Array.from(Object.values(textShapeProps.color)).reverse();
 
@@ -99,11 +101,11 @@ export const createAllReferencedNodeUtils = (
         targetId: TLShapeId;
       }) => {
         const editor = this.editor;
-        const deleteAndWarn = (content: string) => {
-          renderToast({
-            id: "tldraw-warning",
-            intent: "warning",
-            content,
+        const deleteAndWarn = (title: string) => {
+          dispatchToastEvent({
+            id: `tldraw-cancel-and-warn-${title}`,
+            title,
+            severity: "warning",
           });
           this.editor.deleteShapes([arrow.id]);
         };
@@ -177,20 +179,11 @@ export const createAllReferencedNodeUtils = (
           },
         ]);
 
-        renderToast({
+        dispatchToastEvent({
           id: "tldraw-success",
-          intent: "success",
-          content: `Updated node title.`,
+          title: `Updated node title.`,
+          severity: "success",
         });
-      };
-
-      cancelAndWarn = (content: string) => {
-        renderToast({
-          id: "tldraw-warning",
-          intent: "warning",
-          content,
-        });
-        return;
       };
 
       override getDefaultProps(): DiscourseRelationShape["props"] {
@@ -502,10 +495,10 @@ export const createAllRelationShapeUtils = (allRelationIds: string[]) => {
       }) => {
         const editor = this.editor;
         const deleteAndWarn = (content: string) => {
-          renderToast({
-            id: "tldraw-warning",
-            intent: "warning",
-            content,
+          dispatchToastEvent({
+            id: `tldraw-cancel-and-warn-${content}`,
+            title: content,
+            severity: "warning",
           });
           this.editor.deleteShapes([arrow.id]);
         };
@@ -595,15 +588,6 @@ export const createAllRelationShapeUtils = (allRelationIds: string[]) => {
             ])
           ),
         })(newTriples)();
-      };
-
-      cancelAndWarn = (content: string) => {
-        renderToast({
-          id: "tldraw-warning",
-          intent: "warning",
-          content,
-        });
-        return;
       };
 
       override getDefaultProps(): DiscourseRelationShape["props"] {
@@ -917,6 +901,15 @@ export type DiscourseRelationShape = TLBaseShape<string, RelationShapeProps>;
 
 export class BaseDiscourseRelationUtil extends ShapeUtil<DiscourseRelationShape> {
   static override props = arrowShapeProps;
+
+  cancelAndWarn = (title: string) => {
+    this.editor.setCurrentTool("select.idle");
+    dispatchToastEvent({
+      id: `tldraw-cancel-and-warn-${title}`,
+      title,
+      severity: "warning",
+    });
+  };
 
   override canEdit = () => true;
   override canSnap = () => false;
