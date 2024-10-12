@@ -13,8 +13,11 @@ import { SerializedStore, StoreSnapshot } from "@tldraw/store";
 import {
   defaultBindingUtils,
   defaultShapeUtils,
+  getIndices,
   loadSnapshot,
   MigrationSequence,
+  sortByIndex,
+  TLShape,
   TLStoreSnapshot,
 } from "tldraw";
 import { AddPullWatch } from "roamjs-components/types";
@@ -29,6 +32,38 @@ const isTLStoreSnapshot = (value: unknown): value is TLStoreSnapshot => {
     value !== null &&
     "store" in value &&
     "schema" in value
+  );
+};
+
+const fixShapeIndices = (
+  data: SerializedStore<TLRecord>
+): SerializedStore<TLRecord> => {
+  const shapes = Object.values(data).filter(
+    (record): record is TLShape => record.typeName === "shape"
+  );
+
+  const sortedShapes = shapes.sort((a, b) => {
+    if (a.index !== undefined && b.index !== undefined) {
+      return sortByIndex(a, b);
+    }
+    return a.id.localeCompare(b.id);
+  });
+
+  const newIndices = getIndices(shapes.length);
+
+  const fixedShapes = sortedShapes.map((shape, i) => ({
+    ...shape,
+    index: newIndices[i],
+  }));
+
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (value.typeName === "shape") {
+        const updatedShape = fixedShapes.find((s) => s.id === value.id);
+        return [key, updatedShape || value];
+      }
+      return [key, value];
+    })
   );
 };
 
@@ -182,7 +217,12 @@ export const useRoamStore = ({
         bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
       });
       const filteredData = filterUserRecords(oldData);
-      loadSnapshot(newStore, { store: filteredData, schema: LEGACY_SCHEMA });
+      const dataWithFixedShapes = fixShapeIndices(filteredData);
+
+      loadSnapshot(newStore, {
+        store: dataWithFixedShapes,
+        schema: LEGACY_SCHEMA,
+      });
       const snapshot = newStore.getStoreSnapshot();
       const props = getBlockProps(pageUid) as Record<string, unknown>;
       const rjsqb =
