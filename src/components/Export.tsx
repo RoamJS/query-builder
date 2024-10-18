@@ -50,6 +50,8 @@ import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
 import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
+import { render as renderNanopub } from "./nanopub/ExportNanopub";
+import { OnloadArgs } from "roamjs-components/types";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -99,6 +101,7 @@ const EXPORT_DESTINATIONS = [
   { id: "app", label: "Store in Roam", active: false },
   { id: "samepage", label: "Store with SamePage", active: false },
   { id: "github", label: "Send to GitHub", active: true },
+  { id: "nanopub", label: "Publish as Nanopub", active: true },
 ];
 const SEND_TO_DESTINATIONS = ["page", "graph"];
 
@@ -525,6 +528,7 @@ const ExportDialog: ExportDialogComponent = ({
               items={exportTypes.map((e) => e.name)}
               activeItem={activeExportType}
               onItemSelect={(et) => setActiveExportType(et)}
+              disabled={activeExportType === "nanopub"}
             />
           </Label>
           <div>
@@ -646,6 +650,16 @@ const ExportDialog: ExportDialogComponent = ({
                   const exportType = exportTypes.find(
                     (e) => e.name === activeExportType
                   );
+
+                  if (activeExportDestination === "nanopub") {
+                    const allResults =
+                      typeof results === "function"
+                        ? await results(isSamePageEnabled)
+                        : results || [];
+                    handleNanopubExport(allResults, getExtensionAPI());
+                    return;
+                  }
+
                   if (exportType && window.RoamLazy) {
                     setDialogOpen(true);
                     setLoading(false);
@@ -803,6 +817,18 @@ const ExportDialog: ExportDialogComponent = ({
       </div>
     </>
   );
+
+  const handleNanopubExport = (
+    results: Result[],
+    extensionAPI: OnloadArgs["extensionAPI"]
+  ) => {
+    onClose();
+    renderNanopub({
+      results,
+      onClose: () => {},
+      extensionAPI,
+    });
+  };
 
   return (
     <>

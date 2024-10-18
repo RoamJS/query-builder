@@ -3,6 +3,8 @@ import matchDiscourseNode from "./matchDiscourseNode";
 
 const discourseNodeTypeCache: Record<string, DiscourseNode | false> = {};
 
+// TODO - should we just tie in cache to refreshConfigTree?
+
 const findDiscourseNode = (
   uid = "",
   nodes = getDiscourseNodes(),

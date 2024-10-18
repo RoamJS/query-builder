@@ -11,6 +11,7 @@ import {
   Text,
   FormGroup,
   InputGroup,
+  Classes,
 } from "@blueprintjs/core";
 // web.js:1014 Uncaught (in promise) TypeError: Failed to construct 'URL': Invalid URL
 //     at __wbg_init (web.js:1014:17)
@@ -39,11 +40,12 @@ import getBlockProps from "../../utils/getBlockProps";
 import getExportTypes, {
   extractContentFromFormat,
 } from "../../utils/getExportTypes";
-import { DiscourseNode } from "../../utils/getDiscourseNodes";
+import { DiscourseNode, NanopubConfig } from "../../utils/getDiscourseNodes";
 import apiPost from "roamjs-components/util/apiPost";
 import { getExportSettings } from "../../utils/getExportSettings";
 import { getNodeEnv } from "roamjs-components/util/env";
 import runQuery from "../../utils/runQuery";
+import PreviewNanopub from "./PreviewNanopub";
 
 export type NanopubPage = {
   contributors: Contributor[];
@@ -59,6 +61,11 @@ export type Contributor = {
 const PRIVATE_KEY =
   "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCjY1gsFxmak6SOCouJPuEzHNForkqFhgfHE3aAIAx+Y5q6UDEDM9Q0EksheNffJB4iPqsAfiFpY0ARQY92K5r8P4+a78eu9reYrb2WxZb1qPJmvR7XZ6sN1oHD7dd/EyQoJmQsmOKdrqaLRbzR7tZrf52yvKkwNWXcIVhW8uxe7iUgxiojZpW9srKoK/qFRpaUZSKn7Z/zgtDH9FJkYbBsGPDMqp78Kzt+sJb+U2W+wCSSy34jIUxx6QRbzvn6uexc/emFw/1DU5y7zBudhgC7mVk8vX1gUNKyjZBzlOmRcretrANgffqs5fx/TMHN1xtkA/H1u1IKBfKoyk/xThMLAgMBAAECggEAECuG0GZA3HF8OaqFgMG+W+agOvH04h4Pqv4cHjYNxnxpFcNV9nEssTKWSOvCwYy7hrwZBGV3PQzbjFmmrxVFs20+8yCD7KbyKKQZPVC0zf84bj6NTNgvr6DpGtDxINxuGaMjCt7enqhoRyRRuZ0fj2gD3Wqae/Ds8cpDCefkyMg0TvauHSUj244vGq5nt93txUv1Sa+/8tWZ77Dm0s5a3wUYB2IeAMl5WrO2GMvgzwH+zT+4kvNWg5S0Ze4KE+dG3lSIYZjo99h14LcQS9eALC/VBcAJ6pRXaCTT/TULtcLNeOpoc9Fu25f0yTsDt6Ga5ApliYkb7rDhV+OFrw1sYQKBgQDCE9so+dPg7qbp0cV+lbb7rrV43m5s9Klq0riS7u8m71oTwhmvm6gSLfjzqb8GLrmflCK4lKPDSTdwyvd+2SSmOXySw94zr1Pvc7sHdmMRyA7mH3m+zSOOgyCTTKyhDRCNcRIkysoL+DecDhNo4Fumf71tsqDYogfxpAQhn0re8wKBgQDXhMmmT2oXiMnYHhi2k7CJe3HUqkZgmW4W44SWqKHp0V6sjcHm0N0RT5Hz1BFFUd5Y0ZB3JLcah19myD1kKYCj7xz6oVLb8O7LeAZNlb0FsrtD7NU+Hciywo8qESiA7UYDkU6+hsmxaI01DsttMIdG4lSBbEjA7t4IQC5lyr7xiQKBgQCN87YGJ40Y5ZXCSgOZDepz9hqX2KGOIfnUv2HvXsIfiUwqTXs6HbD18xg3KL4myIBOvywSM+4ABYp+foY+Cpcq2btLIeZhiWjsKIrw71+Q/vIe0YDb1PGf6DsoYhmWBpdHzR9HN+hGjvwlsYny2L9Qbfhgxxmsuf7zeFLpQLijjwKBgH7TD28k8IOk5VKec2CNjKd600OYaA3UfCpP/OhDl/RmVtYoHWDcrBrRvkvEEd2/DZ8qw165Zl7gJs3vK+FTYvYVcfIzGPWA1KU7nkntwewmf3i7V8lT8ZTwVRsmObWU60ySJ8qKuwoBQodki2VX12NpMN1wgWe3qUUlr6gLJU4xAoGAet6nD3QKwk6TTmcGVfSWOzvpaDEzGkXjCLaxLKh9GreM/OE+h5aN2gUoFeQapG5rUwI/7Qq0xiLbRXw+OmfAoV2XKv7iI8DjdIh0F06mlEAwQ/B0CpbqkuuxphIbchtdcz/5ra233r3BMNIqBl3VDDVoJlgHPg9msOTRy13lFqc=";
 
+export const getOrcidUrl = (extensionAPI: OnloadArgs["extensionAPI"]) => {
+  const hasORCID = extensionAPI.settings.get("orcid") as string;
+  const ORCID = hasORCID ? `https://orcid.org/${hasORCID}` : "";
+  return ORCID;
+};
 export const NanoPubTitleButtons = ({
   uid,
   onloadArgs,
@@ -81,7 +88,7 @@ export const NanoPubTitleButtons = ({
   );
 };
 
-const NanopubTriple = ({
+export const NanopubTriple = ({
   subject,
   object,
   predicate,
@@ -135,6 +142,48 @@ const getPageContent = async ({
   return content;
 };
 
+export const updateObjectPlaceholders = async ({
+  object,
+  pageUid,
+  nanopubConfig,
+  extensionAPI,
+  orcidUrl,
+}: {
+  object: string;
+  pageUid: string;
+  nanopubConfig?: NanopubConfig;
+  extensionAPI: any;
+  orcidUrl: string;
+}) => {
+  const pageTitle = getPageTitleByPageUid(pageUid);
+  const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${pageUid}`;
+
+  let contentUid = pageUid;
+  if (nanopubConfig?.useCustomBody) {
+    const results = await runQuery({
+      extensionAPI,
+      parentUid: nanopubConfig?.customBodyUid,
+      inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
+    });
+
+    contentUid = results.results[0]?.uid;
+  }
+  // use exportSettings?  or just enforce simplifiedTitle?
+  // const { simplifiedFilename } = getExportSettings();
+  // const title = simplifiedFilename
+  //   ? extractContentFromFormat({ title: pageTitle })
+  //   : pageTitle;
+
+  return object
+    .replace(/\{nodeType\}/g, nanopubConfig?.nodeType || "")
+    .replace(/\{title\}/g, extractContentFromFormat({ title: pageTitle }))
+    .replace(/\{name\}/g, getCurrentUserDisplayName())
+    .replace(/\{url\}/g, pageUrl)
+    .replace(/\{myORCID\}/g, orcidUrl)
+    .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
+    .replace(/\{body\}/g, await getPageContent({ pageTitle, uid: contentUid }));
+};
+
 const NanopubDialog = ({
   uid,
   onloadArgs,
@@ -167,39 +216,6 @@ const NanopubDialog = ({
   }, []);
   const nanopubConfig = discourseNode?.nanopub;
   const templateTriples = nanopubConfig?.triples;
-  const [resolvedTriples, setResolvedTriples] = useState<NanopubTripleType[]>(
-    []
-  );
-
-  const updateObjectPlaceholders = async (object: string) => {
-    const pageTitle = getPageTitleByPageUid(uid);
-    const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${uid}`;
-
-    let pageUid = uid;
-    if (nanopubConfig?.useCustomBody) {
-      const results = await runQuery({
-        extensionAPI,
-        parentUid: nanopubConfig?.customBodyUid,
-        inputs: { NODETEXT: pageTitle, NODEUID: pageUid },
-      });
-
-      uid = results.results[0]?.uid;
-    }
-    // use exportSettings?  or just enforce simplifiedTitle?
-    // const { simplifiedFilename } = getExportSettings();
-    // const title = simplifiedFilename
-    //   ? extractContentFromFormat({ title: pageTitle })
-    //   : pageTitle;
-
-    return object
-      .replace(/\{nodeType\}/g, nanopubConfig?.nodeType || "")
-      .replace(/\{title\}/g, extractContentFromFormat({ title: pageTitle }))
-      .replace(/\{name\}/g, getCurrentUserDisplayName())
-      .replace(/\{url\}/g, pageUrl)
-      .replace(/\{myORCID\}/g, orcidUrl)
-      .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
-      .replace(/\{body\}/g, await getPageContent({ pageTitle, uid }));
-  };
 
   const generateRdfString = async ({
     triples,
@@ -208,13 +224,23 @@ const NanopubDialog = ({
   }): Promise<string> => {
     const rdf = { ...baseRdf };
 
+    const updatePlaceHolderProps = {
+      pageUid: uid,
+      nanopubConfig,
+      extensionAPI,
+      orcidUrl,
+    };
+
     rdf["@graph"]["np:hasAssertion"]["@graph"] = await Promise.all(
       triples
         .filter((triple) => triple.type === "assertion")
         .map(async (triple) => ({
           "@id": "#",
           [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders(triple.object),
+            "@value": await updateObjectPlaceholders({
+              object: triple.object,
+              ...updatePlaceHolderProps,
+            }),
           },
         }))
     );
@@ -225,7 +251,10 @@ const NanopubDialog = ({
         .map(async (triple) => ({
           "@id": "#assertion",
           [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders(triple.object),
+            "@value": await updateObjectPlaceholders({
+              object: triple.object,
+              ...updatePlaceHolderProps,
+            }),
           },
         }))
     );
@@ -236,7 +265,10 @@ const NanopubDialog = ({
         .map(async (triple) => ({
           "@id": "#pubinfo",
           [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders(triple.object),
+            "@value": await updateObjectPlaceholders({
+              object: triple.object,
+              ...updatePlaceHolderProps,
+            }),
           },
         }))
     );
@@ -444,11 +476,7 @@ const NanopubDialog = ({
   };
   // END DEV
 
-  const orcidUrl = useMemo(() => {
-    const hasORCID = extensionAPI.settings.get("orcid") as string;
-    const ORCID = hasORCID ? `https://orcid.org/${hasORCID}` : "";
-    return ORCID;
-  }, [onloadArgs]);
+  const orcidUrl = useMemo(() => getOrcidUrl(extensionAPI), [extensionAPI]);
 
   const publishNanopub = async ({ isDev = "" }: { isDev?: string }) => {
     const requiresORCID = templateTriples?.some(
@@ -611,69 +639,7 @@ const NanopubDialog = ({
       </>
     );
   };
-  const PreviewNanopub = ({
-    // nodeText,
-    // handleClose,
-    contributors,
-    resolvedTriples,
-  }: {
-    // nodeText: string;
-    // handleClose: () => void;
-    contributors: Contributor[];
-    resolvedTriples: NanopubTripleType[];
-  }) => {
-    const uniqueTypes = Array.from(
-      new Set(resolvedTriples?.map((triple) => triple.type) || [])
-    );
-    return (
-      <>
-        <div className="mb-4">
-          {uniqueTypes.map((type) => (
-            <div key={type}>
-              <h3 className="text-lg font-semibold capitalize mb-2">{type}</h3>
-              {resolvedTriples
-                ?.filter((triple) => triple.type === type)
-                .map((triple) => (
-                  <NanopubTriple
-                    key={triple.uid}
-                    subject={discourseNode?.text || ""}
-                    predicate={triple.predicate}
-                    object={triple.object}
-                  />
-                ))}
-            </div>
-          ))}
-          {nanopubConfig?.requireContributors &&
-            contributors.flatMap((contributor) =>
-              contributor.roles.map((role) => {
-                const creditRole = creditRoles.find((r) => r.label === role);
-                if (!creditRole) return;
-                return (
-                  <NanopubTriple
-                    key={`${contributor.id}-${creditRole.uri}`}
-                    subject={discourseNode?.text || ""}
-                    predicate={creditRole.verb}
-                    object={contributor.name}
-                  />
-                );
-              })
-            )}
-        </div>
-        {/* <Button
-          text="Change Template"
-          icon="link"
-          onClick={() => {
-            window.roamAlphaAPI.ui.mainWindow.openPage({
-              page: {
-                title: `discourse-graph/nodes/${nodeText}`,
-              },
-            });
-            handleClose();
-          }}
-        /> */}
-      </>
-    );
-  };
+
   const TripleString = () => {
     return (
       <div className="mt-4">
@@ -713,19 +679,6 @@ const NanopubDialog = ({
   useEffect(() => {
     generateAndSetRDF();
   }, []);
-  // Resolve triple placeholders
-  useEffect(() => {
-    const resolveTriples = async () => {
-      const resolved = await Promise.all(
-        templateTriples?.map(async (triple) => {
-          const updatedObject = await updateObjectPlaceholders(triple.object);
-          return { ...triple, object: updatedObject };
-        }) || []
-      );
-      setResolvedTriples(resolved);
-    };
-    resolveTriples();
-  }, [templateTriples]);
 
   return (
     <Dialog
@@ -773,10 +726,11 @@ const NanopubDialog = ({
                   title="Preview"
                   panel={
                     <PreviewNanopub
-                      // nodeText={discourseNode.text}
-                      // handleClose={handleClose}
                       contributors={contributors}
-                      resolvedTriples={resolvedTriples}
+                      templateTriples={templateTriples}
+                      discourseNode={discourseNode}
+                      extensionAPI={extensionAPI}
+                      pageUid={uid}
                     />
                   }
                 />
@@ -807,8 +761,8 @@ const NanopubDialog = ({
             </div>
             {error && <p className="text-red-500 text-right">{error}</p>}
           </div>
-          <div className="bp3-dialog-footer">
-            <div className="bp3-dialog-footer-actions">
+          <div className={Classes.DIALOG_FOOTER}>
+            <div className={Classes.DIALOG_FOOTER_ACTIONS}>
               <Button onClick={handleClose}>Close</Button>
               <Button
                 onClick={() => setSelectedTabId("nanopub-preview")}
