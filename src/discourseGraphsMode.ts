@@ -57,6 +57,8 @@ import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
 import { DiscourseExportResult } from "./utils/getExportTypes";
+import NanopubConfigPanel from "./components/nanopub/NanopubNodeConfig";
+import NanopubMainConfig from "./components/nanopub/NanopubMainConfig";
 
 export const SETTING = "discourse-graphs";
 
@@ -249,6 +251,21 @@ export const renderDiscourseNodeTypeConfigPage = ({
             description: `Whether to color the node in the graph overview based on canvas color.  This is based on the node's plain title as described by a \`has title\` condition in its specification.`,
             defaultValue: true,
           } as FieldPanel<FlagField>,
+          // @ts-ignore
+          {
+            title: "Nanopub",
+            description:
+              "Configure the Nanopub triple template for this node type",
+            Panel: CustomPanel,
+            options: {
+              component: (props) =>
+                React.createElement(NanopubConfigPanel, {
+                  ...props,
+                  node,
+                  onloadArgs,
+                }),
+            },
+          } as Field<CustomField>,
         ],
       });
 
@@ -538,6 +555,20 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
                       } as Field<CustomField>,
                     ]
                   : []),
+                // @ts-ignore
+                {
+                  title: "Nanopub",
+                  description: "Nanopub settings",
+                  Panel: CustomPanel,
+                  options: {
+                    component: (props) =>
+                      React.createElement(NanopubMainConfig, {
+                        ...props,
+                        parentUid: pageUid,
+                        onloadArgs: args,
+                      }),
+                  },
+                } as Field<CustomField>,
               ],
             },
             {
