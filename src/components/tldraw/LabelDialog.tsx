@@ -427,48 +427,55 @@ const LabelDialog = ({
         autoFocus={false}
         className={"roamjs-canvas-dialog"}
       >
-        <div className={Classes.DIALOG_BODY} ref={containerRef}>
-          <Callout
-            intent="primary"
-            className="mb-4"
-            title={calloutText.title}
-            icon={calloutText.icon as IconName}
-          />
-          <LabelDialogAutocomplete
-            setLabel={setLabel}
-            setUid={setUid}
-            nodeType={nodeType}
-            initialUid={initialUid}
-            initialValue={initialValue}
-            onSubmit={onSubmit}
-            isCreateCanvasNode={isCreateCanvasNode}
-            action={calloutText.action || ""}
-            referencedNode={referencedNode}
-            format={format}
-            label={label}
-          />
-        </div>
-        <div className={Classes.DIALOG_FOOTER}>
-          <div
-            className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center flex-row-reverse`}
-          >
-            <Button
-              text={"Confirm"}
-              intent={Intent.PRIMARY}
-              onClick={onSubmit}
-              onTouchEnd={onSubmit}
-              disabled={loading || !label}
-              className="flex-shrink-0"
+        <div
+          // Prevents TLDraw from hijacking onClick and onMouseup
+          // https://discord.com/channels/859816885297741824/1209834682384912397
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{ pointerEvents: "all" }}
+        >
+          <div className={Classes.DIALOG_BODY} ref={containerRef}>
+            <Callout
+              intent="primary"
+              className="mb-4"
+              title={calloutText.title}
+              icon={calloutText.icon as IconName}
             />
-            <Button
-              text={"Cancel"}
-              onClick={onCancelClick}
-              onTouchEnd={onCancelClick}
-              disabled={loading}
-              className="flex-shrink-0"
+            <LabelDialogAutocomplete
+              setLabel={setLabel}
+              setUid={setUid}
+              nodeType={nodeType}
+              initialUid={initialUid}
+              initialValue={initialValue}
+              onSubmit={onSubmit}
+              isCreateCanvasNode={isCreateCanvasNode}
+              action={calloutText.action || ""}
+              referencedNode={referencedNode}
+              format={format}
+              label={label}
             />
-            <span className={"text-red-800 flex-grow"}>{error}</span>
-            {loading && <Spinner size={SpinnerSize.SMALL} />}
+          </div>
+          <div className={Classes.DIALOG_FOOTER}>
+            <div
+              className={`${Classes.DIALOG_FOOTER_ACTIONS} items-center flex-row-reverse`}
+            >
+              <Button
+                text={"Confirm"}
+                intent={Intent.PRIMARY}
+                onClick={onSubmit}
+                onTouchEnd={onSubmit}
+                disabled={loading || !label}
+                className="flex-shrink-0"
+              />
+              <Button
+                text={"Cancel"}
+                onClick={onCancelClick}
+                onTouchEnd={onCancelClick}
+                disabled={loading}
+                className="flex-shrink-0"
+              />
+              <span className={"text-red-800 flex-grow"}>{error}</span>
+              {loading && <Spinner size={SpinnerSize.SMALL} />}
+            </div>
           </div>
         </div>
       </Dialog>
