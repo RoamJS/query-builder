@@ -287,6 +287,7 @@ const registerDiscourseDatalogTranslators = () => {
                     },
                   ];
                 } else if (
+                  value.toLowerCase() !== "node" &&
                   !!window.roamAlphaAPI.pull("[:db/id]", [":node/title", value])
                 ) {
                   return conditionToDatalog({

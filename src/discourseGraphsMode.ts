@@ -246,7 +246,7 @@ export const renderDiscourseNodeTypeConfigPage = ({
           {
             title: "Graph Overview",
             Panel: FlagPanel,
-            description: `Whether to color the node in the graph overview based on canvas color`,
+            description: `Whether to color the node in the graph overview based on canvas color.  This is based on the node's plain title as described by a \`has title\` condition in its specification.`,
             defaultValue: true,
           } as FieldPanel<FlagField>,
         ],
@@ -879,7 +879,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
             const { label } = modifiedData;
 
             for (const { prefix, color, showInGraphOverview } of prefixColors) {
-              if (showInGraphOverview && label.startsWith(prefix)) {
+              if (prefix && showInGraphOverview && label.startsWith(prefix)) {
                 return {
                   ...modifiedData,
                   color,
