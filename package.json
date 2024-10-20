@@ -35,7 +35,8 @@
     "react-in-viewport": "^1.0.0-alpha.20",
     "react-vertical-timeline-component": "^3.5.2",
     "roamjs-components": "^0.83.4",
-    "tldraw": "2.3.0"
+    "tldraw": "2.3.0",
+    "patch-package": "^6.5.1"
   },
   "overrides": {
     "tldraw": {
