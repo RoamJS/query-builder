@@ -21,6 +21,7 @@ import {
   TLShapePartial,
   Vec,
   approximately,
+  BindingOnShapeDeleteOptions,
 } from "tldraw";
 import { DiscourseRelationShape } from "./DiscourseRelationUtil";
 import {
@@ -135,6 +136,15 @@ export class BaseRelationBindingUtil extends BindingUtil<RelationBinding> {
       arrow,
       terminal: binding.props.terminal,
     });
+  }
+
+  override onBeforeDeleteToShape({
+    binding,
+  }: BindingOnShapeDeleteOptions<RelationBinding>): void {
+    const arrow = this.editor.getShape<DiscourseRelationShape>(binding.fromId);
+    // if toShape is deleted, delete the arrow
+    // we don't want any unbound arrows hanging around
+    if (arrow) this.editor.deleteShape(arrow.id);
   }
 }
 
