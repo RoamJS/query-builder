@@ -6,7 +6,7 @@ import {
   TLPointerEventInfo,
 } from "tldraw";
 import { DiscourseRelationShape } from "./DiscourseRelationUtil";
-import { discourseContext } from "../Tldraw-2-3-0";
+import { discourseContext } from "../Tldraw";
 import { dispatchToastEvent } from "../ToastListener";
 
 export type AddReferencedNodeType = Record<string, ReferenceFormatType[]>;

@@ -60,7 +60,7 @@ import {
   shapeAtTranslationStart,
   updateArrowTerminal,
 } from "./helpers";
-import { discourseContext, isPageUid } from "../Tldraw-2-3-0";
+import { discourseContext, isPageUid } from "../Tldraw";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../../utils/getDiscourseRelations";

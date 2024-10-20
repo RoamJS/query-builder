@@ -52,7 +52,7 @@ import createPage from "roamjs-components/writes/createPage";
 import { createShapeId, IndexKey, TLParentId } from "tldraw";
 import calcCanvasNodeSizeAndImg from "../utils/calcCanvasNodeSizeAndImg";
 import { DiscourseNodeShape } from "./tldraw/DiscourseNodeUtil";
-import { MAX_WIDTH } from "./tldraw/Tldraw-2-3-0";
+import { MAX_WIDTH } from "./tldraw/Tldraw";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);

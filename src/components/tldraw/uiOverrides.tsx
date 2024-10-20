@@ -50,7 +50,7 @@ import type { OnloadArgs } from "roamjs-components/types";
 import {
   // AddReferencedNodeType,
   DiscourseContextType,
-} from "./Tldraw-2-3-0";
+} from "./Tldraw";
 import { formatHexColor } from "../DiscourseNodeCanvasSettings";
 import { COLOR_ARRAY } from "./DiscourseNodeUtil";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
