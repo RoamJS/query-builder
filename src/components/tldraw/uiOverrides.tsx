@@ -372,9 +372,9 @@ export const createUiOverrides = ({
         style: {
           // TODO: get color from canvasSettings
           color:
-            name === "Supports"
+            name === "Supports" || name === "Supported By"
               ? "green"
-              : name === "Opposes"
+              : name === "Opposes" || name === "Opposed By"
               ? "red"
               : `${COLOR_ARRAY[index + 1]}`,
         },
