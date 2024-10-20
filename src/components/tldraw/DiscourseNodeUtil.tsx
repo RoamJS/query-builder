@@ -271,11 +271,14 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       .flatMap((r) =>
         Object.entries(r.results)
           .filter(([k, v]) => nodesInCanvas[k] && v.id && relationIds.has(v.id))
-          .map(([k, v]) => ({
-            relationId: v.id!,
-            complement: v.complement,
-            nodeId: k,
-          }))
+          .map(([k, v]) => {
+            return {
+              relationId: v.id!,
+              complement: v.complement,
+              nodeId: k,
+              label: r.label,
+            };
+          })
       )
       .filter(({ complement, nodeId }) => {
         const startId = complement ? nodesInCanvas[nodeId].id : shape.id;
@@ -287,15 +290,25 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
         });
         return !relationAlreadyExists;
       })
-      .map(({ relationId, complement, nodeId }) => {
+      .map(({ relationId, complement, nodeId, label }) => {
         const arrowId = createShapeId();
-        return { relationId, complement, nodeId, arrowId };
+        return { relationId, complement, nodeId, arrowId, label };
       });
 
-    const shapesToCreate = toCreate.map(({ relationId, arrowId }) => {
+    const shapesToCreate = toCreate.map(({ relationId, arrowId, label }) => {
+      // TODO: add color selector to relations
+      const color =
+        label === "Supports" || label === " Supported By"
+          ? "green"
+          : label === "Opposes" || label === "Opposed By"
+          ? "red"
+          : "black";
       return {
         id: arrowId,
         type: relationId,
+        props: {
+          color,
+        },
       };
     });
 

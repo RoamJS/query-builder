@@ -428,13 +428,11 @@ export const createAllRelationShapeTools = (relationNames: string[]) => {
           this.markId = `creating:${id}`;
           this.editor.mark(this.markId);
 
-          // TODO: default props aren't sticking
-          // they are being overridden by currently selected theme color
           // TODO: add color selector to relations
           const color =
-            name === "Supports"
+            name === "Supports" || name === " Supported By"
               ? "green"
-              : name === "Opposes"
+              : name === "Opposes" || name === "Opposed By"
               ? "red"
               : "black";
 
