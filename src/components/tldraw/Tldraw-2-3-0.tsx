@@ -560,14 +560,6 @@ const TldrawCanvas = ({
                 });
               }
             });
-            app.sideEffects.registerBeforeDeleteHandler("shape", (shape) => {
-              const util = app.getShapeUtil(shape);
-              if (util instanceof BaseDiscourseNodeUtil) {
-                util.deleteRelationsInCanvas({
-                  shape: shape as DiscourseNodeShape,
-                });
-              }
-            });
 
             // TODO - this should move to one of DiscourseNodeTool's children classes instead
             app.on("event", (event) => {
