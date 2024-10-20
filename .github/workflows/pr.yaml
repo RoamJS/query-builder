@@ -12,6 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: install
-        run: npm install
+        run: npm install --legacy-peer-deps
       - name: build
         run: npx samepage build
