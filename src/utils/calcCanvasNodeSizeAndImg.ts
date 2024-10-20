@@ -1,6 +1,6 @@
 import getFullTreeByParentUid from "roamjs-components/queries/getFullTreeByParentUid";
 import { OnloadArgs, TreeNode } from "roamjs-components/types";
-import { MAX_WIDTH } from "../components/tldraw/Tldraw-2-3-0";
+import { MAX_WIDTH } from "../components/tldraw/Tldraw";
 import { measureCanvasNodeText } from "./measureCanvasNodeText";
 import resolveQueryBuilderRef from "./resolveQueryBuilderRef";
 import runQuery from "./runQuery";

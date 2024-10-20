@@ -37,13 +37,13 @@ import getDiscourseNodes, {
   DiscourseNode,
 } from "../../utils/getDiscourseNodes";
 import { measureCanvasNodeText } from "../../utils/measureCanvasNodeText";
-import { isPageUid } from "./Tldraw-2-3-0";
+import { isPageUid } from "./Tldraw";
 import LabelDialog from "./LabelDialog";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";
 import ContrastColor from "contrast-color";
-import { discourseContext } from "./Tldraw-2-3-0";
+import { discourseContext } from "./Tldraw";
 import getDiscourseContextResults from "../../utils/getDiscourseContextResults";
 import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
 import { createTextJsxFromSpans } from "./DiscourseRelationShape/helpers";

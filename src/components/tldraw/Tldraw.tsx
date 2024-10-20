@@ -1,77 +1,110 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
+import ExtensionApiContextProvider, {
+  useExtensionAPI,
+} from "roamjs-components/components/ExtensionApiContext";
+import { OnloadArgs } from "roamjs-components/types";
 import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import isFlagEnabled from "../../utils/isFlagEnabled";
+import { Dialog, Button, Classes, Menu, MenuItem } from "@blueprintjs/core";
+
 import {
-  App as TldrawApp,
-  defineShape,
-  TldrawEditorConfig,
-  Canvas,
-  TldrawEditor,
+  Editor as TldrawApp,
   ContextMenu,
+  DefaultContextMenuContent,
+  DefaultToolbar,
+  DefaultToolbarContent,
+  TLComponents,
+  TLEditorComponents,
+  TLUiComponents,
+  Tldraw,
+  TldrawEditor,
+  TldrawHandles,
+  TldrawScribble,
+  TldrawSelectionBackground,
+  TldrawSelectionForeground,
   TldrawUi,
-  TLBoxTool,
-  TLArrowTool,
-  TLSelectTool,
-  DraggingHandle,
-  TL_COLOR_TYPES,
-  StateNodeConstructor,
-  TLArrowShapeProps,
-  Vec2dModel,
+  TldrawUiMenuItem,
+  defaultBindingUtils,
+  defaultShapeTools,
+  defaultShapeUtils,
+  defaultTools,
+  useEditor,
+  useIsToolSelected,
+  useTools,
+  VecModel,
   createShapeId,
-  TLPointerEvent,
-  TEXT_PROPS,
-  FONT_SIZES,
-  FONT_FAMILIES,
-  TLShape,
-  TLArrowTerminal,
+  TLPointerEventInfo,
+  Editor,
+  TLExternalContent,
+  MediaHelpers,
+  AssetRecordType,
+  TLAsset,
+  TLAssetId,
+  getHashForString,
+  TLUiContextMenuProps,
   TLShapeId,
-  Translating,
-} from "@tldraw/tldraw";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
-import createBlock from "roamjs-components/writes/createBlock";
-import "@tldraw/tldraw/editor.css";
-import "@tldraw/tldraw/ui.css";
-import { InputTextNode, OnloadArgs } from "roamjs-components/types";
-import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
-import isLiveBlock from "roamjs-components/queries/isLiveBlock";
-import createPage from "roamjs-components/writes/createPage";
+  BindingUtil,
+  TLAnyBindingUtilConstructor,
+  TLShape,
+  useValue,
+  TLUiToast,
+} from "tldraw";
+import "tldraw/tldraw.css";
+import tldrawStyles from "./tldrawStyles";
 import getDiscourseNodes, {
   DiscourseNode,
 } from "../../utils/getDiscourseNodes";
 import getDiscourseRelations, {
   DiscourseRelation,
 } from "../../utils/getDiscourseRelations";
-import findDiscourseNode from "../../utils/findDiscourseNode";
-import renderToast from "roamjs-components/components/Toast";
-import triplesToBlocks from "../../utils/triplesToBlocks";
-import ExtensionApiContextProvider, {
-  useExtensionAPI,
-} from "roamjs-components/components/ExtensionApiContext";
-import calcCanvasNodeSizeAndImg from "../../utils/calcCanvasNodeSizeAndImg";
-import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import {
+  CustomContextMenu,
+  createUiComponents,
+  createUiOverrides,
+  getOnSelectForShape,
+} from "./uiOverrides";
+import {
+  BaseDiscourseNodeUtil,
+  DiscourseNodeShape,
+  createNodeShapeTools,
+  createNodeShapeUtils,
+} from "./DiscourseNodeUtil";
 import { useRoamStore } from "./useRoamStore";
-import { createUiOverrides } from "./uiOverrides";
-import { DiscourseNodeShape, DiscourseNodeUtil } from "./DiscourseNodeUtil";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import findDiscourseNode from "../../utils/findDiscourseNode";
+import isLiveBlock from "roamjs-components/queries/isLiveBlock";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import renderToast from "roamjs-components/components/Toast";
+import {
+  createAllReferencedNodeUtils,
+  createAllRelationShapeUtils,
+} from "./DiscourseRelationShape/DiscourseRelationUtil";
 import {
   AddReferencedNodeType,
-  DiscourseReferencedNodeShape,
-  DiscourseReferencedNodeUtil,
-  DiscourseRelationShape,
-  DiscourseRelationUtil,
-} from "./DiscourseRelationsUtil";
-import { isPageUid } from "../../utils/isPageUid";
+  createAllReferencedNodeTools,
+  createAllRelationShapeTools,
+} from "./DiscourseRelationShape/DiscourseRelationTool";
+import {
+  createAllReferencedNodeBindings,
+  createAllRelationBindings,
+} from "./DiscourseRelationShape/DiscourseRelationBindings";
+import ConvertToDialog from "./ConvertToDialog";
+import { createArrowShapeMigrations } from "./DiscourseRelationShape/discourseRelationMigrations";
+import ToastListener, { dispatchToastEvent } from "./ToastListener";
+import { debounceImmediate } from "../../utils/debounceImmediate";
 
 declare global {
   interface Window {
     tldrawApps: Record<string, TldrawApp>;
   }
 }
-
-type Props = {
-  title: string;
-  previewEnabled: boolean;
-};
-
 export type DiscourseContextType = {
   // { [Node.id] => DiscourseNode }
   nodes: Record<string, DiscourseNode & { index: number }>;
@@ -86,20 +119,29 @@ export const discourseContext: DiscourseContextType = {
   lastAppEvent: "",
 };
 
-export const COLOR_ARRAY = Array.from(TL_COLOR_TYPES).reverse();
 const DEFAULT_WIDTH = 160;
 const DEFAULT_HEIGHT = 64;
 export const MAX_WIDTH = "400px";
 
-export const DEFAULT_STYLE_PROPS = {
-  ...TEXT_PROPS,
-  fontSize: FONT_SIZES.m,
-  fontFamily: FONT_FAMILIES.sans,
-  width: "fit-content",
-  padding: "40px",
-};
+export const isPageUid = (uid: string) =>
+  !!window.roamAlphaAPI.pull("[:node/title]", [":block/uid", uid])?.[
+    ":node/title"
+  ];
 
-const TldrawCanvas = ({ title }: Props) => {
+const TldrawCanvas = ({
+  title,
+  previewEnabled,
+}: {
+  title: string;
+  previewEnabled: boolean;
+}) => {
+  const appRef = useRef<TldrawApp | null>(null);
+  const lastInsertRef = useRef<VecModel>();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [maximized, setMaximized] = useState(false);
+  const [isConvertToDialogOpen, setConvertToDialogOpen] = useState(false);
+
   const allRelations = useMemo(() => {
     const relations = getDiscourseRelations();
     discourseContext.relations = relations.reduce((acc, r) => {
@@ -131,17 +173,6 @@ const TldrawCanvas = ({ title }: Props) => {
     );
     return allNodes;
   }, [allRelations]);
-  const isCustomArrowShape = (shape: TLShape) => {
-    // TODO: find a better way to identify custom arrow shapes
-    // shape.type or shape.name probably?
-    const allRelationIdSet = new Set(allRelationIds);
-    const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
-
-    return (
-      allRelationIdSet.has(shape.type) ||
-      allAddReferencedNodeActionsSet.has(shape.type)
-    );
-  };
 
   const allAddReferencedNodeByAction = useMemo(() => {
     const obj: AddReferencedNodeType = {};
@@ -175,558 +206,101 @@ const TldrawCanvas = ({ title }: Props) => {
   const allAddReferencedNodeActions = useMemo(() => {
     return Object.keys(allAddReferencedNodeByAction);
   }, [allAddReferencedNodeByAction]);
+  const isCustomArrowShape = (shape: TLShape) => {
+    // TODO: find a better way to identify custom arrow shapes
+    // possibly migrate to shape.type or shape.name
+    // or add as meta
+    const allRelationIdSet = new Set(allRelationIds);
+    // const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
+
+    return allRelationIdSet.has(shape.type);
+    // || allAddReferencedNodeActionsSet.has(shape.type)
+    // ;
+  };
 
   const extensionAPI = useExtensionAPI();
-  if (!extensionAPI) {
-    renderToast({
-      id: "tldraw-error",
-      intent: "danger",
-      content: "Extension API not available",
-    });
-    return <></>;
-  }
+  if (!extensionAPI) return null;
 
-  const isBindingType = (
-    binding: TLArrowTerminal
-  ): binding is TLArrowTerminal & {
-    boundShapeId: TLShapeId;
-  } => {
-    return binding.type === "binding" && !!binding.boundShapeId;
+  // COMPONENTS
+  const defaultEditorComponents: TLEditorComponents = {
+    Scribble: TldrawScribble,
+    CollaboratorScribble: TldrawScribble,
+    SelectionForeground: TldrawSelectionForeground,
+    SelectionBackground: TldrawSelectionBackground,
+    Handles: TldrawHandles,
   };
-  const hasValidBindings = (bindings: TLArrowTerminal[]) => {
-    return bindings.every(isBindingType);
+  const editorComponents: TLEditorComponents = {
+    ...defaultEditorComponents,
+    OnTheCanvas: ToastListener,
   };
-  const compareBindings = (a: TLArrowTerminal, b: TLArrowTerminal) => {
-    if (isBindingType(a) && isBindingType(b)) {
-      return a.boundShapeId === b.boundShapeId;
-    }
-    return false;
-  };
-  type CancelAndWarnType = {
-    content: string;
-    shape: TLShape;
-    context: Translating | DraggingHandle;
-  };
-  const cancelAndWarn = ({ content, shape, context }: CancelAndWarnType) => {
-    renderToast({
-      id: "tldraw-warning",
-      intent: "warning",
-      content,
-    });
-    context.app.updateShapes([
-      {
-        id: shape.id,
-        type: shape.type,
-        props: {
-          ...context.info.shape.props,
-        },
-      },
-    ]);
-  };
+  const customUiComponents: TLUiComponents = createUiComponents({
+    allNodes,
+    allRelationNames,
+    allAddReferencedNodeActions,
+  });
 
-  const customTldrawConfig = useMemo(
-    () =>
-      new TldrawEditorConfig({
-        tools: allNodes
-          .map(
-            (n): StateNodeConstructor =>
-              class extends TLBoxTool {
-                static id = n.type;
-                static initial = "idle";
-                shapeType = n.type;
-                override styles = ["opacity" as const];
-              }
-          )
-          .concat(
-            allRelationNames.map(
-              (name) =>
-                class extends TLArrowTool {
-                  static id = name;
-                  static initial = "idle";
-                  static children: typeof TLArrowTool.children = () => {
-                    const [Idle, Pointing] = TLArrowTool.children();
-                    return [
-                      class extends Idle {
-                        override onPointerDown: TLPointerEvent = (info) => {
-                          const cancelAndWarn = (content: string) => {
-                            renderToast({
-                              id: "tldraw-warning",
-                              intent: "warning",
-                              content,
-                            });
-                            this.onCancel();
-                          };
-                          if (info.target !== "shape") {
-                            return cancelAndWarn("Must start on a node.");
-                          }
-                          const relation = discourseContext.relations[
-                            name
-                          ].find((r) => r.source === info.shape.type);
-                          if (!relation) {
-                            return cancelAndWarn(
-                              `Starting node must be one of ${discourseContext.relations[
-                                name
-                              ]
-                                .map(
-                                  (r) => discourseContext.nodes[r.source].text
-                                )
-                                .join(", ")}`
-                            );
-                          } else {
-                            (this.parent as TLArrowTool).shapeType =
-                              relation.id;
-                          }
-                          this.parent.transition("pointing", info);
-                        };
-                      },
-                      Pointing,
-                    ];
-                  };
-                  shapeType = name;
-                  override styles = ["opacity" as const];
-                }
-            )
-          )
-          .concat(
-            Object.keys(allAddReferencedNodeByAction).map(
-              (action) =>
-                class extends TLArrowTool {
-                  static id = `${action}` as string;
-                  static initial = "idle";
-                  static children: typeof TLArrowTool.children = () => {
-                    const [Idle, Pointing] = TLArrowTool.children();
-                    return [
-                      class extends Idle {
-                        override onPointerDown: TLPointerEvent = (info) => {
-                          const cancelAndWarn = (content: string) => {
-                            renderToast({
-                              id: "tldraw-warning",
-                              intent: "warning",
-                              content,
-                            });
-                            this.onCancel();
-                          };
-                          if (info.target !== "shape") {
-                            return cancelAndWarn("Must start on a node.");
-                          }
-                          const sourceType =
-                            allAddReferencedNodeByAction[action][0].sourceType;
-                          const sourceName =
-                            allAddReferencedNodeByAction[action][0].sourceName;
-                          if (info.shape.type !== sourceType) {
-                            return cancelAndWarn(
-                              `Starting node must be one of ${sourceName}`
-                            );
-                          } else {
-                            (
-                              this.parent as TLArrowTool
-                            ).shapeType = `${action}`;
-                          }
-                          this.parent.transition("pointing", info);
-                        };
-                      },
-                      Pointing,
-                    ];
-                  };
-                  shapeType = `${action}`;
-                  override styles = ["opacity" as const];
-                }
-            )
-          )
-          .concat([
-            class extends TLSelectTool {
-              // @ts-ignore
-              static children: typeof TLSelectTool.children = () => {
-                return TLSelectTool.children().map((c) => {
-                  if (c.id === "translating") {
-                    const Translate = c as unknown as typeof Translating;
-                    return class extends Translate {
-                      override onPointerUp: TLPointerEvent = () => {
-                        this.onComplete({
-                          type: "misc",
-                          name: "complete",
-                        });
-                        const shape = this.app.getShapeById(
-                          this.info.shape?.id // sometimes undefined?
-                        );
-                        if (!shape) return;
-                        if (!isCustomArrowShape(shape)) return;
-
-                        // Stop accidental arrow reposition
-                        const { start, end } = shape.props as TLArrowShapeProps;
-                        const { end: thisEnd, start: thisStart } = this.info
-                          .shape.props as TLArrowShapeProps;
-                        const hasPreviousBinding = hasValidBindings([
-                          thisEnd,
-                          thisStart,
-                        ]);
-                        const bindingsMatchPrevBindings =
-                          compareBindings(thisEnd, end) &&
-                          compareBindings(thisStart, start);
-                        if (hasPreviousBinding && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn({
-                            content: "Cannot move relation.",
-                            shape,
-                            context: this,
-                          });
-                        }
-                      };
-                    };
-                  }
-
-                  if (c.id === "dragging_handle") {
-                    const Handle = c as unknown as typeof DraggingHandle;
-                    const allRelationIdSet = new Set(allRelationIds);
-                    const allAddReferencedNodeActionsSet = new Set(
-                      allAddReferencedNodeActions
-                    );
-                    return class extends Handle {
-                      override onPointerUp: TLPointerEvent = async () => {
-                        this.onComplete({
-                          type: "misc",
-                          name: "complete",
-                        });
-
-                        const shape = this.app.getShapeById(this.shapeId);
-                        if (!shape) return;
-                        if (!isCustomArrowShape(shape)) return;
-                        const arrow = shape;
-                        const {
-                          start,
-                          end,
-                          text: arrowText,
-                        } = arrow.props as TLArrowShapeProps;
-
-                        const deleteAndWarn = (content: string) => {
-                          renderToast({
-                            id: "tldraw-warning",
-                            intent: "warning",
-                            content,
-                          });
-                          this.app.deleteShapes([arrow.id]);
-                        };
-
-                        // Allow arrow bend
-                        if (this.info.handle.id === "middle") return;
-
-                        // Stop accidental handle removal
-                        const { end: thisEnd, start: thisStart } =
-                          this.info.shape.props;
-                        const hasPreviousBindings = hasValidBindings([
-                          thisEnd,
-                          thisStart,
-                        ]);
-                        const bindingsMatchPrevBindings =
-                          compareBindings(thisEnd, end) &&
-                          compareBindings(thisStart, start);
-                        if (hasPreviousBindings && !bindingsMatchPrevBindings) {
-                          return cancelAndWarn({
-                            content: "Cannot remove handle.",
-                            shape,
-                            context: this,
-                          });
-                        }
-
-                        // Allow handles to be repositioned in same shape
-                        if (hasPreviousBindings && bindingsMatchPrevBindings) {
-                          return;
-                        }
-
-                        if (
-                          start.type !== "binding" ||
-                          end.type !== "binding"
-                        ) {
-                          return deleteAndWarn(
-                            "Relation must connect two nodes."
-                          );
-                        }
-                        const source = this.app.getShapeById(
-                          start.boundShapeId
-                        ) as DiscourseNodeShape;
-                        if (!source) {
-                          return deleteAndWarn("Failed to find source node.");
-                        }
-                        const target = this.app.getShapeById(
-                          end.boundShapeId
-                        ) as DiscourseNodeShape;
-                        if (!target) {
-                          return deleteAndWarn("Failed to find target node.");
-                        }
-
-                        // Handle "Add Referenced Node" Arrows
-                        if (allAddReferencedNodeActionsSet.has(arrow.type)) {
-                          const possibleTargets = allAddReferencedNodeByAction[
-                            arrow.type
-                          ].map((action) => action.destinationType);
-                          if (!possibleTargets.includes(target.type)) {
-                            return deleteAndWarn(
-                              `Target node must be of type ${possibleTargets
-                                .map((t) => discourseContext.nodes[t].text)
-                                .join(", ")}`
-                            );
-                          }
-
-                          // source and target are expected to be pages
-                          // TODO: support blocks
-                          const targetTitle = target.props.title;
-                          const sourceTitle = source.props.title;
-                          const isTargetTitleCurrent =
-                            getPageTitleByPageUid(target.props.uid).trim() ===
-                            targetTitle.trim();
-                          const isSourceTitleCurrent =
-                            getPageTitleByPageUid(source.props.uid).trim() ===
-                            sourceTitle.trim();
-                          if (!isTargetTitleCurrent || !isSourceTitleCurrent) {
-                            return deleteAndWarn(
-                              "Either the source or target node has been renamed. Please update the nodes and try again."
-                            );
-                          }
-
-                          // Hack for default shipped EVD format: [[EVD]] - {content} - {Source},
-                          // replace when migrating from format to specification
-                          let newTitle: string;
-                          if (targetTitle.endsWith(" - ")) {
-                            newTitle = `${targetTitle}[[${sourceTitle}]]`;
-                          } else if (targetTitle.endsWith(" -")) {
-                            newTitle = `${targetTitle} [[${sourceTitle}]]`;
-                          } else {
-                            newTitle = `${targetTitle} - [[${sourceTitle}]]`;
-                          }
-
-                          if (!extensionAPI) {
-                            return deleteAndWarn(
-                              `Failed to update node title.`
-                            );
-                          }
-
-                          await window.roamAlphaAPI.data.page.update({
-                            page: {
-                              uid: target.props.uid,
-                              title: newTitle,
-                            },
-                          });
-                          const { h, w, imageUrl } =
-                            await calcCanvasNodeSizeAndImg({
-                              nodeText: newTitle,
-                              uid: target.props.uid,
-                              nodeType: target.type,
-                              extensionAPI,
-                            });
-                          this.app.updateShapes([
-                            {
-                              id: target.id,
-                              type: target.type,
-                              props: {
-                                h,
-                                w,
-                                imageUrl,
-                                title: newTitle,
-                              },
-                            },
-                          ]);
-
-                          renderToast({
-                            id: "tldraw-success",
-                            intent: "success",
-                            content: `Updated node title.`,
-                          });
-
-                          return;
-                        }
-
-                        // Handle "Add Relationship Arrows"
-                        if (allRelationIdSet.has(arrow.type)) {
-                          const relation = allRelationsById[arrow.type];
-                          if (!relation) return;
-                          const sourceLabel =
-                            discourseContext.nodes[relation.source].text;
-                          if (source.type !== relation.source) {
-                            return deleteAndWarn(
-                              `Source node must be of type ${sourceLabel}`
-                            );
-                          }
-                          const possibleTargets = discourseContext.relations[
-                            relation.label
-                          ]
-                            .filter((r) => r.source === relation.source)
-                            .map((r) => r.destination);
-                          if (!possibleTargets.includes(target.type)) {
-                            return deleteAndWarn(
-                              `Target node must be of type ${possibleTargets
-                                .map((t) => discourseContext.nodes[t].text)
-                                .join(", ")}`
-                            );
-                          }
-                          if (arrow.type !== target.type) {
-                            this.app.updateShapes([
-                              {
-                                id: arrow.id,
-                                type: target.type,
-                              },
-                            ]);
-                          }
-                          const {
-                            triples,
-                            label: relationLabel,
-                            // complement,
-                          } = relation;
-                          const isOriginal = arrowText === relationLabel;
-                          const newTriples = triples
-                            .map((t) => {
-                              if (/is a/i.test(t[1])) {
-                                const targetNode =
-                                  (t[2] === "source" && isOriginal) ||
-                                  (t[2] === "destination" && !isOriginal)
-                                    ? source
-                                    : target;
-                                const { uid } =
-                                  targetNode.props as DiscourseNodeShape["props"];
-                                return [
-                                  t[0],
-                                  isPageUid(uid) ? "has title" : "with uid",
-                                  isPageUid(uid)
-                                    ? getPageTitleByPageUid(uid)
-                                    : uid,
-                                ];
-                              }
-                              return t.slice(0);
-                            })
-                            .map(([source, relation, target]) => ({
-                              source,
-                              relation,
-                              target,
-                            }));
-                          triplesToBlocks({
-                            defaultPageTitle: `Auto generated from ${title}`,
-                            toPage: async (
-                              title: string,
-                              blocks: InputTextNode[]
-                            ) => {
-                              const parentUid =
-                                getPageUidByPageTitle(title) ||
-                                (await createPage({
-                                  title: title,
-                                }));
-
-                              await Promise.all(
-                                blocks.map((node, order) =>
-                                  createBlock({ node, order, parentUid }).catch(
-                                    () =>
-                                      console.error(
-                                        `Failed to create block: ${JSON.stringify(
-                                          { node, order, parentUid },
-                                          null,
-                                          4
-                                        )}`
-                                      )
-                                  )
-                                )
-                              );
-                              await openBlockInSidebar(parentUid);
-                            },
-                            nodeSpecificationsByLabel: Object.fromEntries(
-                              Object.values(discourseContext.nodes).map((n) => [
-                                n.text,
-                                n.specification,
-                              ])
-                            ),
-                          })(newTriples)();
-                        }
-                      };
-                    };
-                  }
-                  return c;
-                });
-              };
-            },
-          ]),
-        shapes: [
-          ...allNodes.map((n) =>
-            defineShape<DiscourseNodeShape>({
-              type: n.type,
-              getShapeUtil: () =>
-                class extends DiscourseNodeUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, n.type);
-                  }
-                },
-            })
-          ),
-          ...allRelationIds.map((id) =>
-            defineShape<DiscourseRelationShape>({
-              type: id,
-              getShapeUtil: () =>
-                class extends DiscourseRelationUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, id);
-                  }
-                },
-            })
-          ),
-          ...allAddReferencedNodeActions.map((action) =>
-            defineShape<DiscourseReferencedNodeShape>({
-              type: action,
-              getShapeUtil: () =>
-                class extends DiscourseReferencedNodeUtil {
-                  constructor(app: TldrawApp) {
-                    super(app, action);
-                  }
-                },
-            })
-          ),
-        ],
-        allowUnknownShapes: true,
-      }),
-    [allNodes, allRelationIds, allRelationsById, allAddReferencedNodeActions]
+  // UTILS
+  const discourseNodeUtils = createNodeShapeUtils(allNodes);
+  const discourseRelationUtils = createAllRelationShapeUtils(allRelationIds);
+  const referencedNodeUtils = createAllReferencedNodeUtils(
+    allAddReferencedNodeByAction
   );
-  const appRef = useRef<TldrawApp>();
-  const lastInsertRef = useRef<Vec2dModel>();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [maximized, setMaximized] = useState(false);
-  const { store, instanceId, userId } = useRoamStore({
-    config: customTldrawConfig,
-    title,
+  const customShapeUtils = [
+    ...discourseNodeUtils,
+    ...discourseRelationUtils,
+    ...referencedNodeUtils,
+  ];
+
+  // TOOLS
+  const discourseNodeTools = createNodeShapeTools(allNodes);
+  const discourseRelationTools = createAllRelationShapeTools(allRelationNames);
+  const referencedNodeTools = createAllReferencedNodeTools(
+    allAddReferencedNodeByAction
+  );
+  const customTools = [
+    ...discourseNodeTools,
+    ...discourseRelationTools,
+    ...referencedNodeTools,
+  ];
+
+  // BINDINGS
+  const relationBindings = createAllRelationBindings(allRelationIds);
+  const referencedNodeBindings = createAllReferencedNodeBindings(
+    allAddReferencedNodeByAction
+  );
+  const customBindingUtils = [...relationBindings, ...referencedNodeBindings];
+
+  // UI OVERRIDES
+  const uiOverrides = createUiOverrides({
+    allNodes,
+    allRelationNames,
+    allAddReferencedNodeByAction,
+    maximized,
+    setMaximized,
+    setConvertToDialogOpen,
+    discourseContext,
+  });
+
+  // STORE
+  const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
+  const arrowShapeMigrations = useMemo(
+    () =>
+      createArrowShapeMigrations({
+        allRelationIds,
+        allAddReferencedNodeActions,
+      }),
+    [allRelationIds, allAddReferencedNodeActions]
+  );
+  const migrations = [...arrowShapeMigrations];
+  const { store, needsUpgrade, performUpgrade, error } = useRoamStore({
+    migrations,
+    customShapeUtils,
+    customBindingUtils,
+    pageUid,
   });
 
   // Handle actions (roamjs:query-builder:action)
   useEffect(() => {
-    const handleCreateShapeAction = ({
-      uid,
-      val,
-      onRefresh,
-    }: {
-      uid: string;
-      val: string;
-      onRefresh: () => void;
-    }) => {
-      const app = appRef.current;
-      if (!app) return;
-      const { x, y } = app.pageCenter;
-      const { w, h } = app.pageBounds;
-      const lastTime = lastInsertRef.current;
-      const position = lastTime
-        ? {
-            x: lastTime.x + w * 0.025,
-            y: lastTime.y + h * 0.05,
-          }
-        : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
-      const nodeType = findDiscourseNode(uid, allNodes);
-      if (nodeType) {
-        app.createShapes([
-          {
-            type: nodeType.type,
-            id: createShapeId(),
-            props: {
-              uid,
-              title: val,
-            },
-            ...position,
-          },
-        ]);
-        lastInsertRef.current = position;
-        onRefresh();
-      }
-    };
     const handleMoveCameraToShapeAction = ({
       shapeId,
     }: {
@@ -734,17 +308,17 @@ const TldrawCanvas = ({ title }: Props) => {
     }) => {
       const app = appRef.current;
       if (!app) return;
-      const shape = app.getShapeById(shapeId);
+      const shape = app.getShape(shapeId);
       if (!shape) {
-        return renderToast({
+        return dispatchToastEvent({
           id: "tldraw-warning",
-          intent: "warning",
-          content: `Shape not found.`,
+          title: `Shape not found.`,
+          severity: "warning",
         });
       }
       const x = shape?.x || 0;
       const y = shape?.y || 0;
-      app.centerOnPoint(x, y, { duration: 500, easing: (t) => t * t });
+      app.centerOnPoint({ x, y }, { animation: { duration: 200 } });
       app.select(shapeId);
     };
     const actionListener = ((
@@ -753,20 +327,40 @@ const TldrawCanvas = ({ title }: Props) => {
         uid?: string;
         val?: string;
         shapeId?: TLShapeId;
-        onRefresh?: () => void;
+        onRefresh: () => void;
       }>
     ) => {
       if (e.detail.action === "move-camera-to-shape") {
         if (!e.detail.shapeId) return;
         handleMoveCameraToShapeAction({ shapeId: e.detail.shapeId });
       }
-      if (/canvas/i.test(e.detail.action)) {
-        if (!e.detail.uid || !e.detail.val || !e.detail.onRefresh) return;
-        handleCreateShapeAction({
-          uid: e.detail.uid,
-          val: e.detail.val,
-          onRefresh: e.detail.onRefresh,
-        });
+      if (!/canvas/i.test(e.detail.action)) return;
+      const app = appRef.current;
+      if (!app) return;
+      const { x, y } = app.getViewportScreenCenter();
+      const { w, h } = app.getViewportPageBounds();
+      const lastTime = lastInsertRef.current;
+      const position = lastTime
+        ? {
+            x: lastTime.x + w * 0.025,
+            y: lastTime.y + h * 0.05,
+          }
+        : { x: x - DEFAULT_WIDTH / 2, y: y - DEFAULT_HEIGHT / 2 };
+      const nodeType = findDiscourseNode(e.detail.uid, allNodes);
+      if (nodeType) {
+        app.createShapes([
+          {
+            type: nodeType.type,
+            id: createShapeId(),
+            props: {
+              uid: e.detail.uid,
+              title: e.detail.val,
+            },
+            ...position,
+          },
+        ]);
+        lastInsertRef.current = position;
+        e.detail.onRefresh();
       }
     }) as EventListener;
     document.addEventListener("roamjs:query-builder:action", actionListener);
@@ -778,133 +372,249 @@ const TldrawCanvas = ({ title }: Props) => {
     };
   }, [appRef, allNodes]);
 
-  const uiOverrides = createUiOverrides({
-    allNodes,
-    allRelationNames,
-    allAddReferencedNodeByAction,
-    appRef,
-    extensionAPI,
-    maximized,
-    setMaximized,
-  });
+  // https://tldraw.dev/examples/data/assets/hosted-images
+  const ACCEPTED_IMG_TYPE = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/svg+xml",
+  ];
+  const isImage = (ext: string) => ACCEPTED_IMG_TYPE.includes(ext);
+  const handlePastedImages = useCallback((editor: Editor) => {
+    editor.registerExternalContentHandler(
+      "files",
+      async (content: TLExternalContent) => {
+        if (content.type !== "files") {
+          console.error("Expected files, received:", content.type);
+          return;
+        }
+        const file = content.files[0];
+
+        //@ts-ignore
+        const url = await window.roamAlphaAPI.file.upload({
+          file,
+          toast: {
+            hide: true,
+          },
+        });
+        const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
+        // TODO add video support
+        const isImageType = isImage(file.type);
+        if (!isImageType) {
+          console.error("Unsupported file type:", file.type);
+          return;
+        }
+        const size = await MediaHelpers.getImageSize(file);
+        const isAnimated = await MediaHelpers.isAnimated(file);
+        const assetId: TLAssetId = AssetRecordType.createId(
+          getHashForString(dataUrl)
+        );
+        const shapeType = isImageType ? "image" : "video";
+        const asset: TLAsset = AssetRecordType.create({
+          id: assetId,
+          type: shapeType,
+          typeName: "asset",
+          props: {
+            name: file.name,
+            src: dataUrl,
+            w: size.w,
+            h: size.h,
+            fileSize: file.size,
+            mimeType: file.type,
+            isAnimated,
+          },
+        });
+        editor.createAssets([asset]);
+        editor.createShape({
+          type: "image",
+          // Center the image in the editor
+          x: (window.innerWidth - size.w) / 2,
+          y: (window.innerHeight - size.h) / 2,
+          props: {
+            assetId,
+            w: size.w,
+            h: size.h,
+          },
+        });
+
+        return asset;
+      }
+    );
+  }, []);
+
   return (
     <div
-      className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
-        maximized ? "absolute inset-0" : "relative"
-      }`}
+      className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
+        ${maximized ? "absolute inset-0" : "relative"}`}
       id={`roamjs-tldraw-canvas-container`}
       ref={containerRef}
       tabIndex={-1}
     >
+      <style>{tldrawStyles}</style>
       <style>
-        {`.roam-article .rm-block-children {
-        display: none;
-      }
-      .rs-arrow-label__inner{
-        min-width: initial;
-      }
-      kbd.tlui-kbd {
-        background-color: initial;
-        box-shadow: initial;
-        border-radius: initial;
-        padding: initial;
-      }${
-        maximized
+        {maximized
           ? "div.roam-body div.roam-app div.roam-main div.roam-article { position: inherit; }"
-          : ""
-      }
-      #roamjs-tldraw-canvas-container .rs-shape .roamjs-tldraw-node .rm-block-main .rm-block-separator {
-        display: none;
-      }
-      /* arrow label line fix */
-      /* seems like width is being miscalculted cause letters to linebreak */
-      /* TODO: this is a temporary fix */
-      /* also Roam is hijacking the font choice */
-      .rs-arrow-label .rs-arrow-label__inner p {
-        padding: 0;
-        white-space: nowrap;
-        font-family: var(--rs-font-sans);
-      }`}
+          : ""}
       </style>
-      <TldrawEditor
-        baseUrl="https://samepage.network/assets/tldraw/"
-        instanceId={instanceId}
-        userId={userId}
-        config={customTldrawConfig}
-        store={store}
-        onMount={(app) => {
-          if (process.env.NODE_ENV !== "production") {
-            if (!window.tldrawApps) window.tldrawApps = {};
-            const { tldrawApps } = window;
-            tldrawApps[title] = app;
-          }
-          appRef.current = app;
-          // TODO - this should move to one of DiscourseNodeTool's children classes instead
-          app.on("event", (e) => {
-            discourseContext.lastAppEvent = e.name;
-
-            const validModifier = e.shiftKey || e.ctrlKey || e.metaKey;
-            if (!(e.name === "pointer_up" && e.shape && validModifier)) return;
-            if (app.selectedIds.length) return; // User is positioning selected shape
-
-            const shapeUid = e.shape?.props.uid;
-            if (!isLiveBlock(shapeUid)) {
-              if (!e.shape.props.title) return;
-              renderToast({
-                id: "tldraw-warning",
-                intent: "warning",
-                content: `Not a valid UID. Cannot Open.`,
-              });
-            }
-
-            if (e.shiftKey) {
-              // TODO - do not openBlockInSidebar if user is using shift to select
-              openBlockInSidebar(e.shape.props.uid);
-            }
-            if (e.ctrlKey || e.metaKey) {
-              const isPage = !!getPageTitleByPageUid(shapeUid);
-              if (isPage) {
-                window.roamAlphaAPI.ui.mainWindow.openPage({
-                  page: { uid: shapeUid },
+      <ConvertToDialog
+        allNodes={allNodes}
+        extensionAPI={extensionAPI}
+        isOpen={isConvertToDialogOpen}
+        onClose={() => setConvertToDialogOpen(false)}
+        editor={appRef.current}
+      />
+      {needsUpgrade ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">Upgrade Required</h2>
+            <p className="text-gray-600 mb-4">
+              Your tldraw canvas is using an old format. Click below to upgrade.
+            </p>
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={async () => {
+                await performUpgrade();
+                renderToast({
+                  id: "tldraw-upgrade",
+                  intent: "success",
+                  content: "Canvas upgraded.",
                 });
-              } else {
-                window.roamAlphaAPI.ui.mainWindow.openBlock({
-                  block: { uid: shapeUid },
+              }}
+            >
+              Upgrade Canvas
+            </button>
+          </div>
+        </div>
+      ) : !store ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold mb-2">
+              {error ? "Error Loading Canvas" : "Loading Canvas"}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {error
+                ? "There was a problem loading the Tldraw canvas. Please try again later."
+                : "Loading Canvas"}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <TldrawEditor
+          // baseUrl="https://samepage.network/assets/tldraw/"
+          // instanceId={initialState.instanceId}
+          initialState="select"
+          shapeUtils={[...defaultShapeUtils, ...customShapeUtils]}
+          tools={[...defaultTools, ...defaultShapeTools, ...customTools]}
+          bindingUtils={[...defaultBindingUtils, ...customBindingUtils]}
+          components={editorComponents}
+          store={store}
+          onMount={(app) => {
+            if (process.env.NODE_ENV !== "production") {
+              if (!window.tldrawApps) window.tldrawApps = {};
+              const { tldrawApps } = window;
+              tldrawApps[title] = app;
+            }
+
+            appRef.current = app;
+
+            handlePastedImages(app);
+
+            const showToastDebounced = debounceImmediate(() => {
+              document.dispatchEvent(
+                new CustomEvent<TLUiToast>("show-toast", {
+                  detail: {
+                    id: "tldraw-toast-cannot-move-relation",
+                    title: "Cannot move relation.",
+                    severity: "warning",
+                  },
+                })
+              );
+            }, 1000);
+
+            app.sideEffects.registerBeforeChangeHandler(
+              "shape",
+              (prevShape, nextShape) => {
+                // prevent accidental arrow reposition
+                // or should this be on DiscourseRelationUtil's onTranslate?
+                if (isCustomArrowShape(prevShape)) {
+                  const bindings = app.getBindingsFromShape(
+                    prevShape,
+                    prevShape.type
+                  );
+                  const isTranslating = app.isIn("select.translating");
+                  if (bindings.length && isTranslating) {
+                    app.setSelectedShapes([]);
+                    showToastDebounced();
+                    return prevShape;
+                  }
+                }
+                return nextShape;
+              }
+            );
+
+            app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
+              const util = app.getShapeUtil(shape);
+              if (util instanceof BaseDiscourseNodeUtil) {
+                util.createExistingRelations({
+                  shape: shape as DiscourseNodeShape,
                 });
               }
-            }
-          });
-          const oldOnBeforeDelete = app.store.onBeforeDelete;
-          app.store.onBeforeDelete = (record) => {
-            oldOnBeforeDelete?.(record);
-            if (record.typeName === "shape") {
-              const util = app.getShapeUtil(record);
-              if (util instanceof DiscourseNodeUtil) {
-                util.onBeforeDelete(record as DiscourseNodeShape);
+            });
+
+            // TODO - this should move to one of DiscourseNodeTool's children classes instead
+            app.on("event", (event) => {
+              const e = event as TLPointerEventInfo;
+
+              discourseContext.lastAppEvent = e.name;
+
+              // handle node clicked with modifiers
+              // navigate / open in sidebar
+              const validModifier = e.shiftKey || e.ctrlKey; // || e.metaKey;
+              if (!(e.name === "pointer_up" && validModifier)) return;
+              if (app.getSelectedShapes().length) return; // User is positioning selected shape
+              const shape = app.getShapeAtPoint(
+                app.inputs.currentPagePoint
+              ) as DiscourseNodeShape;
+              if (!shape) return;
+              const shapeUid = shape.props.uid;
+
+              if (!isLiveBlock(shapeUid)) {
+                if (!shape.props.title) return;
+                dispatchToastEvent({
+                  id: "tldraw-warning",
+                  title: `Not a valid UID. Cannot Open.`,
+                  severity: "warning",
+                });
               }
-            }
-          };
-          const oldOnAfterCreate = app.store.onAfterCreate;
-          app.store.onAfterCreate = (record) => {
-            oldOnAfterCreate?.(record);
-            if (record.typeName === "shape") {
-              const util = app.getShapeUtil(record);
-              if (util instanceof DiscourseNodeUtil) {
-                util.onAfterCreate(record as DiscourseNodeShape);
+
+              if (e.shiftKey) openBlockInSidebar(shapeUid);
+
+              if (
+                e.ctrlKey
+                // || e.metaKey
+              ) {
+                const isPage = !!getPageTitleByPageUid(shapeUid);
+                if (isPage) {
+                  window.roamAlphaAPI.ui.mainWindow.openPage({
+                    page: { uid: shapeUid },
+                  });
+                } else {
+                  window.roamAlphaAPI.ui.mainWindow.openBlock({
+                    block: { uid: shapeUid },
+                  });
+                }
               }
-            }
-          };
-        }}
-      >
-        <TldrawUi
-          assetBaseUrl="https://samepage.network/assets/tldraw/"
-          overrides={uiOverrides}
+            });
+          }}
         >
-          <ContextMenu>
-            <Canvas />
-          </ContextMenu>
-        </TldrawUi>
-      </TldrawEditor>
+          <TldrawUi overrides={uiOverrides} components={customUiComponents}>
+            <CustomContextMenu
+              extensionAPI={extensionAPI}
+              allNodes={allNodes}
+            />
+          </TldrawUi>
+        </TldrawEditor>
+      )}
     </div>
   );
 };
@@ -930,5 +640,3 @@ export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
     );
   }
 };
-
-export default TldrawCanvas;
