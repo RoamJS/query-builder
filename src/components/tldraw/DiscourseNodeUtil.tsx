@@ -298,7 +298,7 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     const shapesToCreate = toCreate.map(({ relationId, arrowId, label }) => {
       // TODO: add color selector to relations
       const color =
-        label === "Supports" || label === " Supported By"
+        label === "Supports" || label === "Supported By"
           ? "green"
           : label === "Opposes" || label === "Opposed By"
           ? "red"
