@@ -9,6 +9,8 @@ export const nodeTypes = {
 export const defaultNanopubTemplate: NanopubConfig = {
   enabled: true,
   nodeType: "",
+  useCustomBody: false,
+  customBodyUid: "",
   requireContributors: true,
   triples: [
     {
