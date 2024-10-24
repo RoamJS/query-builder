@@ -58,12 +58,12 @@ const placeholders = {
 };
 
 export const defaultPredicates = {
-  "is a": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
-  "has the label": "http://www.w3.org/2000/01/rdf-schema#label",
-  "has the description": "http://purl.org/dc/terms/description",
-  "has more info at": "http://xmlns.com/foaf/0.1/page",
-  "is attributed to": "http://www.w3.org/ns/prov#wasAttributedTo",
-  "is created by": "http://purl.org/dc/terms/creator",
+  "is a": "rdf:type",
+  "has the label": "rdfs:label",
+  "has the description": "dc:description",
+  "has more info at": "foaf:page",
+  "is attributed to": "prov:wasAttributedTo",
+  "is created by": "dc:creator",
 } as const;
 
 export type PredicateKey = keyof typeof defaultPredicates;
@@ -102,10 +102,13 @@ export const baseRdf: RDFStructure = {
     "@base": "http://purl.org/nanopub/temp/mynanopub#",
     rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+    xsd: "http://www.w3.org/2001/XMLSchema#",
+    prov: "http://www.w3.org/ns/prov#",
+    kpxl: "https://w3id.org/kpxl/gen/terms/",
     dc: "http://purl.org/dc/terms/",
+    npx: "http://purl.org/nanopub/n/",
     np: "http://www.nanopub.org/nschema#",
     foaf: "http://xmlns.com/foaf/0.1/",
-    xsd: "http://www.w3.org/2001/XMLSchema#",
     credit: "https://credit.niso.org/contributor-roles/",
   },
   "@id": "#Head",

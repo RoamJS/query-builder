@@ -158,7 +158,7 @@ export const updateObjectPlaceholders = async ({
   orcidUrl: string;
 }) => {
   const pageTitle = getPageTitleByPageUid(pageUid);
-  const pageUrl = `https://roamresearch.com/${window.roamAlphaAPI.graph.name}/page/${pageUid}`;
+  const pageUrl = `https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/${pageUid}`;
 
   let contentUid = pageUid;
   if (nanopubConfig?.useCustomBody) {
@@ -179,10 +179,9 @@ export const updateObjectPlaceholders = async ({
   return object
     .replace(/\{nodeType\}/g, nanopubConfig?.nodeType || "")
     .replace(/\{title\}/g, extractContentFromFormat({ title: pageTitle }))
-    .replace(/\{name\}/g, getCurrentUserDisplayName())
     .replace(/\{url\}/g, pageUrl)
     .replace(/\{myORCID\}/g, orcidUrl)
-    .replace(/\{createdBy\}/g, getCurrentUserDisplayName())
+    .replace(/\{createdBy\}/g, orcidUrl)
     .replace(/\{body\}/g, await getPageContent({ pageTitle, uid: contentUid }));
 };
 
@@ -233,69 +232,94 @@ const NanopubDialog = ({
       orcidUrl,
     };
 
-    rdf["@graph"]["np:hasAssertion"]["@graph"] = await Promise.all(
-      triples
-        .filter((triple) => triple.type === "assertion")
-        .map(async (triple) => ({
-          "@id": "#",
-          [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders({
-              object: triple.object,
-              ...updatePlaceHolderProps,
-            }),
-          },
-        }))
+    const objectIdentifierIds = [
+      "rdf:type",
+      "foaf:page",
+      "dc:creator",
+      "prov:wasAttributedTo",
+    ];
+
+    const createGraph = async (type: string, idPrefix: string) => {
+      const relevantTriples = triples.filter((triple) => triple.type === type);
+
+      const triplePromises = relevantTriples.map(async (triple) => {
+        const predicate = defaultPredicates[triple.predicate as PredicateKey];
+        const objectIdentifier = objectIdentifierIds.includes(predicate)
+          ? "@id"
+          : "@value";
+        const objectvalue = await updateObjectPlaceholders({
+          object: triple.object,
+          ...updatePlaceHolderProps,
+        });
+
+        return {
+          [predicate]: { [objectIdentifier]: objectvalue },
+        };
+      });
+
+      const tripleObjects = await Promise.all(triplePromises);
+
+      return [
+        {
+          "@id": idPrefix,
+          ...Object.assign({}, ...tripleObjects),
+        },
+      ];
+    };
+
+    rdf["@graph"]["np:hasAssertion"]["@graph"] = await createGraph(
+      "assertion",
+      `#${discourseNode?.text}`
+    );
+    rdf["@graph"]["np:hasProvenance"]["@graph"] = await createGraph(
+      "provenance",
+      "#assertion"
+    );
+    rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = await createGraph(
+      "publication info",
+      "#"
     );
 
-    rdf["@graph"]["np:hasProvenance"]["@graph"] = await Promise.all(
-      triples
-        .filter((triple) => triple.type === "provenance")
-        .map(async (triple) => ({
-          "@id": "#assertion",
-          [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders({
-              object: triple.object,
-              ...updatePlaceHolderProps,
-            }),
-          },
-        }))
-    );
-
-    rdf["@graph"]["np:hasPublicationInfo"]["@graph"] = await Promise.all(
-      triples
-        .filter((triple) => triple.type === "publication info")
-        .map(async (triple) => ({
-          "@id": "#pubinfo",
-          [defaultPredicates[triple.predicate as PredicateKey]]: {
-            "@value": await updateObjectPlaceholders({
-              object: triple.object,
-              ...updatePlaceHolderProps,
-            }),
-          },
-        }))
-    );
+    const pubInfoGraph = rdf["@graph"]["np:hasPublicationInfo"]["@graph"];
 
     // Add timestamp to publication info
-    rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
+    pubInfoGraph.push({
       "@id": "#",
-      "dct:created": {
+      "dc:created": {
         "@value": new Date().toISOString(),
         "@type": "xsd:dateTime",
       },
     });
 
-    // Alias predicates
-    Object.entries(defaultPredicates).map(([key, value]) => {
-      rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
-        "@id": value,
-        "rdfs:label": key,
+    // Alias predicates and contributor roles
+    const addAliases = ({
+      id,
+      label,
+      prefix,
+    }: {
+      id: string;
+      label: string;
+      prefix: string;
+    }) => {
+      pubInfoGraph.push({
+        "@id": prefix + id,
+        "rdfs:label": label,
+      });
+    };
+    Object.entries(defaultPredicates).forEach(([key, value]) => {
+      addAliases({
+        id: value,
+        label: key,
+        prefix: "",
       });
     });
 
-    // DEV TODO REMOVE
-    rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
-      "@id": "#",
-      "@type": "npx:ExampleNanopub",
+    creditRoles.forEach((role) => {
+      addAliases({
+        id: role.uri,
+        label: role.verb,
+        prefix: "credit:",
+      });
     });
 
     // Add contributors to provenance
@@ -303,32 +327,35 @@ const NanopubDialog = ({
       const props = getBlockProps(uid) as Record<string, unknown>;
       const nanopub = props["nanopub"] as NanopubPage;
       const contributors = nanopub?.contributors || [];
-      if (contributors.length > 0) {
-        const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
 
-        contributors.forEach((contributor) => {
-          if (contributor.roles.length > 0) {
-            contributor.roles.forEach((role) => {
-              const roleUri = creditRoles.find((r) => r.label === role)?.uri;
-              if (!roleUri) return;
-              const newAssertion = {
-                "@id": "#assertion",
-                [`credit:${roleUri}`]: contributor.name,
-              };
-              provenanceGraph.push(newAssertion);
+      const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
+      contributors.forEach((contributor) => {
+        contributor.roles.forEach((role) => {
+          const roleUri = creditRoles.find((r) => r.label === role)?.uri;
+          if (roleUri) {
+            provenanceGraph.push({
+              "@id": "#assertion",
+              [`credit:${roleUri}`]: contributor.name,
             });
           }
         });
-      }
+      });
     }
 
-    // Alias contributor roles
-    creditRoles.forEach((role) => {
-      rdf["@graph"]["np:hasPublicationInfo"]["@graph"].push({
-        "@id": `credit:${role.uri}`,
-        "rdfs:label": role.verb,
+    // Add additional information
+    pubInfoGraph.push(
+      { "@id": "#", "@type": "npx:ExampleNanopub" }, // TODO: remove
+      { "@id": "#", "@type": "kpxl:DiscourseGraphNanopub" },
+      { "@id": "#", "npx:introduces": { "@id": `#${discourseNode?.text}` } }
+    );
+
+    // Alias discourse node type
+    if (nanopubConfig?.nodeType) {
+      pubInfoGraph.push({
+        "@id": nanopubConfig.nodeType,
+        "rdfs:label": discourseNode?.text,
       });
-    });
+    }
 
     return JSON.stringify(rdf, null, 2);
   };
@@ -776,7 +803,7 @@ const NanopubDialog = ({
                 onClick={publishNanopub}
                 intent={"primary"}
                 disabled={selectedTabId !== "nanopub-preview"}
-                hidden={!!publishedURL}
+                // hidden={!!publishedURL}
               >
                 Publish Example Nanopub
               </Button>
