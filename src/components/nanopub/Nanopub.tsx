@@ -123,13 +123,13 @@ const getPageContent = async ({
   pageTitle: string;
   uid: string;
 }): Promise<string> => {
-  const markdownExport = getExportTypes({
+  const htmlExport = getExportTypes({
     exportId: "nanopub",
     results: [{ text: pageTitle, uid }],
     isExportDiscourseGraph: false,
-  }).find((type) => type.name === "Markdown");
-  if (!markdownExport) return "";
-  const result = await markdownExport.callback({
+  }).find((type) => type.name === "HTML");
+  if (!htmlExport) return "";
+  const result = await htmlExport.callback({
     isSamePageEnabled: false,
     includeDiscourseContext: false,
     filename: "",
@@ -139,7 +139,9 @@ const getPageContent = async ({
     },
   });
   const { content } = result[0];
-  return content;
+  const bodyContent = content.match(/<body>([\s\S]*)<\/body>/i)?.[0] || "";
+
+  return bodyContent;
 };
 
 export const updateObjectPlaceholders = async ({

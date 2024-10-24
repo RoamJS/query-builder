@@ -832,6 +832,88 @@ const getExportTypes = ({
         }));
       },
     },
+    {
+      name: "HTML",
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+        settings: overrideSettings = {},
+      }) => {
+        const defaultSettings = getExportSettings();
+        const settings = { ...defaultSettings, ...overrideSettings };
+
+        const markdownCallback = getExportTypes({
+          results,
+          exportId,
+          isExportDiscourseGraph,
+        }).find((type) => type.name === "Markdown")?.callback;
+        if (!markdownCallback) throw new Error("Markdown callback not found");
+
+        const markdownPages = await markdownCallback({
+          isSamePageEnabled,
+          includeDiscourseContext,
+          settings,
+          filename: "",
+          isExportDiscourseGraph: false,
+        });
+
+        const { marked } = await (window.RoamLazy
+          ? window.RoamLazy.Marked()
+          : import("marked"));
+
+        marked.setOptions({
+          gfm: true,
+          breaks: true,
+          xhtml: false,
+          pedantic: false,
+        });
+
+        // marked tokenizer wasn't working, so using regex instead until an issue arises
+        // handle ^^highlight text^^
+        const highlightText = (content: string): string => {
+          return content.replace(/\^\^([\s\S]+?)\^\^/g, "<mark>$1</mark>");
+        };
+
+        return markdownPages.map(({ title, content }) => {
+          const highlightedContent = highlightText(content);
+          const processedHtml = marked(highlightedContent);
+          return {
+            title: title.replace(/\.md$/, ".html"),
+            content: `
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${title}</title>
+                <style>
+                  body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                  }
+                  pre {
+                    background-color: #f4f4f4;
+                    padding: 10px;
+                    border-radius: 5px;
+                  }
+                  code {
+                    font-family: Consolas, Monaco, 'Andale Mono', monospace;
+                  }
+                </style>
+              </head>
+              <body>
+                ${processedHtml}
+              </body>
+              </html>
+            `,
+          };
+        });
+      },
+    },
   ];
 };
 
