@@ -721,7 +721,7 @@ const NanopubDialog = ({
     >
       {discourseNode ? (
         <>
-          <div className="bp3-dialog-body">
+          <div className="bp3-dialog-body overflow-auto">
             <div className="space-y-4">
               <Tabs
                 selectedTabId={selectedTabId}

@@ -9,6 +9,7 @@ import {
 import { NanopubTripleType } from "./NanopubNodeConfig";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import { OnloadArgs } from "roamjs-components/types";
+import { Text, Button } from "@blueprintjs/core";
 
 const PreviewNanopub = ({
   contributors,
@@ -50,6 +51,23 @@ const PreviewNanopub = ({
   const uniqueTypes = Array.from(
     new Set(resolvedTriples?.map((triple) => triple.type) || [])
   );
+  const [previewDescription, setPreviewDescription] = useState("");
+
+  if (previewDescription) {
+    return (
+      <div className="p-1">
+        <Button
+          onClick={() => setPreviewDescription("")}
+          icon={"arrow-left"}
+          text={"Back"}
+          className="mb-4"
+          outlined
+        />
+        <div dangerouslySetInnerHTML={{ __html: previewDescription }} />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="mb-4">
@@ -58,14 +76,44 @@ const PreviewNanopub = ({
             <h3 className="text-lg font-semibold capitalize mb-2">{type}</h3>
             {resolvedTriples
               ?.filter((triple) => triple.type === type)
-              .map((triple) => (
-                <NanopubTriple
-                  key={triple.uid}
-                  subject={discourseNode?.text || ""}
-                  predicate={triple.predicate}
-                  object={triple.object}
-                />
-              ))}
+              .map((triple) => {
+                const isHtmlDescription =
+                  triple.type === "assertion" &&
+                  triple.predicate === "has the description" &&
+                  triple.object.startsWith("<body>");
+                if (isHtmlDescription) {
+                  return (
+                    <div className="grid grid-cols-12 gap-4 border-0 border-b sm:border-b-0 py-2">
+                      <Text
+                        className="col-span-12 sm:col-span-2 truncate"
+                        title={discourseNode?.text || ""}
+                        children={discourseNode?.text || ""}
+                      />
+                      <Text
+                        className="col-span-12 sm:col-span-2 truncate"
+                        title={triple.predicate}
+                        children={triple.predicate}
+                      />
+                      <div className="col-span-12 sm:col-span-3">
+                        <Button
+                          outlined
+                          small
+                          text={"View"}
+                          onClick={() => setPreviewDescription(triple.object)}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <NanopubTriple
+                    key={triple.uid}
+                    subject={discourseNode?.text || ""}
+                    predicate={triple.predicate}
+                    object={triple.object}
+                  />
+                );
+              })}
           </div>
         ))}
         {discourseNode?.nanopub?.requireContributors &&
