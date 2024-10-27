@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: temp fix
+        run: "rm -f package-lock.json"
       - name: install
-        run: npm install --legacy-peer-deps
+        run: npm install
       - name: build
         run: npx samepage build
