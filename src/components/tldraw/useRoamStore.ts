@@ -1,41 +1,116 @@
-import { useRef, useMemo, useEffect } from "react";
 import { TLRecord, TLStore } from "@tldraw/tlschema";
-import { TLInstance, TLUser, TldrawEditorConfig } from "@tldraw/tldraw";
-import { StoreSnapshot } from "@tldraw/tlstore";
+import nanoid from "nanoid";
+import { useRef, useMemo, useEffect, useState } from "react";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getSubTree from "roamjs-components/util/getSubTree";
 import setInputSetting from "roamjs-components/util/setInputSetting";
 import createBlock from "roamjs-components/writes/createBlock";
-import { AddPullWatch } from "roamjs-components/types";
-import getCurrentUserUid from "roamjs-components/queries/getCurrentUserUid";
-import nanoid from "nanoid";
 import getBlockProps, { json, normalizeProps } from "../../utils/getBlockProps";
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import { createTLStore } from "@tldraw/editor";
+import { SerializedStore, StoreSnapshot } from "@tldraw/store";
+import {
+  defaultBindingUtils,
+  defaultShapeUtils,
+  getIndices,
+  loadSnapshot,
+  MigrationSequence,
+  sortByIndex,
+  TLShape,
+  TLStoreSnapshot,
+} from "tldraw";
+import { AddPullWatch } from "roamjs-components/types";
+import { LEGACY_SCHEMA, LEGACYSTORETEST } from "../../data/legacyTldrawSchema";
+import apiPost from "roamjs-components/util/apiPost";
+// import { createAllRelationShapeUtils } from "./DiscourseRelationsUtil";
 
 const THROTTLE = 350;
 
+const isTLStoreSnapshot = (value: unknown): value is TLStoreSnapshot => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "store" in value &&
+    "schema" in value
+  );
+};
+
+const fixShapeIndices = (
+  data: SerializedStore<TLRecord>
+): SerializedStore<TLRecord> => {
+  const shapes = Object.values(data).filter(
+    (record): record is TLShape => record.typeName === "shape"
+  );
+
+  const sortedShapes = shapes.sort((a, b) => {
+    if (a.index !== undefined && b.index !== undefined) {
+      return sortByIndex(a, b);
+    }
+    return a.id.localeCompare(b.id);
+  });
+
+  const newIndices = getIndices(shapes.length);
+
+  const fixedShapes = sortedShapes.map((shape, i) => ({
+    ...shape,
+    index: newIndices[i],
+  }));
+
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (value.typeName === "shape") {
+        const updatedShape = fixedShapes.find((s) => s.id === value.id);
+        return [key, updatedShape || value];
+      }
+      return [key, value];
+    })
+  );
+};
+
+const filterUserRecords = (data: SerializedStore<TLRecord>) => {
+  return Object.fromEntries(
+    Object.entries(data).filter(([key]) => {
+      return !/^(user_presence|camera|instance|instance_page_state|user|user_document):/.test(
+        key
+      );
+    })
+  );
+};
+
 export const useRoamStore = ({
-  config,
-  title,
+  customShapeUtils,
+  customBindingUtils,
+  pageUid,
+  migrations,
 }: {
-  title: string;
-  config: TldrawEditorConfig;
+  customShapeUtils: any[];
+  customBindingUtils: any[];
+  pageUid: string;
+  migrations: MigrationSequence[];
 }) => {
-  const pageUid = useMemo(() => getPageUidByPageTitle(title), [title]);
-  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+  const [oldData, setOldData] = useState<SerializedStore<TLRecord> | null>(
+    null
+  );
+  const [initialSnapshot, setInitialSnapshot] =
+    useState<TLStoreSnapshot | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const localStateIds = useRef<string[]>([]);
   const serializeRef = useRef(0);
   const deserializeRef = useRef(0);
+  const tree = useMemo(() => getBasicTreeByParentUid(pageUid), [pageUid]);
 
-  const initialData = useMemo(() => {
+  // Handle initial data
+  useEffect(() => {
     const persisted = getSubTree({
       parentUid: pageUid,
       tree,
       key: "State",
     });
     if (!persisted.uid) {
-      // we create a block so that the page is not garbage collected
       createBlock({
         node: {
           text: "State",
@@ -43,20 +118,40 @@ export const useRoamStore = ({
         parentUid: pageUid,
       });
     }
-    const instanceId = TLInstance.createCustomId(pageUid);
-    const userId = TLUser.createCustomId(getCurrentUserUid());
     const props = getBlockProps(pageUid) as Record<string, unknown>;
-    const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
-    const data = rjsqb?.tldraw as Parameters<TLStore["deserialize"]>[0];
-    return { data, instanceId, userId };
+    const rjsqb =
+      typeof props["roamjs-query-builder"] === "object"
+        ? (props["roamjs-query-builder"] as Record<string, unknown>)
+        : {};
+    if (isTLStoreSnapshot(rjsqb.tldraw)) {
+      setInitialSnapshot(rjsqb.tldraw as TLStoreSnapshot);
+      setLoading(false);
+    } else if (rjsqb?.tldraw) {
+      const oldStore = rjsqb.tldraw as SerializedStore<TLRecord>;
+      setNeedsUpgrade(true);
+      setOldData(oldStore);
+      setLoading(false);
+    } else {
+      // Create a new store
+      setInitialSnapshot(null);
+      setLoading(false);
+    }
   }, [tree, pageUid]);
-
   const store = useMemo(() => {
-    const _store = config.createStore({
-      initialData: initialData.data,
-      instanceId: initialData.instanceId,
-      userId: initialData.userId,
-    });
+    if (needsUpgrade || error || loading) return null;
+    let _store;
+    try {
+      _store = createTLStore({
+        initialData: initialSnapshot?.store,
+        migrations: migrations,
+        shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+        bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
+      });
+    } catch (error) {
+      console.error("Failed to create store:", error);
+      return null;
+    }
+
     _store.listen((rec) => {
       if (rec.source !== "user") return;
       const validChanges = Object.keys(rec.changes.added)
@@ -64,7 +159,9 @@ export const useRoamStore = ({
         .concat(Object.keys(rec.changes.updated))
         .filter(
           (k) =>
-            !/^(user_presence|camera|instance|instance_page_state):/.test(k)
+            !/^(user_presence|camera|instance|instance_page_state|pointer):/.test(
+              k
+            )
         );
       if (!validChanges.length) return;
       clearTimeout(serializeRef.current);
@@ -73,8 +170,15 @@ export const useRoamStore = ({
         const props = getBlockProps(pageUid) as Record<string, unknown>;
         const rjsqb =
           typeof props["roamjs-query-builder"] === "object"
-            ? props["roamjs-query-builder"]
+            ? (props["roamjs-query-builder"] as Record<string, unknown>)
             : {};
+        const propSchema = isTLStoreSnapshot(rjsqb.tldraw)
+          ? rjsqb.tldraw.schema
+          : {};
+        const schema =
+          Object.keys(propSchema).length === 0
+            ? _store.schema.serialize()
+            : propSchema;
         await setInputSetting({
           blockUid: pageUid,
           key: "timestamp",
@@ -91,7 +195,7 @@ export const useRoamStore = ({
               ["roamjs-query-builder"]: {
                 ...rjsqb,
                 stateId: newstateId,
-                tldraw: state,
+                tldraw: { store: state, schema },
               },
             },
           },
@@ -99,7 +203,7 @@ export const useRoamStore = ({
       }, THROTTLE);
     });
     return _store;
-  }, [initialData, serializeRef]);
+  }, [initialSnapshot, serializeRef, needsUpgrade, error, loading]);
 
   const personalRecordTypes = new Set([
     "camera",
@@ -107,7 +211,76 @@ export const useRoamStore = ({
     "instance_page_state",
   ]);
 
-  const pruneState = (state: StoreSnapshot<TLRecord>) =>
+  const performUpgrade = async () => {
+    if (!oldData) return;
+    try {
+      const newStore = createTLStore({
+        migrations: migrations,
+        shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
+        bindingUtils: [...defaultBindingUtils, ...customBindingUtils],
+      });
+      const filteredData = filterUserRecords(oldData);
+      const dataWithFixedShapes = fixShapeIndices(filteredData);
+
+      loadSnapshot(newStore, {
+        store: dataWithFixedShapes,
+        schema: LEGACY_SCHEMA,
+      });
+      const snapshot = newStore.getStoreSnapshot();
+      const props = getBlockProps(pageUid) as Record<string, unknown>;
+      const rjsqb =
+        typeof props["roamjs-query-builder"] === "object"
+          ? (props["roamjs-query-builder"] as Record<string, unknown>)
+          : {};
+      window.roamAlphaAPI.updateBlock({
+        block: {
+          uid: pageUid,
+          props: {
+            ...props,
+            ["roamjs-query-builder"]: {
+              ...rjsqb,
+              stateId: nanoid(),
+              tldraw: snapshot,
+              legacyTldraw: {
+                date: new Date().valueOf().toString(),
+                store: oldData,
+              },
+            },
+          },
+        },
+      });
+      setInitialSnapshot(snapshot);
+      setNeedsUpgrade(false);
+      setOldData(null);
+    } catch (e) {
+      const error = e as Error;
+      setNeedsUpgrade(false);
+      setInitialSnapshot(null);
+      setError(error as Error);
+      apiPost({
+        domain: "https://api.samepage.network",
+        path: "errors",
+        data: {
+          method: "extension-error",
+          type: "Failed to perform Canvas upgrade",
+          data: {
+            oldData,
+          },
+          message: error.message,
+          stack: error.stack,
+          version: process.env.VERSION,
+          notebookUuid: JSON.stringify({
+            owner: "RoamJS",
+            app: "query-builder",
+            workspace: window.roamAlphaAPI.graph.name,
+          }),
+        },
+      }).catch(() => {});
+      console.error("Failed to perform Canvas upgrade", error);
+    }
+  };
+
+  const pruneState = (state: SerializedStore<TLRecord>) =>
     Object.fromEntries(
       Object.entries(state).filter(
         ([_, record]) => !personalRecordTypes.has(record.typeName)
@@ -149,8 +322,8 @@ export const useRoamStore = ({
     );
   };
   const calculateDiff = (
-    _newState: StoreSnapshot<TLRecord>,
-    _oldState: StoreSnapshot<TLRecord>
+    _newState: SerializedStore<TLRecord>,
+    _oldState: SerializedStore<TLRecord>
   ) => {
     const newState = pruneState(_newState);
     const oldState = pruneState(_oldState);
@@ -185,6 +358,7 @@ export const useRoamStore = ({
     };
   };
 
+  // Remote Changes
   useEffect(() => {
     const pullWatchProps: Parameters<AddPullWatch> = [
       "[:edit/user :block/props :block/string {:block/children ...}]",
@@ -196,15 +370,14 @@ export const useRoamStore = ({
         const rjsqb = props["roamjs-query-builder"] as Record<string, unknown>;
         const propsStateId = rjsqb?.stateId as string;
         if (localStateIds.current.some((s) => s === propsStateId)) return;
-        const newState = rjsqb?.tldraw as Parameters<
-          typeof store.deserialize
-        >[0];
+        const newState = rjsqb?.tldraw as StoreSnapshot<TLRecord>;
         if (!newState) return;
         clearTimeout(deserializeRef.current);
         deserializeRef.current = window.setTimeout(() => {
+          if (!store) return;
           store.mergeRemoteChanges(() => {
-            const currentState = store.serialize();
-            const diff = calculateDiff(newState, currentState);
+            const currentState = store.getSnapshot();
+            const diff = calculateDiff(newState.store, currentState.store);
             store.applyDiff(diff);
           });
         }, THROTTLE);
@@ -216,9 +389,5 @@ export const useRoamStore = ({
     };
   }, [pageUid, store]);
 
-  return {
-    store,
-    instanceId: initialData.instanceId,
-    userId: initialData.userId,
-  };
+  return { error, store, needsUpgrade, performUpgrade };
 };
