@@ -727,8 +727,13 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
         key: "trigger",
         defaultValue: "\\",
       }).trim();
+
       const keydownListener = (e: KeyboardEvent) => {
         if (e.key === trigger) {
+          const disabled = args.extensionAPI.settings.get(
+            "disable-global-trigger"
+          );
+          if (!disabled) return;
           const target = e.target as HTMLElement;
           if (
             target.tagName === "TEXTAREA" &&

@@ -52,7 +52,7 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-
+import { render as renderDiscourseNodeMenu } from "./components/DiscourseNodeMenu";
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
@@ -391,6 +391,15 @@ svg.rs-svg-container {
           },
         },
       },
+      {
+        id: "disable-global-trigger",
+        name: "Disable Global Node Menu Trigger",
+        action: {
+          type: "switch",
+        },
+        description:
+          "Whether to disable the global trigger for the Discourse Node Menu, found at [[roam/js/discourse-graph]], and use the custom trigger instead",
+      },
     ],
   });
   if (loadedElsewhere) {
@@ -721,7 +730,24 @@ svg.rs-svg-container {
       );
     },
   });
-
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Custom Discourse Node Menu Trigger",
+    callback: () => {
+      const currentlyEditingBlock = document.querySelector(
+        "textarea.rm-block-input"
+      ) as HTMLTextAreaElement;
+      if (!currentlyEditingBlock) {
+        renderToast({
+          id: "query-builder-create-block",
+          content: "Must be focused on a block to create a Discourse Node",
+        });
+        return;
+      }
+      renderDiscourseNodeMenu({
+        textarea: currentlyEditingBlock,
+      });
+    },
+  });
   const renderCustomBlockView = ({
     view,
     blockUid,
