@@ -55,7 +55,7 @@ const PreviewNanopub = ({
 
   if (previewDescription) {
     return (
-      <div className="p-1">
+      <div>
         <Button
           onClick={() => setPreviewDescription("")}
           icon={"arrow-left"}
