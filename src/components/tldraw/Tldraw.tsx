@@ -441,7 +441,76 @@ const TldrawCanvas = ({
       }
     );
   }, []);
+  const registerSideEffects = useCallback(
+    (app: TldrawApp) => {
+      const showToastDebounced = debounceImmediate(() => {
+        document.dispatchEvent(
+          new CustomEvent<TLUiToast>("show-toast", {
+            detail: {
+              id: "tldraw-toast-cannot-move-relation",
+              title: "Cannot move relation.",
+              severity: "warning",
+            },
+          })
+        );
+      }, 1000);
 
+      const removeBeforeChangeHandler =
+        app.sideEffects.registerBeforeChangeHandler(
+          "shape",
+          (prevShape, nextShape) => {
+            // prevent accidental arrow reposition
+            if (isCustomArrowShape(prevShape)) {
+              const bindings = app.getBindingsFromShape(
+                prevShape,
+                prevShape.type
+              );
+              const isTranslating = app.isIn("select.translating");
+              if (bindings.length && isTranslating) {
+                app.setSelectedShapes([]);
+                showToastDebounced();
+                return prevShape;
+              }
+            }
+            return nextShape;
+          }
+        );
+
+      const removeAfterCreateHandler =
+        app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
+          const util = app.getShapeUtil(shape);
+          if (util instanceof BaseDiscourseNodeUtil) {
+            util.createExistingRelations({
+              shape: shape as DiscourseNodeShape,
+            });
+          }
+        });
+
+      return () => {
+        removeBeforeChangeHandler();
+        removeAfterCreateHandler();
+      };
+    },
+    [allRelationsById, allRelationIds, allRelationNames]
+  );
+
+  const [isAppMounted, setIsAppMounted] = useState(false);
+  useEffect(() => {
+    // appRef is null until mounted
+    if (!isAppMounted) return;
+
+    const app = appRef.current;
+    if (!app) {
+      console.error("App is not available even though it should be mounted");
+      return;
+    }
+
+    const unregisterSideEffects = registerSideEffects(app);
+
+    return () => {
+      unregisterSideEffects();
+    };
+  }, [isAppMounted, registerSideEffects]);
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
@@ -516,50 +585,9 @@ const TldrawCanvas = ({
             }
 
             appRef.current = app;
+            setIsAppMounted(true);
 
             handlePastedImages(app);
-
-            const showToastDebounced = debounceImmediate(() => {
-              document.dispatchEvent(
-                new CustomEvent<TLUiToast>("show-toast", {
-                  detail: {
-                    id: "tldraw-toast-cannot-move-relation",
-                    title: "Cannot move relation.",
-                    severity: "warning",
-                  },
-                })
-              );
-            }, 1000);
-
-            app.sideEffects.registerBeforeChangeHandler(
-              "shape",
-              (prevShape, nextShape) => {
-                // prevent accidental arrow reposition
-                // or should this be on DiscourseRelationUtil's onTranslate?
-                if (isCustomArrowShape(prevShape)) {
-                  const bindings = app.getBindingsFromShape(
-                    prevShape,
-                    prevShape.type
-                  );
-                  const isTranslating = app.isIn("select.translating");
-                  if (bindings.length && isTranslating) {
-                    app.setSelectedShapes([]);
-                    showToastDebounced();
-                    return prevShape;
-                  }
-                }
-                return nextShape;
-              }
-            );
-
-            app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
-              const util = app.getShapeUtil(shape);
-              if (util instanceof BaseDiscourseNodeUtil) {
-                util.createExistingRelations({
-                  shape: shape as DiscourseNodeShape,
-                });
-              }
-            });
 
             // TODO - this should move to one of DiscourseNodeTool's children classes instead
             app.on("event", (event) => {

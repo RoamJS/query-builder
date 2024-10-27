@@ -23,6 +23,7 @@ import {
   Box,
   TLDefaultFontStyle,
   FileHelpers,
+  StateNode,
 } from "tldraw";
 // import { useValue } from "signia-react";
 
@@ -120,10 +121,23 @@ const getRelationIds = () =>
 
 export const createNodeShapeTools = (nodes: DiscourseNode[]) => {
   return nodes.map((n) => {
-    return class DiscourseNodeTool extends BaseBoxShapeTool {
+    return class DiscourseNodeTool extends StateNode {
       static id = n.type;
       static initial = "idle";
       shapeType = n.type;
+
+      override onPointerDown = () => {
+        const { currentPagePoint } = this.editor.inputs;
+        const shapeId = createShapeId();
+        this.editor.createShape({
+          id: shapeId,
+          type: this.shapeType,
+          x: currentPagePoint.x,
+          y: currentPagePoint.y,
+        });
+        this.editor.setEditingShape(shapeId);
+        this.editor.setCurrentTool("select");
+      };
     };
   });
 };
@@ -340,18 +354,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
     editor.createShapes(shapesToCreate).createBindings(bindingsToCreate);
   }
 
-  override onBeforeCreate = (shape: DiscourseNodeShape) => {
-    if (discourseContext.lastAppEvent === "pointer_down") {
-      setTimeout(() =>
-        document.body.dispatchEvent(
-          new CustomEvent("roamjs:query-builder:created-canvas-node", {
-            detail: shape.id,
-          })
-        )
-      );
-    }
-  };
-
   getColors() {
     const {
       canvasSettings: { color: setColor = "" } = {},
@@ -471,28 +473,7 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
       canvasSettings: { alias = "", "key-image": isKeyImage = "" } = {},
     } = discourseContext.nodes[shape.type] || {};
 
-    // Handle LabelDialog
-    useEffect(() => {
-      const handleChangeEvent: TLEventMapHandler<"change"> = (change) => {
-        for (const [_, to] of Object.values(change.changes.updated)) {
-          if (to.typeName === "instance_page_state") {
-            if (to.editingShapeId === shape.id) {
-              setIsEditLabelOpen(true);
-            }
-          }
-        }
-      };
-      const cleanupFunction = editor.store.listen(handleChangeEvent, {
-        source: "user",
-        scope: "all",
-      });
-
-      return () => {
-        cleanupFunction();
-      };
-    }, [editor]);
-
-    const [isLabelEditOpen, setIsEditLabelOpen] = useState(false);
+    const isEditing = this.editor.getEditingShapeId() === shape.id;
     const contentRef = useRef<HTMLDivElement>(null);
     const [loaded, setLoaded] = useState("");
     useEffect(() => {
@@ -510,29 +491,6 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
         setLoaded(shape.props.uid);
       }
     }, [setLoaded, loaded, contentRef, shape.props.uid]);
-    useEffect(() => {
-      const listener = (e: CustomEvent) => {
-        console.log(
-          "roamjs:query-builder:created-canvas-node",
-          e.detail,
-          shape.id
-        );
-        if (e.detail === shape.id) {
-          setIsEditLabelOpen(true);
-          editor.setEditingShape(shape);
-        }
-      };
-      document.body.addEventListener(
-        "roamjs:query-builder:created-canvas-node",
-        listener as EventListener
-      );
-      return () => {
-        document.body.removeEventListener(
-          "roamjs:query-builder:created-canvas-node",
-          listener as EventListener
-        );
-      };
-    }, [setIsEditLabelOpen]);
 
     const { backgroundColor, textColor } = this.getColors();
 
@@ -589,11 +547,8 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
           </div>
           <LabelDialog
             initialUid={shape.props.uid}
-            isOpen={isLabelEditOpen}
-            onClose={() => {
-              editor.setEditingShape(null);
-              setIsEditLabelOpen(false);
-            }}
+            isOpen={isEditing}
+            onClose={() => editor.setEditingShape(null)}
             label={shape.props.title}
             nodeType={shape.type}
             discourseContext={discourseContext}
@@ -633,12 +588,10 @@ export class BaseDiscourseNodeUtil extends ShapeUtil<DiscourseNodeShape> {
                 finalUid: uid,
               });
 
-              setIsEditLabelOpen(false);
               editor.setEditingShape(null);
             }}
             onCancel={() => {
               editor.setEditingShape(null);
-              setIsEditLabelOpen(false);
               if (!isLiveBlock(shape.props.uid)) {
                 editor.deleteShapes([shape.id]);
               }
