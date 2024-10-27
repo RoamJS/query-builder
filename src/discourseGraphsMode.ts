@@ -733,7 +733,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           const disabled = args.extensionAPI.settings.get(
             "disable-global-trigger"
           );
-          if (!disabled) return;
+          if (disabled) return;
           const target = e.target as HTMLElement;
           if (
             target.tagName === "TEXTAREA" &&
