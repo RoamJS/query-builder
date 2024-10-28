@@ -344,7 +344,6 @@ const NanopubDialog = ({
 
     // Add additional information
     pubInfoGraph.push(
-      { "@id": "#", "@type": "npx:ExampleNanopub" }, // TODO: remove
       { "@id": "#", "@type": "kpxl:DiscourseGraphNanopub" },
       { "@id": "#", "npx:introduces": { "@id": `#${discourseNode?.text}` } }
     );
@@ -805,7 +804,7 @@ const NanopubDialog = ({
                 disabled={selectedTabId !== "nanopub-preview"}
                 // hidden={!!publishedURL}
               >
-                Publish Example Nanopub
+                Publish Nanopub
               </Button>
             </div>
           </div>

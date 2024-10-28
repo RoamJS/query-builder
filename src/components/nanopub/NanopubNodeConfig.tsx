@@ -106,7 +106,7 @@ export const baseRdf: RDFStructure = {
     prov: "http://www.w3.org/ns/prov#",
     kpxl: "https://w3id.org/kpxl/gen/terms/",
     dc: "http://purl.org/dc/terms/",
-    npx: "http://purl.org/nanopub/n/",
+    npx: "http://purl.org/nanopub/x/",
     np: "http://www.nanopub.org/nschema#",
     foaf: "http://xmlns.com/foaf/0.1/",
     credit: "https://credit.niso.org/contributor-roles/",
