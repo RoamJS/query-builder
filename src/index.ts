@@ -41,7 +41,7 @@ import { getNodeEnv } from "roamjs-components/util/env";
 import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 import getUids from "roamjs-components/dom/getUids";
 import { render as renderMessageBlock } from "./components/MessageBlock";
-import getBlockProps, { json } from "./utils/getBlockProps";
+import getBlockProps, { json, normalizeProps } from "./utils/getBlockProps";
 import resolveQueryBuilderRef from "./utils/resolveQueryBuilderRef";
 import getBlockUidFromTarget from "roamjs-components/dom/getBlockUidFromTarget";
 import { render as renderToast } from "roamjs-components/components/Toast";
@@ -52,6 +52,14 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import { NanopubPage, NanoPubTitleButtons } from "./components/nanopub/Nanopub";
+import {
+  handleTitleAdditions,
+  removeTitleAdditions,
+} from "./utils/handleTitleAdditions";
+import findDiscourseNode from "./utils/findDiscourseNode";
+import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
+import { renderSelectDialog } from "./components/SettingsDialog";
 
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
@@ -203,26 +211,15 @@ svg.rs-svg-container {
   };
   const h1ObserverCallback = (h1: HTMLHeadingElement) => {
     const title = getPageTitleValueByHtmlElement(h1);
+    const uid = getPageUidByPageTitle(title);
+
     if (!!extensionAPI.settings.get("show-page-metadata")) {
       const { displayName, date } = getPageMetadata(title);
-      const container = document.createElement("div");
-      const oldMarginBottom = getComputedStyle(h1).marginBottom;
-      container.style.marginTop = `${
-        4 - Number(oldMarginBottom.replace("px", "")) / 2
-      }px`;
-      container.style.marginBottom = oldMarginBottom;
       const label = document.createElement("i");
       label.innerText = `Created by ${
         displayName || "Anonymous"
       } on ${date.toLocaleString()}`;
-      container.appendChild(label);
-      if (h1.parentElement) {
-        if (h1.parentElement.lastChild === h1) {
-          h1.parentElement.appendChild(container);
-        } else {
-          h1.parentElement.insertBefore(container, h1.nextSibling);
-        }
-      }
+      handleTitleAdditions(h1, label);
     }
 
     if (title.startsWith("discourse-graph/nodes/")) {
@@ -235,7 +232,6 @@ svg.rs-svg-container {
         )
         .some((r) => r.test(title))
     ) {
-      const uid = getPageUidByPageTitle(title);
       const attribute = `data-roamjs-${uid}`;
       const containerParent = h1.parentElement?.parentElement;
       if (containerParent && !containerParent.hasAttribute(attribute)) {
@@ -260,6 +256,11 @@ svg.rs-svg-container {
       renderPlayground(title, globalRefs);
     } else if (isCanvasPage(title) && !!h1.closest(".roam-article")) {
       renderTldrawCanvas(title, onloadArgs);
+    } else {
+      const node = findDiscourseNode(uid);
+      const nanopubEnabled = node ? node.nanopub?.enabled : false;
+      if (nanopubEnabled)
+        handleTitleAdditions(h1, NanoPubTitleButtons({ uid, onloadArgs }));
     }
   };
   extensionAPI.settings.panel.create({
@@ -607,6 +608,57 @@ svg.rs-svg-container {
     isDiscourseNode: isDiscourseNode,
   };
 
+  const getNanopubPages = (): {
+    uid: string;
+    nanopub: NanopubPage;
+    title: string;
+  }[] => {
+    const results = window.roamAlphaAPI.data.fast.q(`
+      [:find (pull ?e [:block/uid :block/props :node/title])
+       :where
+       [?e :node/title]
+       [?e :block/props ?props]
+       [(get ?props :nanopub) ?nanopub]
+       [(get ?nanopub :contributors) ?contributors]
+       [(count ?contributors) ?count]
+       [(> ?count 0)]]
+    `) as [PullBlock][];
+
+    return results.map(([page]) => {
+      const props = page[":block/props"] as Record<string, any>;
+      const normProps = normalizeProps(props) as Record<string, unknown>;
+      return {
+        uid: page[":block/uid"] as string,
+        nanopub: normProps?.nanopub as NanopubPage,
+        title: page[":node/title"] as string,
+      };
+    });
+  };
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Nodes that have defined Contributors",
+    callback: () => {
+      const nodes = getNanopubPages();
+      renderSelectDialog({
+        width: "80vw",
+        isOpen: true,
+        onClose: () => {},
+        title: "Nodes that have defined Contributors",
+        items: nodes.map((node) => {
+          const numContributors = node.nanopub.contributors.length;
+          return {
+            id: node.uid,
+            text: `(${numContributors}) ${node.title} `,
+            onClick: () => {
+              window.roamAlphaAPI.ui.mainWindow.openPage({
+                page: { uid: node.uid },
+              });
+            },
+          };
+        }),
+      });
+    },
+  });
+
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
     callback: openCanvasDrawer,
@@ -623,6 +675,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          // @ts-ignore
           clearOnClick,
           onloadArgs,
         })
@@ -844,6 +897,7 @@ svg.rs-svg-container {
         "roamjs:query-builder:action",
         pageActionListener
       );
+      removeTitleAdditions();
     },
   };
 });

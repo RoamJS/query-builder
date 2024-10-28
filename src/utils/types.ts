@@ -30,6 +30,17 @@ export type Selection = {
   uid: string;
 };
 
+export type ExportSettings = {
+  frontmatter: string[];
+  optsRefs: boolean;
+  optsEmbeds: boolean;
+  simplifiedFilename: boolean;
+  maxFilenameLength: number;
+  removeSpecialCharacters: boolean;
+  linkType: string;
+  appendRefNodeContext: boolean;
+};
+
 export type ExportTypes = {
   name: string;
   callback: (args: {
@@ -37,6 +48,7 @@ export type ExportTypes = {
     isSamePageEnabled: boolean;
     includeDiscourseContext: boolean;
     isExportDiscourseGraph: boolean;
+    settings?: Partial<ExportSettings>;
   }) => Promise<{ title: string; content: string }[]>;
 }[];
 

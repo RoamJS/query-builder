@@ -437,6 +437,7 @@ type QueryEditorComponent = (props: {
   setHasResults?: () => void;
   hideCustomSwitch?: boolean;
   showAlias?: boolean;
+  hideQueryButton?: boolean;
 }) => JSX.Element;
 
 const QueryEditor: QueryEditorComponent = ({
@@ -445,6 +446,7 @@ const QueryEditor: QueryEditorComponent = ({
   setHasResults,
   hideCustomSwitch,
   showAlias,
+  hideQueryButton,
 }) => {
   useEffect(() => {
     const previewQuery = ((e: CustomEvent) => {
@@ -896,7 +898,10 @@ const QueryEditor: QueryEditorComponent = ({
             onBlur={() => setShowDisabledMessage(false)}
             text={"Query"}
             onClick={disabledMessage ? undefined : onQuery}
-            className={disabledMessage ? "bp3-disabled" : ""}
+            className={`
+              ${disabledMessage ? "bp3-disabled" : ""}
+              ${hideQueryButton ? "hidden" : ""}
+            `}
             style={{
               maxHeight: 32,
             }}

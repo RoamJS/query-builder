@@ -11,7 +11,7 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import XRegExp from "xregexp";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import getDiscourseNodes from "./getDiscourseNodes";
+import getDiscourseNodes, { DiscourseNode } from "./getDiscourseNodes";
 import isFlagEnabled from "./isFlagEnabled";
 import matchDiscourseNode from "./matchDiscourseNode";
 import getDiscourseRelations from "./getDiscourseRelations";
@@ -24,6 +24,7 @@ import {
   findReferencedNodeInText,
   getReferencedNodeInFormat,
 } from "./formatUtils";
+import { getExportSettings } from "./getExportSettings";
 
 export const updateExportProgress = (detail: {
   progress: number;
@@ -51,12 +52,12 @@ const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   parents: (n[":block/parents"] || []).map((p) => p[":db/id"] || 0),
 });
 
-const getContentFromNodes = ({
+export const extractContentFromFormat = ({
   title,
-  allNodes,
+  allNodes = getDiscourseNodes(),
 }: {
   title: string;
-  allNodes: ReturnType<typeof getDiscourseNodes>;
+  allNodes?: DiscourseNode[];
 }) => {
   const nodeFormat = allNodes.find((a) =>
     matchDiscourseNode({ title, ...a })
@@ -88,7 +89,7 @@ const getFilename = ({
   extension?: string;
 }) => {
   const baseName = simplifiedFilename
-    ? getContentFromNodes({ title, allNodes })
+    ? extractContentFromFormat({ title, allNodes })
     : title;
   const name = `${
     removeSpecialCharacters
@@ -273,6 +274,9 @@ const handleFrontmatter = ({
   rest: Record<string, unknown>;
   result: Result;
 }) => {
+  if (frontmatter === null || frontmatter.length === 0) {
+    return "";
+  }
   const yaml = frontmatter.length
     ? frontmatter
     : [
@@ -432,67 +436,15 @@ const getExportTypes = ({
       return { grammar, nodes, relations };
     });
   };
-  const getExportSettings = () => {
-    const configTree = getBasicTreeByParentUid(
-      getPageUidByPageTitle("roam/js/discourse-graph")
-    );
-    const exportTree = getSubTree({
-      tree: configTree,
-      key: "export",
-    });
-    const maxFilenameLength = getSettingIntFromTree({
-      tree: exportTree.children,
-      key: "max filename length",
-      defaultValue: 64,
-    });
-    const linkType = getSettingValueFromTree({
-      tree: exportTree.children,
-      key: "link type",
-      defaultValue: "alias",
-    });
-    const removeSpecialCharacters = !!getSubTree({
-      tree: exportTree.children,
-      key: "remove special characters",
-    }).uid;
-    const simplifiedFilename = !!getSubTree({
-      tree: exportTree.children,
-      key: "simplified filename",
-    }).uid;
-    const frontmatter = getSubTree({
-      tree: exportTree.children,
-      key: "frontmatter",
-    }).children.map((t) => t.text);
-    const optsRefs = !!getSubTree({
-      tree: exportTree.children,
-      key: "resolve block references",
-    }).uid;
-    const optsEmbeds = !!getSubTree({
-      tree: exportTree.children,
-      key: "resolve block embeds",
-    }).uid;
-    const appendRefNodeContext = !!getSubTree({
-      tree: exportTree.children,
-      key: "append referenced node",
-    }).uid;
-    return {
-      frontmatter,
-      optsRefs,
-      optsEmbeds,
-      simplifiedFilename,
-      maxFilenameLength,
-      removeSpecialCharacters,
-      linkType,
-      appendRefNodeContext,
-    };
-  };
-
   return [
     {
       name: "Markdown",
       callback: async ({
         isSamePageEnabled,
         includeDiscourseContext = false,
+        settings: overrideSettings = {},
       }) => {
+        const defaultSettings = getExportSettings();
         const {
           frontmatter,
           optsRefs,
@@ -502,7 +454,7 @@ const getExportTypes = ({
           removeSpecialCharacters,
           linkType,
           appendRefNodeContext,
-        } = getExportSettings();
+        } = { ...defaultSettings, ...overrideSettings };
         const allPages = await getPageData(
           isSamePageEnabled,
           isExportDiscourseGraph
@@ -878,6 +830,88 @@ const getExportTypes = ({
           }),
           content,
         }));
+      },
+    },
+    {
+      name: "HTML",
+      callback: async ({
+        isSamePageEnabled,
+        includeDiscourseContext = false,
+        settings: overrideSettings = {},
+      }) => {
+        const defaultSettings = getExportSettings();
+        const settings = { ...defaultSettings, ...overrideSettings };
+
+        const markdownCallback = getExportTypes({
+          results,
+          exportId,
+          isExportDiscourseGraph,
+        }).find((type) => type.name === "Markdown")?.callback;
+        if (!markdownCallback) throw new Error("Markdown callback not found");
+
+        const markdownPages = await markdownCallback({
+          isSamePageEnabled,
+          includeDiscourseContext,
+          settings,
+          filename: "",
+          isExportDiscourseGraph: false,
+        });
+
+        const { marked } = await (window.RoamLazy
+          ? window.RoamLazy.Marked()
+          : import("marked"));
+
+        marked.setOptions({
+          gfm: true,
+          breaks: true,
+          xhtml: false,
+          pedantic: false,
+        });
+
+        // marked tokenizer wasn't working, so using regex instead until an issue arises
+        // handle ^^highlight text^^
+        const highlightText = (content: string): string => {
+          return content.replace(/\^\^([\s\S]+?)\^\^/g, "<mark>$1</mark>");
+        };
+
+        return markdownPages.map(({ title, content }) => {
+          const highlightedContent = highlightText(content);
+          const processedHtml = marked(highlightedContent);
+          return {
+            title: title.replace(/\.md$/, ".html"),
+            content: `
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${title}</title>
+                <style>
+                  body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                  }
+                  pre {
+                    background-color: #f4f4f4;
+                    padding: 10px;
+                    border-radius: 5px;
+                  }
+                  code {
+                    font-family: Consolas, Monaco, 'Andale Mono', monospace;
+                  }
+                </style>
+              </head>
+              <body>
+                ${processedHtml}
+              </body>
+              </html>
+            `,
+          };
+        });
       },
     },
   ];
