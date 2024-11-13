@@ -735,6 +735,7 @@ svg.rs-svg-container {
       );
     },
   });
+
   const renderCustomBlockView = ({
     view,
     blockUid,
