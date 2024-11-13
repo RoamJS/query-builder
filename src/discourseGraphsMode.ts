@@ -25,7 +25,7 @@ import getDiscourseNodes from "./utils/getDiscourseNodes";
 import refreshConfigTree from "./utils/refreshConfigTree";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import { render } from "./components/DiscourseNodeMenu";
+import { getModifiersFromCombo, render } from "./components/DiscourseNodeMenu";
 import { render as discourseOverlayRender } from "./components/DiscourseContextOverlay";
 import { render as previewRender } from "./components/LivePreview";
 import { render as renderReferenceContext } from "./components/ReferenceContext";
@@ -57,6 +57,7 @@ import fireQuery from "./utils/fireQuery";
 import { render as renderGraphOverviewExport } from "./components/ExportDiscourseContext";
 import { Condition, QBClause } from "./utils/types";
 import { DiscourseExportResult } from "./utils/getExportTypes";
+import { IKeyCombo } from "@blueprintjs/core";
 
 export const SETTING = "discourse-graphs";
 
@@ -722,18 +723,45 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
       });
       const configTree = getBasicTreeByParentUid(pageUid);
 
-      const trigger = getSettingValueFromTree({
+      const globalTrigger = getSettingValueFromTree({
         tree: configTree,
         key: "trigger",
         defaultValue: "\\",
       }).trim();
+      const personalTriggerCombo =
+        (args.extensionAPI.settings.get(
+          "personal-node-menu-trigger"
+        ) as IKeyCombo) || undefined;
+      const personalTrigger = personalTriggerCombo?.key;
+      const personalModifiers = getModifiersFromCombo(personalTriggerCombo);
 
       const keydownListener = (e: KeyboardEvent) => {
-        if (e.key === trigger) {
-          const disabled = args.extensionAPI.settings.get(
-            "disable-global-trigger"
-          );
-          if (disabled) return;
+        // Personal Trigger overrides Global Trigger
+        if (personalTrigger) {
+          if (e.key !== personalTrigger) return;
+
+          if (
+            (personalModifiers.includes("ctrl") && !e.ctrlKey) ||
+            (personalModifiers.includes("shift") && !e.shiftKey) ||
+            (personalModifiers.includes("alt") && !e.altKey) ||
+            (personalModifiers.includes("meta") && !e.metaKey)
+          ) {
+            return;
+          }
+
+          const target = e.target as HTMLElement;
+          if (
+            target.tagName === "TEXTAREA" &&
+            target.classList.contains("rm-block-input")
+          ) {
+            render({ textarea: target as HTMLTextAreaElement });
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
+        }
+
+        if (e.key === globalTrigger) {
           const target = e.target as HTMLElement;
           if (
             target.tagName === "TEXTAREA" &&
@@ -745,6 +773,7 @@ const initializeDiscourseGraphsMode = async (args: OnloadArgs) => {
           }
         }
       };
+
       document.addEventListener("keydown", keydownListener);
       unloads.add(function removeKeydownListener() {
         document.removeEventListener("keydown", keydownListener);

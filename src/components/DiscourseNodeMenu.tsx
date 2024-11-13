@@ -1,4 +1,13 @@
-import { Menu, MenuItem, Popover, Position } from "@blueprintjs/core";
+import {
+  Menu,
+  MenuItem,
+  Popover,
+  Position,
+  Button,
+  InputGroup,
+  getKeyCombo,
+  IKeyCombo,
+} from "@blueprintjs/core";
 import React, {
   useCallback,
   useEffect,
@@ -14,6 +23,7 @@ import { getCoordsFromTextarea } from "roamjs-components/components/CursorMenu";
 import getDiscourseNodes from "../utils/getDiscourseNodes";
 import createDiscourseNode from "../utils/createDiscourseNode";
 import { getNewDiscourseNodeText } from "../utils/formatUtils";
+import { OnloadArgs } from "roamjs-components/types";
 
 type Props = {
   textarea: HTMLTextAreaElement;
@@ -151,6 +161,103 @@ export const render = (props: Props) => {
       }}
     />,
     parent
+  );
+};
+
+// node_modules\@blueprintjs\core\lib\esm\components\hotkeys\hotkeyParser.js
+const isMac = () => {
+  const platform =
+    typeof navigator !== "undefined" ? navigator.platform : undefined;
+  return platform == null ? false : /Mac|iPod|iPhone|iPad/.test(platform);
+};
+const MODIFIER_BIT_MASKS = {
+  alt: 1,
+  ctrl: 2,
+  meta: 4,
+  shift: 8,
+};
+const ALIASES: { [key: string]: string } = {
+  cmd: "meta",
+  command: "meta",
+  escape: "esc",
+  minus: "-",
+  mod: isMac() ? "meta" : "ctrl",
+  option: "alt",
+  plus: "+",
+  return: "enter",
+  win: "meta",
+};
+const normalizeKeyCombo = (combo: string) => {
+  const keys = combo.replace(/\s/g, "").split("+");
+  return keys.map(function (key) {
+    const keyName = ALIASES[key] != null ? ALIASES[key] : key;
+    return keyName === "meta" ? (isMac() ? "cmd" : "win") : keyName;
+  });
+};
+
+export const getModifiersFromCombo = (comboKey: IKeyCombo) => {
+  if (!comboKey) return [];
+  return [
+    comboKey.modifiers & MODIFIER_BIT_MASKS.alt && "alt",
+    comboKey.modifiers & MODIFIER_BIT_MASKS.ctrl && "ctrl",
+    comboKey.modifiers & MODIFIER_BIT_MASKS.shift && "shift",
+    comboKey.modifiers & MODIFIER_BIT_MASKS.meta && "meta",
+  ].filter(Boolean);
+};
+
+export const NodeMenuTriggerComponent = (
+  extensionAPI: OnloadArgs["extensionAPI"]
+) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isActive, setIsActive] = useState(false);
+  const [comboKey, setComboKey] = useState<IKeyCombo>(
+    () =>
+      (extensionAPI.settings.get(
+        "personal-node-menu-trigger"
+      ) as IKeyCombo) || { modifiers: 0, key: "" }
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const comboObj = getKeyCombo(e.nativeEvent);
+      if (!comboObj.key) return;
+
+      setComboKey({ key: comboObj.key, modifiers: comboObj.modifiers });
+      extensionAPI.settings.set("personal-node-menu-trigger", comboObj);
+    },
+    [extensionAPI]
+  );
+
+  const shortcut = useMemo(() => {
+    if (!comboKey.key) return "";
+
+    const modifiers = getModifiersFromCombo(comboKey);
+    const comboString = [...modifiers, comboKey.key].join("+");
+    return normalizeKeyCombo(comboString).join("+");
+  }, [comboKey]);
+
+  return (
+    <InputGroup
+      inputRef={inputRef}
+      placeholder={isActive ? "Press keys ..." : "Click to set trigger"}
+      value={shortcut}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsActive(true)}
+      onBlur={() => setIsActive(false)}
+      rightElement={
+        <Button
+          hidden={!comboKey.key}
+          icon={"remove"}
+          onClick={() => {
+            setComboKey({ modifiers: 0, key: "" });
+            extensionAPI.settings.set("personal-node-menu-trigger", "");
+          }}
+          minimal
+        />
+      }
+    />
   );
 };
 
