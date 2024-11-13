@@ -735,24 +735,6 @@ svg.rs-svg-container {
       );
     },
   });
-  extensionAPI.ui.commandPalette.addCommand({
-    label: "Custom Discourse Node Menu Trigger",
-    callback: () => {
-      const currentlyEditingBlock = document.querySelector(
-        "textarea.rm-block-input"
-      ) as HTMLTextAreaElement;
-      if (!currentlyEditingBlock) {
-        renderToast({
-          id: "query-builder-create-block",
-          content: "Must be focused on a block to create a Discourse Node",
-        });
-        return;
-      }
-      renderDiscourseNodeMenu({
-        textarea: currentlyEditingBlock,
-      });
-    },
-  });
   const renderCustomBlockView = ({
     view,
     blockUid,
