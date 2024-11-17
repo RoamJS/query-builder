@@ -52,7 +52,10 @@ import { fireQuerySync } from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
-
+import {
+  NodeMenuTriggerComponent,
+  render as renderDiscourseNodeMenu,
+} from "./components/DiscourseNodeMenu";
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
@@ -390,6 +393,17 @@ svg.rs-svg-container {
             });
           },
         },
+      },
+      {
+        id: "discourse-node-menu-trigger",
+        name: "Personal Node Menu Trigger",
+        action: {
+          type: "reactComponent",
+          component: () => NodeMenuTriggerComponent(extensionAPI),
+        },
+
+        description:
+          "Override the global trigger for the Discourse Node Menu. Must refresh after editing.",
       },
     ],
   });
