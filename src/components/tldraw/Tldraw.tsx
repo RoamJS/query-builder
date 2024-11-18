@@ -54,6 +54,12 @@ import {
   TLShape,
   useValue,
   TLUiToast,
+  useToasts,
+  useTranslation,
+  DEFAULT_SUPPORTED_IMAGE_TYPES,
+  DEFAULT_SUPPORT_VIDEO_TYPES,
+  registerDefaultExternalContentHandlers,
+  registerDefaultSideEffects,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import tldrawStyles from "./tldrawStyles";
@@ -98,7 +104,6 @@ import {
 import ConvertToDialog from "./ConvertToDialog";
 import { createArrowShapeMigrations } from "./DiscourseRelationShape/discourseRelationMigrations";
 import ToastListener, { dispatchToastEvent } from "./ToastListener";
-import { debounceImmediate } from "../../utils/debounceImmediate";
 
 declare global {
   interface Window {
@@ -206,17 +211,6 @@ const TldrawCanvas = ({
   const allAddReferencedNodeActions = useMemo(() => {
     return Object.keys(allAddReferencedNodeByAction);
   }, [allAddReferencedNodeByAction]);
-  const isCustomArrowShape = (shape: TLShape) => {
-    // TODO: find a better way to identify custom arrow shapes
-    // possibly migrate to shape.type or shape.name
-    // or add as meta
-    const allRelationIdSet = new Set(allRelationIds);
-    // const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
-
-    return allRelationIdSet.has(shape.type);
-    // || allAddReferencedNodeActionsSet.has(shape.type)
-    // ;
-  };
 
   const extensionAPI = useExtensionAPI();
   if (!extensionAPI) return null;
@@ -372,145 +366,6 @@ const TldrawCanvas = ({
     };
   }, [appRef, allNodes]);
 
-  // https://tldraw.dev/examples/data/assets/hosted-images
-  const ACCEPTED_IMG_TYPE = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/svg+xml",
-  ];
-  const isImage = (ext: string) => ACCEPTED_IMG_TYPE.includes(ext);
-  const handlePastedImages = useCallback((editor: Editor) => {
-    editor.registerExternalContentHandler(
-      "files",
-      async (content: TLExternalContent) => {
-        if (content.type !== "files") {
-          console.error("Expected files, received:", content.type);
-          return;
-        }
-        const file = content.files[0];
-
-        //@ts-ignore
-        const url = await window.roamAlphaAPI.file.upload({
-          file,
-          toast: {
-            hide: true,
-          },
-        });
-        const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
-        // TODO add video support
-        const isImageType = isImage(file.type);
-        if (!isImageType) {
-          console.error("Unsupported file type:", file.type);
-          return;
-        }
-        const size = await MediaHelpers.getImageSize(file);
-        const isAnimated = await MediaHelpers.isAnimated(file);
-        const assetId: TLAssetId = AssetRecordType.createId(
-          getHashForString(dataUrl)
-        );
-        const shapeType = isImageType ? "image" : "video";
-        const asset: TLAsset = AssetRecordType.create({
-          id: assetId,
-          type: shapeType,
-          typeName: "asset",
-          props: {
-            name: file.name,
-            src: dataUrl,
-            w: size.w,
-            h: size.h,
-            fileSize: file.size,
-            mimeType: file.type,
-            isAnimated,
-          },
-        });
-        editor.createAssets([asset]);
-        editor.createShape({
-          type: "image",
-          // Center the image in the editor
-          x: (window.innerWidth - size.w) / 2,
-          y: (window.innerHeight - size.h) / 2,
-          props: {
-            assetId,
-            w: size.w,
-            h: size.h,
-          },
-        });
-
-        return asset;
-      }
-    );
-  }, []);
-  const registerSideEffects = useCallback(
-    (app: TldrawApp) => {
-      const showToastDebounced = debounceImmediate(() => {
-        document.dispatchEvent(
-          new CustomEvent<TLUiToast>("show-toast", {
-            detail: {
-              id: "tldraw-toast-cannot-move-relation",
-              title: "Cannot move relation.",
-              severity: "warning",
-            },
-          })
-        );
-      }, 1000);
-
-      const removeBeforeChangeHandler =
-        app.sideEffects.registerBeforeChangeHandler(
-          "shape",
-          (prevShape, nextShape) => {
-            // prevent accidental arrow reposition
-            if (isCustomArrowShape(prevShape)) {
-              const bindings = app.getBindingsFromShape(
-                prevShape,
-                prevShape.type
-              );
-              const isTranslating = app.isIn("select.translating");
-              if (bindings.length && isTranslating) {
-                app.setSelectedShapes([]);
-                showToastDebounced();
-                return prevShape;
-              }
-            }
-            return nextShape;
-          }
-        );
-
-      const removeAfterCreateHandler =
-        app.sideEffects.registerAfterCreateHandler("shape", (shape) => {
-          const util = app.getShapeUtil(shape);
-          if (util instanceof BaseDiscourseNodeUtil) {
-            util.createExistingRelations({
-              shape: shape as DiscourseNodeShape,
-            });
-          }
-        });
-
-      return () => {
-        removeBeforeChangeHandler();
-        removeAfterCreateHandler();
-      };
-    },
-    [allRelationsById, allRelationIds, allRelationNames]
-  );
-
-  const [isAppMounted, setIsAppMounted] = useState(false);
-  useEffect(() => {
-    // appRef is null until mounted
-    if (!isAppMounted) return;
-
-    const app = appRef.current;
-    if (!app) {
-      console.error("App is not available even though it should be mounted");
-      return;
-    }
-
-    const unregisterSideEffects = registerSideEffects(app);
-
-    return () => {
-      unregisterSideEffects();
-    };
-  }, [isAppMounted, registerSideEffects]);
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden 
@@ -585,9 +440,6 @@ const TldrawCanvas = ({
             }
 
             appRef.current = app;
-            setIsAppMounted(true);
-
-            handlePastedImages(app);
 
             // TODO - this should move to one of DiscourseNodeTool's children classes instead
             app.on("event", (event) => {
@@ -636,15 +488,182 @@ const TldrawCanvas = ({
           }}
         >
           <TldrawUi overrides={uiOverrides} components={customUiComponents}>
-            <CustomContextMenu
+            <InsideEditorAndUiContext
               extensionAPI={extensionAPI}
               allNodes={allNodes}
+              allRelationIds={allRelationIds}
+              allAddReferencedNodeActions={allAddReferencedNodeActions}
             />
           </TldrawUi>
         </TldrawEditor>
       )}
     </div>
   );
+};
+
+// apps\examples\src\examples\exploded\ExplodedExample.tsx
+// We put these hooks into a component here so that they can run inside of the context provided by TldrawEditor and TldrawUi
+const InsideEditorAndUiContext = ({
+  extensionAPI,
+  allNodes,
+  allRelationIds,
+  allAddReferencedNodeActions,
+}: {
+  extensionAPI: OnloadArgs["extensionAPI"];
+  allNodes: DiscourseNode[];
+  allRelationIds: string[];
+  allAddReferencedNodeActions: string[];
+}) => {
+  const editor = useEditor();
+  const toasts = useToasts();
+  const msg = useTranslation();
+
+  // https://tldraw.dev/examples/data/assets/hosted-images
+  const ACCEPTED_IMG_TYPE = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/svg+xml",
+  ];
+  const isImage = (ext: string) => ACCEPTED_IMG_TYPE.includes(ext);
+  const isCustomArrowShape = (shape: TLShape) => {
+    // TODO: find a better way to identify custom arrow shapes
+    // possibly migrate to shape.type or shape.name
+    // or add as meta
+    const allRelationIdSet = new Set(allRelationIds);
+    const allAddReferencedNodeActionsSet = new Set(allAddReferencedNodeActions);
+
+    return (
+      allRelationIdSet.has(shape.type) ||
+      allAddReferencedNodeActionsSet.has(shape.type)
+    );
+  };
+
+  useEffect(() => {
+    editor.registerExternalContentHandler(
+      "files",
+      async (content: TLExternalContent) => {
+        if (content.type !== "files") {
+          console.error("Expected files, received:", content.type);
+          return;
+        }
+        const file = content.files[0];
+
+        //@ts-ignore
+        const url = await window.roamAlphaAPI.file.upload({
+          file,
+          toast: {
+            hide: true,
+          },
+        });
+        const dataUrl = url.replace(/^!\[\]\(/, "").replace(/\)$/, "");
+        // TODO add video support
+        const isImageType = isImage(file.type);
+        if (!isImageType) {
+          console.error("Unsupported file type:", file.type);
+          return;
+        }
+        const size = await MediaHelpers.getImageSize(file);
+        const isAnimated = await MediaHelpers.isAnimated(file);
+        const assetId: TLAssetId = AssetRecordType.createId(
+          getHashForString(dataUrl)
+        );
+        const shapeType = isImageType ? "image" : "video";
+        const asset: TLAsset = AssetRecordType.create({
+          id: assetId,
+          type: shapeType,
+          typeName: "asset",
+          props: {
+            name: file.name,
+            src: dataUrl,
+            w: size.w,
+            h: size.h,
+            fileSize: file.size,
+            mimeType: file.type,
+            isAnimated,
+          },
+        });
+        editor.createAssets([asset]);
+        editor.createShape({
+          type: "image",
+          // Center the image in the editor
+          x: (window.innerWidth - size.w) / 2,
+          y: (window.innerHeight - size.h) / 2,
+          props: {
+            assetId,
+            w: size.w,
+            h: size.h,
+          },
+        });
+
+        return asset;
+      }
+    );
+    registerDefaultExternalContentHandlers(
+      editor,
+      {
+        maxImageDimension: 5000,
+        maxAssetSize: 10 * 1024 * 1024, // 10mb
+        acceptedImageMimeTypes: DEFAULT_SUPPORTED_IMAGE_TYPES,
+        acceptedVideoMimeTypes: DEFAULT_SUPPORT_VIDEO_TYPES,
+      },
+      {
+        toasts,
+        msg,
+      }
+    );
+
+    const registerCustomSideEffects = () => {
+      const removeBeforeChangeHandler =
+        editor.sideEffects.registerBeforeChangeHandler(
+          "shape",
+          (prevShape, nextShape) => {
+            // prevent accidental arrow reposition
+            if (isCustomArrowShape(prevShape)) {
+              const bindings = editor.getBindingsFromShape(
+                prevShape,
+                prevShape.type
+              );
+              const isTranslating = editor.isIn("select.translating");
+              if (bindings.length && isTranslating) {
+                editor.setSelectedShapes([]);
+                toasts.addToast({
+                  id: "tldraw-toast-cannot-move-relation",
+                  title: "Cannot move relation.",
+                  severity: "warning",
+                });
+                return prevShape;
+              }
+            }
+            return nextShape;
+          }
+        );
+
+      const removeAfterCreateHandler =
+        editor.sideEffects.registerAfterCreateHandler("shape", (shape) => {
+          const util = editor.getShapeUtil(shape);
+          if (util instanceof BaseDiscourseNodeUtil) {
+            util.createExistingRelations({
+              shape: shape as DiscourseNodeShape,
+            });
+          }
+        });
+
+      return () => {
+        removeBeforeChangeHandler();
+        removeAfterCreateHandler();
+      };
+    };
+    const cleanupCustomSideEffects = registerCustomSideEffects();
+    const [cleanupSideEffects] = registerDefaultSideEffects(editor);
+
+    return () => {
+      cleanupSideEffects();
+      cleanupCustomSideEffects();
+    };
+  }, [editor, msg, toasts]);
+
+  return <CustomContextMenu extensionAPI={extensionAPI} allNodes={allNodes} />;
 };
 
 export const renderTldrawCanvas = (title: string, onloadArgs: OnloadArgs) => {
