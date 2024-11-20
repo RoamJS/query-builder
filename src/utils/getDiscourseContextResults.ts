@@ -7,6 +7,7 @@ import getDiscourseRelations, {
   DiscourseRelation,
 } from "./getDiscourseRelations";
 import { OnloadArgs } from "roamjs-components/types";
+import { Selection } from "./types";
 
 const resultCache: Record<string, Awaited<ReturnType<typeof fireQuery>>> = {};
 const CACHE_TIMEOUT = 1000 * 60 * 5;
@@ -46,85 +47,140 @@ const getDiscourseContextResults = async ({
           queries.push({
             r,
             complement: false,
+            query: r.query,
           });
         }
         if (r.destination === nodeType || r.destination === "*") {
           queries.push({
             r,
             complement: true,
+            query: r.complementQuery,
           });
         }
         return queries;
       })
-      .map(({ r, complement: isComplement }) => {
+      .map(({ r, complement: isComplement, query }) => {
         const target = isComplement ? r.source : r.destination;
         const text = isComplement ? r.complement : r.label;
         const returnNode = nodeTextByType[target];
         const cacheKey = `${uid}~${text}~${target}`;
         const conditionUid = window.roamAlphaAPI.util.generateUID();
-        const selections = [];
-        if (r.triples.some((t) => t.some((a) => /context/i.test(a)))) {
-          selections.push({
-            uid: window.roamAlphaAPI.util.generateUID(),
-            label: "context",
-            text: `node:${conditionUid}-Context`,
-          });
-        } else if (r.triples.some((t) => t.some((a) => /anchor/i.test(a)))) {
-          selections.push({
-            uid: window.roamAlphaAPI.util.generateUID(),
-            label: "anchor",
-            text: `node:${conditionUid}-Anchor`,
-          });
-        }
+        const selections: Selection[] = [];
+
+        // TODO - not currently supported
+        // we are bypassing definedSelections creation
+
+        // if (r.triples.some((t) => t.some((a) => /context/i.test(a)))) {
+        //   selections.push({
+        //     uid: window.roamAlphaAPI.util.generateUID(),
+        //     label: "context",
+        //     text: `node:${conditionUid}-Context`,
+        //   });
+        // } else if (r.triples.some((t) => t.some((a) => /anchor/i.test(a)))) {
+        //   selections.push({
+        //     uid: window.roamAlphaAPI.util.generateUID(),
+        //     label: "anchor",
+        //     text: `node:${conditionUid}-Anchor`,
+        //   });
+        // }
+
+        const definedSelections = [
+          {
+            key: "",
+            label: "text",
+            pull: `(pull ?${returnNode} [:block/string :node/title :block/uid])`,
+            mapper: (r: any) => {
+              return {
+                "": r?.[":node/title"] || r?.[":block/string"] || "",
+                "-uid": r[":block/uid"] || "",
+              };
+            },
+          },
+          {
+            key: "",
+            label: "uid",
+            pull: `(pull ?${returnNode} [:block/uid])`,
+            mapper: (r: any) => {
+              return r?.[":block/uid"] || "";
+            },
+          },
+        ];
         const relation = {
           id: r.id,
           text,
           target,
           isComplement,
         };
-        const rawResults =
-          resultCache[cacheKey] && !ignoreCache
-            ? Promise.resolve(resultCache[cacheKey])
-            : fireQuery({
-                returnNode,
-                conditions: [
-                  {
-                    source: returnNode,
-                    // NOTE! This MUST be the OPPOSITE of `label`
-                    relation: isComplement ? r.label : r.complement,
-                    target: uid,
-                    uid: conditionUid,
-                    type: "clause",
-                  },
-                ],
-                selections,
-                isSamePageEnabled,
-                context: {
-                  relationsInQuery: [relation],
-                  customNodes: nodes,
-                  customRelations: relations,
+
+        if (resultCache[cacheKey] && !ignoreCache) {
+          return {
+            relation,
+            queryPromise: Promise.resolve(resultCache[cacheKey]),
+          };
+        }
+
+        if (query) {
+          return {
+            relation: {
+              text,
+              isComplement,
+              target,
+              id: r.id,
+            },
+            queryPromise: fireQuery({
+              customNode: query.replaceAll("{{placeholder}}", uid),
+              isCustomEnabled: true,
+              conditions: [],
+              selections,
+              definedSelections,
+              isSamePageEnabled,
+            }),
+          };
+        } else {
+          return {
+            relation: {
+              text,
+              isComplement,
+              target,
+              id: r.id,
+            },
+            queryPromise: fireQuery({
+              returnNode,
+              conditions: [
+                {
+                  source: returnNode,
+                  // NOTE! This MUST be the OPPOSITE of `label`
+                  relation: isComplement ? r.label : r.complement,
+                  target: uid,
+                  uid: conditionUid,
+                  type: "clause",
                 },
-              }).then((results) => {
-                resultCache[cacheKey] = results;
-                setTimeout(() => {
-                  delete resultCache[cacheKey];
-                }, CACHE_TIMEOUT);
-                return results;
-              });
-        return rawResults.then((results) => ({
-          relation: {
-            text,
-            isComplement,
-            target,
-            id: r.id,
-          },
-          results,
-        }));
+              ],
+              selections,
+              isSamePageEnabled,
+              definedSelections,
+              context: {
+                relationsInQuery: [relation],
+                customNodes: nodes,
+                customRelations: relations,
+              },
+            }),
+          };
+        }
       })
-  ).catch((e) => {
-    console.error(e);
-    return [] as const;
-  });
+  )
+    .then((items) => {
+      return Promise.all(
+        items.map(async ({ relation, queryPromise }) => ({
+          relation,
+          results: await queryPromise,
+        }))
+      );
+    })
+    .catch((e) => {
+      console.error(e);
+      return [] as const;
+    });
   const groupedResults = Object.fromEntries(
     resultsWithRelation.map((r) => [
       r.relation.text,
