@@ -27,6 +27,8 @@ import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSingleChildValue";
 import getFirstChildTextByBlockUid from "roamjs-components/queries/getFirstChildTextByBlockUid";
 import NanopubBodySpecification from "./NanopubBodySpecification";
+import setInputSetting from "roamjs-components/util/setInputSetting";
+import { getSettingValueFromTree } from "roamjs-components/util";
 
 const placeholders = {
   nodeType: {
@@ -254,24 +256,13 @@ const NanopubConfigPanel = ({
         )
       : []
   );
-  const nodeTypeUid = useMemo(
-    () => tree.find((t) => t.text === "node-type")?.uid,
-    [tree]
-  );
-  const defaultNodeType = useMemo(() => {
-    if (!nodeTypeUid) return "";
-    return getFirstChildTextByBlockUid(nodeTypeUid);
-  }, [nodeTypeUid]);
 
-  const { value: nodeTypeValue, onChange: setNodeType } = useSingleChildValue({
-    uid: nodeTypeUid,
-    defaultValue: defaultNodeType,
-    title: "node-type",
-    parentUid: uid,
-    order: 0,
-    transform: (s) => s,
-    toStr: (s) => s,
-  });
+  const [nodeType, setNodeType] = useState<string>(
+    getSettingValueFromTree({
+      key: "node-type",
+      parentUid: uid,
+    })
+  );
 
   const isDefaultTemplate = useMemo(() => {
     if (triples.length !== defaultNanopubTemplate.triples.length) return false;
@@ -286,11 +277,6 @@ const NanopubConfigPanel = ({
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [isUseCustomBody, setIsUseCustomBody] = useState(
     () => !!getSubTree({ tree, key: "use-custom-body" }).uid
-  );
-  const customBodyDefinitionUid = useMemo(
-    () =>
-      getSubTree({ tree, parentUid: uid, key: "custom-body-definition" }).uid,
-    [tree, uid]
   );
 
   const handleIsEnabled = useCallback(
@@ -401,7 +387,10 @@ const NanopubConfigPanel = ({
   );
 
   const setDefaultTemplate = async () => {
-    if (triplesUid) deleteBlock(triplesUid);
+    const tree = getBasicTreeByParentUid(uid);
+    const deletePromises = tree.map(({ uid }) => deleteBlock(uid));
+    await Promise.all(deletePromises);
+    handleIsEnabled(true);
 
     const template = structuredClone(defaultNanopubTemplate);
     // set uids
@@ -412,6 +401,9 @@ const NanopubConfigPanel = ({
     // set node type
     const nodeText = node.text.toLowerCase();
     template.nodeType = nodeTypes[nodeText as keyof typeof nodeTypes] || "";
+
+    template.requireSource =
+      requiresSource[nodeText as keyof typeof requiresSource] || false;
 
     const assertionUid = window.roamAlphaAPI.util.generateUID();
     const provenanceUid = window.roamAlphaAPI.util.generateUID();
@@ -477,6 +469,14 @@ const NanopubConfigPanel = ({
     setAssertionUid(assertionUid);
     setProvenanceUid(provenanceUid);
     setPublicationInfoUid(publicationInfoUid);
+
+    setNodeType(template.nodeType);
+    setInputSetting({
+      blockUid: uid,
+      value: template.nodeType,
+      key: "node-type",
+    });
+
     handleRequireContributors(template.requireContributors);
     setNodeType(template.nodeType);
     setTriples(
@@ -502,8 +502,16 @@ const NanopubConfigPanel = ({
           checked={isEnabled}
           label="Enable Nanopub Publishing"
           onChange={() => {
-            handleIsEnabled(!isEnabled);
-            if (!isEnabled && !triples.length) setDefaultTemplate();
+            if (isEnabled) {
+              handleIsEnabled(false);
+              return;
+            }
+
+            if (!!triples.length) {
+              handleIsEnabled(true);
+            } else {
+              setDefaultTemplate();
+            }
           }}
         />
         <Switch
@@ -511,6 +519,14 @@ const NanopubConfigPanel = ({
           checked={requireContributors}
           onChange={() => {
             handleRequireContributors(!requireContributors);
+          }}
+          disabled={!isEnabled}
+        />
+        <Switch
+          label="Require Source Information"
+          checked={requireSource}
+          onChange={() => {
+            handleRequireSource(!requireSource);
           }}
           disabled={!isEnabled}
         />
@@ -524,13 +540,20 @@ const NanopubConfigPanel = ({
         />
         <NanopubBodySpecification
           hidden={!isUseCustomBody}
-          parentUid={customBodyDefinitionUid}
+          nanopubConfigUid={uid}
         />
         <FormGroup inline={true} label="Node Type" contentClassName="flex-grow">
           <InputGroup
             placeholder="Enter URL to node type definition"
-            value={nodeTypeValue}
-            onChange={(e) => setNodeType(e.target.value)}
+            value={nodeType}
+            onChange={(e) => {
+              setNodeType(e.target.value);
+              setInputSetting({
+                blockUid: uid,
+                value: e.target.value,
+                key: "node-type",
+              });
+            }}
             disabled={!isEnabled}
           />
         </FormGroup>

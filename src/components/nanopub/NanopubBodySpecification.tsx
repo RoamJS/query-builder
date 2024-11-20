@@ -3,6 +3,8 @@ import { Card, Spinner } from "@blueprintjs/core";
 import parseQuery, { DEFAULT_RETURN_NODE } from "../../utils/parseQuery";
 import createBlock from "roamjs-components/writes/createBlock";
 import QueryEditor from "../QueryEditor";
+import { getSubTree } from "roamjs-components/util";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 
 const initialQueryConditionBlocks = [
   {
@@ -50,15 +52,30 @@ const initialQueryConditionBlocks = [
 ];
 
 const NanopubBodySpecification = ({
-  parentUid,
-  hidden = false,
+  nanopubConfigUid,
+  hidden = true,
 }: {
-  parentUid: string;
+  nanopubConfigUid: string;
   hidden?: boolean;
 }) => {
   if (hidden) return null;
-
-  const initialQueryArgs = useMemo(() => parseQuery(parentUid), [parentUid]);
+  const tree = useMemo(
+    () => getBasicTreeByParentUid(nanopubConfigUid),
+    [nanopubConfigUid]
+  );
+  const customBodyDefinitionUid = useMemo(
+    () =>
+      getSubTree({
+        tree,
+        parentUid: nanopubConfigUid,
+        key: "custom-body-definition",
+      }).uid,
+    [tree, nanopubConfigUid]
+  );
+  const initialQueryArgs = useMemo(
+    () => parseQuery(customBodyDefinitionUid),
+    [customBodyDefinitionUid]
+  );
   const [showQuery, setShowQuery] = useState(
     !!initialQueryArgs.conditions.length
   );
@@ -76,7 +93,7 @@ const NanopubBodySpecification = ({
 
   useEffect(() => {
     if (!showQuery && !hidden) createInitialQueryblocks();
-  }, [parentUid, initialQueryArgs, showQuery, hidden]);
+  }, [customBodyDefinitionUid, initialQueryArgs, showQuery, hidden]);
 
   return (
     <>
@@ -87,7 +104,11 @@ const NanopubBodySpecification = ({
       </div>
       <Card className="p-1 m-0">
         {showQuery ? (
-          <QueryEditor parentUid={parentUid} hideCustomSwitch hideQueryButton />
+          <QueryEditor
+            parentUid={customBodyDefinitionUid}
+            hideCustomSwitch
+            hideQueryButton
+          />
         ) : (
           <Spinner />
         )}
