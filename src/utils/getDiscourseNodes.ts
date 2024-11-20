@@ -51,6 +51,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
       requireContributors: false,
       useCustomBody: false,
       customBodyUid: "",
+      requireSource: false,
     },
   },
   {
@@ -76,6 +77,7 @@ const DEFAULT_NODES: DiscourseNode[] = [
       requireContributors: false,
       useCustomBody: false,
       customBodyUid: "",
+      requireSource: false,
     },
   },
 ];
@@ -87,6 +89,7 @@ export type NanopubConfig = {
   requireContributors: boolean;
   useCustomBody: boolean;
   customBodyUid: string;
+  requireSource: boolean;
 };
 const parseNanopub = (nanopubNode: RoamBasicNode): NanopubConfig => {
   const triplesNode = getSubTree({
@@ -113,11 +116,16 @@ const parseNanopub = (nanopubNode: RoamBasicNode): NanopubConfig => {
     tree: nanopubNode.children,
     key: "custom-body-definition",
   }).uid;
+  const requireSource = !!getSubTree({
+    tree: nanopubNode.children,
+    key: "require-source",
+  }).uid;
 
   return {
     enabled,
     nodeType,
     requireContributors,
+    requireSource,
     useCustomBody,
     customBodyUid,
     triples: triplesNode.children
@@ -195,6 +203,7 @@ const getDiscourseNodes = (relations = getDiscourseRelations()) => {
             requireContributors: false,
             useCustomBody: false,
             customBodyUid: "",
+            requireSource: false,
           },
         }))
     );

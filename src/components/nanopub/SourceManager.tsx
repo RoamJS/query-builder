@@ -49,9 +49,7 @@ const SourceManager = ({
   return (
     <div className="space-y-4">
       <FormGroup
-        label="Source Link"
-        labelInfo={requireSource ? "(required)" : "(optional)"}
-        helperText="Enter the URL of the source paper."
+        helperText={`Enter the URL of the source paper. ${requireSource ? "" : "(optional)"}`}
       >
         <InputGroup
           value={source}
@@ -60,6 +58,9 @@ const SourceManager = ({
           className="w-full"
         />
       </FormGroup>
+      {requireSource && !source ? (
+        <span className="text-warning">(required)</span>
+      ) : null}
     </div>
   );
 };

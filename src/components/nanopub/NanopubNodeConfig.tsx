@@ -22,6 +22,7 @@ import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
 import {
   defaultNanopubTemplate,
   nodeTypes,
+  requiresSource,
 } from "../../data/defaultNanopubTemplates";
 import { DiscourseNode } from "../../utils/getDiscourseNodes";
 import useSingleChildValue from "roamjs-components/components/ConfigPanels/useSingleChildValue";
@@ -66,6 +67,7 @@ export const defaultPredicates = {
   "has more info at": "foaf:page",
   "is attributed to": "prov:wasAttributedTo",
   "is created by": "dc:creator",
+  "has source": "prov:wasDerivedFrom",
 } as const;
 
 export type PredicateKey = keyof typeof defaultPredicates;
@@ -230,6 +232,9 @@ const NanopubConfigPanel = ({
   const [requireContributors, setRequireContributors] = useState(
     () => !!getSubTree({ tree, key: "require-contributors" }).uid
   );
+  const [requireSource, setRequireSource] = useState(
+    () => !!getSubTree({ tree, key: "require-source" }).uid
+  );
 
   const [triplesUid, setTriplesUid] = useState<string | null>(
     triplesTree.uid || null
@@ -305,6 +310,21 @@ const NanopubConfigPanel = ({
     },
     [uid]
   );
+  const handleRequireSource = useCallback(
+    (b: boolean) => {
+      setRequireSource(b);
+      return b
+        ? createBlock({
+            parentUid: uid,
+            node: { text: "require-source" },
+          })
+        : deleteBlock(
+            getSubTree({ parentUid: uid, key: "require-source" }).uid
+          );
+    },
+    [uid]
+  );
+
   const handleUseCustomBodyDefinition = useCallback(
     (b: boolean) => {
       setIsUseCustomBody(b);
@@ -478,7 +498,8 @@ const NanopubConfigPanel = ({
     });
 
     handleRequireContributors(template.requireContributors);
-    setNodeType(template.nodeType);
+    handleRequireSource(template.requireSource);
+
     setTriples(
       triples.map((triple) => ({
         uid: triple.uid,

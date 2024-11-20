@@ -6,12 +6,16 @@ export const nodeTypes = {
   evidence: "https://w3id.org/kpxl/gen/terms/Evidence",
   source: "https://w3id.org/kpxl/gen/terms/Source",
 };
+export const requiresSource = {
+  evidence: true,
+};
 export const defaultNanopubTemplate: NanopubConfig = {
   enabled: true,
   nodeType: "",
   useCustomBody: false,
   customBodyUid: "",
   requireContributors: true,
+  requireSource: false,
   triples: [
     {
       uid: "",

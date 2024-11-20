@@ -46,9 +46,11 @@ import { getExportSettings } from "../../utils/getExportSettings";
 import { getNodeEnv } from "roamjs-components/util/env";
 import runQuery from "../../utils/runQuery";
 import PreviewNanopub from "./PreviewNanopub";
+import SourceManager from "./SourceManager";
 
 export type NanopubPage = {
   contributors: Contributor[];
+  source?: string;
   published?: string;
 };
 export type Contributor = {
@@ -203,9 +205,11 @@ const NanopubDialog = ({
   );
   const nanopub = props["nanopub"] as NanopubPage;
   const initialContributors = nanopub?.contributors || [];
+  const initialSource = nanopub?.source;
   const propsUrl = nanopub?.published;
   const [contributors, setContributors] =
     useState<Contributor[]>(initialContributors);
+  const [source, setSource] = useState<string>(initialSource || "");
   const [publishedURL, setPublishedURL] = useState(propsUrl);
   const [selectedTabId, setSelectedTabId] = useState<TabId>("nanopub-details");
   const [discourseNode, setDiscourseNode] = useState<DiscourseNode | null>(
@@ -322,6 +326,12 @@ const NanopubDialog = ({
       });
     });
 
+    addAliases({
+      id: "prov:wasDerivedFrom",
+      label: "has source",
+      prefix: "",
+    });
+
     // Add contributors to provenance
     if (nanopubConfig?.requireContributors) {
       const props = getBlockProps(uid) as Record<string, unknown>;
@@ -339,6 +349,15 @@ const NanopubDialog = ({
             });
           }
         });
+      });
+    }
+
+    // Add source if it exists (replacing the old requireSource check)
+    if (source) {
+      const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
+      provenanceGraph.push({
+        "@id": "#assertion",
+        "prov:wasDerivedFrom": { "@id": source },
       });
     }
 
@@ -526,6 +545,12 @@ const NanopubDialog = ({
     if (nanopubConfig?.requireContributors && contributors.length === 0) {
       setError(
         "This template requires contributors. Please add contributors to the nanopub."
+      );
+      return;
+    }
+    if (nanopubConfig?.requireSource && !source) {
+      setError(
+        "This template requires a source. Please add a source to the nanopub."
       );
       return;
     }
@@ -750,6 +775,19 @@ const NanopubDialog = ({
                   }
                 />
                 <Tab
+                  id="nanopub-source"
+                  title="Source"
+                  panel={
+                    <SourceManager
+                      pageUid={uid}
+                      pageProps={props}
+                      source={source}
+                      setSource={setSource}
+                      requireSource={nanopubConfig?.requireSource}
+                    />
+                  }
+                />
+                <Tab
                   id="nanopub-preview"
                   title="Preview"
                   panel={
@@ -759,6 +797,7 @@ const NanopubDialog = ({
                       discourseNode={discourseNode}
                       extensionAPI={extensionAPI}
                       pageUid={uid}
+                      source={source}
                     />
                   }
                 />
