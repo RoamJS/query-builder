@@ -224,8 +224,10 @@ const NanopubDialog = ({
 
   const generateRdfString = async ({
     triples,
+    isExample = false, // TEMP
   }: {
     triples: NanopubTripleType[];
+    isExample?: boolean;
   }): Promise<string> => {
     const rdf = { ...baseRdf };
 
@@ -333,7 +335,7 @@ const NanopubDialog = ({
     });
 
     // Add contributors to provenance
-    if (nanopubConfig?.requireContributors) {
+    if (contributors.length) {
       const props = getBlockProps(uid) as Record<string, unknown>;
       const nanopub = props["nanopub"] as NanopubPage;
       const contributors = nanopub?.contributors || [];
@@ -373,6 +375,11 @@ const NanopubDialog = ({
         "@id": nanopubConfig.nodeType,
         "rdfs:label": discourseNode?.text,
       });
+    }
+
+    // TEMP add exampleNanopub
+    if (isExample) {
+      pubInfoGraph.push({ "@id": "#", "@type": "npx:ExampleNanopub" });
     }
 
     return JSON.stringify(rdf, null, 2);
@@ -525,7 +532,13 @@ const NanopubDialog = ({
 
   const orcidUrl = useMemo(() => getOrcidUrl(extensionAPI), [extensionAPI]);
 
-  const publishNanopub = async ({ isDev = "" }: { isDev?: string }) => {
+  const publishNanopub = async ({
+    isDev = "",
+    isExample = false,
+  }: {
+    isDev?: string;
+    isExample?: boolean;
+  }) => {
     const requiresORCID = templateTriples?.some(
       (triple) => triple.object === "{myORCID}"
     );
@@ -556,6 +569,7 @@ const NanopubDialog = ({
     }
     const rdfString = await generateRdfString({
       triples: templateTriples || [],
+      isExample, // TEMP
     });
     const serverUrl = isDev ? "" : getNpServer(false);
     const currentUser = getCurrentUserDisplayName();
@@ -695,7 +709,7 @@ const NanopubDialog = ({
 
   const TripleString = () => {
     return (
-      <div className="mt-4">
+      <div className="mt-4 space-x-2">
         <TextArea
           value={rdfString}
           fill
@@ -712,6 +726,18 @@ const NanopubDialog = ({
           intent={"primary"}
         >
           Refresh
+        </Button>
+        <Button
+          onClick={async () => {
+            const rdfString = await generateRdfString({
+              triples: templateTriples || [],
+              isExample: true,
+            });
+            setRdfString(rdfString);
+          }}
+          intent={"primary"}
+        >
+          Refresh with Example
         </Button>
       </div>
     );
@@ -833,6 +859,7 @@ const NanopubDialog = ({
               <Button onClick={handleClose}>Close</Button>
               <Button
                 onClick={() => setSelectedTabId("nanopub-preview")}
+                disabled={selectedTabId === "nanopub-preview"}
                 hidden={!!publishedURL}
               >
                 Preview
@@ -844,6 +871,16 @@ const NanopubDialog = ({
                 // hidden={!!publishedURL}
               >
                 Publish Nanopub
+              </Button>
+
+              {/* TEMP */}
+              <Button
+                onClick={() => publishNanopub({ isExample: true })}
+                intent={"primary"}
+                disabled={selectedTabId !== "nanopub-preview"}
+                // hidden={!!publishedURL}
+              >
+                Publish Example Nanopub
               </Button>
             </div>
           </div>

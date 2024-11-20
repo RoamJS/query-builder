@@ -160,18 +160,6 @@ const PreviewNanopub = ({
           </div>
         ))}
       </div>
-      {/* <Button
-          text="Change Template"
-          icon="link"
-          onClick={() => {
-            window.roamAlphaAPI.ui.mainWindow.openPage({
-              page: {
-                title: `discourse-graph/nodes/${nodeText}`,
-              },
-            });
-            handleClose();
-          }}
-        /> */}
     </>
   );
 };

@@ -160,37 +160,24 @@ const ContributorManager = ({
           />
         ))}
       </div>
-      <Button
-        intent={Intent.PRIMARY}
-        icon="add"
-        onClick={() =>
-          setContributors([
-            ...contributors,
-            { id: nanoid(), name: "", roles: [] },
-          ])
-        }
-      >
-        Add Contributor
-      </Button>
-      <div className={`${requireContributors ? "hidden" : ""}`}>
-        <p className="text-warning">
-          Warning: Contributes will not be added automatically to the template.
-        </p>
-        <p className="text-warning">
-          Edit the template to add contributors to the nanopublication.
-        </p>
+      <div className="flex items-center gap-2">
         <Button
-          text="View Template"
-          icon="link"
-          onClick={() => {
-            window.roamAlphaAPI.ui.mainWindow.openPage({
-              page: {
-                title: `discourse-graph/nodes/${node}`,
-              },
-            });
-            handleClose();
-          }}
-        />
+          intent={Intent.PRIMARY}
+          icon="add"
+          onClick={() =>
+            setContributors([
+              ...contributors,
+              { id: nanoid(), name: "", roles: [] },
+            ])
+          }
+        >
+          Add Contributor
+        </Button>
+        {requireContributors && contributors.length === 0 ? (
+          <span className="text-warning">(required)</span>
+        ) : contributors.length === 0 ? (
+          <span className="text-muted">(optional)</span>
+        ) : null}
       </div>
     </div>
   );
