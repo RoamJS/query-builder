@@ -54,13 +54,23 @@ const fakeBackendQuery = (id: number, delayTime: number) => {
     }, delayTime);
   });
 };
-const artificialGetDatalogQueryTime = (buildTime: number) => {
+const fakeGetDatalogQuery = (buildTime: number) => {
+  console.log(`💽💽`, getTimestamp(), `Build`);
   const startTime = Date.now();
   while (Date.now() - startTime < buildTime) {
     // Simulate work by blocking the thread
   }
 };
-const queryTypes = ["EVD", "CLM", "RES", "HYP", "ISS", "CON"];
+const PREDEFINED_TYPES = ["EVD", "CLM", "RES", "HYP", "ISS", "CON"];
+
+const getQueryType = (index: number) => {
+  // For first 6, use predefined types in order
+  if (index < PREDEFINED_TYPES.length) {
+    return PREDEFINED_TYPES[index];
+  }
+  // For additional ones, randomly select from predefined types
+  return PREDEFINED_TYPES[Math.floor(Math.random() * PREDEFINED_TYPES.length)];
+};
 const baseQuery = `[:find
     (pull ?node [:block/string :node/title :block/uid])
     (pull ?node [:block/uid])
@@ -138,12 +148,24 @@ const CellEmbed = ({
 const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
   const [selectedQuery, setSelectedQuery] = useState<number>(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [buildTime, setBuildTime] = useState<number>(3000);
+  const [buildTime, setBuildTime] = useState<number>(1000);
   const [delayTime, setDelayTime] = useState<number>(3000);
   const [queryBlockUid, setQueryBlockUid] = useState<string | null>(null);
+  const [numberOfQueries, setNumberOfQueries] = useState<number>(6);
+
+  const queryTypes = useMemo(() => {
+    return Array.from({ length: numberOfQueries }, (_, i) => getQueryType(i));
+  }, [numberOfQueries]);
 
   // lol couldn't get highlighting to work properly, so creating the blocks and rending them
   useEffect(() => {
+    const removeConsoleLogLines = (input: string) => {
+      return input
+        .split("\n") // Split the input string into lines
+        .filter((line) => !line.trim().startsWith("console.log(")) // Filter out lines with `console.log`
+        .join("\n"); // Join the remaining lines back into a string
+    };
+
     const createQueryBlock = async () => {
       const currentPageUid = getCurrentPageUid();
       const newUid = await createBlock({
@@ -152,7 +174,7 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
           text: "",
           children: [
             ...queries.map((query, i) => ({
-              text: `\`\`\`const ${query.label.replace(/\s+/g, "")} = ${query.fn.toString()} \`\`\``,
+              text: `\`\`\`const ${query.label.replace(/\s+/g, "")} = ${removeConsoleLogLines(query.fn.toString())} \`\`\``,
             })),
           ],
         },
@@ -167,73 +189,22 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
     };
     createQueryBlock();
   }, []);
-  const asyncQWithDelay = useCallback(async () => {
-    console.log("async.q: Promise.all(map(async) => await fireQuery)");
-    console.log("with artificial query delay");
-    console.log(`buildTime: no getDatalogQueryTime`);
-    console.log(`delayTime: ${delayTime}`);
 
-    const fireQueryX = async (type: string, i: number) => {
-      console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
-
-      // Artifical Query Delay
-      await new Promise((resolve) => setTimeout(resolve, delayTime));
-
-      const queryResults = await window.roamAlphaAPI.data.async.q(
-        baseQuery.replace("TYPE", type)
-      );
-      console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
-      return { type, results: queryResults };
-    };
-
-    // adding async/await results in the same behavior
-    Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
-
-    // Results
-    //
-    // These results makes sense ✅
-    // queries sent at 32:079
-    // delay is 3 seconds
-    // queries ends between 35:581 - 35:774
-    // difference is actual query time, server queues, and network time
-    //
-    // 🔎🟢 50:32:078 Query EVD 0
-    // 🔎🟢 50:32:079 Query CLM 1
-    // 🔎🟢 50:32:079 Query RES 2
-    // 🔎🟢 50:32:079 Query HYP 3
-    // 🔎🟢 50:32:079 Query ISS 4
-    // 🔎🟢 50:32:079 Query CON 5
-    // 🔎🛑 50:35:581 Query HYP 3
-    // 🔎🛑 50:35:686 Query CON 5
-    // 🔎🛑 50:35:760 Query ISS 4
-    // 🔎🛑 50:35:770 Query EVD 0
-    // 🔎🛑 50:35:771 Query RES 2
-    // 🔎🛑 50:35:774 Query CLM 1
-  }, [delayTime]);
-  const asyncQWithDelayAndBuildTime = useCallback(async () => {
+  const asyncQ = useCallback(async () => {
     console.log("async.q: Promise.all(map(async) => await fireQuery)");
     console.log("with artificial query delay and query build time");
     console.log(`buildTime: ${buildTime}`);
     console.log(`delayTime: ${delayTime}`);
 
     const fireQueryX = async (type: string, i: number) => {
-      // Artificial getDatalogQueryTime
-      console.log(`💽💽`, getTimestamp(), `Build`, type, i);
-      artificialGetDatalogQueryTime(buildTime);
-
-      // Artifical Query Delay
+      if (buildTime) fakeGetDatalogQuery(buildTime);
       console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
       await new Promise((resolve) => setTimeout(resolve, delayTime));
-
-      const queryResults = await window.roamAlphaAPI.data.async.q(
-        baseQuery.replace("TYPE", type)
-      );
+      await window.roamAlphaAPI.data.async.q(baseQuery.replace("TYPE", type));
       console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
-      return { type, results: queryResults };
     };
 
-    // adding async/await results in the same behavior
-    Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
+    await Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
 
     // Results
     //
@@ -263,59 +234,21 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
     // 🔎🛑 55:36:535 Query HYP 3 (this delay doesn't make sense)
     // 🔎🛑 55:37:533 Query ISS 4 (this delay doesn't make sense)
     // 🔎🛑 55:38:540 Query CON 5 (this delay doesn't make sense)
-  }, [delayTime, buildTime]);
-  const fakeBackendQueryNoDelay = useCallback(async () => {
-    console.log("fakeBackendQuery()");
-    console.log(`buildTime: no getDatalogQueryTime`);
-    console.log(`fakeQueryTime: ${delayTime}`);
-
-    const fireQueryX = async (type: string, i: number) => {
-      console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
-
-      const queryResults = await fakeBackendQuery(i, delayTime);
-
-      console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
-      return { type, results: queryResults };
-    };
-
-    // adding async/await results in the same behavior
-    Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
-
-    // Results
-    //
-    // Queryies returned at the same time ✅
-    //
-    // 🔎🟢 22:19:526 Query EVD 0
-    // 🔎🟢 22:19:527 Query CLM 1
-    // 🔎🟢 22:19:527 Query RES 2
-    // 🔎🟢 22:19:527 Query HYP 3
-    // 🔎🟢 22:19:527 Query ISS 4
-    // 🔎🟢 22:19:527 Query CON 5
-    // 🔎🛑 22:22:541 Query EVD 0
-    // 🔎🛑 22:22:541 Query CLM 1
-    // 🔎🛑 22:22:541 Query RES 2
-    // 🔎🛑 22:22:542 Query HYP 3
-    // 🔎🛑 22:22:542 Query ISS 4
-    // 🔎🛑 22:22:542 Query CON 5
-  }, []);
-  const fakeBackendQueryWithBuildTime = useCallback(async () => {
+  }, [delayTime, buildTime, queryTypes]);
+  const fakeBackend = useCallback(async () => {
     console.log("async.q: fakeBackendQuery() with artificial query build time");
     console.log(`buildTime: ${buildTime}`);
     console.log(`fakeQueryTime: ${delayTime}`);
 
     const fireQueryX = async (type: string, i: number) => {
-      console.log(`💽💽`, getTimestamp(), `Build`, type, i);
-      artificialGetDatalogQueryTime(buildTime);
-
+      if (buildTime) fakeGetDatalogQuery(buildTime);
       console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
-      const queryResults = await fakeBackendQuery(i, delayTime);
+      await new Promise((resolve) => setTimeout(resolve, delayTime));
+      await fakeBackendQuery(i, delayTime);
       console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
-
-      return { type, results: queryResults };
     };
 
-    // adding async/await results in the same behavior
-    Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
+    await Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
 
     // Results
     //
@@ -401,34 +334,41 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
     // 🔎🛑 06:16:177 Query HYP 3
     // 🔎🛑 06:16:177 Query ISS 4
     // 🔎🛑 06:26:145 Query CON 5
-  }, [delayTime, buildTime]);
+  }, [delayTime, buildTime, queryTypes]);
+  const fastQ = useCallback(async () => {
+    console.log("fast.q: with artificial query delay and query build time");
+    console.log(`buildTime: ${buildTime}`);
+    console.log(`delayTime: ${delayTime}`);
 
+    const fireQueryX = async (type: string, i: number) => {
+      if (buildTime) fakeGetDatalogQuery(buildTime);
+      console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
+      await new Promise((resolve) => setTimeout(resolve, delayTime));
+      await window.roamAlphaAPI.data.fast.q(baseQuery.replace("TYPE", type));
+      console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
+    };
+
+    await Promise.all(queryTypes.map((type, i) => fireQueryX(type, i)));
+  }, [delayTime, buildTime, queryTypes]);
   const queries: QueryType[] = useMemo(
     () => [
       {
-        label: "async.q with Delay",
-        description:
-          "async.q: Promise.all(map(async) => await fireQuery) with artificial query delay",
-        fn: asyncQWithDelay,
-      },
-      {
-        label: "async.q with Delay and Build Time",
-        description:
-          "async.q: Promise.all(map(async) => await fireQuery) with artificial query delay and query build time",
-        fn: asyncQWithDelayAndBuildTime,
+        label: "async q",
+        description: "async.q: Promise.all(map(async) => await fireQuery)",
+        fn: asyncQ,
       },
       {
         label: "fakeBackendQuery",
-        description: "fakeBackendQuery() - no delay",
-        fn: fakeBackendQueryNoDelay,
+        description: "fakeBackendQuery()",
+        fn: fakeBackend,
       },
       {
-        label: "fakeBackendQuery with Delay and Build Time",
-        description: "fakeBackendQuery() with artificial query build time",
-        fn: fakeBackendQueryWithBuildTime,
+        label: "fast q",
+        description: "window.roamAlphaAPI.data.fast.q",
+        fn: fastQ,
       },
     ],
-    [delayTime, buildTime]
+    [delayTime, buildTime, numberOfQueries]
   );
 
   return (
@@ -459,6 +399,15 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
       <div className={`${Classes.DIALOG_BODY} overflow-y-auto p-4 select-none`}>
         <div className="space-y-4">
           <div className="flex gap-4">
+            <style>
+              {`
+                input::-webkit-outer-spin-button,
+                input::-webkit-inner-spin-button {
+                  -webkit-appearance: none;
+                margin: 0;
+              }
+            `}
+            </style>
             <FormGroup label="Build Time (ms)">
               <NumericInput
                 type="number"
@@ -472,6 +421,14 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
                 type="number"
                 value={delayTime}
                 onValueChange={(e) => setDelayTime(Number(e))}
+                disabled={isRunning}
+              />
+            </FormGroup>
+            <FormGroup label="Number of Queries">
+              <NumericInput
+                type="number"
+                value={numberOfQueries}
+                onValueChange={(e) => setNumberOfQueries(Number(e))}
                 disabled={isRunning}
               />
             </FormGroup>
@@ -496,11 +453,18 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
 
           <div className="flex justify-end">
             <Button
+              loading={isRunning}
               intent={Intent.PRIMARY}
               onClick={async () => {
+                const startTime = window.performance.now();
+                console.log("💡", "Start", getTimestamp(), numberOfQueries);
                 setIsRunning(true);
                 await queries[selectedQuery].fn();
                 setIsRunning(false);
+                console.log("💡", "End", getTimestamp());
+                const endTime = performance.now();
+                const timeDiff = (endTime - startTime) / 1000;
+                console.log("⏱️ Total:", timeDiff.toFixed(2), "seconds");
               }}
               disabled={isRunning}
             >
