@@ -56,6 +56,7 @@ import {
   NodeMenuTriggerComponent,
   render as renderDiscourseNodeMenu,
 } from "./components/DiscourseNodeMenu";
+import { renderQueryTester } from "./components/QueryTester";
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
@@ -624,6 +625,16 @@ svg.rs-svg-container {
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
     callback: openCanvasDrawer,
+  });
+
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Query Tester",
+    callback: () => {
+      renderQueryTester({
+        onClose: () => {},
+        isOpen: true,
+      });
+    },
   });
 
   extensionAPI.ui.commandPalette.addCommand({
