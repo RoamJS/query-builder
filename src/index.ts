@@ -418,9 +418,8 @@ svg.rs-svg-container {
       );
     }, 1000);
   }
-  const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
-    onloadArgs
-  );
+  const toggleDiscourseGraphsMode =
+    await initializeDiscourseGraphsMode(onloadArgs);
   if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
     extensionAPI.settings.set(SETTING, true);
     toggleDiscourseGraphsMode(true);
@@ -560,10 +559,10 @@ svg.rs-svg-container {
                   typeof v === "string"
                     ? v
                     : typeof v === "number"
-                    ? v.toString()
-                    : v instanceof Date
-                    ? window.roamAlphaAPI.util.dateToPageTitle(v)
-                    : "",
+                      ? v.toString()
+                      : v instanceof Date
+                        ? window.roamAlphaAPI.util.dateToPageTitle(v)
+                        : "",
                 ])
               )
             )
@@ -648,6 +647,7 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
+          //@ts-ignore
           clearOnClick,
           onloadArgs,
         })
@@ -812,6 +812,13 @@ svg.rs-svg-container {
       },
     });
     */
+
+  renderToast({
+    id: "discourse-graph-loaded",
+    content: "Successfully loaded",
+    intent: "success",
+    timeout: 500,
+  });
 
   const [viewBlockObserver] = createBlockObserver({
     onBlockLoad: (b) => {

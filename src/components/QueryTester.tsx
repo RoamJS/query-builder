@@ -343,7 +343,10 @@ const QueryTester = ({ onClose, isOpen }: QueryTesterProps) => {
     const fireQueryX = async (type: string, i: number) => {
       if (buildTime) fakeGetDatalogQuery(buildTime);
       console.log(`🔎🟢`, getTimestamp(), `Query`, type, i);
-      await new Promise((resolve) => setTimeout(resolve, delayTime));
+
+      const startTime = Date.now();
+      while (Date.now() - startTime < delayTime) {}
+
       await window.roamAlphaAPI.data.fast.q(baseQuery.replace("TYPE", type));
       console.log(`🔎🛑`, getTimestamp(), `Query`, type, i);
     };
