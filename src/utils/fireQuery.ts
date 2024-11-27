@@ -423,7 +423,19 @@ const fireQuery: FireQuery = async (_args) => {
       complement: args.context?.r.complement,
       query,
     });
-    return [];
+
+    // Fallback to fast query
+    try {
+      console.log("Falling back to fast query");
+      const fastResults = await window.roamAlphaAPI.data.fast.q(
+        query,
+        ...inputs
+      );
+      return Promise.all(fastResults.map(formatResult));
+    } catch (fastError) {
+      console.error("Fast query also failed:", (fastError as Error).message);
+      return [];
+    }
   }
 };
 
