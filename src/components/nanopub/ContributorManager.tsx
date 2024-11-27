@@ -1,10 +1,14 @@
 import React, { useCallback, useMemo, useRef, useEffect, memo } from "react";
 import { Button, Intent } from "@blueprintjs/core";
 import { MultiSelect } from "@blueprintjs/select";
-import AutocompleteInput from "roamjs-components/components/AutocompleteInput";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import { PullBlock } from "roamjs-components/types";
 import nanoid from "nanoid";
 import { Contributor, NanopubPage } from "./Nanopub";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getSubTree from "roamjs-components/util/getSubTree";
+import { PossibleContributor } from "./NanopubMainConfig";
 
 // https://credit.niso.org/ taxonomy roles
 
@@ -105,26 +109,26 @@ const ContributorManager = ({
 }) => {
   const debounceRef = useRef(0);
   const nanopubProps = props["nanopub"] as NanopubPage;
-  const userDisplayNames = useMemo(() => {
-    const queryResults = window.roamAlphaAPI.data.fast.q(
-      `[:find (pull ?p [:user/email]) (pull ?r [:node/title]) :where 
-        [?p :user/display-page ?r]
-      ]`
-    ) as [PullBlock, PullBlock][];
-
-    return queryResults
-      .map(([p, r]) => {
-        const title = r?.[":node/title"];
-        const email = p?.[":user/email"] as string | undefined;
-
-        if (title && title.startsWith("Anonymous") && email) {
-          return email;
-        }
-        return title || email || "";
-      })
-      .filter(Boolean)
-      .filter((name) => name !== "Anonymous");
-  }, []);
+  const possibleContributorNames = useMemo<PossibleContributor[]>(() => {
+    const discourseConfigUid = getPageUidByPageTitle("roam/js/discourse-graph");
+    const tree = getBasicTreeByParentUid(discourseConfigUid);
+    const nanoPubTree = getSubTree({ tree, key: "Nanopub" });
+    if (!nanoPubTree.children.length) return [];
+    const contributorsNode = getSubTree({
+      tree: nanoPubTree.children,
+      key: "contributors",
+    });
+    return contributorsNode.children
+      .map((c) => ({
+        uid: c.uid,
+        name: c.text,
+        orcid: c.children[0]?.text,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter(
+        (c) => !contributors.some((existing) => existing.name === c.name)
+      );
+  }, [contributors]);
 
   const updateContributorProps = useCallback(
     (newContributors: Contributor[]) => {
@@ -148,38 +152,48 @@ const ContributorManager = ({
   }, [contributors, updateContributorProps]);
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {contributors.map((contributor, index) => (
-          <ContributorRow
-            key={contributor.id}
-            contributor={contributor}
-            // isEditing={isEditing}
-            setContributors={setContributors}
-            userDisplayNames={userDisplayNames}
-          />
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          intent={Intent.PRIMARY}
-          icon="add"
-          onClick={() =>
-            setContributors([
-              ...contributors,
-              { id: nanoid(), name: "", roles: [] },
-            ])
+    <>
+      <style>
+        {`
+          .contributor-name-select span.bp3-popover-target,
+          .contributor-name-select span.bp3-popover-target button.bp3-button {
+            width: 100%;
           }
-        >
-          Add Contributor
-        </Button>
-        {requireContributors && contributors.length === 0 ? (
-          <span className="text-warning">(required)</span>
-        ) : contributors.length === 0 ? (
-          <span className="text-muted">(optional)</span>
-        ) : null}
+        `}
+      </style>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          {contributors.map((contributor, index) => (
+            <ContributorRow
+              key={contributor.id}
+              contributor={contributor}
+              // isEditing={isEditing}
+              setContributors={setContributors}
+              possibleContributors={possibleContributorNames}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            intent={Intent.PRIMARY}
+            icon="add"
+            onClick={() =>
+              setContributors([
+                ...contributors,
+                { id: nanoid(), name: "", orcid: "", roles: [] },
+              ])
+            }
+          >
+            Add Contributor
+          </Button>
+          {requireContributors && contributors.length === 0 ? (
+            <span className="text-warning">(required)</span>
+          ) : contributors.length === 0 ? (
+            <span className="text-muted">(optional)</span>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -188,25 +202,29 @@ const ContributorRow = memo(
     contributor,
     key,
     // isEditing,
-    userDisplayNames,
+    possibleContributors,
     setContributors,
   }: {
     contributor: Contributor;
     key: string;
     // isEditing: boolean;
     setContributors: React.Dispatch<React.SetStateAction<Contributor[]>>;
-    userDisplayNames: string[];
+    possibleContributors: PossibleContributor[];
   }) => {
     const debounceRef = useRef(0);
-
-    const setContributorName = useCallback(
+    const setContributor = useCallback(
       (newName: string, timeout: boolean = true) => {
         window.clearTimeout(debounceRef.current);
         debounceRef.current = window.setTimeout(
           () => {
+            // this is susceptible to duplicate names
+            const newOrcid =
+              possibleContributors.find((c) => c.name === newName)?.orcid || "";
             setContributors((_contributors) =>
               _contributors.map((con) =>
-                con.id === contributor.id ? { ...con, name: newName } : con
+                con.id === contributor.id
+                  ? { ...con, name: newName, orcid: newOrcid }
+                  : con
               )
             );
           },
@@ -242,14 +260,19 @@ const ContributorRow = memo(
 
     return (
       <div key={key} className="flex items-center space-x-2">
-        <AutocompleteInput
-          // disabled={!isEditing}
-          placeholder="Contributor name"
-          value={contributor.name}
-          setValue={setContributorName}
-          options={userDisplayNames}
-          onBlur={(e) => setContributorName(e, false)}
-        />
+        <div className="w-80">
+          <MenuItemSelect
+            emptyValueText="Contributor Name"
+            items={possibleContributors.map((c) => c.name)}
+            onItemSelect={(item, event) => {
+              console.log(event);
+              setContributor(item);
+            }}
+            filterable={true}
+            activeItem={contributor.name}
+            className="contributor-name-select"
+          />
+        </div>
         <MultiSelect
           fill={true}
           items={creditRoles.map((role) => role.label)}

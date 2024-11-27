@@ -56,6 +56,7 @@ export type NanopubPage = {
 export type Contributor = {
   id: string;
   name: string;
+  orcid: string;
   roles: string[];
 };
 
