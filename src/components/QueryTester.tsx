@@ -38,6 +38,9 @@ const getTimestamp = () => {
   const milliseconds = String(timestamp.getMilliseconds()).padStart(3, "0");
   return `${minutes}:${seconds}:${milliseconds}`;
 };
+export const logTimestamp = (emoji: string, label: string) => {
+  console.log(emoji, getTimestamp(), label);
+};
 const getRandomTimestamp = () => {
   const now = Date.now();
   const thirteenMonthsAgo = now - 13 * 30 * 24 * 60 * 60 * 1000;

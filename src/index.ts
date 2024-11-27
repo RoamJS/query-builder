@@ -48,7 +48,11 @@ import { render as renderToast } from "roamjs-components/components/Toast";
 import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import { openCanvasDrawer } from "./components/tldraw/CanvasDrawer";
 import isDiscourseNode from "./utils/isDiscourseNode";
-import { fireQuerySync } from "./utils/fireQuery";
+import fireQuery, {
+  FireQueryArgs,
+  fireQuerySync,
+  getDatalogQuery,
+} from "./utils/fireQuery";
 import parseQuery from "./utils/parseQuery";
 import { render as exportRender } from "./components/Export";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
@@ -56,7 +60,9 @@ import {
   NodeMenuTriggerComponent,
   render as renderDiscourseNodeMenu,
 } from "./components/DiscourseNodeMenu";
-import { renderQueryTester } from "./components/QueryTester";
+import { logTimestamp, renderQueryTester } from "./components/QueryTester";
+import { queries } from "./utils/queryData";
+import nanoid from "nanoid";
 const loadedElsewhere = document.currentScript
   ? document.currentScript.getAttribute("data-source") === "discourse-graph"
   : false;
@@ -624,6 +630,810 @@ svg.rs-svg-container {
   extensionAPI.ui.commandPalette.addCommand({
     label: "Open Canvas Drawer",
     callback: openCanvasDrawer,
+  });
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "getDatalogQuery",
+    callback: () => {
+      const _args: FireQueryArgs = {
+        customNode: "",
+        definedSelections: [],
+        isCustomEnabled: false,
+        returnNode: "Evidence",
+        conditions: [
+          {
+            source: "Evidence",
+            relation: "Consistent With",
+            target: "2yEG0_6MI",
+            uid: "UyEG8O76I",
+            type: "clause",
+          },
+        ],
+        selections: [
+          {
+            uid: "yshtDCXmF",
+            label: "context",
+            text: "node:UyEG8O76I-Context",
+          },
+        ],
+        isSamePageEnabled: false,
+        context: {
+          relationsInQuery: [
+            {
+              id: "fpwvws-ic",
+              text: "Consistent With",
+              target: "85wgkuO31",
+              isComplement: true,
+            },
+          ],
+          customNodes: [
+            {
+              format: "[[EXP]] - {content}",
+              text: "Experiment",
+              shortcut: "X",
+              type: "DoIcrR_MO",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[RES]] - {content} - {Experiment}",
+              text: "Result",
+              shortcut: "R",
+              type: "q3B9CaO6Q",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[THE]] - {content}",
+              text: "Theory",
+              shortcut: "T",
+              type: "84l8tEeA2",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[ISS]] - {content}",
+              text: "Issue",
+              shortcut: "I",
+              type: "8tpfgIm5Z",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[ART]] - {content}",
+              text: "Artifact",
+              shortcut: "A",
+              type: "S276jHf0s",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[CLM]] - {content}",
+              text: "Claim",
+              shortcut: "C",
+              type: "sys03tzKR",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: true,
+            },
+            {
+              format: "[[R-N]] - {content}",
+              text: "R-Note",
+              shortcut: "R",
+              type: "PYci7eFJP",
+              specification: [
+                {
+                  uid: "PpR0iQyUo",
+                  source: "R-Note",
+                  target: "R-Note",
+                  relation: "references title",
+                  type: "clause",
+                  not: false,
+                },
+              ],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[MTD]] - {content}",
+              text: "Method",
+              shortcut: "M",
+              type: "HdsmkNfKE",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "@{content}",
+              text: "Source",
+              shortcut: "S",
+              type: "OZhxQs38_",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[PTN]] - {content}",
+              text: "Pattern",
+              shortcut: "P",
+              type: "ceW_PoMVt",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[B]] - {content}",
+              text: "B",
+              shortcut: "B",
+              type: "YjF0S0tKS",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[A]] - {content}",
+              text: "A",
+              shortcut: "A",
+              type: "B676vtaon",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[EVD]] - {content} - {Source}",
+              text: "Evidence",
+              shortcut: "E",
+              type: "85wgkuO31",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              format: "[[QUE]] - {content}",
+              text: "Question",
+              shortcut: "Q",
+              type: "CK3kwflMN",
+              specification: [],
+              backedBy: "user",
+              canvasSettings: {},
+              graphOverview: false,
+            },
+            {
+              text: "Page",
+              type: "page-node",
+              shortcut: "p",
+              format: "{content}",
+              specification: [
+                {
+                  type: "clause",
+                  source: "Page",
+                  relation: "has title",
+                  target: "/^(.*)$/",
+                  uid: "aln15HgZG",
+                },
+              ],
+              canvasSettings: {
+                color: "#000000",
+              },
+              backedBy: "default",
+            },
+            {
+              text: "Block",
+              type: "blck-node",
+              shortcut: "b",
+              format: "{content}",
+              specification: [
+                {
+                  type: "clause",
+                  source: "Block",
+                  relation: "is in page",
+                  target: "_",
+                  uid: "U0dpStPzk",
+                },
+              ],
+              canvasSettings: {
+                color: "#505050",
+              },
+              backedBy: "default",
+            },
+          ],
+          customRelations: [
+            {
+              id: "DXvDSKe94",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "CK3kwflMN",
+              complement: "Informed By",
+              query:
+                '[:find\r\n  (pull ?Question [:block/string :node/title :block/uid])\r\n  (pull ?Question [:block/uid])\r\n:where\r\n  (or-join [?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-Question-uid ?Question ?9zmVOCQFE-{{placeholder}}-uid ?{{placeholder}}]\r\n    (and\r\n      [?9zmVOCQFE-Page :block/uid "{{placeholder}}"]\r\n      [?9zmVOCQFE-Page :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?{{placeholder}} :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?9zmVOCQFE-Block :block/refs ?9zmVOCQFE-Page]\r\n      [?9zmVOCQFE-Block :block/page ?9zmVOCQFE-ParentPage]\r\n      [?9zmVOCQFE-ParentPage :node/title ?9zmVOCQFE-ParentPage-Title]\r\n      [?9zmVOCQFE-ParentPage :block/uid ?9zmVOCQFE-Question-uid]\r\n      [?Question :block/uid ?9zmVOCQFE-Question-uid]\r\n      [(re-pattern "^\\\\[\\\\[QUE\\\\]\\\\] - (.*?)$") ?9zmVOCQFE-QUE-.*?$-regex]\r\n      [(re-find ?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-ParentPage-Title)]\r\n    )\r\n    (and\r\n      [?9zmVOCQFE-SrcPage :block/uid "{{placeholder}}"]\r\n      [?9zmVOCQFE-LinkPage :node/title "Informs"]\r\n      [?9zmVOCQFE-SrcPage :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?{{placeholder}} :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?9zmVOCQFE-SrcBlock :block/refs ?9zmVOCQFE-SrcPage]\r\n      [?9zmVOCQFE-SrcBlock :block/refs ?9zmVOCQFE-LinkPage]\r\n      [?9zmVOCQFE-SrcBlock :block/parents ?9zmVOCQFE-DstBlock]\r\n      [?9zmVOCQFE-DstBlock :block/refs ?9zmVOCQFE-DstPage]\r\n      [?9zmVOCQFE-DstPage :node/title ?9zmVOCQFE-DstPage-Title]\r\n      [?9zmVOCQFE-DstPage :block/uid ?9zmVOCQFE-Question-uid]\r\n      [?Question :block/uid ?9zmVOCQFE-Question-uid]\r\n      [(re-pattern "^\\\\[\\\\[QUE\\\\]\\\\] - (.*?)$") ?9zmVOCQFE-QUE-.*?$-regex]\r\n      [(re-find ?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-DstPage-Title)]\r\n    ))\r\n]',
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["Block", "is in page", "ParentPage"],
+                ["ParentPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "DXvDSKe94",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "CK3kwflMN",
+              complement: "Informed By",
+              query:
+                '[:find\r\n  (pull ?Question [:block/string :node/title :block/uid])\r\n  (pull ?Question [:block/uid])\r\n:where\r\n  (or-join [?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-Question-uid ?Question ?9zmVOCQFE-{{placeholder}}-uid ?{{placeholder}}]\r\n    (and\r\n      [?9zmVOCQFE-Page :block/uid "{{placeholder}}"]\r\n      [?9zmVOCQFE-Page :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?{{placeholder}} :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?9zmVOCQFE-Block :block/refs ?9zmVOCQFE-Page]\r\n      [?9zmVOCQFE-Block :block/page ?9zmVOCQFE-ParentPage]\r\n      [?9zmVOCQFE-ParentPage :node/title ?9zmVOCQFE-ParentPage-Title]\r\n      [?9zmVOCQFE-ParentPage :block/uid ?9zmVOCQFE-Question-uid]\r\n      [?Question :block/uid ?9zmVOCQFE-Question-uid]\r\n      [(re-pattern "^\\\\[\\\\[QUE\\\\]\\\\] - (.*?)$") ?9zmVOCQFE-QUE-.*?$-regex]\r\n      [(re-find ?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-ParentPage-Title)]\r\n    )\r\n    (and\r\n      [?9zmVOCQFE-SrcPage :block/uid "{{placeholder}}"]\r\n      [?9zmVOCQFE-LinkPage :node/title "Informs"]\r\n      [?9zmVOCQFE-SrcPage :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?{{placeholder}} :block/uid ?9zmVOCQFE-{{placeholder}}-uid]\r\n      [?9zmVOCQFE-SrcBlock :block/refs ?9zmVOCQFE-SrcPage]\r\n      [?9zmVOCQFE-SrcBlock :block/refs ?9zmVOCQFE-LinkPage]\r\n      [?9zmVOCQFE-SrcBlock :block/parents ?9zmVOCQFE-DstBlock]\r\n      [?9zmVOCQFE-DstBlock :block/refs ?9zmVOCQFE-DstPage]\r\n      [?9zmVOCQFE-DstPage :node/title ?9zmVOCQFE-DstPage-Title]\r\n      [?9zmVOCQFE-DstPage :block/uid ?9zmVOCQFE-Question-uid]\r\n      [?Question :block/uid ?9zmVOCQFE-Question-uid]\r\n      [(re-pattern "^\\\\[\\\\[QUE\\\\]\\\\] - (.*?)$") ?9zmVOCQFE-QUE-.*?$-regex]\r\n      [(re-find ?9zmVOCQFE-QUE-.*?$-regex ?9zmVOCQFE-DstPage-Title)]\r\n    ))\r\n]',
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["SrcPage", "is a", "source"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["DstBlock", "references", "DstPage"],
+                ["LinkPage", "has title", "Informs"],
+                ["SrcBlock", "references", "LinkPage"],
+                ["DstBlock", "has descendant", "SrcBlock"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["Context", "references", "SPage"],
+                ["SPage", "has title", "SupportedBy"],
+                ["Context", "has child", "Block"],
+                ["PBlock", "references", "ParentPage"],
+                ["PBlock", "has child", "Context"],
+                ["ParentPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Context", "references", "SPage"],
+                ["Page", "is a", "source"],
+                ["Context", "references", "Page"],
+                ["Context", "is in page", "ParentPage"],
+                ["ParentPage", "is a", "destination"],
+                ["SPage", "has title", "SupportedBy"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Context", "references", "CPage"],
+                ["Context", "references", "EPage"],
+                ["Context", "references", "SPage"],
+                ["CPage", "is a", "destination"],
+                ["EPage", "is a", "source"],
+                ["SPage", "has title", "SupportedBy"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["DstBlock", "references", "DstPage"],
+                ["RelPage", "has title", "SupportedBy"],
+                ["SrcPage", "is a", "source"],
+                ["Context", "references", "SrcPage"],
+                ["Context", "references", "RelPage"],
+                ["DstBlock", "has child", "Context"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["Context", "has child", "Block"],
+                ["ParentPage", "is a", "destination"],
+                ["SPage", "has title", "SupportedBy"],
+                ["Context", "is in page", "ParentPage"],
+                ["Context", "references", "SPage"],
+              ],
+            },
+            {
+              id: "Fd4HnEX0p",
+              label: "Supports",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Block29", "is a", "source"],
+                ["Block30", "is a", "destination"],
+                ["Context", "references", "Block30"],
+                ["Block32", "has descendant", "Context"],
+                ["Block33", "has title", "Supports"],
+                ["Context", "references", "Block33"],
+                ["Block32", "references", "Block29"],
+              ],
+            },
+            {
+              id: "M_0CySPtb",
+              label: "Opposes",
+              source: "85wgkuO31",
+              destination: "sys03tzKR",
+              complement: "Opposed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["SBlock", "references", "SPage"],
+                ["SPage", "has title", "Opposed By"],
+                ["SBlock", "has child", "Block"],
+                ["PBlock", "references", "ParentPage"],
+                ["PBlock", "has child", "SBlock"],
+                ["ParentPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "TyLWOdB4U",
+              label: "Supports",
+              source: "sys03tzKR",
+              destination: "sys03tzKR",
+              complement: "Supported By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["DstBlock", "references", "DstPage"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["SrcPage", "is a", "source"],
+                ["RPage", "has title", "SupportedBy"],
+                ["RBlock", "references", "RPage"],
+                ["DstBlock", "has child", "RBlock"],
+                ["RBlock", "has child", "SrcBlock"],
+              ],
+            },
+            {
+              id: "fxY-tTHCE",
+              label: "Informs",
+              source: "sys03tzKR",
+              destination: "CK3kwflMN",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Context", "is in page", "DstPage"],
+                ["Context", "references", "SrcPage"],
+                ["SrcPage", "is a", "source"],
+                ["DstPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "fpwvws-ic",
+              label: "Consistent With",
+              source: "85wgkuO31",
+              destination: "85wgkuO31",
+              complement: "Consistent With",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block2", "references", "Page"],
+                ["Block3", "references", "Page2"],
+                ["Page2", "is a", "destination"],
+                ["Context", "has child", "Block2"],
+                ["Context", "has child", "Block3"],
+                ["Context", "references", "page3"],
+                ["page3", "has title", "SupportedBy"],
+              ],
+            },
+            {
+              id: "fpwvws-ic",
+              label: "Consistent With",
+              source: "85wgkuO31",
+              destination: "85wgkuO31",
+              complement: "Consistent With",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["SBlock", "references", "SPage"],
+                ["SPage", "has title", "OpposedBy"],
+                ["SBlock", "has child", "Block"],
+                ["PBlock", "references", "ParentPage"],
+                ["PBlock", "has child", "SBlock"],
+                ["ParentPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "fpwvws-ic",
+              label: "Consistent With",
+              source: "85wgkuO31",
+              destination: "85wgkuO31",
+              complement: "Consistent With",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Block16", "is a", "source"],
+                ["Block14", "is a", "destination"],
+                ["Block19", "has title", "consistentWith"],
+                ["Block17", "has child", "Block24"],
+                ["Block24", "references", "Block19"],
+                ["Block24", "references", "Block14"],
+                ["Block17", "references", "Block16"],
+              ],
+            },
+            {
+              id: "5h91Rpo_w",
+              label: "Informs",
+              source: "OZhxQs38_",
+              destination: "sys03tzKR",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Context", "is in page", "Page2"],
+                ["Page2", "is a", "destination"],
+                ["Context", "references", "Page"],
+                ["Page", "is a", "source"],
+              ],
+            },
+            {
+              id: "SPnC4rDfE",
+              label: "Informs",
+              source: "OZhxQs38_",
+              destination: "CK3kwflMN",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Context", "references", "Page"],
+                ["Context", "is in page", "Page2"],
+                ["Page2", "is a", "destination"],
+              ],
+            },
+            {
+              id: "LWkn2SVzt",
+              label: "Informs",
+              source: "OZhxQs38_",
+              destination: "84l8tEeA2",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block1", "references", "Page"],
+                ["Block1", "is in page", "Page2"],
+                ["Page2", "is a", "destination"],
+              ],
+            },
+            {
+              id: "CFnThTTI0",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "84l8tEeA2",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Context", "is in page", "DstPage"],
+                ["Context", "references", "SrcPage"],
+                ["SrcPage", "is a", "source"],
+                ["DstPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "CFnThTTI0",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "84l8tEeA2",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["SrcPage", "is a", "source"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["DstBlock", "references", "DstPage"],
+                ["LinkPage", "has title", "Informs"],
+                ["SrcBlock", "references", "LinkPage"],
+                ["DstBlock", "has descendant", "SrcBlock"],
+              ],
+            },
+            {
+              id: "bTXP3AKwO",
+              label: "Informs",
+              source: "OZhxQs38_",
+              destination: "ceW_PoMVt",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Context", "references", "Page"],
+                ["Context", "is in page", "Page2"],
+                ["Page2", "is a", "destination"],
+              ],
+            },
+            {
+              id: "9xn6lpbAD",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "ceW_PoMVt",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["SrcBlock", "is in page", "DstPage"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["SrcPage", "is a", "source"],
+                ["DstPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "9xn6lpbAD",
+              label: "Informs",
+              source: "85wgkuO31",
+              destination: "ceW_PoMVt",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["SrcPage", "is a", "source"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["DstBlock", "references", "DstPage"],
+                ["LinkPage", "has title", "Informs"],
+                ["SrcBlock", "references", "LinkPage"],
+                ["DstBlock", "has descendant", "SrcBlock"],
+              ],
+            },
+            {
+              id: "HjthZkfw7",
+              label: "SourceFor",
+              source: "OZhxQs38_",
+              destination: "85wgkuO31",
+              complement: "FromSource",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Page2", "is a", "destination"],
+                ["Page2", "references", "Page"],
+              ],
+            },
+            {
+              id: "uZu_VeT5Q",
+              label: "SourceFor",
+              source: "DoIcrR_MO",
+              destination: "q3B9CaO6Q",
+              complement: "FromSource",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Page2", "is a", "destination"],
+                ["Page2", "references", "Page"],
+              ],
+            },
+            {
+              id: "_qxDacB9c",
+              label: "IssueFor",
+              source: "8tpfgIm5Z",
+              destination: "DoIcrR_MO",
+              complement: "RelatedIssue",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Block1", "is a", "destination"],
+                ["Block0", "is in page", "Block1"],
+                ["Block2", "is a", "source"],
+                ["Block0", "references", "Block2"],
+              ],
+            },
+            {
+              id: "txJiNh8Pz",
+              label: "UsedIn",
+              source: "ceW_PoMVt",
+              destination: "S276jHf0s",
+              complement: "Uses",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Block0", "is a", "source"],
+                ["Block1", "is a", "destination"],
+                ["Context", "references", "Block1"],
+                ["Context", "is in page", "Block0"],
+                ["Context", "references", "Block3"],
+                ["Block3", "has title", "UsedIn"],
+              ],
+            },
+            {
+              id: "Syi_vj27y",
+              label: "Informs",
+              source: "sys03tzKR",
+              destination: "sys03tzKR",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block", "references", "Page"],
+                ["Block", "is in page", "ParentPage"],
+                ["ParentPage", "is a", "destination"],
+              ],
+            },
+            {
+              id: "Syi_vj27y",
+              label: "Informs",
+              source: "sys03tzKR",
+              destination: "sys03tzKR",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["DstPage", "is a", "destination"],
+                ["SrcPage", "is a", "source"],
+                ["SrcBlock", "references", "SrcPage"],
+                ["DstBlock", "references", "DstPage"],
+                ["LinkPage", "has title", "Informs"],
+                ["SrcBlock", "references", "LinkPage"],
+                ["DstBlock", "has descendant", "SrcBlock"],
+              ],
+            },
+            {
+              id: "OtFiizJEX",
+              label: "IsTo",
+              source: "B676vtaon",
+              destination: "YjF0S0tKS",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Page", "is a", "source"],
+                ["Block2", "references", "Page"],
+                ["Block3", "references", "Page2"],
+                ["Page2", "is a", "destination"],
+                ["Context", "has child", "Block2"],
+                ["Context", "has child", "Block3"],
+                ["Context", "references", "page3"],
+                ["page3", "has title", "SupportedBy"],
+              ],
+            },
+            {
+              id: "OtFiizJEX",
+              label: "IsTo",
+              source: "B676vtaon",
+              destination: "YjF0S0tKS",
+              complement: "Informed By",
+              query: "",
+              complementQuery: "",
+              triples: [
+                ["Block16", "is a", "source"],
+                ["Block14", "is a", "destination"],
+                ["Block19", "has title", "consistentWith"],
+                ["Block17", "has child", "Block24"],
+                ["Block24", "references", "Block19"],
+                ["Block24", "references", "Block14"],
+                ["Block17", "references", "Block16"],
+              ],
+            },
+          ],
+        },
+      };
+      const {
+        isCustomEnabled,
+        customNode,
+        isSamePageEnabled,
+        definedSelections,
+        ...args
+      } = _args;
+      const query = getDatalogQuery(args);
+      console.log(query);
+    },
+  });
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Run Test Queries - then",
+    callback: async () => {
+      type QueryConfig = {
+        query: string;
+      };
+      const executeQueriesWithLogs = async (queries: QueryConfig[]) => {
+        const startTime = Date.now();
+
+        const queryPromises = queries.map((q) => {
+          logTimestamp("🔍🟢", `Running query: ${q.query}`);
+          return window.roamAlphaAPI.data.async.q(q.query).then((result) => {
+            console.log(`Query completed after ${Date.now() - startTime}ms:`, {
+              query: q,
+              result,
+            });
+            return result;
+          });
+        });
+
+        const results = await Promise.all(queryPromises);
+        console.log(
+          `All queries completed after ${Date.now() - startTime}ms:`,
+          results
+        );
+        return results;
+      };
+      await executeQueriesWithLogs(queries);
+    },
+  });
+
+  extensionAPI.ui.commandPalette.addCommand({
+    label: "Run Test Queries",
+    callback: async () => {
+      type QueryConfig = {
+        query: string;
+      };
+
+      const executeQueriesWithLogs = async (queries: QueryConfig[]) => {
+        const startTime = Date.now();
+        logTimestamp("🔍🟢", `Start`);
+        const results = await Promise.all(
+          queries.map((q) => {
+            const queryName =
+              (q.query.match(/\?(\w+)/)?.[1] || "unnamed") + `-${nanoid(4)}`;
+            logTimestamp("🔍🟢", `Running query: ${queryName}`);
+
+            return window.roamAlphaAPI.data.async.q(q.query);
+          })
+        );
+        console.log(
+          `All queries completed after ${Date.now() - startTime}ms:`,
+          results
+        );
+        return results;
+      };
+      await executeQueriesWithLogs(queries);
+    },
   });
 
   extensionAPI.ui.commandPalette.addCommand({

@@ -30,11 +30,6 @@ const getDiscourseRelations = () => {
         source: getSettingValueFromTree({ tree, key: "Source" }),
         destination: getSettingValueFromTree({ tree, key: "Destination" }),
         complement: getSettingValueFromTree({ tree, key: "Complement" }),
-        query: getSettingValueFromTree({ tree, key: "query" }),
-        complementQuery: getSettingValueFromTree({
-          tree,
-          key: "queryComplement",
-        }),
       };
       const ifNode = tree.find(matchNodeText("if"))?.children || [];
       return ifNode.map((node) => ({

@@ -15,6 +15,8 @@ import predefinedSelections, {
 import { DEFAULT_RETURN_NODE } from "./parseQuery";
 import { DiscourseNode } from "./getDiscourseNodes";
 import { DiscourseRelation } from "./getDiscourseRelations";
+import { logTimestamp } from "../components/QueryTester";
+import nanoid from "nanoid";
 
 export type QueryArgs = {
   returnNode?: string;
@@ -349,6 +351,7 @@ const fireQuery: FireQuery = async (_args) => {
     definedSelections,
     ...args
   } = _args;
+
   if (isSamePageEnabled) {
     return getSamePageAPI()
       .then((api) => api.postToAppBackend({ path: "query", data: { ...args } }))
@@ -359,6 +362,7 @@ const fireQuery: FireQuery = async (_args) => {
         return [];
       });
   }
+  logTimestamp("💽💽", "getDatalogQuery");
   const { query, formatResult, inputs } = isCustomEnabled
     ? {
         query: customNode as string,
@@ -379,20 +383,46 @@ const fireQuery: FireQuery = async (_args) => {
         inputs: [],
       }
     : getDatalogQuery(args);
+
   try {
     if (getNodeEnv() === "development") {
-      console.log("Query to Roam:");
-      console.log(query);
-      if (inputs.length) console.log("Inputs:", ...inputs);
+      // console.log("Query to Roam:");
+      // console.log(query);
     }
+    const id = nanoid(6);
+    const queryName = (query.match(/\?(\w+)/)?.[1] || "unnamed") + `-${id}`;
+    const consistentWithCount = (query.match(/consistentWith/g) || []).length;
+
+    const startTime = performance.now();
+    logTimestamp("🔍🟢", `${queryName} - ${consistentWithCount}`);
+    if (inputs.length) console.log("Inputs:", ...inputs);
+
     const queryResults = await window.roamAlphaAPI.data.async.q(
       query,
       ...inputs
     );
+    // console.log(args.context?.r || args.context);
+    console.log({
+      label: args.context?.r.label,
+      iscomplement: args.context?.isComplement,
+      complement: args.context?.r.complement,
+      query,
+      queryResults,
+    });
+    const duration = (performance.now() - startTime).toFixed(2);
+    console.log(`Query ${queryName} took ${duration}ms`);
+    logTimestamp("🔍🛑", `${queryName} - ${consistentWithCount}`);
+
     return Promise.all(queryResults.map(formatResult));
   } catch (e) {
-    console.error("Error from Roam:");
+    // console.error("Error from Roam:");
     console.error((e as Error).message);
+    console.log({
+      label: args.context?.r.label,
+      iscomplement: args.context?.isComplement,
+      complement: args.context?.r.complement,
+      query,
+    });
     return [];
   }
 };
