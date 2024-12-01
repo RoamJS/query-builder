@@ -335,6 +335,9 @@ const NanopubDialog = ({
       prefix: "",
     });
 
+    //
+    // TODO add/alias ORCIDs
+    //
     // Add contributors to provenance
     if (contributors.length) {
       const props = getBlockProps(uid) as Record<string, unknown>;
