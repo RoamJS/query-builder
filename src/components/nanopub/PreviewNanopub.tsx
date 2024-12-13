@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { creditRoles } from "./ContributorManager";
+import { creditRoles, getCurrentUserOrcid } from "./ContributorManager";
 import {
   Contributor,
-  getOrcidUrl,
   NanopubTriple,
   updateObjectPlaceholders,
 } from "./Nanopub";
@@ -71,7 +70,7 @@ const PreviewNanopub = ({
   };
 
   useEffect(() => {
-    const orcidUrl = getOrcidUrl(extensionAPI);
+    const orcid = getCurrentUserOrcid();
     const resolveTriples = async () => {
       const resolved = await Promise.all(
         templateTriples?.map(async (triple) => {
@@ -80,7 +79,7 @@ const PreviewNanopub = ({
             pageUid,
             nanopubConfig: discourseNode.nanopub,
             extensionAPI,
-            orcidUrl,
+            orcid,
           });
           return { ...triple, object: updatedObject };
         }) || []

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useRef, memo } from "react";
-import { InputGroup, Button, Intent } from "@blueprintjs/core";
+import { InputGroup, Button, Intent, Label } from "@blueprintjs/core";
 import { OnloadArgs, PullBlock } from "roamjs-components/types";
 import { getSubTree } from "roamjs-components/util";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
@@ -8,6 +8,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
+import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 
 type NanopubMainConfigProps = {
   onloadArgs: OnloadArgs;
@@ -20,6 +21,9 @@ export type PossibleContributor = {
 };
 
 const NanopubMainConfig = ({ onloadArgs, uid }: NanopubMainConfigProps) => {
+  const [orcid, setOrcid] = useState(
+    onloadArgs.extensionAPI.settings.get("orcid") as string
+  );
   const tree = useMemo(() => getBasicTreeByParentUid(uid), [uid]);
   const contributorsUid = useMemo<string>(
     () => getSubTree({ tree, key: "contributors", parentUid: uid }).uid,
@@ -32,7 +36,6 @@ const NanopubMainConfig = ({ onloadArgs, uid }: NanopubMainConfigProps) => {
       orcid: c.children[0]?.text,
     }))
   );
-
   const userDisplayNames = useMemo(() => {
     const queryResults = window.roamAlphaAPI.data.fast.q(
       `[:find (pull ?p [:user/email]) (pull ?r [:node/title]) :where 
@@ -54,15 +57,26 @@ const NanopubMainConfig = ({ onloadArgs, uid }: NanopubMainConfigProps) => {
       .filter((name) => name !== "Anonymous");
   }, []);
 
+  const [possibleContributors, setPossibleContributors] = useState<string[]>(
+    userDisplayNames.filter(
+      (name) => !contributors.some((c) => c.name === name)
+    )
+  );
+  console.log("possibleContributors", possibleContributors);
+  const currentUserName = useMemo(() => getCurrentUserDisplayName(), []);
+
   return (
     <div className="space-y-4">
+      <Label>Contributors</Label>
       <div className="space-y-2">
         {contributors.map((contributor, index) => (
           <ContributorRow
             key={contributor.uid}
             contributor={contributor}
+            currentUserName={currentUserName}
             setContributors={setContributors}
-            userDisplayNames={userDisplayNames}
+            setPossibleContributors={setPossibleContributors}
+            userDisplayNames={possibleContributors}
           />
         ))}
       </div>
@@ -86,6 +100,37 @@ const NanopubMainConfig = ({ onloadArgs, uid }: NanopubMainConfigProps) => {
         >
           Add Contributor
         </Button>
+        <Button
+          icon="add"
+          minimal
+          hidden={contributors.some((c) => c.name === currentUserName)}
+          onClick={async () => {
+            const uid = await createBlock({
+              parentUid: contributorsUid,
+              node: {
+                text: currentUserName,
+                children: [{ text: "" }],
+              },
+            });
+            setContributors([
+              ...contributors,
+              {
+                uid,
+                name: currentUserName,
+                orcid,
+              },
+            ]);
+            const inputElement = document.querySelector(
+              `[data-contributor-uid="${uid}"] .orcid-input input`
+            ) as HTMLInputElement;
+            if (inputElement) {
+              inputElement.focus();
+              console.log("inputElement", inputElement);
+            }
+          }}
+        >
+          Add Yourself as Contributor
+        </Button>
       </div>
     </div>
   );
@@ -94,15 +139,19 @@ const NanopubMainConfig = ({ onloadArgs, uid }: NanopubMainConfigProps) => {
 const ContributorRow = memo(
   ({
     contributor,
+    currentUserName,
     key,
     userDisplayNames,
     setContributors,
+    setPossibleContributors,
   }: {
     contributor: PossibleContributor;
+    currentUserName: string;
     key: string;
     setContributors: React.Dispatch<
       React.SetStateAction<PossibleContributor[]>
     >;
+    setPossibleContributors: React.Dispatch<React.SetStateAction<string[]>>;
     userDisplayNames: string[];
   }) => {
     const debounceRef = useRef(0);
@@ -152,22 +201,37 @@ const ContributorRow = memo(
     }, [contributor.uid, setContributors]);
 
     return (
-      <div key={key} className="flex items-center space-x-2">
+      <div
+        key={key}
+        className="flex items-center space-x-2"
+        data-contributor-uid={contributor.uid}
+      >
         <AutocompleteInput
-          // disabled={!isEditing}
           placeholder="Contributor name"
           value={contributor.name}
           setValue={setContributorName}
           options={userDisplayNames}
-          onBlur={(e) => setContributorName(e)}
+          onBlur={(e) => {
+            setContributorName(e);
+            setPossibleContributors((prev) =>
+              prev.filter((name) => name !== e)
+            );
+          }}
         />
         <InputGroup
           placeholder="0000-0000-0000-0000"
           value={contributor.orcid}
           onChange={(e) => setContributorOrcid(e.target.value)}
           onBlur={(e) => setContributorOrcid(e.target.value)}
+          className="font-mono orcid-input"
         />
         <Button icon="cross" minimal onClick={removeContributor} />
+        {contributor.name === currentUserName && (
+          <div
+            className="h-2 w-2 rounded-full bg-green-500"
+            title="This is you."
+          />
+        )}
       </div>
     );
   }

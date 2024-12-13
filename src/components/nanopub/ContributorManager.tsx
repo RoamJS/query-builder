@@ -9,6 +9,7 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { PossibleContributor } from "./NanopubMainConfig";
+import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
 
 // https://credit.niso.org/ taxonomy roles
 
@@ -90,6 +91,31 @@ export const creditRoles: CreditRole[] = [
   },
 ];
 
+export const getContributors = (): PossibleContributor[] => {
+  const discourseConfigUid = getPageUidByPageTitle("roam/js/discourse-graph");
+  const tree = getBasicTreeByParentUid(discourseConfigUid);
+  const nanoPubTree = getSubTree({ tree, key: "Nanopub" });
+  if (!nanoPubTree.children.length) return [];
+  const contributorsNode = getSubTree({
+    tree: nanoPubTree.children,
+    key: "contributors",
+  });
+  return contributorsNode.children
+    .map((c) => ({
+      uid: c.uid,
+      name: c.text,
+      orcid: c.children[0]?.text,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const getCurrentUserOrcid = (): string => {
+  const contributors = getContributors();
+  const name = getCurrentUserDisplayName();
+  const contributor = contributors.find((c) => c.name === name);
+  return contributor?.orcid || "";
+};
+
 const ContributorManager = ({
   pageUid,
   pageProps: props,
@@ -110,24 +136,10 @@ const ContributorManager = ({
   const debounceRef = useRef(0);
   const nanopubProps = props["nanopub"] as NanopubPage;
   const possibleContributorNames = useMemo<PossibleContributor[]>(() => {
-    const discourseConfigUid = getPageUidByPageTitle("roam/js/discourse-graph");
-    const tree = getBasicTreeByParentUid(discourseConfigUid);
-    const nanoPubTree = getSubTree({ tree, key: "Nanopub" });
-    if (!nanoPubTree.children.length) return [];
-    const contributorsNode = getSubTree({
-      tree: nanoPubTree.children,
-      key: "contributors",
-    });
-    return contributorsNode.children
-      .map((c) => ({
-        uid: c.uid,
-        name: c.text,
-        orcid: c.children[0]?.text,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter(
-        (c) => !contributors.some((existing) => existing.name === c.name)
-      );
+    const definedContributors = getContributors() || [];
+    return definedContributors.filter(
+      (c) => !contributors.some((existing) => existing.name === c.name)
+    );
   }, [contributors]);
 
   const updateContributorProps = useCallback(

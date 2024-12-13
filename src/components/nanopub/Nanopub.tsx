@@ -29,7 +29,10 @@ import { OnloadArgs } from "roamjs-components/types";
 import getDiscourseNode from "../../utils/getDiscourseNode";
 import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getCurrentUserDisplayName from "roamjs-components/queries/getCurrentUserDisplayName";
-import ContributorManager, { creditRoles } from "./ContributorManager";
+import ContributorManager, {
+  creditRoles,
+  getCurrentUserOrcid,
+} from "./ContributorManager";
 import {
   baseRdf,
   defaultPredicates,
@@ -64,11 +67,6 @@ export type Contributor = {
 const PRIVATE_KEY =
   "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCjY1gsFxmak6SOCouJPuEzHNForkqFhgfHE3aAIAx+Y5q6UDEDM9Q0EksheNffJB4iPqsAfiFpY0ARQY92K5r8P4+a78eu9reYrb2WxZb1qPJmvR7XZ6sN1oHD7dd/EyQoJmQsmOKdrqaLRbzR7tZrf52yvKkwNWXcIVhW8uxe7iUgxiojZpW9srKoK/qFRpaUZSKn7Z/zgtDH9FJkYbBsGPDMqp78Kzt+sJb+U2W+wCSSy34jIUxx6QRbzvn6uexc/emFw/1DU5y7zBudhgC7mVk8vX1gUNKyjZBzlOmRcretrANgffqs5fx/TMHN1xtkA/H1u1IKBfKoyk/xThMLAgMBAAECggEAECuG0GZA3HF8OaqFgMG+W+agOvH04h4Pqv4cHjYNxnxpFcNV9nEssTKWSOvCwYy7hrwZBGV3PQzbjFmmrxVFs20+8yCD7KbyKKQZPVC0zf84bj6NTNgvr6DpGtDxINxuGaMjCt7enqhoRyRRuZ0fj2gD3Wqae/Ds8cpDCefkyMg0TvauHSUj244vGq5nt93txUv1Sa+/8tWZ77Dm0s5a3wUYB2IeAMl5WrO2GMvgzwH+zT+4kvNWg5S0Ze4KE+dG3lSIYZjo99h14LcQS9eALC/VBcAJ6pRXaCTT/TULtcLNeOpoc9Fu25f0yTsDt6Ga5ApliYkb7rDhV+OFrw1sYQKBgQDCE9so+dPg7qbp0cV+lbb7rrV43m5s9Klq0riS7u8m71oTwhmvm6gSLfjzqb8GLrmflCK4lKPDSTdwyvd+2SSmOXySw94zr1Pvc7sHdmMRyA7mH3m+zSOOgyCTTKyhDRCNcRIkysoL+DecDhNo4Fumf71tsqDYogfxpAQhn0re8wKBgQDXhMmmT2oXiMnYHhi2k7CJe3HUqkZgmW4W44SWqKHp0V6sjcHm0N0RT5Hz1BFFUd5Y0ZB3JLcah19myD1kKYCj7xz6oVLb8O7LeAZNlb0FsrtD7NU+Hciywo8qESiA7UYDkU6+hsmxaI01DsttMIdG4lSBbEjA7t4IQC5lyr7xiQKBgQCN87YGJ40Y5ZXCSgOZDepz9hqX2KGOIfnUv2HvXsIfiUwqTXs6HbD18xg3KL4myIBOvywSM+4ABYp+foY+Cpcq2btLIeZhiWjsKIrw71+Q/vIe0YDb1PGf6DsoYhmWBpdHzR9HN+hGjvwlsYny2L9Qbfhgxxmsuf7zeFLpQLijjwKBgH7TD28k8IOk5VKec2CNjKd600OYaA3UfCpP/OhDl/RmVtYoHWDcrBrRvkvEEd2/DZ8qw165Zl7gJs3vK+FTYvYVcfIzGPWA1KU7nkntwewmf3i7V8lT8ZTwVRsmObWU60ySJ8qKuwoBQodki2VX12NpMN1wgWe3qUUlr6gLJU4xAoGAet6nD3QKwk6TTmcGVfSWOzvpaDEzGkXjCLaxLKh9GreM/OE+h5aN2gUoFeQapG5rUwI/7Qq0xiLbRXw+OmfAoV2XKv7iI8DjdIh0F06mlEAwQ/B0CpbqkuuxphIbchtdcz/5ra233r3BMNIqBl3VDDVoJlgHPg9msOTRy13lFqc=";
 
-export const getOrcidUrl = (extensionAPI: OnloadArgs["extensionAPI"]) => {
-  const hasORCID = extensionAPI.settings.get("orcid") as string;
-  const ORCID = hasORCID ? `https://orcid.org/${hasORCID}` : "";
-  return ORCID;
-};
 export const NanoPubTitleButtons = ({
   uid,
   onloadArgs,
@@ -152,16 +150,17 @@ export const updateObjectPlaceholders = async ({
   pageUid,
   nanopubConfig,
   extensionAPI,
-  orcidUrl,
+  orcid,
 }: {
   object: string;
   pageUid: string;
   nanopubConfig?: NanopubConfig;
   extensionAPI: any;
-  orcidUrl: string;
+  orcid: string;
 }) => {
   const pageTitle = getPageTitleByPageUid(pageUid);
   const pageUrl = `https://roamresearch.com/#/app/${window.roamAlphaAPI.graph.name}/page/${pageUid}`;
+  const orcidUrl = `https://orcid.org/${orcid}`;
 
   let contentUid = pageUid;
   if (nanopubConfig?.useCustomBody) {
@@ -236,7 +235,7 @@ const NanopubDialog = ({
       pageUid: uid,
       nanopubConfig,
       extensionAPI,
-      orcidUrl,
+      orcid,
     };
 
     const objectIdentifierIds = [
@@ -335,9 +334,6 @@ const NanopubDialog = ({
       prefix: "",
     });
 
-    //
-    // TODO add/alias ORCIDs
-    //
     // Add contributors to provenance
     if (contributors.length) {
       const props = getBlockProps(uid) as Record<string, unknown>;
@@ -345,18 +341,44 @@ const NanopubDialog = ({
       const contributors = nanopub?.contributors || [];
 
       const provenanceGraph = rdf["@graph"]["np:hasProvenance"]["@graph"];
+
+      // Add contributors with their ORCIDs and names as aliases
       contributors.forEach((contributor) => {
+        if (!contributor.orcid) return; // Skip if no ORCID
+
+        // Add roles using ORCID as identifier
         contributor.roles.forEach((role) => {
           const roleUri = creditRoles.find((r) => r.label === role)?.uri;
           if (roleUri) {
             provenanceGraph.push({
               "@id": "#assertion",
-              [`credit:${roleUri}`]: contributor.name,
+              [`credit:${roleUri}`]: {
+                "@id": `https://orcid.org/${contributor.orcid}`,
+              },
             });
           }
         });
       });
     }
+
+    // Alias ORCID
+    if (orcidUrl) {
+      addAliases({
+        id: orcidUrl,
+        label: getCurrentUserDisplayName(),
+        prefix: "",
+      });
+    }
+
+    // Alias each contributor ORCID
+    contributors.forEach((contributor) => {
+      if (!contributor.orcid) return;
+      addAliases({
+        id: `https://orcid.org/${contributor.orcid}`,
+        label: contributor.name,
+        prefix: "",
+      });
+    });
 
     // Add source if it exists (replacing the old requireSource check)
     if (source) {
@@ -417,11 +439,11 @@ const NanopubDialog = ({
     try {
       console.log("signNanopub");
       console.log(PRIVATE_KEY);
-      const ORCID = extensionAPI.settings.get("orcid") as string;
-      const NAME = getCurrentUserDisplayName();
-      console.log(ORCID);
-      console.log(NAME);
-      const profile = new NpProfile(PRIVATE_KEY, ORCID, NAME, "");
+      const orcid = getCurrentUserOrcid();
+      const name = getCurrentUserDisplayName();
+      console.log(orcid);
+      console.log(name);
+      const profile = new NpProfile(PRIVATE_KEY, orcid, name, "");
       console.log(profile);
       const signed = np.sign(profile);
       console.log("Signed info dict:", signed.info());
@@ -534,7 +556,9 @@ const NanopubDialog = ({
   };
   // END DEV
 
-  const orcidUrl = useMemo(() => getOrcidUrl(extensionAPI), [extensionAPI]);
+  const orcid = getCurrentUserOrcid();
+  const orcidRegex = /^https:\/\/orcid\.org\/\d{4}-\d{4}-\d{4}-\d{4}$/;
+  const orcidUrl = `https://orcid.org/${orcid}`;
 
   const publishNanopub = async ({
     isDev = "",
@@ -543,21 +567,15 @@ const NanopubDialog = ({
     isDev?: string;
     isExample?: boolean;
   }) => {
-    const requiresORCID = templateTriples?.some(
-      (triple) => triple.object === "{myORCID}"
-    );
-    if (requiresORCID) {
-      if (!orcidUrl) {
-        setError(
-          "This template requires your ORCID. Please set your ORCID in the main settings."
-        );
-        return;
-      }
-      const orcidRegex = /^https:\/\/orcid\.org\/\d{4}-\d{4}-\d{4}-\d{4}$/;
-      if (!orcidRegex.test(orcidUrl)) {
-        setError("ORCID must be in the format 0000-0000-0000-0000");
-        return;
-      }
+    if (!orcidUrl) {
+      setError(
+        "ORCID is required. Please set your ORCID in the main settings."
+      );
+      return;
+    }
+    if (!orcidRegex.test(orcidUrl)) {
+      setError("ORCID must be in the format 0000-0000-0000-0000");
+      return;
     }
     if (nanopubConfig?.requireContributors && contributors.length === 0) {
       setError(
