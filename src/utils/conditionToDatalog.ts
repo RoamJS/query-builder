@@ -946,6 +946,49 @@ const translator: Record<string, Translator> = {
     },
     placeholder: "Enter a block reference (with or without brackets)",
   },
+  "is published": {
+    callback: ({ source, target }) => {
+      if (target.toLowerCase() === "as nanopub")
+        return [
+          {
+            type: "data-pattern",
+            arguments: [
+              { type: "variable", value: source },
+              { type: "constant", value: ":block/props" },
+              { type: "variable", value: `${source}-Props` },
+            ],
+          },
+          {
+            type: "fn-expr",
+            fn: "get",
+            arguments: [
+              { type: "variable", value: `${source}-Props` },
+              { type: "constant", value: ":nanopub" },
+            ],
+            binding: {
+              type: "bind-scalar",
+              variable: { type: "variable", value: `${source}-Nanopub` },
+            },
+          },
+          {
+            type: "fn-expr",
+            fn: "get",
+            arguments: [
+              { type: "variable", value: `${source}-Nanopub` },
+              { type: "constant", value: ":published" },
+            ],
+            binding: {
+              type: "bind-scalar",
+              variable: { type: "variable", value: `${source}-Published` },
+            },
+          },
+        ];
+
+      return [];
+    },
+    targetOptions: ["as Nanopub"],
+    placeholder: "Press Enter to show options",
+  },
 };
 
 export const registerDatalogTranslator = ({
