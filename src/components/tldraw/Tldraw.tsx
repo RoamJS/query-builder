@@ -60,6 +60,7 @@ import {
   DiscourseRelationUtil,
 } from "./DiscourseRelationsUtil";
 import { isPageUid } from "../../utils/isPageUid";
+import apiPost from "roamjs-components/util/apiPost";
 
 declare global {
   interface Window {
@@ -787,6 +788,48 @@ const TldrawCanvas = ({ title }: Props) => {
     maximized,
     setMaximized,
   });
+
+  // Catch a custom event we used patch-package to add
+  useEffect(() => {
+    const handleTldrawError = (
+      e: CustomEvent<{ message: string; stack: string | null }>
+    ) => {
+      apiPost({
+        domain: "https://api.samepage.network",
+        path: "errors",
+        data: {
+          method: "extension-error",
+          type: "Tldraw Error",
+          message: e.detail.message,
+          stack: e.detail.stack,
+          version: process.env.VERSION,
+          notebookUuid: JSON.stringify({
+            owner: "RoamJS",
+            app: "query-builder",
+            workspace: window.roamAlphaAPI.graph.name,
+          }),
+          data: {
+            title,
+          },
+        },
+      }).catch(() => {});
+
+      console.error("Tldraw Error:", e.detail);
+    };
+
+    document.addEventListener(
+      "tldraw:error",
+      handleTldrawError as EventListener
+    );
+
+    return () => {
+      document.removeEventListener(
+        "tldraw:error",
+        handleTldrawError as EventListener
+      );
+    };
+  }, []);
+
   return (
     <div
       className={`border border-gray-300 rounded-md bg-white h-full w-full z-10 overflow-hidden ${
