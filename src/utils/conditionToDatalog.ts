@@ -113,7 +113,6 @@ const getTitleDatalog = ({
   }
   const thisPageMatch = /^\s*{this page}\s*$/i.test(target);
   if (thisPageMatch && uid) {
-    console.log(uid);
     return [
       {
         type: "data-pattern",
