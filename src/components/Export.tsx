@@ -50,6 +50,7 @@ import localStorageSet from "roamjs-components/util/localStorageSet";
 import isLiveBlock from "roamjs-components/queries/isLiveBlock";
 import createPage from "roamjs-components/writes/createPage";
 import { createInitialTldrawProps } from "../utils/createInitialTldrawProps";
+import sendErrorEmail from "../utils/sendErrorEmail";
 
 const ExportProgress = ({ id }: { id: string }) => {
   const [progress, setProgress] = useState(0);
@@ -447,26 +448,14 @@ const ExportDialog: ExportDialogComponent = ({
     } catch (e) {
       const error = e as Error;
       renderToast({
-        content: "Looks like there was an error. The team has been notified.",
+        content: "Looks like there was an error.",
         intent: "danger",
         id: "query-builder-error",
       });
-      apiPost({
-        domain: "https://api.samepage.network",
-        path: "errors",
-        data: {
-          method: "extension-error",
-          type: "Query Builder Export Dialog Failed",
-          message: error.message,
-          stack: error.stack,
-          version: process.env.VERSION,
-          notebookUuid: JSON.stringify({
-            owner: "RoamJS",
-            app: "query-builder",
-            workspace: window.roamAlphaAPI.graph.name,
-          }),
-        },
-      }).catch(() => {});
+      sendErrorEmail({
+        error,
+        type: "Query Builder Export Dialog Failed",
+      });
     } finally {
       setLoading(false);
       onClose();
@@ -719,28 +708,16 @@ const ExportDialog: ExportDialogComponent = ({
                   }
                 } catch (e) {
                   const error = e as Error;
-                  apiPost({
-                    domain: "https://api.samepage.network",
-                    path: "errors",
+                  sendErrorEmail({
+                    type: "Query Builder Export Dialog Failed",
+                    error,
                     data: {
-                      method: "extension-error",
-                      type: "Query Builder Export Dialog Failed",
-                      data: {
-                        activeExportType,
-                        filename,
-                        results:
-                          typeof results === "function" ? "dynamic" : results,
-                      },
-                      message: error.message,
-                      stack: error.stack,
-                      version: process.env.VERSION,
-                      notebookUuid: JSON.stringify({
-                        owner: "RoamJS",
-                        app: "query-builder",
-                        workspace: window.roamAlphaAPI.graph.name,
-                      }),
+                      activeExportType,
+                      filename,
+                      results:
+                        typeof results === "function" ? "dynamic" : results,
                     },
-                  }).catch(() => {});
+                  });
                   setDialogOpen(true);
                   setError((e as Error).message);
                 } finally {
