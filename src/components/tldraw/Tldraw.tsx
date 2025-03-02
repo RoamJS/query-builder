@@ -796,11 +796,7 @@ const TldrawCanvas = ({ title }: Props) => {
     ) => {
       sendErrorEmail({
         type: "Tldraw Error",
-        error: {
-          name: "Tldraw Error",
-          message: e.detail.message,
-          stack: e.detail.stack || undefined,
-        },
+        error: new Error(e.detail.message, { cause: e.detail.stack }),
         data: {
           title,
         },
