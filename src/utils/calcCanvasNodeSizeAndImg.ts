@@ -8,7 +8,7 @@ import getDiscourseNodes from "./getDiscourseNodes";
 import resolveRefs from "roamjs-components/dom/resolveRefs";
 import { render as renderToast } from "roamjs-components/components/Toast";
 import { loadImage } from "./loadImage";
-import apiPost from "roamjs-components/util/apiPost";
+import sendErrorEmail from "./sendErrorEmail";
 
 const extractFirstImageUrl = (text: string): string | null => {
   const regex = /!\[.*?\]\((https:\/\/[^)]+)\)/;
@@ -99,27 +99,15 @@ const calcCanvasNodeSizeAndImg = async ({
     };
   } catch (e) {
     const error = e as Error;
-    apiPost({
-      domain: "https://api.samepage.network",
-      path: "errors",
+    sendErrorEmail({
+      type: "Canvas Image Load Failed",
+      error,
       data: {
-        method: "extension-error",
-        type: "Canvas Image Load Failed",
-        message: error.message,
-        stack: error.stack,
-        version: process.env.VERSION,
-        notebookUuid: JSON.stringify({
-          owner: "RoamJS",
-          app: "query-builder",
-          workspace: window.roamAlphaAPI.graph.name,
-        }),
-        data: {
-          uid,
-          nodeText,
-          imageUrl,
-        },
+        uid,
+        nodeText,
+        imageUrl,
       },
-    }).catch(() => {});
+    });
     renderToast({
       id: "tldraw-image-load-fail",
       content: error.message,

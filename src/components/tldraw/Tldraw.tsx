@@ -60,7 +60,7 @@ import {
   DiscourseRelationUtil,
 } from "./DiscourseRelationsUtil";
 import { isPageUid } from "../../utils/isPageUid";
-import apiPost from "roamjs-components/util/apiPost";
+import sendErrorEmail from "../../utils/sendErrorEmail";
 
 declare global {
   interface Window {
@@ -794,27 +794,17 @@ const TldrawCanvas = ({ title }: Props) => {
     const handleTldrawError = (
       e: CustomEvent<{ message: string; stack: string | null }>
     ) => {
-      apiPost({
-        domain: "https://api.samepage.network",
-        path: "errors",
-        data: {
-          method: "extension-error",
-          type: "Tldraw Error",
+      sendErrorEmail({
+        type: "Tldraw Error",
+        error: {
+          name: "Tldraw Error",
           message: e.detail.message,
-          stack: e.detail.stack,
-          version: process.env.VERSION,
-          notebookUuid: JSON.stringify({
-            owner: "RoamJS",
-            app: "query-builder",
-            workspace: window.roamAlphaAPI.graph.name,
-          }),
-          data: {
-            title,
-          },
+          stack: e.detail.stack || undefined,
         },
-      }).catch(() => {});
-
-      console.error("Tldraw Error:", e.detail);
+        data: {
+          title,
+        },
+      });
     };
 
     document.addEventListener(
