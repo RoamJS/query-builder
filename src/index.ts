@@ -2,7 +2,6 @@ import createButtonObserver from "roamjs-components/dom/createButtonObserver";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import getUidsFromId from "roamjs-components/dom/getUidsFromId";
-import { renderQueryBuilder } from "./components/QueryBuilder";
 import runExtension from "roamjs-components/util/runExtension";
 import addStyle from "roamjs-components/dom/addStyle";
 import getPageTitleValueByHtmlElement from "roamjs-components/dom/getPageTitleValueByHtmlElement";
@@ -467,49 +466,7 @@ svg.rs-svg-container {
     render: (b) => renderQueryBlock(b, onloadArgs),
   });
 
-  const originalQueryBuilderObserver = createButtonObserver({
-    shortcut: "qb",
-    attribute: "query-builder",
-    render: (b: HTMLButtonElement) => {
-      const blockId = b.closest<HTMLDivElement>(".roam-block")?.id;
-      const parent = b.parentElement;
-      if (blockId && parent) {
-        renderQueryBuilder({
-          blockId,
-          parent,
-        });
-      }
-    },
-  });
-
   const dataAttribute = "data-roamjs-edit-query";
-  const editQueryBuilderObserver = createHTMLObserver({
-    callback: (b) => {
-      if (!b.getAttribute(dataAttribute)) {
-        b.setAttribute(dataAttribute, "true");
-        const editButtonRoot = document.createElement("div");
-        b.appendChild(editButtonRoot);
-        const blockId = b.closest(".roam-block")?.id;
-        const initialValue = getTextByBlockUid(getUidsFromId(blockId).blockUid);
-        if (blockId) {
-          renderQueryBuilder({
-            blockId,
-            parent: editButtonRoot,
-            initialValue,
-          });
-          const editButton = document.getElementById(
-            `roamjs-query-builder-button-${blockId}`
-          );
-          if (editButton)
-            editButton.addEventListener("mousedown", (e) =>
-              e.stopPropagation()
-            );
-        }
-      }
-    },
-    tag: "DIV",
-    className: "rm-query-title",
-  });
 
   const qtObserver = runQueryTools(extensionAPI);
 
@@ -841,14 +798,7 @@ svg.rs-svg-container {
   document.addEventListener("roamjs:query-builder:action", pageActionListener);
   return {
     elements: [style],
-    observers: [
-      h1Observer,
-      qtObserver,
-      originalQueryBuilderObserver,
-      editQueryBuilderObserver,
-      queryBlockObserver,
-      viewBlockObserver,
-    ],
+    observers: [h1Observer, qtObserver, queryBlockObserver, viewBlockObserver],
     unload: () => {
       window.roamjs.extension?.smartblocks?.unregisterCommand("QUERYBUILDER");
       toggleDiscourseGraphsMode(false);
