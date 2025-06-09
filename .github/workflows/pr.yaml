@@ -1,5 +1,8 @@
 name: Publish Extension
-on: pull_request
+
+on:
+  pull_request:
+  workflow_dispatch:
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
