@@ -946,6 +946,80 @@ const translator: Record<string, Translator> = {
     },
     placeholder: "Enter a block reference (with or without brackets)",
   },
+  "has contributor": {
+    callback: ({ source, target }) => {
+      const currentUserMatch = /^\s*{current user}\s*$/i.test(target);
+      const resolvedTarget = currentUserMatch
+        ? getCurrentUserDisplayName()
+        : target;
+      return [
+        {
+          type: "data-pattern",
+          arguments: [
+            { type: "variable", value: source },
+            { type: "constant", value: ":block/props" },
+            { type: "variable", value: `${source}-Props` },
+          ],
+        },
+        {
+          type: "fn-expr",
+          fn: "get",
+          arguments: [
+            { type: "variable", value: `${source}-Props` },
+            { type: "constant", value: ":nanopub" },
+          ],
+          binding: {
+            type: "bind-scalar",
+            variable: { type: "variable", value: `${source}-Nanopub` },
+          },
+        },
+        {
+          type: "fn-expr",
+          fn: "get",
+          arguments: [
+            { type: "variable", value: `${source}-Nanopub` },
+            { type: "constant", value: ":contributors" },
+          ],
+          binding: {
+            type: "bind-rel",
+            args: [
+              { type: "variable", value: `${source}-Contributors-Key` },
+              { type: "variable", value: `${source}-Contributors-Value` },
+            ],
+          },
+        },
+        {
+          type: "fn-expr",
+          fn: "get",
+          arguments: [
+            { type: "variable", value: `${source}-Contributors-Value` },
+            { type: "constant", value: ":name" },
+          ],
+          binding: {
+            type: "bind-scalar",
+            variable: { type: "variable", value: `${resolvedTarget}-name` },
+          },
+        },
+        {
+          type: "pred-expr",
+          pred: "=",
+          arguments: [
+            { type: "variable", value: `${resolvedTarget}-name` },
+            { type: "constant", value: `"${resolvedTarget}"` },
+          ],
+        },
+      ];
+    },
+    targetOptions: () =>
+      (
+        window.roamAlphaAPI.data.fast.q(
+          `[:find (pull ?n [:node/title]) :where [?u :user/display-page ?n]]`
+        ) as [PullBlock][]
+      )
+        .map((d) => d[0][":node/title"] || "")
+        .concat(["{current user}"]),
+    placeholder: "Enter the name of a contributor",
+  },
   "is published": {
     callback: ({ source, target }) => {
       if (target.toLowerCase() === "as nanopub")
