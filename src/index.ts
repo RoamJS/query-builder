@@ -58,7 +58,6 @@ import {
   removeTitleAdditions,
 } from "./utils/handleTitleAdditions";
 import findDiscourseNode from "./utils/findDiscourseNode";
-import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import { renderSelectDialog } from "./components/SettingsDialog";
 
 const loadedElsewhere = document.currentScript
@@ -404,8 +403,9 @@ svg.rs-svg-container {
       );
     }, 1000);
   }
-  const toggleDiscourseGraphsMode =
-    await initializeDiscourseGraphsMode(onloadArgs);
+  const toggleDiscourseGraphsMode = await initializeDiscourseGraphsMode(
+    onloadArgs
+  );
   if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
     extensionAPI.settings.set(SETTING, true);
     toggleDiscourseGraphsMode(true);
@@ -545,10 +545,10 @@ svg.rs-svg-container {
                   typeof v === "string"
                     ? v
                     : typeof v === "number"
-                      ? v.toString()
-                      : v instanceof Date
-                        ? window.roamAlphaAPI.util.dateToPageTitle(v)
-                        : "",
+                    ? v.toString()
+                    : v instanceof Date
+                    ? window.roamAlphaAPI.util.dateToPageTitle(v)
+                    : "",
                 ])
               )
             )
