@@ -46,16 +46,24 @@ const getDiscourseContextResults = async ({
           queries.push({
             r,
             complement: false,
+            key: `${r.id}-0`,
           });
         }
         if (r.destination === nodeType || r.destination === "*") {
           queries.push({
             r,
             complement: true,
+            key: `${r.id}-1`,
           });
         }
         return queries;
       })
+      // filter unique id+complement
+      // datalog translator combines all relations with the same id when query is built
+      .filter(
+        (query, index, allQueries) =>
+          allQueries.findIndex((q) => q.key === query.key) === index
+      )
       .map(({ r, complement: isComplement }) => {
         const target = isComplement ? r.source : r.destination;
         const text = isComplement ? r.complement : r.label;
