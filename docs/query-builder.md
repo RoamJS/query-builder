@@ -89,6 +89,68 @@ Some relationships have a `target` field that supports the following options:
 - `{this page}` - matches the page in which the query is run
 - `{current user}` - matches the current user
 
+### Logical Operators (OR and NOT OR Branches)
+
+Query Builder supports advanced logical operators that allow you to create complex queries with multiple branches. These operators enable you to build sophisticated queries that can handle multiple scenarios or exclude specific conditions.
+
+**OR Operator**: Returns results that match **any** of the specified branches. Think of it as "this OR that OR the other thing."
+
+**NOT OR Operator**: Returns results that do **not** match **any** of the specified branches. Think of it as "not this AND not that AND not the other thing."
+
+#### Creating OR/NOT OR Branches
+
+1. **Add a new condition** to your query
+2. **Change the condition type** from the dropdown menu (default is "clause")
+3. **Select "or" or "not or"** from the options
+4. **Click "Edit"** to manage the branches
+
+![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FEqF8c_sT4p.png?alt=media&token=156e8915-d46e-4847-8ce6-bac7c03dbc3b)
+
+#### Managing Branches
+
+When you create an OR or NOT OR condition, you'll see a tabbed interface that allows you to manage multiple branches:
+
+- **Each tab represents a branch** (numbered 1, 2, 3, etc.)
+- **Each branch contains AND conditions** - all conditions within a branch must be true
+- **Branches are combined with OR logic** - any branch being true will return results
+- **Use "Add Branch"** to create additional branches
+- **Use "Add Condition"** to add more conditions within the current branch
+
+#### Navigation Between Branches
+
+- **Click on tabs** to switch between branches
+- **Use left/right arrow keys** to navigate between branches
+- **Use "Add Branch" button** to create new branches
+- **Use "Back" button** to return to the main query view
+
+#### Practical Examples
+
+**Example 1: OR Query - Finding Tasks by Multiple Statuses**
+
+**Goal**: Find all tasks that are either "In Progress" OR "Pending Review"
+
+1. Create a new condition
+2. Change type to "or"
+3. Click "Edit"
+4. In Branch 1: Add condition `node` `has attribute` `In Progress`
+5. Click "Add Branch"
+6. In Branch 2: Add condition `node` `has attribute` `Pending Review`
+
+Returns all blocks that have either "In Progress" or "Pending Review" as attributes.
+
+**Example 2: NOT OR Query - Excluding Multiple Categories**
+
+**Goal**: Find all notes that are NOT about "Work" AND NOT about "Personal"
+
+1. Create a new condition
+2. Change type to "not or"
+3. Click "Edit"
+4. In Branch 1: Add condition `node` `has attribute` `Work`
+5. Click "Add Branch"
+6. In Branch 2: Add condition `node` `has attribute` `Personal`
+
+Returns all blocks that do NOT have "Work" as an attribute AND do NOT have "Personal" as an attribute.
+
 ## Selections
 
 **Selections** specify what data from the blocks that match your conditions get returned. They determine the **columns** of the table. By default, the block text or page title is always returned and hyperlinked. Every selection is made up of two parts: the `label` and the `data`:
