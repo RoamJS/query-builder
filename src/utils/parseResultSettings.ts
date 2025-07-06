@@ -114,6 +114,10 @@ const parseResultSettings = (
     tree: resultNode.children,
     key: "layout",
   });
+  const hiddenColumnsNode = getSubTree({
+    tree: resultNode.children,
+    key: "hiddenColumns",
+  });
   const layout = Object.fromEntries(
     layoutNode.children
       .filter((c) => c.children.length)
@@ -161,6 +165,7 @@ const parseResultSettings = (
         savedViewData[column]?.mode || (column === "text" ? "link" : "plain"),
       value: savedViewData[column]?.value || "",
     })),
+    hiddenColumns: hiddenColumnsNode.children.map((c) => c.text),
     random,
     pageSize,
     layout,
