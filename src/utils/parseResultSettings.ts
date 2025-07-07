@@ -5,11 +5,11 @@ import getSettingIntFromTree from "roamjs-components/util/getSettingIntFromTree"
 import getSubTree from "roamjs-components/util/getSubTree";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import { StoredFilters } from "../components/DefaultFilters";
-import { Column } from "./types";
+import { Column, ParsedResultSettings } from "./types";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import getSettingValuesFromTree from "roamjs-components/util/getSettingValuesFromTree";
 
-export type Sorts = { key: string; descending: boolean }[];
+export type Sorts = ParsedResultSettings["activeSort"];
 export type FilterData = Record<string, Filters>;
 export type Views = {
   column: string;
@@ -71,7 +71,7 @@ const parseResultSettings = (
   parentUid: string,
   columns: Column[],
   extensionAPI?: OnloadArgs["extensionAPI"]
-) => {
+): ParsedResultSettings => {
   const { globalFiltersData, globalPageSize } = getSettings(extensionAPI);
   const tree = getBasicTreeByParentUid(parentUid);
   const resultNode = getSubTree({ tree, key: "results" });
@@ -88,6 +88,10 @@ const parseResultSettings = (
   const interfaceNode = getSubTree({
     tree: resultNode.children,
     key: "interface",
+  });
+  const hiddenColumnsNode = getSubTree({
+    tree: resultNode.children,
+    key: "hiddenColumns",
   });
   const filterEntries = getFilterEntries(filtersNode);
   const savedFilterData = filterEntries.length
@@ -165,6 +169,7 @@ const parseResultSettings = (
     pageSize,
     layout,
     page: 1, // TODO save in roam data
+    hiddenColumns: hiddenColumnsNode.children.map((c) => c.text),
   };
 };
 
