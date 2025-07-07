@@ -314,7 +314,12 @@ const ResultsView: ResultsViewComponent = ({
   const [columnFilters, setColumnFilters] = useState(settings.columnFilters);
   const [searchFilter, setSearchFilter] = useState(settings.searchFilter);
   const [showInterface, setShowInterface] = useState(settings.showInterface);
+  const [hiddenColumns, setHiddenColumns] = useState(settings.hiddenColumns);
   const [showMenuIcons, setShowMenuIcons] = useState(false);
+
+  const visibleColumns = useMemo(() => {
+    return columns.filter(column => !hiddenColumns.includes(column.key));
+  }, [columns, hiddenColumns]);
 
   const { allProcessedResults, paginatedResults } = useMemo(() => {
     return postProcessResults(results, {
@@ -360,6 +365,7 @@ const ResultsView: ResultsViewComponent = ({
   const [isEditColumnSort, setIsEditColumnSort] = useState(false);
   const [isEditColumnFilter, setIsEditColumnFilter] = useState(false);
   const [isEditSearchFilter, setIsEditSearchFilter] = useState(false);
+  const [isEditHiddenColumns, setIsEditHiddenColumns] = useState(false);
 
   const [layout, setLayout] = useState(settings.layout);
   const layoutMode = useMemo(
@@ -371,8 +377,9 @@ const ResultsView: ResultsViewComponent = ({
       searchFilter ||
       columnFilters.length ||
       random.count ||
+      hiddenColumns.length ||
       (activeSort.length && layout.mode !== "table"), // indicator is on ResultHeader
-    [searchFilter, columnFilters, random, activeSort, layout.mode]
+    [searchFilter, columnFilters, random, activeSort, layout.mode, hiddenColumns]
   );
   const onViewChange = (view: (typeof views)[number], i: number) => {
     const newViews = views.map((v, j) => (i === j ? view : v));
@@ -404,6 +411,23 @@ const ResultsView: ResultsViewComponent = ({
   const showColumnViewOptions = views.some(
     (view) => VIEWS[view.mode]?.value === true
   );
+
+  const onHiddenColumnsChange = (newHiddenColumns: string[]) => {
+    setHiddenColumns(newHiddenColumns);
+    if (preventSavingSettings) return;
+    const hiddenColumnsNode = getSubTree({
+      key: "hiddenColumns",
+      parentUid: settings.resultNodeUid,
+    });
+    hiddenColumnsNode.children.forEach((c) => deleteBlock(c.uid));
+    newHiddenColumns.forEach((columnKey, order) =>
+      createBlock({
+        parentUid: hiddenColumnsNode.uid,
+        node: { text: columnKey },
+        order,
+      })
+    );
+  };
 
   return (
     <div
@@ -457,7 +481,7 @@ const ResultsView: ResultsViewComponent = ({
         isOpen={isExportOpen}
         onClose={handleCloseExport}
         results={allProcessedResults}
-        columns={columns}
+        columns={visibleColumns}
       />
       <div className="relative">
         <div
@@ -476,6 +500,7 @@ const ResultsView: ResultsViewComponent = ({
               setIsEditColumnFilter(false);
               setIsEditViews(false);
               setIsEditColumnSort(false);
+              setIsEditHiddenColumns(false);
             }}
             autoFocus={false}
             enforceFocus={false}
@@ -575,7 +600,7 @@ const ResultsView: ResultsViewComponent = ({
                   {settingsById[layoutMode].map((s) => {
                     const options =
                       s.options === "columns"
-                        ? columns.map((c) => c.key)
+                        ? visibleColumns.map((c) => c.key)
                         : s.options.slice();
                     return (
                       <Label key={s.key}>
@@ -654,7 +679,7 @@ const ResultsView: ResultsViewComponent = ({
                       </div>
                     ))}
                     <MenuItemSelect
-                      items={columns
+                      items={visibleColumns
                         .map((c) => c.key)
                         .filter((c) => !activeSort.some((as) => as.key === c))}
                       transformItem={(k) =>
@@ -663,7 +688,7 @@ const ResultsView: ResultsViewComponent = ({
                       ButtonProps={{
                         text: "Choose Column",
                         intent: "primary",
-                        disabled: columns.length === activeSort.length,
+                        disabled: visibleColumns.length === activeSort.length,
                       }}
                       onItemSelect={(column) => {
                         resultViewSetActiveSort([
@@ -689,7 +714,7 @@ const ResultsView: ResultsViewComponent = ({
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <MenuItemSelect
                             className="roamjs-column-filter-key"
-                            items={columns.map((c) => c.key)}
+                            items={visibleColumns.map((c) => c.key)}
                             transformItem={(k) =>
                               k.length > 10 ? `${k.slice(0, 7)}...` : k
                             }
@@ -825,7 +850,7 @@ const ResultsView: ResultsViewComponent = ({
                       intent="primary"
                       onClick={() => {
                         const newFilter = {
-                          key: columns[0].key,
+                          key: visibleColumns[0].key,
                           type: SUPPORTED_COLUMN_FILTER_TYPES[0].id,
                           value: [""],
                           uid: window.roamAlphaAPI.util.generateUID(),
@@ -884,7 +909,7 @@ const ResultsView: ResultsViewComponent = ({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {views.map(({ column, mode, value }, i) => (
+                      {views.filter(({ column }) => visibleColumns.some(c => c.key === column)).map(({ column, mode, value }, i) => (
                         <tr key={i}>
                           <td className="whitespace-nowrap">{column}</td>
                           <td className="whitespace-nowrap">
@@ -942,6 +967,31 @@ const ResultsView: ResultsViewComponent = ({
                     </tbody>
                   </HTMLTable>
                 </div>
+              ) : isEditHiddenColumns ? (
+                <div className="relative p-4" style={{ minWidth: "320px" }}>
+                  <MenuHeading
+                    onClear={() => setIsEditHiddenColumns(false)}
+                    text="Hide Columns"
+                  />
+                  <div className="flex flex-col gap-2 py-2">
+                    {columns.map(({ key }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-sm">{key}</span>
+                        <Switch
+                          checked={!hiddenColumns.includes(key)}
+                          onChange={(e) => {
+                            const isVisible = (e.target as HTMLInputElement).checked;
+                            if (isVisible) {
+                              onHiddenColumnsChange(hiddenColumns.filter(col => col !== key));
+                            } else {
+                              onHiddenColumnsChange([...hiddenColumns, key]);
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <Menu>
                   {onEdit && (
@@ -973,6 +1023,14 @@ const ResultsView: ResultsViewComponent = ({
                       text={"Column Views"}
                       onClick={() => {
                         setIsEditViews(true);
+                      }}
+                    />
+                    <MenuItem
+                      icon={"eye-off"}
+                      text={"Hide Columns"}
+                      className={hiddenColumns.length ? "roamjs-item-dirty" : ""}
+                      onClick={() => {
+                        setIsEditHiddenColumns(true);
                       }}
                     />
                     <MenuItem
@@ -1130,7 +1188,7 @@ const ResultsView: ResultsViewComponent = ({
               layoutMode === "table" ? (
                 <ResultsTable
                   layout={layout}
-                  columns={columns}
+                  columns={visibleColumns}
                   results={paginatedResults}
                   parentUid={settings.resultNodeUid}
                   activeSort={activeSort}
@@ -1152,13 +1210,13 @@ const ResultsView: ResultsViewComponent = ({
                 <Charts
                   type="line"
                   data={allProcessedResults}
-                  columns={columns.slice(1)}
+                  columns={visibleColumns.slice(1)}
                 />
               ) : layoutMode === "bar" ? (
                 <Charts
                   type="bar"
                   data={allProcessedResults}
-                  columns={columns.slice(1)}
+                  columns={visibleColumns.slice(1)}
                 />
               ) : layoutMode === "timeline" ? (
                 <Timeline timelineElements={allProcessedResults} />
@@ -1167,7 +1225,7 @@ const ResultsView: ResultsViewComponent = ({
                   data={allProcessedResults}
                   layout={layout}
                   onQuery={() => onRefresh(true)}
-                  resultKeys={columns}
+                  resultKeys={visibleColumns}
                   parentUid={parentUid}
                   views={views}
                   activeSort={activeSort}
