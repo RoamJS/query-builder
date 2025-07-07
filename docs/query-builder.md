@@ -208,6 +208,10 @@ This will allow you to search across all columns, case-insensitive.
 
 https://github.com/RoamJS/query-builder/assets/3792666/6499147d-4d03-4767-b7e7-d1ea925697b5
 
+### Hide Columns
+
+Click on the Menu button, then **Hide Columns** to toggle which columns are visible in the results table.
+
 ### View Type<!-- omit in toc -->
 
 Each column also has a view type. Choosing a view type will change how the cell is displayed in the table.
