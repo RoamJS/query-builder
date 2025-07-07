@@ -51,3 +51,30 @@ export type Column = { key: string; uid: string; selection: string };
 export type QBGlobalRefs = {
   [key: string]: (args: Record<string, string>) => void;
 };
+
+export type ParsedResultSettings = {
+  resultNodeUid: string;
+  activeSort: { key: string; descending: boolean }[];
+  searchFilter: string;
+  showInterface: boolean;
+  filters: Record<
+    string,
+    { includes: { values: Set<string> }; excludes: { values: Set<string> } }
+  >;
+  columnFilters: {
+    key: string;
+    uid: string;
+    value: string[];
+    type: string;
+  }[];
+  views: {
+    column: string;
+    mode: string;
+    value: string;
+  }[];
+  random: number;
+  pageSize: number;
+  layout: Record<string, string | string[]> & { uid?: string };
+  page: number;
+  hiddenColumns: string[];
+};
