@@ -30,7 +30,6 @@ For more information, check out our docs at [https://github.com/RoamJS/query-bui
     - [Randomization](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#randomization)
     - [Context](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#context)
     - [Aliases](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#aliases)
-- [Sortable Linked References](https://github.com/RoamJS/query-builder/blob/main/docs/sortable-linked-refs.md)
 
 ## Nomenclature
 
