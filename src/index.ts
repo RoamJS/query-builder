@@ -17,7 +17,7 @@ import extractRef from "roamjs-components/util/extractRef";
 import type { InputTextNode, PullBlock } from "roamjs-components/types/native";
 import QueryPagesPanel, { getQueryPages } from "./components/QueryPagesPanel";
 import runQuery from "./utils/runQuery";
-import runSortReferences from "./utils/runSortReferences";
+
 import updateBlock from "roamjs-components/writes/updateBlock";
 import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
 import createBlock from "roamjs-components/writes/createBlock";
@@ -339,16 +339,7 @@ svg.rs-svg-container {
         description:
           "The default sorting all native queries in your graph should use",
       },
-      {
-        id: "sort-references",
-        name: "Sortable Linked References",
-        action: {
-          type: "switch",
-          onChange: (e) => toggleSortReferences(e.target.checked),
-        },
-        description:
-          "Whether or not to enable sorting on the linked references section",
-      },
+
       {
         id: "show-page-metadata",
         name: "Show Page Metadata",
@@ -422,11 +413,6 @@ svg.rs-svg-container {
   if (getNodeEnv() === "development" && localStorageGet(SETTING)) {
     extensionAPI.settings.set(SETTING, true);
     toggleDiscourseGraphsMode(true);
-  }
-
-  const toggleSortReferences = runSortReferences();
-  if (!!extensionAPI.settings.get("sort-references")) {
-    toggleSortReferences(true);
   }
 
   const globalRefs: QBGlobalRefs = {
