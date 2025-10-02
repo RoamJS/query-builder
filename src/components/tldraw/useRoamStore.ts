@@ -83,8 +83,9 @@ export const useRoamStore = ({
         const newstateId = nanoid();
         localStateIds.current.push(newstateId);
         localStateIds.current.splice(0, localStateIds.current.length - 25);
-        window.roamAlphaAPI.updateBlock({
-          block: {
+        console.log("updatePage", pageUid);
+        window.roamAlphaAPI.updatePage({
+          page: {
             uid: pageUid,
             props: {
               ...props,
