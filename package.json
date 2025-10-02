@@ -1,6 +1,6 @@
 {
   "name": "query-builder",
-  "version": "1.36.0",
+  "version": "1.36.1",
   "description": "Introduces new user interfaces for building queries in Roam",
   "main": "./build/main.js",
   "author": {
