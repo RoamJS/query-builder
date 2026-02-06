@@ -1,6 +1,12 @@
+<a href="https://roamjs.com/">
+    <img src="https://avatars.githubusercontent.com/u/138642184" alt="RoamJS Logo" title="RoamJS" align="right" height="60" />
+</a>
+
 # Query Builder
 
-Introduces new user interfaces for building queries in Roam.
+**Visual query builder for Roam: create and save queries via blocks, pages, or a drawer; add advanced logic (OR/NOT), then explore results as sortable/filterable tables or views like Kanban.**
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/RoamJS/query-builder)
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FYERyR8FnXO.png?alt=media&token=7522a921-3e17-424f-b141-08e4109f9b75)
 
@@ -22,7 +28,7 @@ For more information, check out our docs at [https://github.com/RoamJS/query-bui
   - [SmartBlocks Integration](https://github.com/RoamJS/query-builder/blob/main/docs/query-builder.md#smartblocks-integration)
   - [Developer API](https://github.com/RoamJS/query-builder/blob/main/docs/query-builder.md#developer-api)
   - [Examples](https://github.com/RoamJS/query-builder/blob/main/docs/query-builder.md#examples)
-- [Discourse Graphs](https://github.com/RoamJS/query-builder/blob/main/docs/discourse-graphs.md)
+
 - [Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#native-roam-queries)
   - [Creating Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#creating-native-roam-queries)
   - [Manipulating Native Roam Queries](https://github.com/RoamJS/query-builder/blob/main/docs/roam-queries.md#manipulating-native-roam-queries)
