@@ -28,6 +28,8 @@ const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
 const DATE_FORMAT_TEST = /^date-format\(([^,)]+),([^,)]+)\)$/i;
+const COUNT_TEST = /^count\(\s*([^)]+?)\s*\)$/i;
+const COUNT_DISTINCT_TEST = /^count-distinct\(\s*([^)]+?)\s*\)$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
@@ -41,6 +43,9 @@ const getArgValue = (key: string, result: QueryResult) => {
     );
   return val;
 };
+
+const toDatalogVariable = (value = "") =>
+  value.replace(/^\?/, "").replace(/[\s"()[\]{}/\\^@,~`]/g, "");
 
 const getUserDisplayNameById = (id?: number) => {
   if (!id) {
@@ -168,6 +173,25 @@ const isVariableExposed = (
     }
   });
 
+const getAggregateSelection = ({
+  match,
+  where,
+  fn,
+}: {
+  match: RegExpExecArray | null;
+  where: DatalogClause[];
+  fn: "count" | "count-distinct";
+}) => {
+  const variable = (match?.[1] || "")
+    .trim()
+    .replace(/^\?/, "")
+    .replace(/^\{+/, "")
+    .replace(/\}+$/, "");
+  if (!variable || !isVariableExposed(where, variable)) return "";
+  const datalogVariable = toDatalogVariable(variable);
+  return datalogVariable ? `(${fn} ?${datalogVariable})` : "";
+};
+
 export type SelectionSuggestion = {
   text: string;
   children?: SelectionSuggestion[];
@@ -216,6 +240,10 @@ const EDIT_DATE_SUGGESTIONS: SelectionSuggestion[] = [
 ];
 const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "created by" }];
 const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "edited by" }];
+const COUNT_SUGGESTIONS: SelectionSuggestion[] = [{ text: "count({{node}})" }];
+const COUNT_DISTINCT_SUGGESTIONS: SelectionSuggestion[] = [
+  { text: "count-distinct({{node}})" },
+];
 // TOO SLOW
 // const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
 //   window.roamAlphaAPI.data.fast.q(
@@ -478,6 +506,20 @@ const predefinedSelections: PredefinedSelection[] = [
       }
     },
     suggestions: [{ text: "date-format({{node}},[MMM do, yyyy])" }],
+  },
+  {
+    test: COUNT_TEST,
+    pull: ({ match, where }) =>
+      getAggregateSelection({ match, where, fn: "count" }),
+    mapper: () => "",
+    suggestions: COUNT_SUGGESTIONS,
+  },
+  {
+    test: COUNT_DISTINCT_TEST,
+    pull: ({ match, where }) =>
+      getAggregateSelection({ match, where, fn: "count-distinct" }),
+    mapper: () => "",
+    suggestions: COUNT_DISTINCT_SUGGESTIONS,
   },
   {
     test: ACTION_TEST,
