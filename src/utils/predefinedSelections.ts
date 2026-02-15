@@ -42,20 +42,29 @@ const getArgValue = (key: string, result: QueryResult) => {
   return val;
 };
 
-const getUserDisplayNameById = (id?: number) => {
+const getUserById = (id?: number) => {
   if (!id) {
-    return "Anonymous User";
+    return { displayName: "Anonymous User", uid: "" };
   }
   const pageId = window.roamAlphaAPI.pull("[:user/display-page]", id)?.[
     ":user/display-page"
   ]?.[":db/id"];
   if (!pageId) {
-    return "Anonymous User";
+    return { displayName: "Anonymous User", uid: "" };
   }
-  return (
-    window.roamAlphaAPI.pull("[:node/title]", pageId)?.[":node/title"] ||
-    "Anonymous User"
-  );
+  const page = window.roamAlphaAPI.pull("[:node/title :block/uid]", pageId);
+  return {
+    displayName: page?.[":node/title"] || "Anonymous User",
+    uid: page?.[":block/uid"] || "",
+  };
+};
+
+const formatUser = (id?: number) => {
+  const { displayName, uid } = getUserById(id);
+  return {
+    "": displayName,
+    "-uid": uid,
+  };
 };
 
 const formatDate = ({
@@ -69,6 +78,7 @@ const formatDate = ({
 }) => {
   const exec = regex.exec(key);
   const date = new Date(value || 0);
+  const dateUid = window.roamAlphaAPI.util.dateToPageUid(date);
   const arg = exec?.[1] || "";
   const parseArg = () => {
     if (/since/i.test(arg)) {
@@ -111,6 +121,7 @@ const formatDate = ({
   return {
     "": date,
     "-display": parseArg(),
+    "-uid": dateUid,
   };
 };
 
@@ -270,7 +281,7 @@ const predefinedSelections: PredefinedSelection[] = [
     test: CREATE_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:create/user])`,
     mapper: (r) => {
-      return getUserDisplayNameById(r?.[":create/user"]?.[":db/id"]);
+      return formatUser(r?.[":create/user"]?.[":db/id"]);
     },
     suggestions: CREATE_BY_SUGGESTIONS,
   },
@@ -278,7 +289,7 @@ const predefinedSelections: PredefinedSelection[] = [
     test: EDIT_BY_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:edit/user])`,
     mapper: (r) => {
-      return getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"]);
+      return formatUser(r?.[":edit/user"]?.[":db/id"]);
     },
     suggestions: EDIT_BY_SUGGESTIONS,
   },
@@ -319,9 +330,9 @@ const predefinedSelections: PredefinedSelection[] = [
             value: r?.[":edit/time"],
           })
         : field === ":create/user"
-        ? getUserDisplayNameById(r?.[":create/user"]?.[":db/id"])
+        ? formatUser(r?.[":create/user"]?.[":db/id"])
         : field === ":edit/user"
-        ? getUserDisplayNameById(r?.[":edit/user"]?.[":db/id"])
+        ? formatUser(r?.[":edit/user"]?.[":db/id"])
         : REGEX_TEST.test(match)
         ? {
             "":
