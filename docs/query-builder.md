@@ -183,6 +183,7 @@ The `label`, which gets specified after **AS**, denotes the name of the column t
 | `node`                             | Use the label to edit the column header of the first column                                          | [Link](examples.md#first-column-header) |
 | `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                                      | [Link](examples.md#add-or-subtract)     |
 | `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                           | [Link](examples.md#add-or-subtract)     |
+| `date-format({label}, [pattern])`  | Formats a date value using `date-fns` format patterns (for example `date-format(Due, [MMM do, yyyy])`). | N/A                                  |
 
 ## Manipulating Results
 
