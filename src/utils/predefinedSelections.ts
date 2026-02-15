@@ -23,8 +23,8 @@ const CREATE_DATE_TEST = /^\s*created?\s*(date|time|since)\s*$/i;
 const EDIT_DATE_TEST = /^\s*edit(?:ed)?\s*(date|time|since)\s*$/i;
 const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
-const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
-const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
+const SUBTRACT_TEST = /^subtract\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$/i;
+const ADD_TEST = /^add\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
 const DATE_FORMAT_TEST = /^date-format\(([^,)]+),([^,)]+)\)$/i;
@@ -42,6 +42,16 @@ const getArgValue = (key: string, result: QueryResult) => {
   return val;
 };
 
+const normalizeSelectionArg = (arg = "") => {
+  const trimmed = arg.trim();
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+};
 const getUserDisplayNameById = (id?: number) => {
   if (!id) {
     return "Anonymous User";
@@ -407,8 +417,8 @@ const predefinedSelections: PredefinedSelection[] = [
     pull: ({ returnNode }) => `(pull ?${returnNode} [:db/id])`,
     mapper: (_, key, result) => {
       const exec = SUBTRACT_TEST.exec(key);
-      const arg0 = exec?.[1] || "";
-      const arg1 = exec?.[2] || "";
+      const arg0 = normalizeSelectionArg(exec?.[1] || "");
+      const arg1 = normalizeSelectionArg(exec?.[2] || "");
       const val0 = getArgValue(arg0, result);
       const val1 = getArgValue(arg1, result);
       if (val0 instanceof Date && val1 instanceof Date) {
@@ -423,15 +433,15 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) - (Number(val1) || 0);
       }
     },
-    suggestions: [{ text: "subtract({{selection}},[###])" }],
+    suggestions: [{ text: "subtract({label1}, {label2})" }],
   },
   {
     test: ADD_TEST,
     pull: ({ returnNode }) => `(pull ?${returnNode} [:db/id])`,
     mapper: (_, key, result) => {
       const exec = ADD_TEST.exec(key);
-      const arg0 = exec?.[1] || "";
-      const arg1 = exec?.[2] || "";
+      const arg0 = normalizeSelectionArg(exec?.[1] || "");
+      const arg1 = normalizeSelectionArg(exec?.[2] || "");
       const val0 = getArgValue(arg0, result);
       const val1 = getArgValue(arg1, result);
       if (val0 instanceof Date && val1 instanceof Date) {
@@ -448,7 +458,7 @@ const predefinedSelections: PredefinedSelection[] = [
         return (Number(val0) || 0) + (Number(val1) || 0);
       }
     },
-    suggestions: [{ text: "add({{selection}},[###])" }],
+    suggestions: [{ text: "add({label1}, {label2})" }],
   },
   {
     test: DATE_FORMAT_TEST,
