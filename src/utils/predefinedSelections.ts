@@ -16,6 +16,7 @@ import { IconNames } from "@blueprintjs/icons";
 import parseQuery from "./parseQuery";
 import toCellValue from "./toCellValue";
 import createBlock from "roamjs-components/writes/createBlock";
+import toTextOnlyValue from "./toTextOnlyValue";
 
 const ALIAS_TEST = /^node$/i;
 const REGEX_TEST = /\/([^}]*)\//;
@@ -25,6 +26,7 @@ const CREATE_BY_TEST = /^\s*(author|create(d)?\s*by)\s*$/i;
 const EDIT_BY_TEST = /^\s*(last\s*)?edit(ed)?\s*by\s*$/i;
 const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
+const TEXT_ONLY_TEST = /^text\(\s*([^)]+?)\s*\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
 const DATE_FORMAT_TEST = /^date-format\(([^,)]+),([^,)]+)\)$/i;
@@ -216,6 +218,9 @@ const EDIT_DATE_SUGGESTIONS: SelectionSuggestion[] = [
 ];
 const CREATE_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "created by" }];
 const EDIT_BY_SUGGESTIONS: SelectionSuggestion[] = [{ text: "edited by" }];
+const TEXT_ONLY_SUGGESTIONS: SelectionSuggestion[] = [
+  { text: "text({{node}})" },
+];
 // TOO SLOW
 // const ATTR_SUGGESTIONS: SelectionSuggestion[] = (
 //   window.roamAlphaAPI.data.fast.q(
@@ -401,6 +406,26 @@ const predefinedSelections: PredefinedSelection[] = [
       return "";
     },
     suggestions: [{ text: "node" }],
+  },
+  {
+    test: TEXT_ONLY_TEST,
+    pull: ({ match, where }) => {
+      const node = (match?.[1] || "").trim().replace(/^\?/, "");
+      return node && isVariableExposed(where, node)
+        ? `(pull ?${node} [:block/string :node/title :block/uid])`
+        : "";
+    },
+    mapper: (r) => {
+      const uid = r?.[":block/uid"] || "";
+      return {
+        "": toTextOnlyValue({
+          value: r?.[":node/title"] || r?.[":block/string"] || "",
+          uid,
+        }),
+        "-uid": uid,
+      };
+    },
+    suggestions: TEXT_ONLY_SUGGESTIONS,
   },
   {
     test: SUBTRACT_TEST,
