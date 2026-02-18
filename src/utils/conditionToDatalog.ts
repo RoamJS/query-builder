@@ -63,30 +63,8 @@ const getTitleDatalog = ({
           type: "data-pattern",
           arguments: [
             { type: "variable", value: source },
-            { type: "constant", value: ":node/title" },
-            { type: "variable", value: `${source}-Title` },
-          ],
-        },
-        {
-          type: "fn-expr",
-          fn: "re-pattern",
-          arguments: [
-            {
-              type: "constant",
-              value: `"${DAILY_NOTE_PAGE_TITLE_REGEX.source}"`,
-            },
-          ],
-          binding: {
-            type: "bind-scalar",
-            variable: { type: "variable", value: `date-regex` },
-          },
-        },
-        {
-          type: "pred-expr",
-          pred: "re-find",
-          arguments: [
-            { type: "variable", value: "date-regex" },
-            { type: "variable", value: `${source}-Title` },
+            { type: "constant", value: ":log/id" },
+            { type: "variable", value: `${source}-log-id` },
           ],
         },
       ];
