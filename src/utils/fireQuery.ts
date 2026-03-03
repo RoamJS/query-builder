@@ -15,6 +15,8 @@ import predefinedSelections, {
 import { DEFAULT_RETURN_NODE } from "./parseQuery";
 import { DiscourseNode } from "./getDiscourseNodes";
 import { DiscourseRelation } from "./getDiscourseRelations";
+import { logTimestamp } from "../components/QueryTester";
+import nanoid from "nanoid";
 
 export type QueryArgs = {
   returnNode?: string;
@@ -27,6 +29,12 @@ type RelationInQuery = {
   text: string;
   isComplement: boolean;
 };
+type QuerySelection = {
+  mapper: PredefinedSelection["mapper"];
+  pull: string;
+  label: string;
+  key: string;
+};
 export type FireQueryArgs = QueryArgs & {
   isSamePageEnabled?: boolean;
   isCustomEnabled?: boolean;
@@ -36,6 +44,7 @@ export type FireQueryArgs = QueryArgs & {
     customNodes?: DiscourseNode[];
     customRelations?: DiscourseRelation[];
   };
+  definedSelections?: QuerySelection[];
 };
 
 type FireQuery = (query: FireQueryArgs) => Promise<QueryResult[]>;
@@ -184,6 +193,69 @@ const getConditionTargets = (conditions: Condition[]): string[] =>
       : getConditionTargets(c.conditions.flat())
   );
 
+type FormatResultFn = (result: unknown[]) => Promise<QueryResult>;
+type FormattedOutput = {
+  output: string | number | Record<string, unknown> | Date;
+  label: string;
+};
+
+const createFormatResultFn = (
+  definedSelections: QuerySelection[]
+): FormatResultFn => {
+  const formatSingleResult = async (
+    pullResult: unknown,
+    selection: QuerySelection,
+    prev: QueryResult
+  ): Promise<FormattedOutput> => {
+    if (typeof pullResult === "object" && pullResult !== null) {
+      const output = await selection.mapper(
+        pullResult as PullBlock,
+        selection.key,
+        prev
+      );
+      return { output, label: selection.label };
+    }
+
+    if (typeof pullResult === "string" || typeof pullResult === "number") {
+      return { output: pullResult, label: selection.label };
+    }
+
+    return { output: "", label: selection.label };
+  };
+
+  const applyOutputToResult = (
+    result: QueryResult,
+    { output, label }: FormattedOutput
+  ): void => {
+    if (typeof output === "object" && !(output instanceof Date)) {
+      Object.entries(output as Record<string, unknown>).forEach(([k, v]) => {
+        result[label + k] = String(v);
+      });
+    } else if (typeof output === "number") {
+      result[label] = output.toString();
+    } else {
+      result[label] = String(output);
+    }
+  };
+
+  return async (results: unknown[]): Promise<QueryResult> => {
+    const formatters = definedSelections.map(
+      (selection, i) => (prev: QueryResult) =>
+        formatSingleResult(results[i], selection, prev)
+    );
+
+    return formatters.reduce(
+      (prev, formatter) =>
+        prev.then(async (p) => {
+          const output = await formatter(p);
+          applyOutputToResult(p, output);
+          return p;
+        }),
+      Promise.resolve({} as QueryResult)
+    );
+  };
+};
+
 export const getDatalogQuery = ({
   conditions,
   selections,
@@ -258,39 +330,7 @@ export const getDatalogQuery = ({
         ? `[?node :block/uid _]`
         : ""
     }${where}\n]`,
-    formatResult: (result: unknown[]) =>
-      definedSelections
-        .map((c, i) => (prev: QueryResult) => {
-          const pullResult = result[i];
-          return typeof pullResult === "object" && pullResult !== null
-            ? Promise.resolve(
-                c.mapper(pullResult as PullBlock, c.key, prev)
-              ).then((output) => ({
-                output,
-                label: c.label,
-              }))
-            : typeof pullResult === "string" || typeof pullResult === "number"
-            ? Promise.resolve({ output: pullResult, label: c.label })
-            : Promise.resolve({ output: "", label: c.label });
-        })
-        .reduce(
-          (prev, c) =>
-            prev.then((p) =>
-              c(p).then(({ output, label }) => {
-                if (typeof output === "object" && !(output instanceof Date)) {
-                  Object.entries(output).forEach(([k, v]) => {
-                    p[label + k] = v;
-                  });
-                } else if (typeof output === "number") {
-                  p[label] = output.toString();
-                } else {
-                  p[label] = output;
-                }
-                return p;
-              })
-            ),
-          Promise.resolve({} as QueryResult)
-        ),
+    formatResult: createFormatResultFn(definedSelections),
     inputs: expectedInputs.map((i) => inputs[i]),
   };
 };
@@ -304,7 +344,14 @@ export const fireQuerySync = (args: FireQueryArgs): QueryResult[] => {
 };
 
 const fireQuery: FireQuery = async (_args) => {
-  const { isCustomEnabled, customNode, isSamePageEnabled, ...args } = _args;
+  const {
+    isCustomEnabled,
+    customNode,
+    isSamePageEnabled,
+    definedSelections,
+    ...args
+  } = _args;
+
   if (isSamePageEnabled) {
     return getSamePageAPI()
       .then((api) => api.postToAppBackend({ path: "query", data: { ...args } }))
@@ -315,37 +362,80 @@ const fireQuery: FireQuery = async (_args) => {
         return [];
       });
   }
+  logTimestamp("💽💽", "getDatalogQuery");
   const { query, formatResult, inputs } = isCustomEnabled
     ? {
         query: customNode as string,
-        formatResult: (r: unknown[]): Promise<QueryResult> =>
-          Promise.resolve({
-            text: "",
-            uid: "",
-            ...Object.fromEntries(
-              r.flatMap((p, index) =>
-                typeof p === "object" && p !== null
-                  ? Object.entries(p)
-                  : [[index.toString(), p]]
-              )
-            ),
-          }),
+        formatResult: definedSelections
+          ? createFormatResultFn(definedSelections)
+          : (r: unknown[]): Promise<QueryResult> =>
+              Promise.resolve({
+                text: "",
+                uid: "",
+                ...Object.fromEntries(
+                  r.flatMap((p, index) =>
+                    typeof p === "object" && p !== null
+                      ? Object.entries(p)
+                      : [[index.toString(), p]]
+                  )
+                ),
+              }),
         inputs: [],
       }
     : getDatalogQuery(args);
+
   try {
     if (getNodeEnv() === "development") {
-      console.log("Query to Roam:");
-      console.log(query);
-      if (inputs.length) console.log("Inputs:", ...inputs);
+      // console.log("Query to Roam:");
+      // console.log(query);
     }
-    return Promise.all(
-      window.roamAlphaAPI.data.fast.q(query, ...inputs).map(formatResult)
+    const id = nanoid(6);
+    const queryName = (query.match(/\?(\w+)/)?.[1] || "unnamed") + `-${id}`;
+    const consistentWithCount = (query.match(/consistentWith/g) || []).length;
+
+    const startTime = performance.now();
+    logTimestamp("🔍🟢", `${queryName} - ${consistentWithCount}`);
+    if (inputs.length) console.log("Inputs:", ...inputs);
+
+    const queryResults = await window.roamAlphaAPI.data.async.q(
+      query,
+      ...inputs
     );
+    // console.log(args.context?.r || args.context);
+    console.log({
+      label: args.context?.r.label,
+      iscomplement: args.context?.isComplement,
+      complement: args.context?.r.complement,
+      query,
+      queryResults,
+    });
+    const duration = (performance.now() - startTime).toFixed(2);
+    console.log(`Query ${queryName} took ${duration}ms`);
+    logTimestamp("🔍🛑", `${queryName} - ${consistentWithCount}`);
+
+    return Promise.all(queryResults.map(formatResult));
   } catch (e) {
-    console.error("Error from Roam:");
+    // console.error("Error from Roam:");
     console.error((e as Error).message);
-    return [];
+    console.log({
+      label: args.context?.r.label,
+      iscomplement: args.context?.isComplement,
+      complement: args.context?.r.complement,
+      query,
+    });
+
+    // Fallback to fast query
+    try {
+      console.log("Falling back to fast query");
+      const fastResults = await window.roamAlphaAPI.data.fast.q(
+        query,
+        ...inputs
+      );
+      return Promise.all(fastResults.map(formatResult));
+    } catch (fastError) {
+      console.error("Fast query also failed:", (fastError as Error).message);
+      return [];
+    }
   }
 };
 

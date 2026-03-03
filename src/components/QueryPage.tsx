@@ -63,36 +63,31 @@ const QueryPage = ({ pageUid, isEditBlock, showAlias }: Props) => {
   const [results, setResults] = useState<Result[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const onRefresh = useCallback(
-    (loadInBackground = false) => {
+    async (loadInBackground = false) => {
       setError("");
       setLoading(!loadInBackground);
       const args = parseQuery(pageUid);
-      setTimeout(() => {
-        fireQuery(args)
-          .then((results) => {
-            setColumns(args.columns);
-            setResults(results);
-          })
-          .catch(() => {
-            setError(
-              `Query failed to run. Try running a new query from the editor.`
-            );
-          })
-          .finally(() => {
-            const tree = getBasicTreeByParentUid(pageUid);
-            const node = getSubTree({ tree, key: "results" });
-            return (
-              node.uid
-                ? Promise.resolve(node.uid)
-                : createBlock({
-                    parentUid: pageUid,
-                    node: { text: "results" },
-                  })
-            ).then(() => {
-              setLoading(false);
-            });
-          });
-      }, 1);
+
+      try {
+        const results = await fireQuery(args);
+        setColumns(args.columns);
+        setResults(results);
+      } catch (err) {
+        setError(
+          `Query failed to run. Try running a new query from the editor.`
+        );
+      } finally {
+        const tree = getBasicTreeByParentUid(pageUid);
+        const node = getSubTree({ tree, key: "results" });
+        const uid =
+          node.uid ||
+          (await createBlock({
+            parentUid: pageUid,
+            node: { text: "results" },
+          }));
+        setLoading(false);
+        return uid;
+      }
     },
     [setResults, pageUid, setLoading, setColumns]
   );
