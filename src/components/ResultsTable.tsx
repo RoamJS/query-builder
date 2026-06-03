@@ -30,28 +30,15 @@ import { ContextContent } from "./DiscourseContext";
 
 const EXTRA_ROW_TYPES = ["context", "discourse"] as const;
 type ExtraRowType = (typeof EXTRA_ROW_TYPES)[number] | null;
+const { Block: RenderRoamBlock, Page: RenderRoamPage } =
+  window.roamAlphaAPI.ui.react;
 
 const ExtraContextRow = ({ uid }: { uid: string }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    if (getPageTitleByPageUid(uid)) {
-      window.roamAlphaAPI.ui.components.renderPage({
-        uid,
-        el: containerRef.current,
-        hideMentions: true,
-      });
-    } else {
-      window.roamAlphaAPI.ui.components.renderBlock({
-        uid,
-        el: containerRef.current,
-        zoomPath: true,
-      });
-    }
-  }, [containerRef, uid]);
-
-  return <div ref={containerRef} />;
+  return getPageTitleByPageUid(uid) ? (
+    <RenderRoamPage uid={uid} hideMentions />
+  ) : (
+    <RenderRoamBlock uid={uid} zoomPath />
+  );
 };
 
 const dragImage = document.createElement("img");
@@ -166,25 +153,13 @@ const ResultHeader = React.forwardRef<
 
 const CellEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
   const title = getPageTitleByPageUid(uid);
-  const contentRef = useRef(null);
-  useEffect(() => {
-    const el = contentRef.current;
-    const open =
-      viewValue === "open" ? true : viewValue === "closed" ? false : null;
-    if (el) {
-      window.roamAlphaAPI.ui.components.renderBlock({
-        uid,
-        el,
-        // "open?": open, // waiting for roamAlphaAPI to add a open/close to renderBlock
-      });
-    }
-  }, [contentRef]);
+  const open =
+    viewValue === "open" ? true : viewValue === "closed" ? false : undefined;
   return (
     <div className="roamjs-query-embed">
-      <div
-        ref={contentRef}
-        className={!!title ? "page-embed" : "block-embed"}
-      />
+      <div className={!!title ? "page-embed" : "block-embed"}>
+        <RenderRoamBlock uid={uid} open={open} />
+      </div>
     </div>
   );
 };

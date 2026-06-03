@@ -42,6 +42,9 @@ const pullBlockToTreeNode = (n: PullBlock, v: `:${ViewType}`): TreeNode => ({
   uid: n[":block/uid"] || "",
   heading: n[":block/heading"] || 0,
   viewType: (n[":children/view-type"] || v).slice(1) as ViewType,
+  blockViewType: (n[":block/view-type"] || ":vertical").slice(
+    1
+  ) as TreeNode["blockViewType"],
   editTime: new Date(n[":edit/time"] || 0),
   props: { imageResize: {}, iframe: {} },
   textAlign: n[":block/text-align"] || "left",

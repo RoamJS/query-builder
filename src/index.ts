@@ -580,7 +580,6 @@ svg.rs-svg-container {
       ).then((blockUid) =>
         queryRender({
           blockUid,
-          clearOnClick,
           onloadArgs,
         })
       ),
