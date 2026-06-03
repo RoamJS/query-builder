@@ -31,26 +31,18 @@ import { Sorts } from "../utils/parseResultSettings";
 import getRoamUrl from "roamjs-components/dom/getRoamUrl";
 
 const zPriority = z.record(z.number().min(0).max(1));
+const { Block: RenderRoamBlock } = window.roamAlphaAPI.ui.react;
 
 type Reprioritize = (args: { uid: string; x: number; y: number }) => void;
 
 const BlockEmbed = ({ uid, viewValue }: { uid: string; viewValue: string }) => {
   const title = getPageTitleByPageUid(uid);
-  const contentRef = useRef(null);
   const open =
-    viewValue === "open" ? true : viewValue === "closed" ? false : null;
-  useEffect(() => {
-    const el = contentRef.current;
-    if (el) {
-      window.roamAlphaAPI.ui.components.renderBlock({
-        uid,
-        el,
-        // "open?": open, // waiting for roamAlphaAPI to add a open/close to renderBlock
-      });
-    }
-  }, [uid, open, contentRef]);
+    viewValue === "open" ? true : viewValue === "closed" ? false : undefined;
   return (
-    <div ref={contentRef} className={!!title ? "page-embed" : "block-embed"} />
+    <div className={!!title ? "page-embed" : "block-embed"}>
+      <RenderRoamBlock uid={uid} open={open} />
+    </div>
   );
 };
 

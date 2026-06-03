@@ -423,7 +423,7 @@ const ExportDialog: ExportDialogComponent = ({
                 if (event.shiftKey) {
                   window.roamAlphaAPI.ui.rightSidebar.addWindow({
                     window: {
-                      "block-uid": uid,
+                      "page-uid": uid,
                       type: "outline",
                     },
                   });
