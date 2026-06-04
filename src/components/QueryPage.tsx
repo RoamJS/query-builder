@@ -10,17 +10,15 @@ import fireQuery from "../utils/fireQuery";
 import parseQuery from "../utils/parseQuery";
 import type { Result } from "roamjs-components/types/query-builder";
 import ResultsView from "./ResultsView";
-import ReactDOM from "react-dom";
 import QueryEditor from "./QueryEditor";
 import getSubTree from "roamjs-components/util/getSubTree";
 import { createComponentRender } from "roamjs-components/components/ComponentContainer";
+import renderWithUnmount from "roamjs-components/util/renderWithUnmount";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import createBlock from "roamjs-components/writes/createBlock";
 import deleteBlock from "roamjs-components/writes/deleteBlock";
 import { OnloadArgs } from "roamjs-components/types/native";
-import ExtensionApiContextProvider, {
-  useExtensionAPI,
-} from "roamjs-components/components/ExtensionApiContext";
+import { useExtensionAPI } from "roamjs-components/components/ExtensionApiContext";
 import { Column, ExportTypes } from "../utils/types";
 
 type QueryPageComponent = (props: {
@@ -200,11 +198,6 @@ export const render = ({
   onloadArgs,
   ...props
 }: { parent: HTMLElement; onloadArgs: OnloadArgs } & Props) =>
-  ReactDOM.render(
-    <ExtensionApiContextProvider {...onloadArgs}>
-      <QueryPage {...props} />
-    </ExtensionApiContextProvider>,
-    parent
-  );
+  renderWithUnmount(<QueryPage {...props} />, parent, onloadArgs);
 
 export default QueryPage;
