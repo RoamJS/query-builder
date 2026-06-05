@@ -27,7 +27,7 @@ const SUBTRACT_TEST = /^subtract\(([^,)]+),([^,)]+)\)$/i;
 const ADD_TEST = /^add\(([^,)]+),([^,)]+)\)$/i;
 const NODE_TEST = /^node:(\s*[^:]+\s*)(:.*)?$/i;
 const ACTION_TEST = /^action:\s*([^:]+)\s*(?::(.*))?$/i;
-const DATE_FORMAT_TEST = /^date-format\(([^,)]+),([^,)]+)\)$/i;
+const DATE_FORMAT_TEST = /^date-format\(\s*([^,]+?)\s*,\s*(.+)\s*\)$/i;
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const getArgValue = (key: string, result: QueryResult) => {
@@ -453,28 +453,41 @@ const predefinedSelections: PredefinedSelection[] = [
   {
     test: DATE_FORMAT_TEST,
     pull: ({ match }) => {
-      const arg0 = match?.[1];
-      return `(pull ?${arg0} [:block/string :node/title :block/uid])`;
+      const arg0 = (match?.[1] || "").trim().replace(/^\?/, "");
+      const datalogVariable = toDatalogVariable(arg0);
+      return datalogVariable
+        ? `(pull ?${datalogVariable} [:block/string :node/title :block/uid])`
+        : "";
     },
-    mapper: (pull, key) => {
+    mapper: (pull, key, result) => {
       const exec = DATE_FORMAT_TEST.exec(key);
-      const rawArg0 = pull[":block/string"] || pull[":node/title"] || "";
-      const arg0 =
+      const arg0Key = (exec?.[1] || "").trim();
+      const arg1Raw = (exec?.[2] || "").trim();
+      const arg1 =
+        /^\[.*\]$/.test(arg1Raw) && arg1Raw.length > 2
+          ? arg1Raw.slice(1, -1)
+          : arg1Raw;
+      const fallbackArg0 =
+        /^node$/i.test(arg0Key) && typeof result.text === "string"
+          ? result.text
+          : pull[":block/string"] || pull[":node/title"] || "";
+      const rawArg0 = getArgValue(arg0Key, result) || fallbackArg0;
+      const arg0Value =
         typeof rawArg0 === "string" && DAILY_NOTE_PAGE_REGEX.test(rawArg0)
           ? window.roamAlphaAPI.util.pageTitleToDate(
               DAILY_NOTE_PAGE_REGEX.exec(rawArg0)?.[0] || ""
             ) || new Date()
           : rawArg0;
-      const arg1 = exec?.[2] || "";
-      const uid = pull[":block/uid"] || "";
-      if (arg0 instanceof Date) {
+      const uid =
+        (result[`${arg0Key}-uid`] as string) || pull[":block/uid"] || "";
+      if (arg0Value instanceof Date) {
         return {
-          "": arg0,
-          "-display": datefnsFormat(arg0, arg1),
+          "": arg0Value,
+          "-display": datefnsFormat(arg0Value, arg1),
           "-uid": uid,
         };
       } else {
-        return { "": arg0, "-uid": uid, "-display": arg0 };
+        return { "": arg0Value, "-uid": uid, "-display": arg0Value };
       }
     },
     suggestions: [{ text: "date-format({{node}},[MMM do, yyyy])" }],
