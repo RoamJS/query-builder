@@ -38,89 +38,99 @@ const getDiscourseContextResults = async ({
     nodes.map(({ type, text }) => [type, text])
   );
   nodeTextByType["*"] = "Any";
+  const seenRelationQueryKeys = new Set<string>();
+  const relationQueries = relations
+    .flatMap((r) => {
+      const queries = [];
+      if (r.source === nodeType || r.source === "*") {
+        queries.push({
+          r,
+          isComplement: false,
+        });
+      }
+      if (r.destination === nodeType || r.destination === "*") {
+        queries.push({
+          r,
+          isComplement: true,
+        });
+      }
+      return queries;
+    })
+    .map(({ r, isComplement }) => {
+      const target = isComplement ? r.source : r.destination;
+      const text = isComplement ? r.complement : r.label;
+      const dedupeKey = `${text}~${target}~${isComplement ? "1" : "0"}`;
+      return { r, isComplement, target, text, dedupeKey };
+    })
+    .filter(({ text, dedupeKey }) => {
+      if (!text || seenRelationQueryKeys.has(dedupeKey)) return false;
+      seenRelationQueryKeys.add(dedupeKey);
+      return true;
+    });
   const resultsWithRelation = await Promise.all(
-    relations
-      .flatMap((r) => {
-        const queries = [];
-        if (r.source === nodeType || r.source === "*") {
-          queries.push({
-            r,
-            complement: false,
-          });
-        }
-        if (r.destination === nodeType || r.destination === "*") {
-          queries.push({
-            r,
-            complement: true,
-          });
-        }
-        return queries;
-      })
-      .map(({ r, complement: isComplement }) => {
-        const target = isComplement ? r.source : r.destination;
-        const text = isComplement ? r.complement : r.label;
-        const returnNode = nodeTextByType[target];
-        const cacheKey = `${uid}~${text}~${target}`;
-        const conditionUid = window.roamAlphaAPI.util.generateUID();
-        const selections = [];
-        if (r.triples.some((t) => t.some((a) => /context/i.test(a)))) {
-          selections.push({
-            uid: window.roamAlphaAPI.util.generateUID(),
-            label: "context",
-            text: `node:${conditionUid}-Context`,
-          });
-        } else if (r.triples.some((t) => t.some((a) => /anchor/i.test(a)))) {
-          selections.push({
-            uid: window.roamAlphaAPI.util.generateUID(),
-            label: "anchor",
-            text: `node:${conditionUid}-Anchor`,
-          });
-        }
-        const relation = {
-          id: r.id,
-          text,
-          target,
-          isComplement,
-        };
-        const rawResults =
-          resultCache[cacheKey] && !ignoreCache
-            ? Promise.resolve(resultCache[cacheKey])
-            : fireQuery({
-                returnNode,
-                conditions: [
-                  {
-                    source: returnNode,
-                    // NOTE! This MUST be the OPPOSITE of `label`
-                    relation: isComplement ? r.label : r.complement,
-                    target: uid,
-                    uid: conditionUid,
-                    type: "clause",
-                  },
-                ],
-                selections,
-                isSamePageEnabled,
-                context: {
-                  relationsInQuery: [relation],
-                  customNodes: nodes,
-                  customRelations: relations,
+    relationQueries.map(({ r, isComplement, text, target }) => {
+      const returnNode = nodeTextByType[target];
+      const cacheKey = `${uid}~${text}~${target}~${isComplement ? "1" : "0"}`;
+      const conditionUid = window.roamAlphaAPI.util.generateUID();
+      const selections = [];
+      if (r.triples.some((t) => t.some((a) => /context/i.test(a)))) {
+        selections.push({
+          uid: window.roamAlphaAPI.util.generateUID(),
+          label: "context",
+          text: `node:${conditionUid}-Context`,
+        });
+      } else if (r.triples.some((t) => t.some((a) => /anchor/i.test(a)))) {
+        selections.push({
+          uid: window.roamAlphaAPI.util.generateUID(),
+          label: "anchor",
+          text: `node:${conditionUid}-Anchor`,
+        });
+      }
+      const relation = {
+        id: r.id,
+        text,
+        target,
+        isComplement,
+      };
+      const rawResults =
+        resultCache[cacheKey] && !ignoreCache
+          ? Promise.resolve(resultCache[cacheKey])
+          : fireQuery({
+              returnNode,
+              conditions: [
+                {
+                  source: returnNode,
+                  // NOTE! This MUST be the OPPOSITE of `label`
+                  relation: isComplement ? r.label : r.complement,
+                  target: uid,
+                  uid: conditionUid,
+                  type: "clause",
                 },
-              }).then((results) => {
-                resultCache[cacheKey] = results;
-                setTimeout(() => {
-                  delete resultCache[cacheKey];
-                }, CACHE_TIMEOUT);
-                return results;
-              });
-        return rawResults.then((results) => ({
-          relation: {
-            text,
-            isComplement,
-            target,
-            id: r.id,
-          },
-          results,
-        }));
-      })
+              ],
+              selections,
+              isSamePageEnabled,
+              context: {
+                relationsInQuery: [relation],
+                customNodes: nodes,
+                customRelations: relations,
+              },
+            }).then((results) => {
+              resultCache[cacheKey] = results;
+              setTimeout(() => {
+                delete resultCache[cacheKey];
+              }, CACHE_TIMEOUT);
+              return results;
+            });
+      return rawResults.then((results) => ({
+        relation: {
+          text,
+          isComplement,
+          target,
+          id: r.id,
+        },
+        results,
+      }));
+    })
   ).catch((e) => {
     console.error(e);
     return [] as const;
