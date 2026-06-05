@@ -39,7 +39,7 @@ const postProcessResults = (
     "views" | "layout" | "resultNodeUid"
   >
 ) => {
-  const sortedResults = results
+  const filteredResults = results
     .filter((r) => {
       const deprecatedFilter = Object.keys(settings.filters).every(
         (filterKey) => {
@@ -105,18 +105,20 @@ const postProcessResults = (
                 .includes(settings.searchFilter.toLowerCase())
             )
         : true;
-    })
-    .sort((a, b) => {
+    });
+  const randomizedResults =
+    settings.random > 0
+      ? [...filteredResults]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, settings.random)
+      : filteredResults;
+  const allProcessedResults = [...randomizedResults].sort((a, b) => {
       for (const sort of settings.activeSort) {
         const cmpResult = sortFunction(sort.key, sort.descending)(a, b);
         if (cmpResult !== 0) return cmpResult;
       }
       return 0;
     });
-  const allProcessedResults =
-    settings.random > 0
-      ? sortedResults.sort(() => 0.5 - Math.random()).slice(0, settings.random)
-      : sortedResults;
   const paginatedResults = allProcessedResults.slice(
     (settings.page - 1) * settings.pageSize,
     settings.page * settings.pageSize
