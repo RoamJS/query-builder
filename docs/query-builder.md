@@ -181,6 +181,7 @@ The `label`, which gets specified after **AS**, denotes the name of the column t
 | `node:{node}:{data}`               | Specify one of the metadata `{data}` options or an `{attribute}` to return for an intermediary node. | [Link](examples.md#data)                |
 | `node:{node}:/regular_expression/` | Returns a match according to a regular expression between `/`'s.                                     | [Link](examples.md#regular-expression)  |
 | `node`                             | Use the label to edit the column header of the first column                                          | [Link](examples.md#first-column-header) |
+| `text({node})`                     | Returns plain text for a node by stripping page refs, tags, and button markup.                      | N/A                                     |
 | `add({label1}, {label2})`          | Add the values of two columns. Supports adding values to dates.                                      | [Link](examples.md#add-or-subtract)     |
 | `subtract({label1}, {label2})`     | Subtract the values betweenn two columns. Supports adding values to dates.                           | [Link](examples.md#add-or-subtract)     |
 
