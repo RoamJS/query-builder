@@ -248,16 +248,19 @@ export const getDatalogQuery = ({
   );
   const find = definedSelections.map((p) => p.pull).join("\n  ");
   const where = whereClauses.map((c) => compileDatalog(c, 1)).join("\n");
+  const shouldBindLeadingNotClause =
+    !!whereClauses.length &&
+    (whereClauses[0].type === "not-clause" ||
+      whereClauses[0].type === "not-join-clause");
+  const leadingWhereBinding = shouldBindLeadingNotClause
+    ? `  [?${returnNode} :block/uid _]\n`
+    : "";
   return {
     query: `[:find\n  ${find}\n${
       expectedInputs.length
         ? `  :in $ ${expectedInputs.map((i) => `?${i}`).join(" ")}\n`
         : ""
-    }:where\n${
-      whereClauses.length === 1 && whereClauses[0].type === "not-clause"
-        ? `[?node :block/uid _]`
-        : ""
-    }${where}\n]`,
+    }:where\n${leadingWhereBinding}${where}\n]`,
     formatResult: (result: unknown[]) =>
       definedSelections
         .map((c, i) => (prev: QueryResult) => {
