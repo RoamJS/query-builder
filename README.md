@@ -6,7 +6,7 @@
 
 **Visual query builder for Roam: create and save queries via blocks, pages, or a drawer; add advanced logic (OR/NOT), then explore results as sortable/filterable tables or views like Kanban.**
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/RoamJS/query-builder)
+[![RoamJS](https://roamjs.com/badges/website.svg)](https://roamjs.com/) [![DeepWiki](https://roamjs.com/badges/deepwiki.svg)](https://deepwiki.com/RoamJS/query-builder) [![Slack](https://roamjs.com/badges/slack.svg)](https://roamresearch.slack.com/archives/C016N2B66JU)
 
 ![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Froamjs%2FYERyR8FnXO.png?alt=media&token=7522a921-3e17-424f-b141-08e4109f9b75)
 
