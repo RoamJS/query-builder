@@ -221,26 +221,33 @@ const registerDiscourseDatalogTranslators = () => {
       registerDatalogTranslator({
         key: label,
         callback: ({ source, target, uid }) => {
-          const filteredRelations = discourseRelations
-            .map((r) =>
-              (r.label === label || ANY_RELATION_REGEX.test(label)) &&
-              doesDiscourseRelationMatchCondition(r, { source, target })
-                ? { ...r, forward: true }
-                : doesDiscourseRelationMatchCondition(
-                    { source: r.destination, destination: r.source },
-                    { source, target }
-                  ) &&
-                  (r.complement === label || ANY_RELATION_REGEX.test(label))
-                ? { ...r, forward: false }
-                : undefined
-            )
-            .filter(
-              (
-                r
-              ): r is ReturnType<typeof getDiscourseRelations>[number] & {
-                forward: boolean;
-              } => !!r
-            );
+          const isAnyRelation = ANY_RELATION_REGEX.test(label);
+          const filteredRelations = discourseRelations.flatMap((r) => {
+            const forwardMatches =
+              (r.label === label || isAnyRelation) &&
+              doesDiscourseRelationMatchCondition(r, { source, target });
+            const backwardMatches =
+              (r.complement === label || isAnyRelation) &&
+              doesDiscourseRelationMatchCondition(
+                { source: r.destination, destination: r.source },
+                { source, target }
+              );
+            if (forwardMatches && backwardMatches) {
+              const sourceDestinationOverlap =
+                r.source === r.destination ||
+                r.source === "*" ||
+                r.destination === "*";
+              if (r.label === r.complement && sourceDestinationOverlap) {
+                return [
+                  { ...r, forward: true },
+                  { ...r, forward: false },
+                ] as const;
+              }
+            }
+            if (forwardMatches) return [{ ...r, forward: true }] as const;
+            if (backwardMatches) return [{ ...r, forward: false }] as const;
+            return [];
+          });
           if (!filteredRelations.length) return [];
           const andParts = filteredRelations.map(
             ({
