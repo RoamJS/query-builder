@@ -121,14 +121,17 @@ const registerDiscourseDatalogTranslators = () => {
         const queryUid = getPageUidByPageTitle(
           `discourse-graph/queries/${target}`
         );
+        if (!queryUid) return [];
         const queryMetadataTree = getBasicTreeByParentUid(queryUid);
         const queryData = getSubTree({
           tree: queryMetadataTree,
-          key: "query",
+          key: "scratch",
         });
         const { conditions, returnNode } = parseQuery(queryData);
         const clauses = getWhereClauses({ conditions, returnNode });
-        const variables = Array.from(collectVariables(clauses));
+        const variables = Array.from(collectVariables(clauses)).filter(
+          (v) => v !== source
+        );
         const orClause: DatalogClause = {
           type: "or-join-clause",
           variables: [{ type: "variable" as const, value: source }].concat(
