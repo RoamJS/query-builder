@@ -38,10 +38,12 @@ const toCellValue = ({
   value,
   uid,
   defaultValue = "",
+  stripRefs = false,
 }: {
   value: number | Date | string;
   defaultValue?: string;
   uid: string;
+  stripRefs?: boolean;
 }) => {
   const initialValue =
     value instanceof Date
@@ -62,7 +64,16 @@ const toCellValue = ({
             .join("/")
         : initialValue
       : initialValue;
-  return formattedValue;
+
+  // `extractTag` only unwraps a single, whole-string tag, so a multi-value
+  // attribute (e.g. `[[A]], [[B]]`) keeps its `[[ ]]` while a single value is
+  // unwrapped. When rendering for display, strip the page-ref delimiters from
+  // every remaining ref so multi-value cells read the same as single-value
+  // ones. Off by default so callers relying on the raw value (filtering,
+  // in-place edits) are unaffected.
+  return stripRefs
+    ? formattedValue.replace(/#?\[\[([^[\]]+)\]\]/g, "$1")
+    : formattedValue;
 };
 
 export default toCellValue;
