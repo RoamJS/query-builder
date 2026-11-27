@@ -190,6 +190,7 @@ const ResultRow = ({
     const value = toCellValue({
       value: r[`${key}-display`] || r[key] || "",
       uid: (r[`${key}-uid`] as string) || "",
+      stripRefs: true,
     });
     const action = r[`${key}-action`];
     if (typeof action === "string") {
