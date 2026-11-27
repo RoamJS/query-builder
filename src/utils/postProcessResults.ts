@@ -2,6 +2,7 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import { Result } from "roamjs-components/types/query-builder";
 import extractTag from "roamjs-components/util/extractTag";
 import parseResultSettings from "./parseResultSettings";
+import toCellValue from "./toCellValue";
 
 const transform = (_val: Result[string]) =>
   typeof _val === "string"
@@ -11,6 +12,31 @@ const transform = (_val: Result[string]) =>
       ? Number(_val)
       : _val
     : _val;
+
+const getFilterCandidateValues = ({
+  value,
+  uid,
+}: {
+  value: Result[string];
+  uid: string;
+}) => {
+  const candidates = new Set<string>();
+  if (typeof value === "undefined" || value === null) return candidates;
+  if (value instanceof Date) {
+    candidates.add(window.roamAlphaAPI.util.dateToPageTitle(value));
+    return candidates;
+  }
+  const asString = value.toString();
+  candidates.add(asString);
+  candidates.add(extractTag(asString));
+  candidates.add(
+    toCellValue({
+      value: value as string | number,
+      uid,
+    })
+  );
+  return candidates;
+};
 const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
     const _aVal = a[key];
@@ -47,22 +73,16 @@ const postProcessResults = (
             settings.filters[filterKey].includes.values || new Set();
           const excludeValues =
             settings.filters[filterKey].excludes.values || new Set();
+          const resultValueCandidates = getFilterCandidateValues({
+            value: r[filterKey],
+            uid: (r[`${filterKey}-uid`] as string) || "",
+          });
           return (
             (includeValues.size === 0 &&
-              (typeof r[filterKey] !== "string" ||
-                !excludeValues.has(extractTag(r[filterKey] as string))) &&
-              (r[filterKey] instanceof Date ||
-                !excludeValues.has(
-                  window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
-                )) &&
-              !excludeValues.has(r[filterKey] as string)) ||
-            (typeof r[filterKey] === "string" &&
-              includeValues.has(extractTag(r[filterKey] as string))) ||
-            (r[filterKey] instanceof Date &&
-              includeValues.has(
-                window.roamAlphaAPI.util.dateToPageTitle(r[filterKey] as Date)
+              !Array.from(resultValueCandidates).some((v) =>
+                excludeValues.has(v)
               )) ||
-            includeValues.has(r[filterKey] as string)
+            Array.from(resultValueCandidates).some((v) => includeValues.has(v))
           );
         }
       );
