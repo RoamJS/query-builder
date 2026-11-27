@@ -9,6 +9,7 @@ import differenceInWeeks from "date-fns/differenceInWeeks";
 import differenceInMonths from "date-fns/differenceInMonths";
 import differenceInYears from "date-fns/differenceInYears";
 import datefnsFormat from "date-fns/format";
+import startOfDay from "date-fns/startOfDay";
 import type { QBClause, Result as QueryResult } from "./types";
 import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
 import updateBlock from "roamjs-components/writes/updateBlock";
@@ -435,7 +436,8 @@ const predefinedSelections: PredefinedSelection[] = [
       const val0 = getArgValue(arg0, result);
       const val1 = getArgValue(arg1, result);
       if (val0 instanceof Date && val1 instanceof Date) {
-        return val1;
+        const dayOffset = differenceInDays(startOfDay(val1), startOfDay(new Date()));
+        return new Date(val0.valueOf() + dayOffset * MILLISECONDS_IN_DAY);
       } else if (val0 instanceof Date) {
         return new Date(
           val0.valueOf() + MILLISECONDS_IN_DAY * (Number(val1) || 0)
