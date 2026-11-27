@@ -39,6 +39,7 @@ import { Condition } from "../utils/types";
 import ResultsTable from "./ResultsTable";
 import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 import setInputSettings from "roamjs-components/util/setInputSettings";
+import toCellValue from "../utils/toCellValue";
 
 const VIEWS: Record<string, { value: boolean }> = {
   link: { value: false },
@@ -239,6 +240,23 @@ type ResultsViewComponent = (props: {
 }) => JSX.Element;
 
 const head = (s: string | string[]) => (Array.isArray(s) ? s[0] || "" : s);
+const toColumnFilterValue = ({
+  value,
+  uid,
+}: {
+  value: Result[string];
+  uid: string;
+}) => {
+  if (typeof value === "undefined" || value === null) return "";
+  if (
+    typeof value === "string" &&
+    !!uid &&
+    getPageTitleByPageUid(uid)?.includes("/")
+  ) {
+    return toCellValue({ value, uid });
+  }
+  return value.toString();
+};
 
 type MenuHeadingProps = {
   onClear: () => void;
@@ -757,7 +775,12 @@ const ResultsView: ResultsViewComponent = ({
                               items={Array.from(
                                 new Set(
                                   results
-                                    .map((r) => r[key].toString())
+                                    .map((r) =>
+                                      toColumnFilterValue({
+                                        value: r[key],
+                                        uid: (r[`${key}-uid`] as string) || "",
+                                      })
+                                    )
                                     .filter((v) => !value.includes(v))
                                 )
                               )}

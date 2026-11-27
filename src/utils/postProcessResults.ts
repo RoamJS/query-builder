@@ -2,6 +2,7 @@ import { DAILY_NOTE_PAGE_TITLE_REGEX } from "roamjs-components/date/constants";
 import { Result } from "roamjs-components/types/query-builder";
 import extractTag from "roamjs-components/util/extractTag";
 import parseResultSettings from "./parseResultSettings";
+import toCellValue from "./toCellValue";
 
 const transform = (_val: Result[string]) =>
   typeof _val === "string"
@@ -11,6 +12,31 @@ const transform = (_val: Result[string]) =>
       ? Number(_val)
       : _val
     : _val;
+const getFilterCandidateValues = ({
+  value,
+  uid,
+}: {
+  value: Result[string];
+  uid: string;
+}) => {
+  const candidates = new Set<string>();
+  if (typeof value === "undefined" || value === null) return candidates;
+  if (value instanceof Date) {
+    candidates.add(window.roamAlphaAPI.util.dateToPageTitle(value));
+    candidates.add(value.toString());
+    return candidates;
+  }
+  const asString = value.toString();
+  candidates.add(asString);
+  candidates.add(extractTag(asString));
+  candidates.add(
+    toCellValue({
+      value: value as string | number,
+      uid,
+    })
+  );
+  return candidates;
+};
 const sortFunction =
   (key: string, descending?: boolean) => (a: Result, b: Result) => {
     const _aVal = a[key];
@@ -81,7 +107,13 @@ const postProcessResults = (
             ) {
               return true;
             }
-            return columnFilter.value.some((v) => r[columnFilter.key] === v);
+            const resultValueCandidates = getFilterCandidateValues({
+              value: r[columnFilter.key],
+              uid: (r[`${columnFilter.key}-uid`] as string) || "",
+            });
+            return columnFilter.value.some((v) =>
+              resultValueCandidates.has(v.toString())
+            );
           case "greater than":
             const gtFilter = transform(columnFilter.value[0]);
             const gtResult = transform(r[columnFilter.key]);
